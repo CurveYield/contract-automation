@@ -4,9 +4,9 @@ PreflightSim Lite is a Cloudflare Pages/Worker and GitHub Actions service for So
 
 ## Interfaces
 
-- Human and browser-agent UI: `https://preflightsim.curveyield.online/`
-- Minimal agent UI: `https://preflightsim.curveyield.online/agent/`
-- REST API: `https://api.preflightsim.curveyield.online/api/v1/`
+- Human and browser-agent UI: `https://preflight.curveyield.online/`
+- Minimal agent UI: `https://preflight.curveyield.online/agent/`
+- REST API: `https://api.preflight.curveyield.online/api/v1/`
 - Private Custom GPT Action: `integrations/custom-gpt/`
 - Ordinary-chat GitHub issue bridge: `integrations/github-bridge/`
 
