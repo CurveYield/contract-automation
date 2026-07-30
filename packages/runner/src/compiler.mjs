@@ -122,4 +122,46 @@ export async function loadSolcVersion(version) {
   const releasePath = manifest.releases?.[version];
   if (!releasePath) throw new Error(`Official Solidity compiler ${version} was not found`);
   const longVersion = releasePath.replace(/^soljson-/, '').replace(/\.js$/, '');
-  return new Promise((resolve,
+  return new Promise((resolve, reject) => {
+    solc.loadRemoteVersion(longVersion, (error, compiler) => error ? reject(error) : resolve(compiler));
+  });
+}
+
+export async function compileProject({ sources, compilerVersion, settings, openZeppelinRoot }) {
+  const compiler = await loadSolcVersion(compilerVersion);
+  const input = buildCompilerInput(sources, settings);
+  const sourceLookup = new Map(Object.entries(sources));
+
+  function findImports(importPath) {
+    const normalized = importPath.replaceAll('\\', '/');
+    if (sourceLookup.has(normalized)) return { contents: sourceLookup.get(normalized) };
+    if (normalized.startsWith('@openzeppelin/contracts/')) {
+      if (!openZeppelinRoot) return { error: 'OpenZeppelin import requested without openZeppelinVersion' };
+      const relative = normalized.slice('@openzeppelin/contracts/'.length);
+      try {
+        const file = safeProjectPath(openZeppelinRoot, relative);
+        return { contents: readFileSync(file, 'utf8') };
+      } catch (cause) {
+        return { error: `OpenZeppelin import failed: ${cause.message}` };
+      }
+    }
+    return { error: `Import not found or not allowlisted: ${importPath}` };
+  }
+
+  const output = JSON.parse(compiler.compile(JSON.stringify(input), { import: findImports }));
+  const diagnostics = (output.errors ?? []).map((item) => ({
+    severity: item.severity,
+    type: item.type,
+    component: item.component,
+    errorCode: item.errorCode,
+    message: item.message,
+    formattedMessage: item.formattedMessage,
+    sourceLocation: item.sourceLocation
+  }));
+  if (diagnostics.some((item) => item.severity === 'error')) {
+    const failure = new Error('Solidity compilation failed');
+    failure.compilerDiagnostics = diagnostics;
+    throw failure;
+  }
+  return { output, diagnostics, artifacts: contractArtifactMap(output), input };
+}

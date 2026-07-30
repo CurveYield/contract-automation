@@ -125,4 +125,6 @@ test('archive byte guard rejects streamed ZIP data beyond declared safety limits
       Readable.from([Buffer.alloc(6), Buffer.alloc(6)]),
       createArchiveByteGuard({ counter, maxEntryBytes: 10, maxTotalBytes: 100 })
     ),
-    /entry exceeds 10 byt
+    /entry exceeds 10 bytes/
+  );
+});

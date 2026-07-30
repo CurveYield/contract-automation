@@ -134,4 +134,77 @@ export async function runGithubBridge({
   const author = String(issue?.user?.login ?? '').toLowerCase();
   const allowlist = allowedUsers instanceof Set ? allowedUsers : parseAllowedUsers(allowedUsers);
   if (!author || !allowlist.has(author)) throw new Error(`GitHub author ${issue?.user?.login ?? '(unknown)'} is not authorized`);
-  if (!repository || !/^[-A-Za-z0-
+  if (!repository || !/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(repository)) throw new Error('Invalid GitHub repository name');
+  if (!Number.isInteger(issue?.number)) throw new Error('Issue number is required');
+
+  const githubBase = `https://api.github.com/repos/${repository}`;
+  const commentsUrl = `${githubBase}/issues/${issue.number}/comments`;
+  const comments = await githubRequest(fetcher, githubToken, `${commentsUrl}?per_page=100`);
+  if (comments.some((comment) => String(comment?.body ?? '').includes(STARTED_MARKER))) {
+    throw new Error('This PreflightSim issue job has already started');
+  }
+
+  const request = extractJobRequest(issue.body);
+  await githubRequest(fetcher, githubToken, commentsUrl, {
+    method: 'POST',
+    body: JSON.stringify({ body: `${STARTED_MARKER}\nPreflightSim accepted this issue and is submitting the validated job.` })
+  });
+
+  const base = String(apiUrl).replace(/\/$/, '');
+  const created = await preflightRequest(fetcher, apiKey, `${base}/api/v1/jobs`, {
+    method: 'POST',
+    body: JSON.stringify(request)
+  });
+  await githubRequest(fetcher, githubToken, commentsUrl, {
+    method: 'POST',
+    body: JSON.stringify({ body: `PreflightSim job created: \`${created.jobId}\`. The bridge will post results here when execution finishes.` })
+  });
+
+  let status = created;
+  for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+    status = await preflightRequest(fetcher, apiKey, `${base}/api/v1/jobs/${created.jobId}`);
+    if (status.status === 'completed' || status.status === 'failed') break;
+    if (attempt < maxPolls - 1) await sleep(pollIntervalMs);
+  }
+  if (status.status !== 'completed' && status.status !== 'failed') {
+    throw new Error(`PreflightSim job ${created.jobId} did not finish within the bridge polling window`);
+  }
+
+  const summary = await preflightRequest(fetcher, apiKey, `${base}/api/v1/jobs/${created.jobId}/summary`);
+  let result;
+  try {
+    result = await preflightRequest(fetcher, apiKey, `${base}/api/v1/jobs/${created.jobId}/result`);
+  } catch (cause) {
+    if (status.status !== 'failed' || cause?.status !== 409) throw cause;
+    result = {
+      jobId: created.jobId,
+      status: 'failed',
+      error: summary.error ?? { message: 'No full result was published for this failed job' }
+    };
+  }
+  await githubRequest(fetcher, githubToken, commentsUrl, {
+    method: 'POST',
+    body: JSON.stringify({ body: formatSummary(summary) })
+  });
+  for (const comment of splitResultComments(result)) {
+    await githubRequest(fetcher, githubToken, commentsUrl, {
+      method: 'POST',
+      body: JSON.stringify({ body: comment })
+    });
+  }
+  await githubRequest(fetcher, githubToken, `${githubBase}/issues/${issue.number}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state: 'closed', state_reason: 'completed' })
+  });
+  return { jobId: created.jobId, status: status.status, summary };
+}
+
+export async function postBridgeFailure({ repository, issueNumber, githubToken, message, fetcher = fetch }) {
+  if (!repository || !Number.isInteger(issueNumber) || !githubToken) return;
+  const url = `https://api.github.com/repos/${repository}/issues/${issueNumber}/comments`;
+  const safeMessage = String(message ?? 'Unknown bridge failure').replaceAll('```', "'''").slice(0, 8_000);
+  await githubRequest(fetcher, githubToken, url, {
+    method: 'POST',
+    body: JSON.stringify({ body: `<!-- preflightsim-bridge-failed -->\n## PreflightSim bridge failed\n\n\`\`\`text\n${safeMessage}\n\`\`\`` })
+  });
+}
