@@ -3,6 +3,10 @@ name: Test and Deploy CurveYield Preflight
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - '.actions-probe'
   workflow_dispatch:
 
 permissions:
