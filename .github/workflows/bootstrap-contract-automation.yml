@@ -71,3 +71,5 @@ jobs:
           fi
           git commit -m "Migrate complete contract automation suite"
           git push origin HEAD:main
+
+# Trigger bootstrap after workflow installation.
