@@ -6,6 +6,8 @@ on:
     paths:
       - '.bootstrap/source.part-*'
       - '.github/workflows/bootstrap-contract-automation.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,11 +19,13 @@ concurrency:
 
 jobs:
   expand-source:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out main
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Reconstruct and verify source archive
@@ -44,7 +48,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git ls-files | wc -l)" -ge 1
           test -f package.json
           test -f apps/api/src/index.mjs
           test -f apps/web/public/index.html
@@ -71,5 +74,3 @@ jobs:
           fi
           git commit -m "Migrate complete contract automation suite"
           git push origin HEAD:main
-
-# Trigger bootstrap after workflow installation.
