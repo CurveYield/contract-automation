@@ -1,0 +1,103 @@
+.call(step, context);
+      case 'staticCall': return this.staticCall(step, context);
+      case 'expectRevert': return this.expectRevert(step, context);
+      case 'setBalance': return this.setBalance(step, context);
+      case 'transferNative': return this.transferNative(step, context);
+      case 'mine': return this.mine(step);
+      case 'increaseTime': return this.increaseTime(step);
+      case 'snapshot': return this.snapshot(step, context);
+      case 'revertSnapshot': return this.revertSnapshot(step, context);
+      case 'assertBalance': return this.assertBalance(step, context);
+      case 'assertCall': return this.assertCall(step, context);
+      default: throw new Error(`Unsupported runtime action: ${step.action}`);
+    }
+  }
+
+  async deploy(step, context) {
+    const artifact = this.artifacts.get(step.contract, step.source);
+    if (artifact.bytecode === '0x') throw new Error(`Contract ${step.contract} has empty creation bytecode`);
+    if (artifact.bytecode.includes('__$')) throw new Error(`Contract ${step.contract} has unlinked libraries`);
+    const signer = await this.signer(step.from, context);
+    const factory = new this.ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
+    const args = resolveReference(step.args ?? [], context);
+    const overrides = step.value === undefined ? {} : { value: asBigInt(resolveReference(step.value, context)) };
+    const contract = await factory.deploy(...args, overrides);
+    await contract.waitForDeployment();
+    const address = await contract.getAddress();
+    const transaction = contract.deploymentTransaction();
+    const receipt = await transaction.wait();
+    context.aliases[step.alias] = address;
+    context.deployments[step.alias] = {
+      address,
+      contractName: artifact.contractName,
+      sourceName: artifact.sourceName
+    };
+    return { address, receipt: receiptJson(receipt) };
+  }
+
+  async call(step, context) {
+    const signer = await this.signer(step.from, context);
+    const contract = this.contractFor(step, context, signer);
+    const key = functionKey(step.function, this.ethers.Interface);
+    const fn = contract.getFunction(key);
+    const args = resolveReference(step.args ?? [], context);
+    const overrides = step.value === undefined ? {} : { value: asBigInt(resolveReference(step.value, context)) };
+    const transaction = await fn.send(...args, overrides);
+    const receipt = await transaction.wait();
+    const output = { receipt: receiptJson(receipt) };
+    if (step.saveAs) context.values[step.saveAs] = transaction.hash;
+    return output;
+  }
+
+  async staticCall(step, context) {
+    const from = step.from ? await this.signer(step.from, context) : this.provider;
+    const contract = this.contractFor(step, context, from);
+    const key = functionKey(step.function, this.ethers.Interface);
+    const value = await contract.getFunction(key).staticCall(...resolveReference(step.args ?? [], context));
+    const output = normalize(value);
+    if (step.saveAs) context.values[step.saveAs] = output;
+    return { value: output };
+  }
+
+  async expectRevert(step, context) {
+    try {
+      const signer = await this.signer(step.from, context);
+      const contract = this.contractFor(step, context, signer);
+      const key = functionKey(step.function, this.ethers.Interface);
+      const fn = contract.getFunction(key);
+      const args = resolveReference(step.args ?? [], context);
+      if (['view', 'pure'].includes(fn.fragment.stateMutability)) {
+        await fn.staticCall(...args);
+      } else {
+        const overrides = step.value === undefined ? {} : { value: asBigInt(resolveReference(step.value, context)) };
+        const transaction = await fn.send(...args, overrides);
+        await transaction.wait();
+      }
+    } catch (cause) {
+      const message = [cause.message, cause.shortMessage, cause.reason].filter(Boolean).join(' | ');
+      if (step.reason && !message.includes(step.reason)) {
+        throw new Error(`Transaction reverted, but reason did not include ${step.reason}: ${message}`);
+      }
+      return { reverted: true, message };
+    }
+    throw new Error('Expected transaction to revert, but it succeeded');
+  }
+
+  async setBalance(step, context) {
+    const account = resolveReference(step.account, context);
+    const amount = asBigInt(resolveReference(step.amount, context));
+    await this.provider.send('evm_setAccountBalance', [account, this.ethers.toBeHex(amount)]);
+    return { account, amount: amount.toString() };
+  }
+
+  async transferNative(step, context) {
+    const signer = await this.signer(step.from, context);
+    const to = resolveReference(step.to, context);
+    const amount = asBigInt(resolveReference(step.amount, context));
+    const receipt = await (await signer.sendTransaction({ to, value: amount })).wait();
+    return { receipt: receiptJson(receipt) };
+  }
+
+  async mine(step) {
+    const blocks = step.blocks ?? 1;
+    if (!Number.isInteger(blocks) || blocks < 1 || blocks > 10000) throw new Error('

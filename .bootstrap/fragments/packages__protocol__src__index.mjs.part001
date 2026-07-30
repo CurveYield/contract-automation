@@ -1,0 +1,131 @@
+export const MAX_INLINE_BYTES = 2 * 1024 * 1024;
+export const MAX_ARCHIVE_BYTES = 250 * 1024 * 1024;
+export const MAX_STEPS = 200;
+
+export const CHAINS = Object.freeze({
+  ethereum: { chainId: 1, rpcEnv: 'RPC_ETHEREUM' },
+  base: { chainId: 8453, rpcEnv: 'RPC_BASE' },
+  katana: { chainId: 747474, rpcEnv: 'RPC_KATANA' },
+  fraxtal: { chainId: 252, rpcEnv: 'RPC_FRAXTAL' },
+  arbitrum: { chainId: 42161, rpcEnv: 'RPC_ARBITRUM' },
+  polygon: { chainId: 137, rpcEnv: 'RPC_POLYGON' },
+  optimism: { chainId: 10, rpcEnv: 'RPC_OPTIMISM' }
+});
+
+export const ACTIONS = Object.freeze(new Set([
+  'deploy',
+  'call',
+  'staticCall',
+  'expectRevert',
+  'setBalance',
+  'transferNative',
+  'mine',
+  'increaseTime',
+  'snapshot',
+  'revertSnapshot',
+  'assertBalance',
+  'assertCall'
+]));
+
+const FORBIDDEN_KEYS = new Set([
+  'privateKey', 'privateKeys', 'mnemonic', 'seed', 'secret', 'signer',
+  'rpcUrl', 'rpc', 'rawTransaction', 'signedTransaction', 'shell', 'command',
+  'script', 'npmScript', 'broadcast'
+]);
+
+const TOP_LEVEL_KEYS = new Set([
+  'mode', 'project', 'compilerVersion', 'openZeppelinVersion', 'chain', 'block',
+  'timeoutMinutes', 'workflow', 'optimizer', 'evmVersion', 'viaIR'
+]);
+
+const COMMON_STEP_KEYS = new Set(['action', 'label', 'continueOnFailure']);
+const STEP_KEYS = Object.freeze({
+  deploy: new Set([...COMMON_STEP_KEYS, 'alias', 'contract', 'source', 'args', 'from', 'value']),
+  call: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'value', 'saveAs']),
+  staticCall: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'saveAs']),
+  expectRevert: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'value', 'reason']),
+  setBalance: new Set([...COMMON_STEP_KEYS, 'account', 'amount']),
+  transferNative: new Set([...COMMON_STEP_KEYS, 'from', 'to', 'amount']),
+  mine: new Set([...COMMON_STEP_KEYS, 'blocks']),
+  increaseTime: new Set([...COMMON_STEP_KEYS, 'seconds']),
+  snapshot: new Set([...COMMON_STEP_KEYS, 'alias']),
+  revertSnapshot: new Set([...COMMON_STEP_KEYS, 'snapshot']),
+  assertBalance: new Set([...COMMON_STEP_KEYS, 'account', 'equals', 'min', 'max']),
+  assertCall: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'equals'])
+});
+
+export class ValidationError extends Error {
+  constructor(code, message, path = '$') {
+    super(message);
+    this.name = 'ValidationError';
+    this.code = code;
+    this.path = path;
+  }
+}
+
+function assertPlainObject(value, path) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ValidationError('invalid_type', `${path} must be an object`, path);
+  }
+}
+
+function scanForbidden(value, path = '$') {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => scanForbidden(item, `${path}[${index}]`));
+    return;
+  }
+  if (value === null || typeof value !== 'object') return;
+  for (const [key, child] of Object.entries(value)) {
+    if (FORBIDDEN_KEYS.has(key)) {
+      throw new ValidationError('forbidden_field', `${path}.${key} is forbidden`, `${path}.${key}`);
+    }
+    scanForbidden(child, `${path}.${key}`);
+  }
+}
+
+function rejectUnknownKeys(object, allowed, path) {
+  for (const key of Object.keys(object)) {
+    if (!allowed.has(key)) {
+      throw new ValidationError('unknown_field', `${path}.${key} is not allowed`, `${path}.${key}`);
+    }
+  }
+}
+
+function requireString(value, path, { min = 1, max = 4096 } = {}) {
+  if (typeof value !== 'string' || value.length < min || value.length > max) {
+    throw new ValidationError('invalid_string', `${path} must be a string between ${min} and ${max} characters`, path);
+  }
+  return value;
+}
+
+function optionalExactVersion(value, path) {
+  if (value === undefined) return undefined;
+  requireString(value, path, { max: 32 });
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value)) {
+    throw new ValidationError('invalid_compiler_version', `${path} must be an exact semantic version`, path);
+  }
+  return value;
+}
+
+function validatePath(path) {
+  requireString(path, 'project.files path', { max: 512 });
+  const normalized = path.replaceAll('\\', '/');
+  if (normalized.startsWith('/') || normalized.includes('../') || normalized === '..' || normalized.includes('/./')) {
+    throw new ValidationError('invalid_path', `Unsafe project path: ${path}`, `project.files.${path}`);
+  }
+  if (!normalized.endsWith('.sol')) {
+    throw new ValidationError('invalid_path', `Only .sol files are accepted inline: ${path}`, `project.files.${path}`);
+  }
+  return normalized;
+}
+
+export function validateProject(project) {
+  assertPlainObject(project, '$.project');
+  scanForbidden(project, '$.project');
+  if (!['inline', 'github', 'upload'].includes(project.type)) {
+    throw new ValidationError('invalid_project_type', 'project.type must be inline, github, or upload', '$.project.type');
+  }
+
+  if (project.type === 'inline') {
+    rejectUnknownKeys(project, new Set(['type', 'files']), '$.project');
+    assertPlainObject(project.files, '$.projec

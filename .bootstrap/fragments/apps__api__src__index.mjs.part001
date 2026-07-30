@@ -1,0 +1,127 @@
+import {
+  CHAINS,
+  MAX_ARCHIVE_BYTES,
+  ValidationError,
+  validateCreateJobRequest,
+  validateJobResult
+} from '../../../packages/protocol/src/index.mjs';
+
+const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+const MAX_JSON_BODY_BYTES = 3 * 1024 * 1024;
+const UPLOAD_EXPIRY_SECONDS = 15 * 60;
+
+function json(value, status = 200, headers = {}) {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { ...JSON_HEADERS, ...headers }
+  });
+}
+
+function error(code, message, status = 400, details = undefined) {
+  return json({ error: { code, message, ...(details === undefined ? {} : { details }) } }, status);
+}
+
+function withCors(response, env) {
+  const headers = new Headers(response.headers);
+  headers.set('access-control-allow-origin', env.CORS_ORIGIN || '*');
+  headers.set('access-control-allow-headers', 'authorization, content-type');
+  headers.set('access-control-allow-methods', 'GET, POST, OPTIONS');
+  headers.set('access-control-max-age', '86400');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function digest(value) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+}
+
+async function secureEqual(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string') return false;
+  const [a, b] = await Promise.all([digest(left), digest(right)]);
+  let difference = a.byteLength ^ b.byteLength;
+  const length = Math.max(a.byteLength, b.byteLength);
+  for (let index = 0; index < length; index += 1) {
+    difference |= (a[index % a.byteLength] ?? 0) ^ (b[index % b.byteLength] ?? 0);
+  }
+  return difference === 0;
+}
+
+function bearer(request) {
+  const authorization = request.headers.get('authorization') ?? '';
+  return authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+}
+
+async function authorized(request, expected) {
+  return secureEqual(bearer(request), expected ?? '');
+}
+
+async function authorizedClient(request, env) {
+  const configured = [env.CLIENT_API_KEY, env.GPT_API_KEY, env.GITHUB_BRIDGE_API_KEY]
+    .filter((value) => typeof value === 'string' && value.length > 0);
+  if (configured.length === 0) return false;
+  const matches = await Promise.all(configured.map((expected) => secureEqual(bearer(request), expected)));
+  return matches.some(Boolean);
+}
+
+async function readLimitedText(request, maxBytes) {
+  const contentLength = Number(request.headers.get('content-length') ?? '0');
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new ValidationError('body_too_large', `Request body exceeds ${maxBytes} bytes`);
+  }
+  let text;
+  try {
+    text = await request.text();
+  } catch {
+    throw new ValidationError('invalid_body', 'Request body could not be read');
+  }
+  if (new TextEncoder().encode(text).byteLength > maxBytes) {
+    throw new ValidationError('body_too_large', `Request body exceeds ${maxBytes} bytes`);
+  }
+  return text;
+}
+
+function parseJsonText(text) {
+  try {
+    return JSON.parse(text || '{}');
+  } catch {
+    throw new ValidationError('invalid_json', 'Request body is not valid JSON');
+  }
+}
+
+async function parseBody(request, maxBytes = MAX_JSON_BODY_BYTES) {
+  const contentType = (request.headers.get('content-type') ?? 'application/json').toLowerCase();
+  if (contentType.startsWith('application/json')) {
+    return parseJsonText(await readLimitedText(request, maxBytes));
+  }
+  if (contentType.startsWith('application/x-www-form-urlencoded')) {
+    const form = new URLSearchParams(await readLimitedText(request, maxBytes));
+    if ([...form.keys()].some((key) => key !== 'request')) {
+      throw new ValidationError('unknown_field', 'Form bodies may contain only the request field', '$');
+    }
+    return parseJsonText(form.get('request') ?? '');
+  }
+  if (contentType.startsWith('multipart/form-data')) {
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      throw new ValidationError('body_too_large', `Request body exceeds ${maxBytes} bytes`);
+    }
+    let form;
+    try {
+      form = await request.formData();
+    } catch {
+      throw new ValidationError('invalid_form', 'Multipart form body could not be parsed');
+    }
+    const keys = [...form.keys()];
+    if (keys.some((key) => key !== 'request')) {
+      throw new ValidationError('unknown_field', 'Form bodies may contain only the request field', '$');
+    }
+    const value = form.get('request');
+    if (typeof value !== 'string' || new TextEncoder().encode(value).byteLength > maxBytes) {
+      throw new ValidationError('invalid_form', 'Multipart request field must be JSON text within the body limit');
+    }
+    return parseJsonText(value);
+  }
+  throw new ValidationError('unsupported_content_type', 'Use application/json, application/x-www-form-urlencoded, or multipart/form-data');
+}
+
+function jobKey(jobId, name) {
+  return `jobs/${jobId}/

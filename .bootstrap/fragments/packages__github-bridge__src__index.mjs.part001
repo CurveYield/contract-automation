@@ -1,0 +1,137 @@
+import { validateCreateJobRequest } from '../../protocol/src/index.mjs';
+
+export const BRIDGE_MARKER = '<!-- preflightsim-job -->';
+export const STARTED_MARKER = '<!-- preflightsim-bridge-started -->';
+
+export function parseAllowedUsers(value) {
+  return new Set(String(value ?? '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean));
+}
+
+export function extractJobRequest(issueBody) {
+  const body = String(issueBody ?? '');
+  const markerIndex = body.indexOf(BRIDGE_MARKER);
+  if (markerIndex < 0) throw new Error(`Issue body is missing the ${BRIDGE_MARKER} marker`);
+  const remainder = body.slice(markerIndex + BRIDGE_MARKER.length);
+  const match = remainder.match(/```json\s*([\s\S]*?)```/i);
+  if (!match) throw new Error('Issue body must contain a fenced JSON job request after the marker');
+  let parsed;
+  try {
+    parsed = JSON.parse(match[1]);
+  } catch {
+    throw new Error('PreflightSim issue payload is not valid JSON');
+  }
+  const request = parsed?.preflightsimJob ?? parsed;
+  return validateCreateJobRequest(request);
+}
+
+function githubHeaders(token) {
+  return {
+    accept: 'application/vnd.github+json',
+    authorization: `Bearer ${token}`,
+    'content-type': 'application/json',
+    'user-agent': 'PreflightSim-GitHub-Bridge',
+    'x-github-api-version': '2022-11-28'
+  };
+}
+
+function apiHeaders(apiKey) {
+  return {
+    accept: 'application/json',
+    authorization: `Bearer ${apiKey}`,
+    'content-type': 'application/json'
+  };
+}
+
+async function responseJson(response, label) {
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  if (!response.ok) {
+    const message = body?.error?.message ?? body?.message ?? `${label} returned ${response.status}`;
+    const failure = new Error(message);
+    failure.status = response.status;
+    failure.payload = body;
+    throw failure;
+  }
+  return body;
+}
+
+async function githubRequest(fetcher, token, url, init = {}) {
+  return responseJson(await fetcher(url, {
+    ...init,
+    headers: { ...githubHeaders(token), ...(init.headers ?? {}) }
+  }), 'GitHub API');
+}
+
+async function preflightRequest(fetcher, apiKey, url, init = {}) {
+  return responseJson(await fetcher(url, {
+    ...init,
+    headers: { ...apiHeaders(apiKey), ...(init.headers ?? {}) }
+  }), 'PreflightSim API');
+}
+
+export function splitResultComments(result, { maxBodyChars = 50_000, maxParts = 12 } = {}) {
+  const serialized = JSON.stringify(result, null, 2);
+  const reserve = 180;
+  const chunkSize = Math.max(1_000, maxBodyChars - reserve);
+  const totalNeeded = Math.ceil(serialized.length / chunkSize);
+  const total = Math.min(totalNeeded, maxParts);
+  const comments = [];
+  for (let index = 0; index < total; index += 1) {
+    const start = index * chunkSize;
+    const end = Math.min(serialized.length, start + chunkSize);
+    const truncated = index === total - 1 && end < serialized.length;
+    const body = serialized.slice(start, end);
+    comments.push(`<!-- preflightsim-result-part:${index + 1}/${total} -->\n### PreflightSim result part ${index + 1}/${total}\n\n\`\`\`json\n${body}\n\`\`\`${truncated ? '\n\n_Result truncated by the GitHub bridge size cap._' : ''}`);
+  }
+  return comments;
+}
+
+function formatSummary(summary) {
+  const lines = [
+    '<!-- preflightsim-bridge-summary -->',
+    `## PreflightSim ${summary.status === 'completed' ? 'completed' : 'finished with failure'}`,
+    '',
+    `- Job: \`${summary.jobId}\``,
+    `- Status: **${summary.status}**`
+  ];
+  if (summary.mode) lines.push(`- Mode: \`${summary.mode}\``);
+  if (summary.chain) lines.push(`- Chain: \`${summary.chain}\``);
+  if (summary.compiler) {
+    lines.push(`- Compiler diagnostics: ${summary.compiler.errorCount} errors, ${summary.compiler.warningCount} warnings`);
+  }
+  if (summary.workflow) {
+    lines.push(`- Workflow: ${summary.workflow.completedSteps}/${summary.workflow.totalSteps} steps completed; ${summary.workflow.failedSteps} failed`);
+  }
+  if (summary.deployments && Object.keys(summary.deployments).length) {
+    lines.push('', '### Deployments', '```json', JSON.stringify(summary.deployments, null, 2), '```');
+  }
+  if (summary.error) {
+    lines.push('', '### Error', '```json', JSON.stringify(summary.error, null, 2), '```');
+  }
+  return lines.join('\n');
+}
+
+export async function runGithubBridge({
+  issue,
+  repository,
+  allowedUsers,
+  apiUrl,
+  apiKey,
+  githubToken,
+  fetcher = fetch,
+  sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  pollIntervalMs = 20_000,
+  maxPolls = 115
+}) {
+  if (issue?.pull_request) throw new Error('PreflightSim bridge accepts GitHub issues, not pull requests');
+  const author = String(issue?.user?.login ?? '').toLowerCase();
+  const allowlist = allowedUsers instanceof Set ? allowedUsers : parseAllowedUsers(allowedUsers);
+  if (!author || !allowlist.has(author)) throw new Error(`GitHub author ${issue?.user?.login ?? '(unknown)'} is not authorized`);
+  if (!repository || !/^[-A-Za-z0-

@@ -1,0 +1,97 @@
+t.files');
+    const normalizedFiles = {};
+    let bytes = 0;
+    for (const [path, source] of Object.entries(project.files)) {
+      const safePath = validatePath(path);
+      requireString(source, `$.project.files.${path}`, { max: MAX_INLINE_BYTES });
+      bytes += new TextEncoder().encode(source).byteLength;
+      normalizedFiles[safePath] = source;
+    }
+    if (Object.keys(normalizedFiles).length === 0) {
+      throw new ValidationError('empty_project', 'At least one Solidity file is required', '$.project.files');
+    }
+    if (bytes > MAX_INLINE_BYTES) {
+      throw new ValidationError('project_too_large', `Inline project exceeds ${MAX_INLINE_BYTES} bytes`, '$.project.files');
+    }
+    return { type: 'inline', files: normalizedFiles };
+  }
+
+  if (project.type === 'github') {
+    rejectUnknownKeys(project, new Set(['type', 'repository', 'ref']), '$.project');
+    const repository = requireString(project.repository, '$.project.repository', { max: 200 });
+    const match = repository.match(/^(?:https:\/\/github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?$/);
+    if (!match) {
+      throw new ValidationError('invalid_repository', 'Only public GitHub owner/repository values are accepted', '$.project.repository');
+    }
+    const ref = project.ref === undefined ? 'main' : requireString(project.ref, '$.project.ref', { max: 200 });
+    if (!/^[A-Za-z0-9._\/-]+$/.test(ref) || ref.includes('..')) {
+      throw new ValidationError('invalid_ref', 'GitHub ref contains unsafe characters', '$.project.ref');
+    }
+    return { type: 'github', repository: `${match[1]}/${match[2]}`, ref };
+  }
+
+  rejectUnknownKeys(project, new Set(['type', 'objectKey']), '$.project');
+  const objectKey = requireString(project.objectKey, '$.project.objectKey', { max: 512 });
+  if (!/^uploads\/[A-Za-z0-9_-]+\/project\.zip$/.test(objectKey)) {
+    throw new ValidationError('invalid_object_key', 'Upload object key is invalid', '$.project.objectKey');
+  }
+  return { type: 'upload', objectKey };
+}
+
+function validateBlock(block) {
+  if (block === undefined || block === 'latest') return 'latest';
+  if (Number.isSafeInteger(block) && block >= 0) return block;
+  throw new ValidationError('invalid_block', 'block must be latest or a non-negative integer', '$.block');
+}
+
+function validateStep(step, index) {
+  const path = `$.workflow.steps[${index}]`;
+  assertPlainObject(step, path);
+  scanForbidden(step, path);
+  const action = requireString(step.action, `${path}.action`, { max: 40 });
+  if (!ACTIONS.has(action)) {
+    throw new ValidationError('unsupported_action', `Unsupported action: ${action}`, `${path}.action`);
+  }
+  rejectUnknownKeys(step, STEP_KEYS[action], path);
+
+  const normalized = { ...step, action };
+  if ('args' in normalized && !Array.isArray(normalized.args)) {
+    throw new ValidationError('invalid_args', `${path}.args must be an array`, `${path}.args`);
+  }
+  if ('alias' in normalized) requireString(normalized.alias, `${path}.alias`, { max: 80 });
+  if ('contract' in normalized) requireString(normalized.contract, `${path}.contract`, { max: 160 });
+  if ('target' in normalized) requireString(normalized.target, `${path}.target`, { max: 160 });
+  if ('function' in normalized) requireString(normalized.function, `${path}.function`, { max: 512 });
+  if ('from' in normalized) requireString(normalized.from, `${path}.from`, { max: 160 });
+  if ('account' in normalized) requireString(normalized.account, `${path}.account`, { max: 160 });
+  if ('to' in normalized) requireString(normalized.to, `${path}.to`, { max: 160 });
+  if ('amount' in normalized) requireString(String(normalized.amount), `${path}.amount`, { max: 100 });
+  if (action === 'deploy' && !normalized.alias) {
+    throw new ValidationError('missing_field', `${path}.alias is required`, `${path}.alias`);
+  }
+  if (['deploy'].includes(action) && !normalized.contract) {
+    throw new ValidationError('missing_field', `${path}.contract is required`, `${path}.contract`);
+  }
+  if (['call', 'staticCall', 'expectRevert', 'assertCall'].includes(action)) {
+    if (!normalized.target || !normalized.function) {
+      throw new ValidationError('missing_field', `${path}.target and function are required`, path);
+    }
+  }
+  return normalized;
+}
+
+export function validateWorkflow(workflow, { allowEmpty = false } = {}) {
+  assertPlainObject(workflow, '$.workflow');
+  rejectUnknownKeys(workflow, new Set(['steps']), '$.workflow');
+  const minimum = allowEmpty ? 0 : 1;
+  if (!Array.isArray(workflow.steps) || workflow.steps.length < minimum || workflow.steps.length > MAX_STEPS) {
+    throw new ValidationError('invalid_steps', `workflow.steps must contain ${minimum}-${MAX_STEPS} steps`, '$.workflow.steps');
+  }
+  return { steps: workflow.steps.map(validateStep) };
+}
+
+export function validateCreateJobRequest(input) {
+  assertPlainObject(input, '$');
+  scanForbidden(input);
+  rejectUnknownKeys(input, TOP_LEVEL_KEYS, '$');
+  const mode = input.mode === undefined ? 'simulate' : requireString(

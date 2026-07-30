@@ -1,0 +1,134 @@
+tType);
+  await putJson(env.JOBS, `uploads/${uploadId}/session.json`, {
+    uploadId,
+    objectKey,
+    declaredSize: body.size,
+    contentType,
+    createdAt: isoNow(),
+    expiresAt: new Date(Date.now() + UPLOAD_EXPIRY_SECONDS * 1000).toISOString()
+  });
+  return json({
+    uploadId,
+    objectKey,
+    uploadUrl,
+    expiresInSeconds: UPLOAD_EXPIRY_SECONDS,
+    requiredHeaders: { 'content-type': contentType }
+  }, 201);
+}
+
+async function verifyUploadProject(env, project) {
+  if (project.type !== 'upload') return;
+  const object = await env.JOBS.head(project.objectKey);
+  if (!object) {
+    throw new ValidationError('upload_missing', 'Uploaded project object does not exist', '$.project.objectKey');
+  }
+  if (object.size < 1 || object.size > MAX_ARCHIVE_BYTES) {
+    throw new ValidationError('project_too_large', `Uploaded archive exceeds ${MAX_ARCHIVE_BYTES} bytes`, '$.project.objectKey');
+  }
+}
+
+function agentJobUrl(env, jobId) {
+  const base = String(env.PUBLIC_APP_URL ?? 'https://preflight.curveyield.online').replace(/\/$/, '');
+  return `${base}/agent/job.html?job=${encodeURIComponent(jobId)}`;
+}
+
+async function handleCreateJob(request, env) {
+  const normalized = validateCreateJobRequest(await parseBody(request));
+  await verifyUploadProject(env, normalized.project);
+  const jobId = newId('job');
+  const createdAt = isoNow();
+  const status = {
+    jobId,
+    status: 'queued',
+    stage: 'dispatching',
+    chain: normalized.chain,
+    createdAt,
+    updatedAt: createdAt,
+    githubRunId: null,
+    githubRunUrl: null,
+    agentJobUrl: agentJobUrl(env, jobId)
+  };
+  await putJson(env.JOBS, jobKey(jobId, 'request.json'), { jobId, ...normalized, createdAt });
+  await putJson(env.JOBS, jobKey(jobId, 'status.json'), status);
+  try {
+    const dispatch = await dispatchGithub(env, jobId);
+    Object.assign(status, dispatch, { stage: 'queued', updatedAt: isoNow() });
+    await putJson(env.JOBS, jobKey(jobId, 'status.json'), status);
+    return json(status, 202);
+  } catch (cause) {
+    Object.assign(status, {
+      status: 'failed',
+      stage: 'dispatch',
+      updatedAt: isoNow(),
+      error: { code: 'dispatch_failed', message: cause.message }
+    });
+    await putJson(env.JOBS, jobKey(jobId, 'status.json'), status);
+    return json({ jobId, error: status.error }, 502);
+  }
+}
+
+async function handleGetStatus(env, jobId) {
+  const status = await getJson(env.JOBS, jobKey(jobId, 'status.json'));
+  return status ? json(status) : error('not_found', 'Job not found', 404);
+}
+
+
+function summarizeJob(status, result = null) {
+  if (!result) {
+    return {
+      jobId: status.jobId,
+      status: status.status,
+      stage: status.stage,
+      ...(status.chain === undefined ? {} : { chain: status.chain }),
+      createdAt: status.createdAt,
+      updatedAt: status.updatedAt,
+      ...(status.agentJobUrl === undefined ? {} : { agentJobUrl: status.agentJobUrl }),
+      ...(status.error === undefined ? {} : { error: status.error })
+    };
+  }
+
+  const diagnostics = Array.isArray(result.compilerDiagnostics) ? result.compilerDiagnostics : [];
+  const steps = Array.isArray(result.steps) ? result.steps : [];
+  return {
+    jobId: result.jobId,
+    status: result.status,
+    mode: result.mode,
+    ...(result.chain === undefined ? {} : { chain: result.chain }),
+    ...(result.chainId === undefined ? {} : { chainId: result.chainId }),
+    ...(result.block === undefined ? {} : { block: result.block }),
+    compilerVersion: result.compilerVersion,
+    compiler: {
+      diagnosticCount: diagnostics.length,
+      errorCount: diagnostics.filter((item) => item?.severity === 'error').length,
+      warningCount: diagnostics.filter((item) => item?.severity === 'warning').length,
+      artifactCount: Array.isArray(result.artifacts) ? result.artifacts.length : 0
+    },
+    deployments: result.deployments ?? {},
+    workflow: {
+      totalSteps: steps.length,
+      completedSteps: steps.filter((step) => step?.status === 'completed').length,
+      failedSteps: steps.filter((step) => step?.status === 'failed').length
+    },
+    startedAt: result.startedAt,
+    finishedAt: result.finishedAt,
+    ...(result.error === undefined ? {} : { error: result.error }),
+    ...(status?.agentJobUrl === undefined ? {} : { agentJobUrl: status.agentJobUrl })
+  };
+}
+
+async function handleGetSummary(env, jobId) {
+  const status = await getJson(env.JOBS, jobKey(jobId, 'status.json'));
+  if (!status) return error('not_found', 'Job not found', 404);
+  const result = await getJson(env.JOBS, jobKey(jobId, 'result.json'));
+  return json(summarizeJob(status, result));
+}
+
+async function handleGetResult(env, jobId) {
+  const result = await env.JOBS.get(jobKey(jobId, 'result.json'));
+  if (result) return new Response(result.body, { headers: JSON_HEADERS });
+  const status = await getJson(env.JOBS, jobKey(jobId, 'status.json'));
+  if (!status) return error('not_found', 'Job not found', 404);
+  return error('result_not_ready', `Job is ${status.status}`, 409);
+}
+
+async fu

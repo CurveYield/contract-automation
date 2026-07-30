@@ -1,0 +1,46 @@
+ARKER}\n\`\`\`json\n${JSON.stringify({ preflightsimJob: request })}\n\`\`\``, user: { login: 'James-Nexus' } },
+    repository: 'CurveYield/Agent-Code-Development',
+    allowedUsers: 'James-Nexus',
+    apiUrl: 'https://api.example',
+    apiKey: 'key',
+    githubToken: 'token',
+    fetcher: async () => Response.json([{ body: '<!-- preflightsim-bridge-started -->' }])
+  }), /already started/i);
+});
+
+test('posts and closes cleanly when a failed job has no full result', async () => {
+  const calls = [];
+  const fetcher = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    const method = init.method ?? 'GET';
+    if (String(url).includes('/issues/9/comments?per_page=100') && method === 'GET') return Response.json([]);
+    if (String(url).endsWith('/api/v1/jobs') && method === 'POST') {
+      return Response.json({ jobId: 'job_failed', status: 'failed', stage: 'dispatch' }, { status: 202 });
+    }
+    if (String(url).endsWith('/api/v1/jobs/job_failed') && method === 'GET') {
+      return Response.json({ jobId: 'job_failed', status: 'failed', stage: 'dispatch' });
+    }
+    if (String(url).endsWith('/api/v1/jobs/job_failed/summary')) {
+      return Response.json({ jobId: 'job_failed', status: 'failed', stage: 'dispatch', error: { message: 'dispatch failed' } });
+    }
+    if (String(url).endsWith('/api/v1/jobs/job_failed/result')) {
+      return Response.json({ error: { code: 'result_not_ready', message: 'Job is failed' } }, { status: 409 });
+    }
+    if (String(url).endsWith('/issues/9/comments') && method === 'POST') return Response.json({ id: calls.length }, { status: 201 });
+    if (String(url).endsWith('/issues/9') && method === 'PATCH') return Response.json({ state: 'closed' });
+    throw new Error(`Unexpected request: ${method} ${url}`);
+  };
+  const body = `${BRIDGE_MARKER}\n\`\`\`json\n${JSON.stringify({ preflightsimJob: request })}\n\`\`\``;
+  const result = await runGithubBridge({
+    issue: { number: 9, body, user: { login: 'James-Nexus' } },
+    repository: 'CurveYield/Agent-Code-Development',
+    allowedUsers: 'James-Nexus',
+    apiUrl: 'https://api.preflight.curveyield.online',
+    apiKey: 'client-secret',
+    githubToken: 'github-token',
+    fetcher,
+    sleep: async () => {}
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(calls.some(({ url, init }) => url.endsWith('/issues/9') && init.method === 'PATCH'), true);
+});

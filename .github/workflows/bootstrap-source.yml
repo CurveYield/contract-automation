@@ -1,0 +1,60 @@
+name: Expand verified source fragments
+
+on:
+  push:
+    branches: [agent/initial-preflight-release]
+    paths:
+      - '.bootstrap/**'
+      - '.github/workflows/bootstrap-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: contract-automation-source-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  expand:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/initial-preflight-release
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reconstruct and verify source files
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const manifest = JSON.parse(fs.readFileSync('.bootstrap/manifest.json', 'utf8'));
+          for (const item of manifest) {
+            const bytes = Buffer.concat(item.parts.map((name) => fs.readFileSync(path.join('.bootstrap/fragments', name))));
+            const actual = crypto.createHash('sha256').update(bytes).digest('hex');
+            if (actual !== item.sha256) throw new Error(`checksum mismatch for ${item.target}: ${actual}`);
+            if (bytes.length !== item.size) throw new Error(`size mismatch for ${item.target}: ${bytes.length}`);
+            fs.mkdirSync(path.dirname(item.target), { recursive: true });
+            fs.writeFileSync(item.target, bytes);
+            console.log(`restored ${item.target} (${bytes.length} bytes)`);
+          }
+          NODE
+      - name: Verify reconstructed repository
+        run: |
+          npm test
+          npm run lint
+          npm run build
+      - name: Commit real source and delete bootstrap transport
+        run: |
+          rm -rf .bootstrap .github/workflows/bootstrap-source.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Expand verified contract automation source'
+          git push origin HEAD:agent/initial-preflight-release

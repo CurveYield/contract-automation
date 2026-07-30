@@ -1,0 +1,33 @@
+writeFile(target, source, { encoding: 'utf8', flag: 'wx' });
+    }
+    return projectRoot;
+  }
+
+  if (job.project.type === 'github') {
+    const [owner, repository] = job.project.repository.split('/');
+    const archive = path.join(root, 'project.tar.gz');
+    const url = `https://codeload.github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/tar.gz/${encodeURIComponent(job.project.ref)}`;
+    await downloadToFile(url, archive);
+    await extractTar(archive, projectRoot, 1);
+    return projectRoot;
+  }
+
+  const archive = path.join(root, 'project.zip');
+  await apiClient.downloadProject(job.jobId, archive);
+  const metadata = await fs.stat(archive);
+  if (metadata.size > MAX_ARCHIVE_BYTES) throw new Error(`Uploaded archive exceeds ${MAX_ARCHIVE_BYTES} bytes`);
+  await extractZip(archive, projectRoot);
+  return projectRoot;
+}
+
+export async function materializeOpenZeppelin(version, root) {
+  if (!version) return null;
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('OpenZeppelin version must be exact');
+  const archive = path.join(root, `openzeppelin-${version}.tgz`);
+  const destination = path.join(root, 'dependencies', '@openzeppelin', 'contracts');
+  await fs.mkdir(destination, { recursive: true });
+  const url = `https://registry.npmjs.org/@openzeppelin/contracts/-/contracts-${encodeURIComponent(version)}.tgz`;
+  await downloadToFile(url, archive, { maxBytes: 100 * 1024 * 1024 });
+  await extractTar(archive, destination, 1);
+  return destination;
+}

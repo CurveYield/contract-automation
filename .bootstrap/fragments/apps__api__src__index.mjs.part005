@@ -1,0 +1,24 @@
+hod === 'GET' && match) return internalGetRequest(env, match[1]);
+  match = path.match(/^\/internal\/v1\/jobs\/(job_[A-Za-z0-9]+)\/project$/);
+  if (request.method === 'GET' && match) return internalGetProject(env, match[1]);
+  match = path.match(/^\/internal\/v1\/jobs\/(job_[A-Za-z0-9]+)\/status$/);
+  if (request.method === 'POST' && match) return internalUpdateStatus(request, env, match[1]);
+  match = path.match(/^\/internal\/v1\/jobs\/(job_[A-Za-z0-9]+)\/result$/);
+  if (request.method === 'POST' && match) return internalPublishResult(request, env, match[1]);
+
+  return error('not_found', 'Route not found', 404);
+}
+
+export default {
+  async fetch(request, env) {
+    try {
+      return withCors(await route(request, env), env);
+    } catch (cause) {
+      if (cause instanceof ValidationError) {
+        return withCors(error(cause.code, cause.message, 400, { path: cause.path }), env);
+      }
+      console.error(cause);
+      return withCors(error('internal_error', 'Internal server error', 500), env);
+    }
+  }
+};

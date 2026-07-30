@@ -1,0 +1,15 @@
+
+    try {
+      await api.publishResult(jobId, result, renderHtmlReport(result));
+    } catch (publishError) {
+      console.error('Failed to publish failure report', publishError);
+      try {
+        await api.updateStatus(jobId, { status: 'failed', stage: 'runner', error: result.error });
+      } catch {}
+    }
+    throw cause;
+  } finally {
+    if (engine) await engine.close().catch(() => {});
+    await fs.rm(root, { recursive: true, force: true });
+  }
+}
