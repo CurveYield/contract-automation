@@ -133,7 +133,14 @@ async function authenticateInternal(request, env, bodyText, path) {
     return { ok: false, response: error('service_unavailable', 'Internal replay protection is unavailable', 503) };
   }
   try {
-    await env.AUDIT_NONCE_STORE.put(`internal-nonces/${timestamp}/${nonce}.json`, JSON.stringify({ timestamp, nonce }), { onlyIf: { etagDoesNotMatch: '*' } });
+    const stored = await env.AUDIT_NONCE_STORE.put(
+      `internal-nonces/${timestamp}/${nonce}.json`,
+      JSON.stringify({ timestamp, nonce }),
+      { onlyIf: { etagDoesNotMatch: '*' } }
+    );
+    if (stored === null) {
+      return { ok: false, response: error('replay_detected', 'Internal request nonce has already been used', 409) };
+    }
   } catch (cause) {
     if (cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed') {
       return { ok: false, response: error('replay_detected', 'Internal request nonce has already been used', 409) };
