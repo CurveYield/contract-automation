@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const LITE_BASELINE_SHA256 = Object.freeze({
-  'apps/api/src/index.mjs': 'b4a9fad0968f619e97fa209030aca01b163945cb180b7253eb279135844db529',
+  'apps/api/src/index.mjs': '76f5c249208164b1cf01add810b88009ecaa2ba146e5c978ed2b4ae0140b3552',
   '.github/workflows/simulate.yml': '5a39983d28d94dc8313ae7a908f5a352004bdbe070ac3259f91d3c03b33f4fb2',
   'packages/runner/src/api-client.mjs': 'e08c336c7672d3bf2633294f1c0030cb37ccb99c242158fee5f84e85c28882eb',
   'packages/protocol/src/index.mjs': '0b91d0726239408975b3c6aaedc6a123880c4abe43c5a0b7dedfe0b495d202ce',
