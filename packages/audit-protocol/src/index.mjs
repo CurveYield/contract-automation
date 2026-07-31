@@ -44,7 +44,7 @@ const PREFIXES = Object.freeze({
   workspace: 'ws',
   layer: 'lyr',
   campaign: 'cmp',
-  job: 'job',
+  job: 'ajob',
   attempt: 'att',
   profile: 'prf',
   fork: 'fork',
