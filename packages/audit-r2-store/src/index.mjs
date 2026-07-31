@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export const R2_BILLING_CLASS = Object.freeze({
   CLASS_A: 'class-a',
   CLASS_B: 'class-b',
@@ -36,8 +34,9 @@ function toBytes(value) {
   throw new TypeError('Audit store values must be strings or byte arrays');
 }
 
-function etagFor(bytes) {
-  return createHash('sha256').update(bytes).digest('hex');
+async function etagFor(bytes) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function publicObject(key, record, includeValue = false) {
@@ -72,7 +71,7 @@ export class InMemoryAuditStore {
     const record = {
       bytes,
       text: typeof value === 'string' ? value : undefined,
-      etag: etagFor(bytes)
+      etag: await etagFor(bytes)
     };
     this.#objects.set(key, record);
     return publicObject(key, record);
