@@ -46,8 +46,10 @@ const PREFIXES = Object.freeze({
   campaign: 'cmp',
   job: 'ajob',
   attempt: 'att',
+  artifact: 'art',
   profile: 'prf',
   fork: 'fork',
+  snapshot: 'snap',
   evidence: 'evb',
   report: 'rpt'
 });
