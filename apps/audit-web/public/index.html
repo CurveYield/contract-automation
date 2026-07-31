@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>CurveYield Full Audit</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <p class="eyebrow">CurveYield control plane</p>
+      <h1>Full Audit</h1>
+      <p>Separate from PreflightSim Lite. Submitted execution remains disabled until the hardened executor is separately developed, reviewed, and approved.</p>
+    </header>
+    <section class="panel" aria-labelledby="connection-title">
+      <h2 id="connection-title">Audit API connection</h2>
+      <form id="connection-form">
+        <label>Audit API origin <input id="api-url" type="url" value="https://api.audit.preflight.curveyield.online" required></label>
+        <label>Audit read key <input id="api-key" type="password" autocomplete="off" required></label>
+        <button type="submit">Check capabilities</button>
+      </form>
+      <p id="connection-status" role="status">Not connected.</p>
+    </section>
+    <section class="grid">
+      <article class="panel">
+        <h2>Capability boundary</h2>
+        <dl>
+          <div><dt>Phase</dt><dd id="phase">Phase 1</dd></div>
+          <div><dt>Execution</dt><dd id="execution">Submitted execution disabled</dd></div>
+          <div><dt>State</dt><dd id="execution-state">Awaiting separately approved hardened executor</dd></div>
+        </dl>
+      </article>
+      <article class="panel">
+        <h2>R2 free-tier planning snapshot</h2>
+        <dl>
+          <div><dt>Standard storage</dt><dd>10 GB-month</dd></div>
+          <div><dt>Class A operations</dt><dd>1,000,000/month</dd></div>
+          <div><dt>Class B operations</dt><dd>10,000,000/month</dd></div>
+        </dl>
+        <p class="note">Planning snapshot only; this panel does not read account usage or access R2 directly.</p>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
