@@ -1,7 +1,11 @@
-name = "curveyield-preflight-api"
+name = "curveyield-preflight"
 main = "src/index.mjs"
 compatibility_date = "2026-07-30"
 workers_dev = true
+
+[[routes]]
+pattern = "preflight.curveyield.online"
+custom_domain = true
 
 [[routes]]
 pattern = "api.preflight.curveyield.online"
@@ -10,7 +14,10 @@ custom_domain = true
 [[r2_buckets]]
 binding = "JOBS"
 bucket_name = "curveyield-preflight"
-preview_bucket_name = "curveyield-preflight-preview"
+
+[assets]
+directory = "../../dist/web"
+binding = "ASSETS"
 
 [vars]
 GITHUB_OWNER = "CurveYield"
@@ -20,15 +27,3 @@ GITHUB_REF = "main"
 R2_BUCKET_NAME = "curveyield-preflight"
 CORS_ORIGIN = "https://preflight.curveyield.online"
 PUBLIC_APP_URL = "https://preflight.curveyield.online"
-
-[secrets]
-required = [
-  "CLIENT_API_KEY",
-  "GPT_API_KEY",
-  "GITHUB_BRIDGE_API_KEY",
-  "RUNNER_API_KEY",
-  "GITHUB_TOKEN",
-  "R2_ACCOUNT_ID",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY"
-]

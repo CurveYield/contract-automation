@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 45
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL || 'https://api.preflight.curveyield.online' }}
+      PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL || 'https://preflight.curveyield.online' }}
       PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY }}
       PREFLIGHTSIM_ALLOWED_GITHUB_USERS: ${{ vars.PREFLIGHTSIM_ALLOWED_GITHUB_USERS || 'James-Nexus' }}
     steps:

@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 40
     env:
       PREFLIGHTSIM_JOB_ID: ${{ inputs.job_id }}
-      PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL || 'https://api.preflight.curveyield.online' }}
+      PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL || 'https://preflight.curveyield.online' }}
       PREFLIGHTSIM_RUNNER_API_KEY: ${{ secrets.PREFLIGHTSIM_RUNNER_API_KEY }}
       PREFLIGHTSIM_TIMEOUT_MINUTES: "35"
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}

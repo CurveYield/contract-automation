@@ -16,7 +16,10 @@
     "lint": "node scripts/check.mjs",
     "build": "node scripts/build.mjs",
     "runner": "node packages/runner/src/cli.mjs",
-    "integration:local": "node packages/runner/src/integration-local.mjs"
+    "integration:local": "node packages/runner/src/integration-local.mjs",
+    "cfbuild": "npm test && npm run lint && npm run build",
+    "cfdeploy": "wrangler r2 bucket create curveyield-preflight || true && wrangler deploy --config apps/api/wrangler.toml",
+    "deploy": "wrangler r2 bucket create curveyield-preflight || true && wrangler deploy --config apps/api/wrangler.toml"
   },
   "dependencies": {
     "ethers": "6.15.0",
@@ -26,6 +29,6 @@
     "unzipper": "0.12.3"
   },
   "devDependencies": {
-    "wrangler": "4.27.0"
+    "wrangler": "4.116.0"
   }
 }
