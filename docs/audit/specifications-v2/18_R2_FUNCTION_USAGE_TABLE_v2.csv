@@ -1,0 +1,35 @@
+Function,Class A per use,Class B per use,Typical stored MB,Maximum stored MB,Default retention days,Free uses by Class A,Free uses by Class B,Free uses by typical storage,Free uses by maximum storage,Typical limiting capacity,Typical limiting dimension,Notes
+Issue upload session (stateless signed grant),0,0,0,0,0,,,,,,,No R2 request; actual upload is separate
+Upload source archive,1,0,10,262.144,30,1000000,,1000,38,1000,storage (typical),Single-part PUT; maximum follows the live Lite 250 MiB archive cap
+Seal workspace from uploaded archive,3,1,0.5,2.0,30,333333,10000000,20000,5000,20000,storage (typical),"Workspace record, source manifest, workspace index; one archive GET"
+Import GitHub source and seal workspace,4,0,10.5,264.144,30,250000,,952,37,952,storage (typical),Bundled source object plus seal metadata; GitHub traffic is not R2 usage
+Read workspace record,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
+Read workspace manifest,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
+Upload and attach generated layer,4,1,5.25,105.0,30,250000,10000000,1904,95,1904,storage (typical),"Layer PUT, manifest, layer index, event batch; one verification GET"
+Read layer index,0,1,0,0,0,,10000000,,,10000000,Class B,Manifest-driven; no ListObjects
+Publish immutable profile metadata,4,0,1.0,5.0,90,250000,,3333,666,3333,storage (typical),"Profile, SBOM, signature metadata, profile index; image remains in GHCR"
+Read profile,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
+Revoke profile,2,1,0.064,0.256,365,500000,10000000,12842,3210,12842,storage (typical),Revocation record and profile index update
+Create campaign,3,2,0.064,0.256,30,333333,5000000,156250,39062,156250,storage (typical),"Campaign record, workspace campaign index, event batch"
+Read campaign,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
+Submit audit job,5,3,0.128,0.512,30,200000,3333333,78125,19531,78125,storage (typical),"Request, policy decision, status, campaign job index, event batch"
+Claim/start attempt,3,3,0.064,0.256,30,333333,3333333,156250,39062,156250,storage (typical),"Attempt record, status update, event batch"
+One heartbeat/status update,1,0,0,0,0,1000000,,,,1000000,Class A,Overwrites current status; no cumulative storage
+One immutable event batch,1,0,0.256,0.256,30,1000000,,39062,39062,39062,storage (typical),Up to 32 events or five minutes
+One log chunk,1,0,1.0,1.0,7,1000000,,42857,42857,42857,storage (typical),One MB target chunk; seven-day default retention
+Retrieve complete typical eight-chunk logs,0,9,0,0,0,,1111111,,,1111111,Class B,One status/index GET plus eight chunk GETs
+Publish raw artifact bundle,2,0,15.0,64.0,7,500000,,2857,669,2857,storage (typical),One tar.zst bundle plus manifest
+Validate and accept evidence bundle,4,1,10.0,50.0,30,250000,10000000,1000,200,1000,storage (typical),"Quarantine bundle, accepted bundle, manifest, attestation; one validator GET"
+Publish report bundle,3,0,1.0,10.0,30,333333,,10000,1000,10000,storage (typical),"HTML/PDF bundle, report manifest, report index"
+Complete job,3,1,0.032,0.128,30,333333,10000000,312500,78125,312500,storage (typical),"Final status, terminal event batch, campaign index update"
+Poll job status once,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
+"Download one artifact, evidence, or report bundle",0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject; R2 egress is free
+Create persistent-fork record (interface only),3,2,0.064,0.256,1,333333,5000000,4687500,1171875,333333,Class A,Current stack stores control record only; active compute is external and deferred
+Upload one fork checkpoint,3,1,250.0,1000.0,1,333333,10000000,1200,300,1200,storage (typical),"Checkpoint PUT, manifest, fork index; one verification GET"
+Restore one fork checkpoint,1,2,0.032,0.128,1,1000000,5000000,9375000,2343750,1000000,Class A,Two GETs plus one event-batch write
+Export fork checkpoint by reference,2,1,0.064,0.256,7,500000,10000000,669642,167410,500000,Class A,No copy; export manifest and event reference the existing checkpoint
+Delete fork or checkpoint,2,1,0.016,0.064,30,500000,10000000,625000,156250,500000,Class A,Object deletes are free; tombstone and index update are Class A
+Controlled clean-room merge,4,4,2.0,20.0,90,250000,2500000,1666,166,1666,storage (typical),"Merge manifest, duplicate/conflict maps, provenance index"
+Generate usage summary,0,1,0,0,0,,10000000,,,10000000,Class B,One precomputed usage-ledger GET; no bucket listing
+"Current Lite uploaded job, minimum service path",9,6,11.0,287.144,30,111111,1666666,909,34,909,storage (typical),Live-repository baseline before client result/status/report reads
+Current Lite uploaded job plus one status/summary/result/report read,9,11,11.0,287.144,30,111111,909090,909,34,909,storage (typical),Live-repository baseline including one read of each public result surface

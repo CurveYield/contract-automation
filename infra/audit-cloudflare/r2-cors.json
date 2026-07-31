@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["https://audit.preflight.curveyield.online"],
+        "methods": ["GET", "HEAD"],
+        "headers": ["content-type", "if-match", "if-none-match"]
+      },
+      "exposeHeaders": ["etag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
