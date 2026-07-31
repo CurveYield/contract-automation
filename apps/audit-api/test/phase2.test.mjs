@@ -24,6 +24,7 @@ function state(overrides = {}) {
     AUDIT_ADMIN_API_KEY: 'audit-admin-test-key',
     AUDIT_INTERNAL_SERVICE_KEY: 'audit-internal-test-key',
     AUDIT_UPLOAD_GRANT_SIGNING_KEY: 'audit-upload-grant-test-key',
+    AUDIT_NOW: () => new Date('2026-07-31T12:00:00.000Z'),
     AUDIT_NONCE_STORE: new InMemoryAuditStore(),
     AUDIT_CONTROL_STORE: new InMemoryAuditStore(),
     AUDIT_UPLOAD_URL_SIGNER: async (input) => { calls.push(['uploadSigner', input]); return { method: 'PUT', url: 'https://upload.invalid/signed', headers: { 'content-type': input.contentType }, expiresAt: input.expiresAt }; },
