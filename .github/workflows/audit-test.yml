@@ -1,0 +1,45 @@
+name: Test CurveYield Audit Phase 1
+
+on:
+  pull_request:
+    paths:
+      - "apps/audit-*/**"
+      - "packages/audit-*/**"
+      - "infra/audit-cloudflare/**"
+      - "docs/audit/**"
+      - "scripts/build-audit.mjs"
+      - "test/audit-*.test.mjs"
+      - ".github/workflows/audit-*.yml"
+      - "package.json"
+  push:
+    branches:
+      - "audit-phase1/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: curveyield-audit-phase1-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out trusted repository code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned trusted dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run all unit and security tests
+        run: npm test
+      - name: Check JavaScript syntax
+        run: npm run lint
+      - name: Build separate Audit web assets
+        run: node scripts/build-audit.mjs
