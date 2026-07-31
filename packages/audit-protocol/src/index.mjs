@@ -110,6 +110,13 @@ export function assertAuditId(value, type, path = '$') {
   return value;
 }
 
+export function assertProfileId(value, path = '$.profileId') {
+  if (typeof value !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9][0-9]*$/.test(value)) {
+    throw new ValidationError('invalid_profile_id', `${path} must be a lowercase versioned profile slug`, path);
+  }
+  return value;
+}
+
 export function assertScopes(granted, required, path = '$.scopes') {
   if (!Array.isArray(granted) || granted.some((scope) => !AUDIT_SCOPES.includes(scope))) {
     throw new ValidationError('invalid_scope', `${path} contains an unsupported Audit scope`, path);
