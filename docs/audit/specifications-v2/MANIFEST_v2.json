@@ -96,7 +96,7 @@
     {
       "file": "18_R2_FUNCTION_USAGE_TABLE_v2.csv",
       "bytes": 4863,
-      "sha256": "80def0de778bd5f55b389e5a52e961779d10e7f23601f69375ac5378162dc2ec"
+      "sha256": "65912f2347be0f0da0c83ae00eef8a42c184e0d8f9ba8cf79231983f4ed985d8"
     },
     {
       "file": "19_R2_USAGE_ASSUMPTIONS_v2.json",
@@ -105,13 +105,13 @@
     },
     {
       "file": "20_R2_AGGREGATE_SCENARIOS_v2.csv",
-      "bytes": 1165,
-      "sha256": "bb33bd139b9be766ced0cef01e6e4409fec8eb837ec9a7b3f17b3ad007688924"
+      "bytes": 1159,
+      "sha256": "0b27686f0fb0a0d02c61f8c43479d85d7c3794a42b4dc125fdebcdf3d13169e9"
     },
     {
       "file": "SOURCES_v2.md",
-      "bytes": 946,
-      "sha256": "2de793baeb19006760c0ddd681417f8c1ea7b806af027c13cfbf4f813560f4e0"
+      "bytes": 945,
+      "sha256": "784333b6933263d0c187c8202d27bbad9eea3de4ae9c373829ec3f6d38ef950c"
     }
   ]
 }

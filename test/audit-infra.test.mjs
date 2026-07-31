@@ -53,10 +53,15 @@ test('v2 current-stack specifications are complete and hash-verified', async () 
   assert.equal(manifest.version, 2);
   assert.equal(manifest.package, 'CurveYield Audit Current-Stack Specifications');
   assert.equal(manifest.files.length, 22);
+  const mismatches = [];
   for (const entry of manifest.files) {
     const bytes = await fs.readFile(path.join(directory, entry.file));
-    assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, entry.file);
+    const actual = createHash('sha256').update(bytes).digest('hex');
+    if (actual !== entry.sha256) {
+      mismatches.push({ file: entry.file, expected: entry.sha256, actual, actualBytes: bytes.byteLength });
+    }
   }
+  assert.deepEqual(mismatches, []);
   const usage = await read('docs/audit/specifications-v2/18_R2_FUNCTION_USAGE_TABLE_v2.csv');
   assert.equal(usage.trim().split('\n').length - 1, 34);
   const scope = await read('docs/audit/specifications-v2/00_README_AND_GOVERNING_SCOPE_v2.md');

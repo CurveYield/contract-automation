@@ -7,7 +7,10 @@ on:
       - "packages/audit-*/**"
       - "infra/audit-cloudflare/**"
       - "scripts/build-audit.mjs"
+      - "scripts/check-audit-boundary.mjs"
+      - "test/boundary/**"
       - ".github/workflows/audit-deploy-dry-run.yml"
+      - "package.json"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +37,8 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Run tests and syntax checks
         run: npm test && npm run lint
+      - name: Enforce Audit and Lite boundary
+        run: npm run audit:boundary
       - name: Build separate Audit web assets
         run: node scripts/build-audit.mjs
       - name: Bundle Audit Worker without deployment
