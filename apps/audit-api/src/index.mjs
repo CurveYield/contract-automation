@@ -1,14 +1,36 @@
 import {
   AUDIT_CAPABILITIES,
   ValidationError,
+  assertAuditId,
   assertScopes,
+  scanAuditForbiddenFields,
   validateAuditJobRequest
 } from '../../../packages/audit-protocol/src/index.mjs';
 import { ConditionalWriteError } from '../../../packages/audit-r2-store/src/index.mjs';
+import { ProfileRegistry } from '../../../packages/audit-profile-registry/src/index.mjs';
+import { WorkspaceService, createUploadGrant } from '../../../packages/audit-workspaces/src/index.mjs';
+import { validateGitHubWorkspaceSource } from '../../../packages/audit-workspace-protocol/src/index.mjs';
 
 const JSON_HEADERS = Object.freeze({ 'content-type': 'application/json; charset=utf-8' });
 const MAX_BODY_BYTES = 1024 * 1024;
 const INTERNAL_CLOCK_SKEW_SECONDS = 5 * 60;
+const PHASE_2_CAPABILITIES = Object.freeze({
+  ...AUDIT_CAPABILITIES,
+  phase: 2,
+  workspaces: true,
+  generatedLayers: true,
+  profileRegistry: true,
+  executionEnabled: false
+});
+
+class ServiceUnavailableError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.name = 'ServiceUnavailableError';
+    this.code = code;
+    this.status = 503;
+  }
+}
 
 function json(value, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), { status, headers: { ...JSON_HEADERS, ...headers } });
@@ -100,6 +122,20 @@ async function parseJsonRequest(request) {
   return parseJson(await readLimitedText(request));
 }
 
+function strictObject(value, allowedKeys, path = '$') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('invalid_type', `${path} must be an object`, path);
+  scanAuditForbiddenFields(value, path);
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.has(key)) throw new ValidationError('unknown_field', `${path}.${key} is not allowed`, `${path}.${key}`);
+  }
+}
+
+function requiredKeys(value, keys, path = '$') {
+  for (const key of keys) {
+    if (!(key in value)) throw new ValidationError('missing_field', `${path}.${key} is required`, `${path}.${key}`);
+  }
+}
+
 function internalCanonical({ timestamp, nonce, method, path, bodyDigest }) {
   return [String(timestamp), nonce, method.toUpperCase(), path, bodyDigest].join('\n');
 }
@@ -162,11 +198,179 @@ function readiness(env) {
   return { ready: Object.values(configuration).slice(0, 5).every(Boolean), configuration };
 }
 
+function createR2Store(binding) {
+  if (!binding) return null;
+  return Object.freeze({
+    async put(key, value, options) {
+      const result = await binding.put(key, value, options);
+      if (result === null) throw new ConditionalWriteError();
+      return result;
+    },
+    async get(key) {
+      const result = await binding.get(key);
+      if (!result) return null;
+      if ('value' in result) return result;
+      const value = new Uint8Array(await result.arrayBuffer());
+      return { key: result.key ?? key, etag: result.etag, size: result.size ?? value.byteLength, value };
+    },
+    async head(key) { return binding.head(key); },
+    async delete(key) { return binding.delete(key); }
+  });
+}
+
+function nowFromEnv(env) {
+  return typeof env.AUDIT_NOW === 'function' ? env.AUDIT_NOW : () => new Date();
+}
+
+function grantKey(env) {
+  if (typeof env.AUDIT_UPLOAD_GRANT_SIGNING_KEY !== 'string' || env.AUDIT_UPLOAD_GRANT_SIGNING_KEY.length < 16) {
+    throw new ServiceUnavailableError('upload_grant_signer_unavailable', 'Upload grant signer is unavailable');
+  }
+  return env.AUDIT_UPLOAD_GRANT_SIGNING_KEY;
+}
+
+function workspaceService(env) {
+  if (env.AUDIT_WORKSPACE_SERVICE) return env.AUDIT_WORKSPACE_SERVICE;
+  const store = createR2Store(env.AUDIT_CONTROL_STORE);
+  if (!store) throw new ServiceUnavailableError('workspace_store_unavailable', 'Workspace storage is unavailable');
+  return new WorkspaceService(store, {
+    now: nowFromEnv(env),
+    verifyGrant: async (payload, signature) => secureEqual(signature, await hmacHex(grantKey(env), payload))
+  });
+}
+
+function profileRegistry(env) {
+  if (env.AUDIT_PROFILE_REGISTRY) return env.AUDIT_PROFILE_REGISTRY;
+  const store = createR2Store(env.AUDIT_CONTROL_STORE);
+  if (!store) throw new ServiceUnavailableError('profile_store_unavailable', 'Profile registry storage is unavailable');
+  return new ProfileRegistry(store);
+}
+
+function requireIntegration(env, name, code, message) {
+  if (typeof env[name] !== 'function') throw new ServiceUnavailableError(code, message);
+  return env[name];
+}
+
+async function authenticateRoute(request, env, scopes) {
+  const auth = await authenticateBearer(request, env, scopes);
+  return auth.ok ? null : auth.response;
+}
+
+async function routePhase2(request, env, path) {
+  if (request.method === 'POST' && path === '/audit/v1/workspace-upload-grants') {
+    const denied = await authenticateRoute(request, env, ['audit:submit']);
+    if (denied) return denied;
+    const body = await parseJsonRequest(request);
+    const key = grantKey(env);
+    const grant = await createUploadGrant(body, { now: nowFromEnv(env), sign: (payload) => hmacHex(key, payload) });
+    const signer = requireIntegration(env, 'AUDIT_UPLOAD_URL_SIGNER', 'upload_url_signer_unavailable', 'Upload URL signer is unavailable');
+    const upload = await signer({ objectKey: grant.destinationKey, contentType: grant.contentType, bytes: grant.bytes, expiresAt: grant.expiresAt });
+    return json({ grant, upload }, 201);
+  }
+
+  if (request.method === 'POST' && path === '/audit/v1/workspaces/seal') {
+    const denied = await authenticateRoute(request, env, ['audit:submit']);
+    if (denied) return denied;
+    return json(await workspaceService(env).sealUploadedWorkspace(await parseJsonRequest(request)), 201);
+  }
+
+  if (request.method === 'POST' && path === '/audit/v1/workspaces/import-github') {
+    const denied = await authenticateRoute(request, env, ['audit:submit']);
+    if (denied) return denied;
+    const body = await parseJsonRequest(request);
+    const keys = new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName', 'tenantIndex', 'indexEtag']);
+    strictObject(body, keys);
+    requiredKeys(body, new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName', 'tenantIndex']));
+    assertAuditId(body.tenantId, 'tenant', '$.tenantId');
+    assertAuditId(body.workspaceId, 'workspace', '$.workspaceId');
+    if (typeof body.repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(body.repository)) {
+      throw new ValidationError('invalid_repository', '$.repository must be owner/name', '$.repository');
+    }
+    if (typeof body.commitSha !== 'string' || !/^[0-9a-f]{40}$/.test(body.commitSha)) {
+      throw new ValidationError('unresolved_git_ref', '$.commitSha must be an exact lowercase 40-hex commit SHA', '$.commitSha');
+    }
+    if (typeof body.refName !== 'string' || body.refName.length < 1 || body.refName.length > 255) {
+      throw new ValidationError('invalid_ref_name', '$.refName is invalid', '$.refName');
+    }
+    const resolver = requireIntegration(env, 'AUDIT_GITHUB_ARCHIVE_RESOLVER', 'github_resolver_unavailable', 'GitHub archive resolver is unavailable');
+    const resolved = await resolver({ repository: body.repository, commitSha: body.commitSha });
+    const source = validateGitHubWorkspaceSource({
+      tenantId: body.tenantId,
+      repository: body.repository,
+      commitSha: body.commitSha,
+      refName: body.refName,
+      archiveSha256: resolved.archiveSha256,
+      bytes: resolved.bytes
+    });
+    return json(await workspaceService(env).importGitHubWorkspace({
+      workspaceId: body.workspaceId,
+      source,
+      archiveBytes: resolved.archiveBytes,
+      tenantIndex: body.tenantIndex,
+      ...(body.indexEtag ? { indexEtag: body.indexEtag } : {})
+    }), 201);
+  }
+
+  const layersMatch = path.match(/^\/audit\/v1\/workspaces\/(ws_[0-9a-f]{32})\/layers$/);
+  if (layersMatch && request.method === 'GET') {
+    const denied = await authenticateRoute(request, env, ['audit:read']);
+    if (denied) return denied;
+    return json(await workspaceService(env).readLayerIndex(layersMatch[1]));
+  }
+  if (layersMatch && request.method === 'POST') {
+    const denied = await authenticateRoute(request, env, ['audit:admin']);
+    if (denied) return denied;
+    const body = await parseJsonRequest(request);
+    const keys = new Set(['layerBundleId', 'manifest', 'layerIndex', 'indexEtag', 'eventBatch']);
+    strictObject(body, keys);
+    requiredKeys(body, new Set(['layerBundleId', 'manifest', 'layerIndex', 'eventBatch']));
+    if (typeof body.layerBundleId !== 'string' || !/^[a-z0-9][a-z0-9-]{2,79}$/.test(body.layerBundleId)) {
+      throw new ValidationError('invalid_bundle_id', '$.layerBundleId is invalid', '$.layerBundleId');
+    }
+    if (body.manifest?.workspaceId !== layersMatch[1]) {
+      throw new ValidationError('workspace_mismatch', '$.manifest.workspaceId must match the route', '$.manifest.workspaceId');
+    }
+    const resolver = requireIntegration(env, 'AUDIT_LAYER_BUNDLE_RESOLVER', 'layer_resolver_unavailable', 'Generated layer bundle resolver is unavailable');
+    const resolved = await resolver({ layerBundleId: body.layerBundleId, workspaceId: layersMatch[1], layerId: body.manifest?.layerId });
+    return json(await workspaceService(env).attachLayer({
+      archiveBytes: resolved.archiveBytes,
+      manifest: body.manifest,
+      layerIndex: body.layerIndex,
+      eventBatch: body.eventBatch,
+      ...(body.indexEtag ? { indexEtag: body.indexEtag } : {})
+    }), 201);
+  }
+
+  const workspaceMatch = path.match(/^\/audit\/v1\/workspaces\/(ws_[0-9a-f]{32})$/);
+  if (workspaceMatch && request.method === 'GET') {
+    const denied = await authenticateRoute(request, env, ['audit:read']);
+    if (denied) return denied;
+    return json(await workspaceService(env).readWorkspace(workspaceMatch[1]));
+  }
+
+  if (request.method === 'GET' && path === '/audit/v1/profiles') {
+    const denied = await authenticateRoute(request, env, ['audit:read']);
+    if (denied) return denied;
+    return json(await profileRegistry(env).readIndex());
+  }
+
+  const profileMatch = path.match(/^\/audit\/v1\/profiles\/([a-z0-9]+(?:-[a-z0-9]+)*-v[1-9][0-9]*)$/);
+  if (profileMatch && request.method === 'GET') {
+    const denied = await authenticateRoute(request, env, ['audit:read']);
+    if (denied) return denied;
+    return json(await profileRegistry(env).read(profileMatch[1]));
+  }
+
+  return null;
+}
+
 async function route(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
-  if (request.method === 'GET' && path === '/audit/v1/health') return json({ status: 'ok', service: 'curveyield-audit-api', version: '0.1.0', phase: 1 });
+  if (request.method === 'GET' && path === '/audit/v1/health') {
+    return json({ status: 'ok', service: 'curveyield-audit-api', version: '0.2.0', phase: 2 });
+  }
   if (path.startsWith('/audit-internal/v1/')) {
     const bodyText = await readLimitedText(request);
     const auth = await authenticateInternal(request, env, bodyText, path);
@@ -179,12 +383,14 @@ async function route(request, env) {
   }
   if (request.method === 'GET' && path === '/audit/v1/capabilities') {
     const auth = await authenticateBearer(request, env, ['audit:read']);
-    return auth.ok ? json(AUDIT_CAPABILITIES) : auth.response;
+    return auth.ok ? json(PHASE_2_CAPABILITIES) : auth.response;
   }
   if (request.method === 'GET' && path === '/audit/v1/readiness') {
     const auth = await authenticateBearer(request, env, ['audit:admin']);
     return auth.ok ? json(readiness(env)) : auth.response;
   }
+  const phase2 = await routePhase2(request, env, path);
+  if (phase2) return phase2;
   if (request.method === 'POST' && path === '/audit/v1/jobs') {
     const auth = await authenticateBearer(request, env, ['audit:submit']);
     if (!auth.ok) return auth.response;
@@ -199,9 +405,19 @@ async function route(request, env) {
 
 export default {
   async fetch(request, env) {
-    try { return withCors(await route(request, env), env); }
-    catch (cause) {
-      if (cause instanceof ValidationError) return withCors(error(cause.code, cause.message, 400, { path: cause.path }), env);
+    try {
+      return withCors(await route(request, env), env);
+    } catch (cause) {
+      if (cause instanceof ValidationError) {
+        const status = cause.code === 'not_found' ? 404 : 400;
+        return withCors(error(cause.code, cause.message, status, { path: cause.path }), env);
+      }
+      if (cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed') {
+        return withCors(error('conflict', 'Concurrent state update conflict', 409), env);
+      }
+      if (cause instanceof ServiceUnavailableError) {
+        return withCors(error(cause.code, cause.message, cause.status), env);
+      }
       console.error(cause);
       return withCors(error('internal_error', 'Internal server error', 500), env);
     }
