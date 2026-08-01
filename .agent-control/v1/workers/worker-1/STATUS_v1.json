@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-1",
-  "state": "acknowledged",
+  "state": "working",
   "lastConsumedSequence": 1,
   "activeSequence": 1,
   "activeMessageId": "worker-1-phase4-catalog-api-integration-v2-000001",
@@ -12,5 +12,5 @@
   "recommendation": null,
   "reportReference": null,
   "blockers": [],
-  "updatedAt": "2026-08-01T13:07:30Z"
+  "updatedAt": "2026-08-01T13:08:00Z"
 }
