@@ -34,17 +34,35 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Reconstruct and verify exact V27 sources
+        env:
+          RESULT_ROOT: ${{ runner.temp }}/v27-functional-smoke-v3
         run: |
           set -euo pipefail
           job_root='github-native-sim/jobs/v27-functional-smoke-v3'
-          mkdir -p "$job_root/project"
-          cat "$job_root"/source-payloads/archive/v27-sources.tar.gz.part-*.b64 > /tmp/v27-sources.tar.gz.b64
+          rm -rf "$RESULT_ROOT"
+          mkdir -p "$RESULT_ROOT" "$job_root/project"
+          git fetch --no-tags --depth=1 origin \
+            automation/v27-functional-smoke-v2:refs/remotes/origin/v27-functional-smoke-v2-source
+          : > /tmp/v27-sources.tar.gz.b64
+          for part in 01 02 03 04 05; do
+            git show "refs/remotes/origin/v27-functional-smoke-v2-source:github-native-sim/jobs/v27-functional-smoke-v2/source-payloads/archive/v27-sources.tar.gz.part-${part}.b64" \
+              >> /tmp/v27-sources.tar.gz.b64
+          done
           base64 -d /tmp/v27-sources.tar.gz.b64 > /tmp/v27-sources.tar.gz
           echo '4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59  /tmp/v27-sources.tar.gz' | sha256sum -c -
           tar -xzf /tmp/v27-sources.tar.gz -C "$job_root/project"
           echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-functional-smoke-v3/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
           echo 'e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e  github-native-sim/jobs/v27-functional-smoke-v3/project/CurveYieldSdYBRewardConverterV27.sol' | sha256sum -c -
           echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-functional-smoke-v3/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
+          cat > "$RESULT_ROOT/source-verification.json" <<'JSON'
+          {
+            "archiveSha256": "4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59",
+            "vaultSha256": "c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2",
+            "converterSha256": "e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e",
+            "strategySha256": "8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04",
+            "verified": true
+          }
+          JSON
 
       - name: Run approved-call probe and current GitHub-native suite once
         id: execute
@@ -53,7 +71,6 @@ jobs:
           RESULT_ROOT: ${{ runner.temp }}/v27-functional-smoke-v3
         run: |
           set -u
-          rm -rf "$RESULT_ROOT"
           mkdir -p "$RESULT_ROOT/probe" "$RESULT_ROOT/suite"
 
           set +e
