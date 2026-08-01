@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curveyield.com/audit/schemas/parser-input-v1.schema.json",
+  "title": "CurveYield Audit inert parser input v1",
+  "description": "Serialized transport contract for explicitly supplied inert tool-result text. Uint8Array values accepted by the in-process API are represented as UTF-8 strings at JSON boundaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "durationMs",
+    "terminationReason"
+  ],
+  "properties": {
+    "resultJson": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 5000000
+    },
+    "stdout": {
+      "type": "string",
+      "maxLength": 5000000,
+      "default": ""
+    },
+    "stderr": {
+      "type": "string",
+      "maxLength": 5000000,
+      "default": ""
+    },
+    "exitCode": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 255
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 86400000
+    },
+    "terminationReason": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "timeout",
+        "cancelled",
+        "resource_exhaustion"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "terminationReason": {
+            "const": "completed"
+          }
+        },
+        "required": [
+          "terminationReason"
+        ]
+      },
+      "then": {
+        "required": [
+          "resultJson",
+          "exitCode"
+        ],
+        "properties": {
+          "resultJson": {
+            "type": "string",
+            "maxLength": 5000000
+          },
+          "exitCode": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
+    }
+  ]
+}
