@@ -1,7 +1,9 @@
 {
   "version": "v27-ganache-full/v1",
   "chainId": 1,
-  "forkBlock": 25660886,
+  "forkBlock": "latest",
+  "originalPacketForkBlock": 25660886,
+  "forkBlockReason": "dRPC free-tier explicit historical eth_getCode calls returned HTTP 408/500 in diagnostic run 30724228235; proxied latest reads passed 7/7. Resolve latest once and record the resulting block.",
   "compilerVersion": "0.8.28",
   "optimizer": { "enabled": true, "runs": 200 },
   "viaIR": true,
