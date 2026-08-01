@@ -1,16 +1,16 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "idle",
-  "lastConsumedSequence": 0,
-  "activeSequence": null,
-  "activeMessageId": null,
-  "issueNumber": null,
-  "branch": null,
-  "startingSha": null,
+  "state": "acknowledged",
+  "lastConsumedSequence": 1,
+  "activeSequence": 1,
+  "activeMessageId": "worker-2-phase4-result-contract-compatibility-000001",
+  "issueNumber": 57,
+  "branch": "audit-phase4/result-contract-compatibility-v1",
+  "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": null,
+  "reportReference": "issue:57",
   "blockers": [],
-  "updatedAt": "2026-08-01T11:55:24Z"
+  "updatedAt": "2026-08-01T11:56:12Z"
 }
