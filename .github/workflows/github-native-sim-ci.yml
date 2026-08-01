@@ -30,7 +30,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -45,8 +45,14 @@ jobs:
       - name: Install trusted dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Run GitHub-native simulation tests
+      - name: Run focused GitHub-native simulation tests
         run: node --test packages/github-native-sim/test/*.test.mjs
 
-      - name: Check GitHub-native JavaScript syntax
+      - name: Run complete repository test suite
+        run: npm test
+
+      - name: Run complete repository syntax validation
+        run: npm run lint
+
+      - name: Check GitHub-native JavaScript syntax independently
         run: find packages/github-native-sim -type f -name '*.mjs' -print0 | xargs -0 -r -n1 node --check
