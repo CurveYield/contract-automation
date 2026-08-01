@@ -61,6 +61,49 @@ test('accepts a valid manual job path', () => {
   );
 });
 
+test('validates the complete branch delta for a manual selection', () => {
+  assert.deepEqual(
+    selectChangedJob({
+      manualJobPath: 'github-native-sim/jobs/manual-1/job.json',
+      changedPaths: [
+        'github-native-sim/jobs/manual-1/job.json',
+        'github-native-sim/jobs/manual-1/project/Counter.sol'
+      ]
+    }),
+    {
+      jobId: 'manual-1',
+      jobRoot: 'github-native-sim/jobs/manual-1',
+      jobPath: 'github-native-sim/jobs/manual-1/job.json'
+    }
+  );
+});
+
+test('rejects an out-of-scope branch delta for a manual selection', () => {
+  assert.throws(
+    () => selectChangedJob({
+      manualJobPath: 'github-native-sim/jobs/manual-1/job.json',
+      changedPaths: [
+        'github-native-sim/jobs/manual-1/job.json',
+        '.github/workflows/github-native-simulate.yml'
+      ]
+    }),
+    /outside github-native-sim\/jobs/
+  );
+});
+
+test('rejects a manual path that disagrees with the branch delta', () => {
+  assert.throws(
+    () => selectChangedJob({
+      manualJobPath: 'github-native-sim/jobs/manual-1/job.json',
+      changedPaths: [
+        'github-native-sim/jobs/other-1/job.json',
+        'github-native-sim/jobs/other-1/project/Counter.sol'
+      ]
+    }),
+    /does not match the changed job directory/
+  );
+});
+
 test('rejects an unsafe manual job path', () => {
   assert.throws(
     () => selectChangedJob({ manualJobPath: '../job.json' }),
