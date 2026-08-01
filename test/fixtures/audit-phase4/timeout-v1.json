@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Solidity compiler timeout represented without parsing partial output.",
+  "profileId": "solidity-compile-v1",
+  "input": {
+    "resultJson": null,
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": null,
+    "durationMs": 86400000,
+    "terminationReason": "timeout"
+  }
+}
