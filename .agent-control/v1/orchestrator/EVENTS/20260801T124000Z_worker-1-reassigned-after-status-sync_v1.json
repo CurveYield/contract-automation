@@ -1,0 +1,22 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-1-reassigned-after-status-sync-20260801T124000Z",
+  "eventType": "worker_reassigned",
+  "occurredAt": "2026-08-01T12:40:00Z",
+  "workerId": "worker-1",
+  "completedIssueNumber": 53,
+  "completedFinalSha": "934d27dc950ffed9a334f7c9fbb60d68ac2689aa",
+  "completedRecommendation": "ACCEPT WITH REPAIR",
+  "integrationDecision": "do_not_merge_stale_isolated_branch_port_and_repair_on_current_phase4_base",
+  "newSequence": 1,
+  "newMessageId": "worker-1-phase4-catalog-api-integration-v2-000001",
+  "newIssueNumber": 72,
+  "newBranch": "audit-phase4/catalog-api-integration-v2",
+  "newStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+  "wakeRequestId": "wake-worker-1-sequence-1-000005",
+  "supersededWakeRequestId": "wake-worker-1-status-sync-000002",
+  "repairReasons": [
+    "Reference branch predates accepted Phase 4 parser integration and reports outputParsers=false.",
+    "Read-only API authentication must compose with approved identity names before final Phase 4 acceptance."
+  ]
+}
