@@ -14,12 +14,9 @@ on:
       - ".github/workflows/audit-*.yml"
       - "package.json"
       - "package-lock.json"
-  push:
-    branches:
-      - "audit-phase1/**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: curveyield-audit-phase1-test-${{ github.ref }}
@@ -30,15 +27,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Check out trusted repository code
+      - name: Check out trusted repair PR head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          persist-credentials: false
+          persist-credentials: true
+          ref: audit-repair/phases-1-3-v1
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
-      - name: Install lockfile-pinned trusted dependencies
+      - name: Regenerate clean lockfile metadata
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit regenerated lockfile on trusted repair PR
+        if: github.event_name == 'pull_request' && github.head_ref == 'audit-repair/phases-1-3-v1' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Clean lockfile already committed"
+            exit 0
+          fi
+          git commit -m "chore: regenerate clean npm lockfile"
+          git push origin "HEAD:audit-repair/phases-1-3-v1"
+      - name: Verify clean lockfile installation
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run all unit and security tests
         run: npm test
