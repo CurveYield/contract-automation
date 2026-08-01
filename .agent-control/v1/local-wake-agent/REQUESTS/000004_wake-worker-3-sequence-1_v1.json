@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "wakeRequestId": "wake-worker-3-sequence-1-000004",
+  "requestSequence": 4,
+  "targetAgent": "worker-3",
+  "reason": "New immutable mailbox assignment is published and ready for acknowledgement.",
+  "expectedCurrentSequence": 1,
+  "expectedMessageId": "worker-3-phase5-result-contract-compatibility-000001",
+  "expectedIssueNumber": 71,
+  "expectedBranch": "audit-phase5/result-contract-compatibility-v1",
+  "expectedStartingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
+  "requiredAction": "Wake Worker 3 and instruct it to read and validate CURRENT_v1.json, acknowledge sequence 1 exactly once, then begin issue #71.",
+  "issuedAt": "2026-08-01T12:27:00Z",
+  "issuedBy": "orchestrator",
+  "requestState": "ready"
+}
