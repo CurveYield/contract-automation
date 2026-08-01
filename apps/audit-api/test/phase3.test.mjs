@@ -55,6 +55,7 @@ function env(overrides = {}) {
   };
   return {
     calls,
+    AUDIT_TEST_MODE: 'true',
     AUDIT_READ_API_KEY: 'audit-read-test-key',
     AUDIT_SUBMIT_API_KEY: 'audit-submit-test-key',
     AUDIT_ADMIN_API_KEY: 'audit-admin-test-key',
@@ -129,7 +130,7 @@ test('reads deterministic logs and reports with read scope only', async () => {
 });
 
 test('internal fixture routes are disabled before authentication side effects', async () => {
-  const state = env();
+  const state = env({ AUDIT_TRUSTED_FIXTURE_ENABLED: undefined });
   const response = await auditWorker.fetch(request(`/audit-internal/v1/jobs/${jobId}/attempts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ attemptId }) }), state);
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, 'trusted_fixture_disabled');
