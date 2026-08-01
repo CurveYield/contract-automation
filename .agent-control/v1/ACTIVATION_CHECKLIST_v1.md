@@ -13,12 +13,12 @@ The control plane is installed but must not be described as fully active until e
 
 ## Required before activation claim
 
-- [ ] Orchestrator hourly Scheduled Task is enabled.
+- [x] Orchestrator hourly Scheduled Task is enabled.
 - [ ] Worker 0 hourly Scheduled Task is enabled.
 - [ ] Worker 1 hourly Scheduled Task is enabled.
 - [ ] Worker 2 hourly Scheduled Task is enabled.
 - [ ] Worker 3 hourly Scheduled Task is enabled.
-- [ ] Orchestrator completes one read-only polling cycle.
+- [x] Orchestrator completes one read-only polling cycle.
 - [ ] Workers 0–3 each complete one read-only polling cycle.
 - [ ] Each scheduled agent validates or writes its initial owned status.
 - [ ] Worker 2 validates the sequence-1 pointer and assignment blob SHA.
