@@ -11,6 +11,7 @@ on:
       - "test/boundary/**"
       - ".github/workflows/audit-deploy-dry-run.yml"
       - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
@@ -26,15 +27,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out trusted repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
-      - name: Install pinned trusted dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install lockfile-pinned trusted dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run tests and syntax checks
         run: npm test && npm run lint
       - name: Enforce Audit and Lite boundary
