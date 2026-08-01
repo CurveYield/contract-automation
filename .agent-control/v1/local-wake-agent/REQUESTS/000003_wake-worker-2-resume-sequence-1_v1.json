@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "wakeRequestId": "wake-worker-2-resume-sequence-1-000003",
+  "requestSequence": 3,
+  "targetAgent": "worker-2",
+  "reason": "Worker 2 status says working on sequence 1, but the assigned branch remains identical to its starting SHA and issue #57 has no report or comments.",
+  "expectedCurrentSequence": 1,
+  "expectedMessageId": "worker-2-phase4-result-contract-compatibility-000001",
+  "expectedIssueNumber": 57,
+  "expectedBranch": "audit-phase4/result-contract-compatibility-v1",
+  "expectedStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+  "requiredAction": "Wake Worker 2 and instruct it to revalidate the existing sequence-1 assignment and acknowledgement, resume issue #57 from GitHub state without duplicate acknowledgement, produce the required commits and final issue report, and keep STATUS_v1.json accurate.",
+  "issuedAt": "2026-08-01T12:27:00Z",
+  "issuedBy": "orchestrator",
+  "requestState": "ready"
+}
