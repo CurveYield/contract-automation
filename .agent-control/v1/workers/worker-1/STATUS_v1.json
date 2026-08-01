@@ -3,8 +3,8 @@
   "workerId": "worker-1",
   "state": "ready",
   "lastConsumedSequence": 1,
-  "activeSequence": 2,
-  "activeMessageId": "worker-1-phase9-catalog-api-gpt-composition-v1-000002",
+  "activeSequence": 3,
+  "activeMessageId": "worker-1-phase9-catalog-api-gpt-composition-replacement-v1-000003",
   "issueNumber": 102,
   "branch": "audit-phase9/catalog-api-gpt-composition-v1",
   "startingSha": "fec9968b2c24250a1decee270a86d4db9ae31bff",
@@ -12,6 +12,6 @@
   "recommendation": null,
   "reportReference": "issue:102",
   "blockers": [],
-  "priorIssueNumber": 72,
-  "updatedAt": "2026-08-01T23:33:00Z"
+  "retiredRuntimeSequence": 2,
+  "updatedAt": "2026-08-01T23:38:00Z"
 }
