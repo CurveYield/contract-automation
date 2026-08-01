@@ -87,11 +87,7 @@ test('durably seals one bundled upload using exactly four writes and two reads',
   };
   const service = new WorkspaceService(wrapped, { now: () => new Date('2026-07-31T12:05:00.000Z'), verifyGrant: async () => true });
   const before = store.usage();
-  const result = await service.sealUploadedWorkspace({
-    workspaceId,
-    grant,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] }
-  });
+  const result = await service.sealUploadedWorkspace({ workspaceId, grant });
   const after = store.usage();
   assert.deepEqual(delta(after, before), { classA: 4, classB: 2, free: 0 });
   assert.equal(result.manifest.fileCount, 2);
@@ -106,14 +102,14 @@ test('rejects expired grants and digest mismatches before workspace writes', asy
   await store.put(ingressKey(tenantId, digest), sourceZip);
   const service = new WorkspaceService(store, { now: () => new Date('2026-08-02T00:00:00.000Z'), verifyGrant: async () => true });
   const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: grantExpiry }, { now: () => new Date('2026-07-31T12:00:00.000Z'), sign: async () => 'sig' });
-  await assert.rejects(() => service.sealUploadedWorkspace({ workspaceId, grant, tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] } }), /expired/i);
+  await assert.rejects(() => service.sealUploadedWorkspace({ workspaceId, grant }), /expired/i);
   const altered = new Uint8Array(sourceZip); altered[10] ^= 1;
   const store2 = new InMemoryAuditStore(); await store2.put(ingressKey(tenantId, digest), altered);
   const service2 = new WorkspaceService(store2, { now: () => new Date('2026-07-31T12:05:00.000Z'), verifyGrant: async () => true });
-  await assert.rejects(() => service2.sealUploadedWorkspace({ workspaceId, grant, tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] } }), /digest/i);
+  await assert.rejects(() => service2.sealUploadedWorkspace({ workspaceId, grant }), /digest/i);
 });
 
-test('imports an exact GitHub commit as one bundled source object with four writes and no reads', async () => {
+test('imports an exact GitHub commit with four writes and one authoritative index read', async () => {
   const digest = await sha256(sourceZip);
   const store = new InMemoryAuditStore();
   const service = new WorkspaceService(store, { now: () => new Date('2026-07-31T12:05:00.000Z') });
@@ -121,31 +117,27 @@ test('imports an exact GitHub commit as one bundled source object with four writ
   await service.importGitHubWorkspace({
     workspaceId,
     source: { tenantId, repository: 'CurveYield/contract-automation', commitSha: 'a'.repeat(40), refName: 'main', archiveSha256: digest, bytes: sourceZip.length },
-    archiveBytes: sourceZip,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] }
+    archiveBytes: sourceZip
   });
-  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 0, free: 0 });
+  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 1, free: 0 });
   assert.equal((await store.head(workspaceSourceArchiveKey(workspaceId))).size, sourceZip.length);
 });
 
-test('attaches one bundled generated layer with four writes, one verification read, and conditional index protection', async () => {
+test('attaches one bundled generated layer with four writes and two reads', async () => {
   const archive = new TextEncoder().encode('trusted generated tests bundle');
   const digest = await sha256(archive);
   const store = new InMemoryAuditStore();
   const service = new WorkspaceService(store, { now: () => new Date('2026-07-31T12:05:00.000Z') });
+  const input = {
+    archiveBytes: archive,
+    manifest: { schemaVersion: 'layer-manifest-v1', layerId, workspaceId, archiveSha256: digest, archiveBytes: archive.length, archiveObjectKey: layerArchiveKey(workspaceId, layerId), createdAt: '2026-07-31T12:05:00.000Z', generator: 'curveyield-audit-spec-layer-v1', fileCount: 3 },
+    eventBatch: { schemaVersion: 'workspace-event-batch-v1', batchId: '00000001', workspaceId, events: [{ type: 'layer_attached', layerId }] }
+  };
   const before = store.usage();
-  await service.attachLayer({
-    archiveBytes: archive,
-    manifest: { schemaVersion: 'layer-manifest-v1', layerId, workspaceId, archiveSha256: digest, archiveBytes: archive.length, archiveObjectKey: layerArchiveKey(workspaceId, layerId), createdAt: '2026-07-31T12:05:00.000Z', generator: 'curveyield-audit-spec-layer-v1', fileCount: 3 },
-    layerIndex: { schemaVersion: 'workspace-layer-index-v1', workspaceId, layers: [layerId] },
-    eventBatch: { schemaVersion: 'workspace-event-batch-v1', batchId: '00000001', workspaceId, events: [{ type: 'layer_attached', layerId }] }
-  });
-  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 1, free: 0 });
+  const created = await service.attachLayer(input);
+  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 2, free: 0 });
+  assert.equal(created.idempotent, false);
   assert.ok(await store.head(workspaceEventBatchKey(workspaceId, '00000001')));
-  await assert.rejects(() => service.attachLayer({
-    archiveBytes: archive,
-    manifest: { schemaVersion: 'layer-manifest-v1', layerId, workspaceId, archiveSha256: digest, archiveBytes: archive.length, archiveObjectKey: layerArchiveKey(workspaceId, layerId), createdAt: '2026-07-31T12:05:00.000Z', generator: 'curveyield-audit-spec-layer-v1', fileCount: 3 },
-    layerIndex: { schemaVersion: 'workspace-layer-index-v1', workspaceId, layers: [layerId] },
-    eventBatch: { schemaVersion: 'workspace-event-batch-v1', batchId: '00000001', workspaceId, events: [{ type: 'layer_attached', layerId }] }
-  }), /precondition/i);
+  const duplicate = await service.attachLayer(input);
+  assert.equal(duplicate.idempotent, true);
 });
