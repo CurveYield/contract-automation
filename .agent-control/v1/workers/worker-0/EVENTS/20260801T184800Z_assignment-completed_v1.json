@@ -1,0 +1,27 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_completed",
+  "timestamp": "2026-08-01T18:48:00Z",
+  "sequence": 3,
+  "messageId": "worker-0-round1-phases7-8-reconstruction-v1-000003",
+  "issueNumber": 97,
+  "branch": "audit-round1/phases7-8-reconstruction-v1",
+  "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+  "implementationSha": "768437d01ae9d64b04a4755f7f697ed049e505b4",
+  "finalSha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b",
+  "recommendation": "ACCEPT",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/97#issuecomment-5152883433",
+  "reportCommentId": 5152883433,
+  "checkpointCommentIds": [5152687455, 5152842311, 5152843598, 5152875071],
+  "tests": {
+    "total": 105,
+    "passed": 105,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "changedFiles": 65,
+  "unownedChangedFiles": 0,
+  "blockers": []
+}
