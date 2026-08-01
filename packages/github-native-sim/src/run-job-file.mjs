@@ -13,6 +13,7 @@ import { startGanacheEngine } from '../../runner/src/engine.mjs';
 import { materializeOpenZeppelin } from '../../runner/src/project.mjs';
 import { renderHtmlReport } from '../../runner/src/report.mjs';
 import { executeWorkflow } from '../../runner/src/workflow.mjs';
+import { startForkRpcProxy } from './fork-rpc-proxy.mjs';
 import { resolveJobProjectRoot } from './project.mjs';
 import { validateGitHubNativeJob } from './schema.mjs';
 
@@ -95,21 +96,27 @@ async function writeResultBundle(outputDir, result) {
 export async function runGitHubNativeJob({
   jobFile,
   outputDir,
-  environment = process.env
+  environment = process.env,
+  services = {}
 }) {
   if (typeof jobFile !== 'string' || jobFile.length === 0) throw new Error('jobFile is required');
   if (typeof outputDir !== 'string' || outputDir.length === 0) throw new Error('outputDir is required');
 
+  const startProxy = services.startForkRpcProxy ?? startForkRpcProxy;
+  const startEngine = services.startGanacheEngine ?? startGanacheEngine;
   const absoluteJobFile = path.resolve(jobFile);
   const absoluteOutputDir = path.resolve(outputDir);
   const startedAt = new Date().toISOString();
   const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'github-native-sim-'));
   let engine;
+  let forkProxy;
   let job;
   let compilerDiagnostics = [];
   let compiledArtifacts = [];
   let deployments = {};
   let steps = [];
+  let resolvedBlock;
+  let forkTransport;
 
   await fs.mkdir(absoluteOutputDir, { recursive: true });
 
@@ -146,12 +153,15 @@ export async function runGitHubNativeJob({
       const rpcUrl = environment[chain.rpcEnv];
       if (!rpcUrl) throw new Error(`Runner secret ${chain.rpcEnv} is not configured`);
 
-      engine = await startGanacheEngine({
+      forkProxy = await startProxy({ upstreamUrl: rpcUrl, block: job.block });
+      resolvedBlock = forkProxy.blockNumber;
+      forkTransport = forkProxy.diagnostics;
+      engine = await startEngine({
         artifacts: compilation.artifacts,
         workflow: job.workflow,
         chainId: chain.chainId,
-        forkUrl: rpcUrl,
-        block: job.block
+        forkUrl: forkProxy.url,
+        block: resolvedBlock
       });
       const execution = await executeWorkflow(job.workflow, engine.runtime, { aliases: engine.aliases });
       steps = execution.steps;
@@ -166,6 +176,8 @@ export async function runGitHubNativeJob({
       chain: job.chain,
       chainId: job.chain ? CHAINS[job.chain].chainId : undefined,
       block: job.block,
+      resolvedBlock,
+      forkTransport,
       compilerVersion: job.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -192,6 +204,8 @@ export async function runGitHubNativeJob({
         chain: job?.chain,
         chainId: job?.chain ? CHAINS[job.chain]?.chainId : undefined,
         block: job?.block,
+        resolvedBlock,
+        forkTransport,
         compilerVersion: job?.compilerVersion,
         compilerDiagnostics,
         artifacts: compiledArtifacts,
@@ -209,6 +223,7 @@ export async function runGitHubNativeJob({
     throw cause;
   } finally {
     if (engine) await engine.close().catch(() => {});
+    if (forkProxy) await forkProxy.close().catch(() => {});
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 }
