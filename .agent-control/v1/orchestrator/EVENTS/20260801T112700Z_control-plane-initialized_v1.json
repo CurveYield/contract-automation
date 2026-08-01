@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "eventId": "orchestrator-control-plane-initialized-20260801T112700Z",
+  "eventType": "control_plane_initialized",
+  "actor": "orchestrator",
+  "occurredAt": "2026-08-01T11:27:00Z",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "plus-compatible-orchestrator-plus-workers-0-3",
+  "details": {
+    "existingAssignmentsRepublished": false,
+    "worker2AssignmentSequencePublished": 1,
+    "worker4RetireAfterCurrent": true,
+    "activationState": "pending-worker-bootstrap-and-end-to-end-validation"
+  }
+}
