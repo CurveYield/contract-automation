@@ -1,0 +1,28 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-0-sequence-1-delegated-write-recovery-20260801T130800Z",
+  "eventType": "delegated_write_recovery",
+  "workerId": "worker-0",
+  "sequence": 1,
+  "messageId": "worker-0-phase1-3-pr-chain-000001",
+  "issueNumber": 70,
+  "branch": "audit-repair/phases-1-3-pr-chain-v1",
+  "startingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+  "assignmentBlobSha": "d0507998aa9a9468390a35b999ec80c9fb8ee26e",
+  "reportedWorkerCondition": "Both supported worker-side GitHub write methods failed before reaching GitHub while creating the mandatory acknowledgement.",
+  "preRecoveryVerification": {
+    "pointerMatched": true,
+    "assignmentBlobMatched": true,
+    "issueBranchStartingShaMatched": true,
+    "acknowledgementAbsent": true,
+    "implementationBranchUntouched": true,
+    "priorStatusStillCompleted": true
+  },
+  "recoveryActions": [
+    "created the exact sequence-1 acknowledgement",
+    "transitioned Worker 0 status to working",
+    "preserved the implementation branch unchanged"
+  ],
+  "actor": "orchestrator-delegated-recovery",
+  "createdAt": "2026-08-01T13:08:00Z"
+}
