@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "registryId": "audit-round1-source-registry-v1",
-  "updatedAt": "2026-08-01T16:54:00Z",
+  "updatedAt": "2026-08-01T17:05:00Z",
   "sources": {
     "latestMain": {
       "branch": "main",
@@ -25,7 +25,8 @@
       "branch": "audit-phase4/catalog-api-integration-v2",
       "issue": 72,
       "sha": null,
-      "state": "working"
+      "state": "working-completion-gates-required",
+      "requiredCommentId": 5152432370
     },
     "phase5": {
       "sha": "2982614879f1f6d252a7630eb5331031d5934b4e",
@@ -39,16 +40,25 @@
       "branch": "audit-phase7/control-storage-mock-v1",
       "issue": 80,
       "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
+      "rejectedCandidateSha": "f4520bed2b77842f922f17bc2e595cc6335bfc46",
       "finalSha": null,
-      "state": "working-with-review-findings"
+      "state": "repair-required-current-acceptance-superseded",
+      "requiredCommentId": 5152423968
     },
     "phase8": {
       "branch": "audit-phase8/clean-room-control-merge-v1",
       "issue": 91,
+      "checkpointSha": "45b9f12e90bd546b3f677f5508d2d3ce99df02c8",
       "finalSha": null,
-      "state": "working"
+      "state": "checkpoint1-repair-and-expansion-required",
+      "requiredCommentId": 5152426552
     }
   },
   "closedStalePullRequests": [43, 73],
-  "integrationBranch": "audit-round1/integration-v1"
+  "integrationBranch": "audit-round1/integration-v1",
+  "integrationBlockedUntil": [
+    "issue 72 accepted final SHA",
+    "issue 80 replacement accepted final SHA after deletion repairs",
+    "issue 91 all four checkpoints and accepted final SHA"
+  ]
 }
