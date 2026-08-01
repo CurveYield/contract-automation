@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/CurveYield/contract-automation/v27-ganache-full-data-report-v1.schema.json",
+  "title": "CurveYield V27 Ganache Full Data Report v1",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "source",
+    "execution",
+    "preflight",
+    "funding",
+    "deployments",
+    "cycles",
+    "migration",
+    "postMigrationCycles",
+    "supplementalTests",
+    "assertions",
+    "calls",
+    "snapshots"
+  ],
+  "properties": {
+    "version": { "const": "v27-ganache-full-data-report/v1" },
+    "status": { "enum": ["running", "completed", "failed"] },
+    "calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "simulationCallId",
+          "callIndex",
+          "label",
+          "method",
+          "sender",
+          "target",
+          "transactionHash",
+          "traceHash",
+          "beforeSnapshotHash",
+          "afterSnapshotHash",
+          "stateDiffHash",
+          "preJournalHash",
+          "postJournalHash",
+          "file"
+        ]
+      }
+    },
+    "snapshots": { "type": "array" },
+    "assertions": { "type": "array" },
+    "supplementalTests": { "type": "array" }
+  },
+  "additionalProperties": true
+}
