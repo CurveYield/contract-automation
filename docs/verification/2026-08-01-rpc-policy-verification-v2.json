@@ -1,0 +1,9 @@
+{
+  "version": "rpc-policy-verification/v2",
+  "verifiedCommit": "39aef1e7c338d2ae911943fba39a870ffc3d94ab",
+  "workflowRunId": "30710346810",
+  "focusedNodeTests": "passed",
+  "javascriptSyntax": "passed",
+  "dependenciesInstalled": false,
+  "solidityCompiled": false
+}
