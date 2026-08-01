@@ -10,6 +10,12 @@ const CAPTURE_SCHEMAS = Object.freeze({
   'formal-obligations-v1': 'formal-obligations-capture-v1'
 });
 
+const TOOL_VERSIONS = Object.freeze({
+  'solidity-smt-v1': '0.8.30',
+  'halmos-v1': '0.3.3',
+  'formal-obligations-v1': '1.0.0'
+});
+
 const RESULT_ARRAY_LIMITS = Object.freeze({
   obligations: PHASE6_BOUNDS.obligations,
   assertions: PHASE6_BOUNDS.assertions,
@@ -111,8 +117,8 @@ function boundedCaptureToResult(capture, profileId) {
   if (capture.fixtureOwner !== 'CurveYield') {
     throw new Phase6ValidationError('invalid_fixture_owner', 'capture is not a CurveYield-owned inert fixture', '$.fixtureOwner');
   }
-  if (typeof capture.toolVersion !== 'string' || capture.toolVersion.length < 1 || capture.toolVersion.length > 80) {
-    throw new Phase6ValidationError('invalid_tool_version', 'capture toolVersion is invalid', '$.toolVersion');
+  if (capture.toolVersion !== TOOL_VERSIONS[profileId]) {
+    throw new Phase6ValidationError('invalid_tool_version', 'capture toolVersion does not match the exact profile version', '$.toolVersion');
   }
 
   const result = emptyResult(profileId, capture.outcome);

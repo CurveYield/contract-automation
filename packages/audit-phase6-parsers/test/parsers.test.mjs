@@ -15,6 +15,20 @@ test('parsers accept only explicitly supplied inert bytes', () => {
   assert.throws(() => parseHalmosBytes({}), /Uint8Array/);
 });
 
+test('parsers reject capture tool versions that do not match the profile contract', () => {
+  const mismatched = {
+    schemaVersion: 'halmos-capture-v1',
+    fixtureOwner: 'CurveYield',
+    profileId: 'halmos-v1',
+    toolVersion: '9.9.9',
+    outcome: 'unknown',
+    obligations: [], assertions: [], models: [], traces: [], counterexamples: [], diagnostics: [], sourceReferences: [], parserWarnings: [], truncated: false
+  };
+  const result = parseHalmosBytes(new TextEncoder().encode(JSON.stringify(mismatched)));
+  assert.equal(result.outcome, 'parser_error');
+  assert.equal(result.diagnostics[0].code, 'invalid_tool_version');
+});
+
 test('SMT parser handles proof, counterexample, unknown, timeout, resource exhaustion and cancellation fixtures', async () => {
   const names = [
     ['solidity-smt-proof-v1.json', 'proved'],
