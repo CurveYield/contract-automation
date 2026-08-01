@@ -46,7 +46,7 @@ export function auditRuntimeConfiguration(env) {
     internalKey: stringConfigured(env?.AUDIT_INTERNAL_SERVICE_KEY),
     nonceStore: storeConfigured(env?.AUDIT_NONCE_STORE),
     controlStore: storeConfigured(env?.AUDIT_CONTROL_STORE),
-    uploadGrantSigner: stringConfigured(env?.AUDIT_UPLOAD_GRANT_SIGNING_KEY, 16),
+    uploadGrantSigner: stringConfigured(env?.AUDIT_EDGE_CONTROL_PLANE_TOKEN, 32),
     directUploadSigner: testFunction(env, 'AUDIT_UPLOAD_URL_SIGNER'),
     githubArchiveResolver: testFunction(env, 'AUDIT_GITHUB_ARCHIVE_RESOLVER'),
     generatedLayerResolver: testFunction(env, 'AUDIT_LAYER_BUNDLE_RESOLVER'),
