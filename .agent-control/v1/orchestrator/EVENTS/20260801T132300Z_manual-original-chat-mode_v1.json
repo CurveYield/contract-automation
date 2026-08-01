@@ -1,0 +1,25 @@
+{
+  "protocolVersion": 1,
+  "eventId": "manual-original-chat-mode-20260801T132300Z",
+  "eventType": "coordination_mode_changed",
+  "actor": "orchestrator",
+  "occurredAt": "2026-08-01T13:23:00Z",
+  "previousMode": "hybrid-local-wake-plus-hourly-polling",
+  "newMode": "manual-original-chat-coordination",
+  "reason": "Scheduled Tasks created separate task conversations without the original worker-chat context, and the user chose not to use a local wake agent.",
+  "actions": [
+    "disabled all five Scheduled Tasks",
+    "disabled local wake-agent participation",
+    "preserved GitHub mailbox assignments as durable work contracts",
+    "designated original worker chats as the only valid worker runtimes",
+    "identified Worker 0 and Worker 2 as requiring immediate manual wake",
+    "identified Worker 1 and Worker 3 as having active branch progress"
+  ],
+  "workerObservations": {
+    "worker-0": "issue 70 branch identical to starting SHA",
+    "worker-1": "issue 72 branch 5 commits ahead",
+    "worker-2": "issue 74 branch identical to starting SHA",
+    "worker-3": "issue 71 branch 5 commits ahead",
+    "worker-4": "retired"
+  }
+}
