@@ -1,23 +1,16 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "completed",
-  "lastConsumedSequence": 1,
-  "activeSequence": null,
-  "activeMessageId": null,
-  "issueNumber": 70,
-  "branch": "audit-repair/phases-1-3-pr-chain-v1",
-  "startingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
-  "finalSha": "27b7358d03d462777abb2ecafecb9faf0bc5e3b9",
-  "recommendation": "ACCEPT",
-  "reportReference": "issue:70#issuecomment-5152071635",
+  "state": "acknowledged",
+  "lastConsumedSequence": 2,
+  "activeSequence": 2,
+  "activeMessageId": "worker-0-phase7-control-storage-mock-v1-000002",
+  "issueNumber": 80,
+  "branch": "audit-phase7/control-storage-mock-v1",
+  "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:80",
   "blockers": [],
-  "updatedAt": "2026-08-01T15:25:00Z",
-  "publishedArtifacts": {
-    "currentMain": "f0a1dd46551fc867778a295eef525262efb51b00",
-    "phase1Commit": "7bd969bbc5040d0093614af3ee0609901edebcef",
-    "phase2Commit": "05d036a80c0e718de73bd9e6b82ac9935b90729c",
-    "phase3Commit": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-    "ledgerCommit": "27b7358d03d462777abb2ecafecb9faf0bc5e3b9"
-  }
+  "updatedAt": "2026-08-01T15:48:24Z"
 }
