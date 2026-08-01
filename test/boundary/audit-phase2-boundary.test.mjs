@@ -34,8 +34,8 @@ test('Phase 2 packages preserve the approved R2 size and operation budgets', () 
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS, {
     uploadSource: { classA: 1, classB: 0, storageBytes: 10_000_000 },
     sealWorkspace: { classA: 4, classB: 2, storageBytes: 10_500_000 },
-    importGitHub: { classA: 4, classB: 0, storageBytes: 10_500_000 },
-    attachLayer: { classA: 4, classB: 1, storageBytes: 5_250_000 },
+    importGitHub: { classA: 4, classB: 1, storageBytes: 10_500_000 },
+    attachLayer: { classA: 4, classB: 2, storageBytes: 5_250_000 },
     readLayerIndex: { classA: 0, classB: 1, storageBytes: 0 }
   });
   assert.deepEqual(PROFILE_OPERATION_BUDGETS, {
@@ -61,6 +61,18 @@ test('GitHub workspace imports require exact commits and never accept arbitrary 
   assert.match(protocol, /owner\/name GitHub repository identity/);
   assert.doesNotMatch(protocol, /https?:\/\//);
   assert.doesNotMatch(await read('packages/audit-workspaces/src/index.mjs'), /\bfetch\s*\(/);
+});
+
+test('workspace and layer indexes remain server-owned', async () => {
+  const storage = await read('packages/audit-workspaces/src/index.mjs');
+  const api = await read('apps/audit-api/src/index.mjs');
+  assert.doesNotMatch(storage, /['"]tenantIndex['"]/);
+  assert.doesNotMatch(storage, /['"]layerIndex['"]/);
+  assert.doesNotMatch(api, /['"]tenantIndex['"]/);
+  assert.doesNotMatch(api, /['"]layerIndex['"]/);
+  assert.match(storage, /tenantWorkspaceIndexKey/);
+  assert.match(storage, /workspaceLayerIndexKey/);
+  assert.match(storage, /stale_index/);
 });
 
 test('workspace storage inspects bundled ZIP metadata without extraction or file fan-out', async () => {
