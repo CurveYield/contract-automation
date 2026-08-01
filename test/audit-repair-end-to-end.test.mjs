@@ -99,11 +99,7 @@ test('empty-store connected-stack workflow completes inertly with measured R2 us
 
   const workspaces = new WorkspaceService(store, { now, verifyGrant: async () => true });
   clock = '2026-08-01T08:01:00.000Z';
-  const sealed = await workspaces.sealUploadedWorkspace({
-    workspaceId,
-    grant,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] }
-  });
+  const sealed = await workspaces.sealUploadedWorkspace({ workspaceId, grant });
   assert.equal(sealed.manifest.sourceObjectKey, workspaceSourceArchiveKey(workspaceId));
   assert.equal(sealed.manifest.fileCount, 3);
 
@@ -118,7 +114,6 @@ test('empty-store connected-stack workflow completes inertly with measured R2 us
       archiveObjectKey: layerArchiveKey(workspaceId, layerId),
       createdAt: clock, generator: 'curveyield-audit-spec-layer-v1', fileCount: 2
     },
-    layerIndex: { schemaVersion: 'workspace-layer-index-v1', workspaceId, layers: [layerId] },
     eventBatch: {
       schemaVersion: 'workspace-event-batch-v1', batchId: '00000001', workspaceId,
       events: [{ type: 'layer_attached', layerId }]
@@ -234,5 +229,5 @@ test('empty-store connected-stack workflow completes inertly with measured R2 us
   assert.equal(finalStatus.state, 'completed');
   assert.deepEqual(logs.chunks.map((chunk) => new TextDecoder().decode(chunk)), ['trusted fixture log']);
   assert.deepEqual(reports.reports, [reportArtifactId]);
-  assert.deepEqual(operationCounts(store.usage()), { classA: 43, classB: 29, free: 1 });
+  assert.deepEqual(operationCounts(store.usage()), { classA: 43, classB: 30, free: 1 });
 });
