@@ -1,0 +1,20 @@
+{
+  "schemaVersion":"audit-phase9-operation-payloads-v1",
+  "payloads":{
+    "fork.create":{"adapterKind":"external","chainId":1,"blockNumber":21000000,"blockHash":null},
+    "fork.read":{},
+    "fork.action":{"actionId":"action-a","actionType":"inspect-state","payloadDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    "fork.checkpoint":{"checkpointId":"snapshot-a","manifestDigest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+    "fork.export":{"checkpointId":"snapshot-a","exportId":"export-a"},
+    "fork.delete":{"reason":"user-request"},
+    "campaign.create":{"sourceDigest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","policyId":"policy-a"},
+    "campaign.read":{},
+    "share.create":{"grantId":"grant-a","artifactId":"artifact-a","artifactDigest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},
+    "share.revoke":{"grantId":"grant-a","reason":"owner-revoked"},
+    "merge.create":{"terminalManifestDigests":["sha256:1111111111111111111111111111111111111111111111111111111111111111","sha256:2222222222222222222222222222222222222222222222222222222222222222"],"policyId":"policy-a"},
+    "merge.read":{},
+    "provenance.read":{"nodeId":"finding-a"},
+    "report.read":{"reportId":"report-a"},
+    "report.publish":{"reportId":"report-a","reportDigest":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+  }
+}
