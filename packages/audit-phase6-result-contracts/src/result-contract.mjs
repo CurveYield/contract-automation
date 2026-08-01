@@ -50,7 +50,11 @@ export function createPhase6ToolResultEnvelope(profileId, result) {
   const identity = PHASE6_PROFILE_RESULT_IDENTITIES[profileId];
   if (!identity) fail('invalid_profile_id', '$.profileId');
   const safeResult = sanitizePhase6ExternalValue(result, '$.result');
-  const envelope = { schemaVersion: PHASE6_RESULT_ENVELOPE_SCHEMA_VERSION, profileId, ...identity, outcome: safeResult.outcome, result: safeResult, summary: summaryFor(safeResult) };
+  let normalized;
+  try { normalized = validateFormalResult(safeResult); } catch (error) { remapError(error, '$.result'); }
+  if (canonicalJson(normalized) !== canonicalJson(safeResult)) fail('noncanonical_result', '$.result');
+  if (normalized.profileId !== profileId) fail('identity_mismatch', '$.result.profileId');
+  const envelope = { schemaVersion: PHASE6_RESULT_ENVELOPE_SCHEMA_VERSION, profileId, ...identity, outcome: normalized.outcome, result: normalized, summary: summaryFor(normalized) };
   return validatePhase6ToolResult(envelope);
 }
 export { PHASE6_RESULT_CONTRACT_VERSION, PHASE6_RESULT_ENVELOPE_SCHEMA_VERSION };
