@@ -1,0 +1,18 @@
+{
+  "protocolVersion": 1,
+  "eventId": "work-package-and-report-policy-updated-20260801T135300Z",
+  "eventType": "orchestration_policy_updated",
+  "actor": "orchestrator",
+  "occurredAt": "2026-08-01T13:53:00Z",
+  "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
+  "workPackagePolicy": ".agent-control/v1/WORK_PACKAGE_POLICY_v2.md",
+  "supersedesWorkPackagePolicy": ".agent-control/v1/WORK_PACKAGE_POLICY_v1.md",
+  "changes": [
+    "the current immutable assignment issue is the sole valid report destination",
+    "workers must re-fetch the assignment immediately before posting and re-fetch the issue afterward",
+    "completed status must include the exact issue-comment URL and numeric comment ID",
+    "future packages default to the largest coherent 60-120 minute scope that remains reliably completable",
+    "every assignment requires an explicit active-worker writable-path overlap check"
+  ],
+  "reason": "Worker 3 retained stale prior-issue context despite a newer immutable assignment, exposing ambiguity that the prior protocol did not catch at report-write time."
+}
