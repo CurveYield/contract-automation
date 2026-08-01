@@ -1,7 +1,13 @@
-import { ConditionalWriteError, classifyR2Operation } from '../../audit-r2-store/src/index.mjs';
 import { canonicalJson, sha256Hex } from '../../audit-fork-protocol/src/index.mjs';
 
 const DECODER = new TextDecoder();
+
+function classifyR2Operation(method) {
+  if (method === 'put') return 'class-a';
+  if (method === 'get' || method === 'head') return 'class-b';
+  if (method === 'delete') return 'free';
+  throw new TypeError(`Unsupported R2 operation: ${method}`);
+}
 
 export class ForkStateError extends Error {
   constructor(code, message) {
@@ -85,7 +91,7 @@ export class ForkStorage {
     try {
       return await this.put(key, serialized, { onlyIf: { etagDoesNotMatch: '*' } });
     } catch (cause) {
-      if (!(cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed')) throw cause;
+      if (cause?.code !== 'precondition_failed') throw cause;
       const existing = await this.get(key);
       if (!existing) throw new ForkStateError('immutable_conflict', `Missing existing object at ${key}`);
       if (value instanceof Uint8Array) {
@@ -120,7 +126,7 @@ export class ForkStorage {
         );
         return index;
       } catch (cause) {
-        if (!(cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed')) throw cause;
+        if (cause?.code !== 'precondition_failed') throw cause;
       }
     }
     throw new ForkStateError('index_conflict', `Unable to update index ${key}`);
