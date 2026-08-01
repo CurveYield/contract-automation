@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-2",
+  "state": "completed",
+  "lastConsumedSequence": 0,
+  "activeSequence": null,
+  "activeMessageId": null,
+  "issueNumber": 46,
+  "branch": "audit-phase4/parsers-fixtures-v3",
+  "startingSha": "6d26ef2fa73d04acb732e1ed1ab2ef385791f724",
+  "finalSha": "353c1dc743b8657ea6f15f5a15954603beb78656",
+  "recommendation": "ACCEPT",
+  "reportReference": "issue:46",
+  "blockers": [],
+  "updatedAt": "2026-08-01T11:17:08Z"
+}
