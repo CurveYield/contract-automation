@@ -126,7 +126,7 @@ test('scoped storage keys are deterministic and never request prefix listing',()
 
 test('server-owned index updates require exact CAS and expose billing trace',()=>{
   const etag=d('e');
-  const plan=planConditionalIndexUpdate({indexKey:'tenants/tenant-a/workspaces/workspace-a/indexes/campaigns-v1.json',currentEtag:etag,expectedEtag:etag,recordId:'campaign-a',recordDigest:d('c'),estimatedBytes:1024});
+  const plan=planConditionalIndexUpdate({tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',indexKind:'campaigns',currentEtag:etag,expectedEtag:etag,recordId:'campaign-a',recordDigest:d('c'),estimatedBytes:1024});
   assert.deepEqual(plan.summary,{classA:1,classB:1,bytes:1024});assert.equal(plan.serverOwnedIndex,true);assert.equal(plan.usesPrefixListing,false);
-  assert.throws(()=>planConditionalIndexUpdate({indexKey:'tenants/tenant-a/workspaces/workspace-a/indexes/campaigns-v1.json',currentEtag:etag,expectedEtag:d('f'),recordId:'campaign-a',recordDigest:d('c'),estimatedBytes:1024}),{code:'stale_write'});
+  assert.throws(()=>planConditionalIndexUpdate({tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',indexKind:'campaigns',currentEtag:etag,expectedEtag:d('f'),recordId:'campaign-a',recordDigest:d('c'),estimatedBytes:1024}),{code:'stale_write'});
 });
