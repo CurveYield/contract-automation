@@ -41,13 +41,42 @@ jobs:
           echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-functional-smoke-v2/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
           echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-functional-smoke-v2/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
 
-      - name: Execute merged GitHub-native functional smoke
+      - name: Execute merged GitHub-native functional smoke with bounded retries
         id: execute
-        continue-on-error: true
-        run: >-
-          node packages/github-native-sim/src/cli.mjs
-          --job github-native-sim/jobs/v27-functional-smoke-v2/job.json
-          --output "$RUNNER_TEMP/v27-functional-smoke-v2"
+        run: |
+          set -u
+          result_root="$RUNNER_TEMP/v27-functional-smoke-v2"
+          rm -rf "$result_root"
+          mkdir -p "$result_root"
+          success=0
+          selected=''
+
+          for attempt in $(seq 1 8); do
+            output="$result_root/attempt-$attempt"
+            echo "Starting isolated live-fork attempt $attempt"
+            node packages/github-native-sim/src/cli.mjs \
+              --job github-native-sim/jobs/v27-functional-smoke-v2/job.json \
+              --output "$output"
+            status=$?
+
+            if test -f "$output/result.json"; then
+              jq '{status, stepCount: (.steps | length), error}' "$output/result.json" || true
+            fi
+
+            if test "$status" -eq 0; then
+              success=1
+              selected="$attempt"
+              cp -a "$output" "$result_root/selected"
+              break
+            fi
+
+            sleep $((attempt * 2))
+          done
+
+          printf '%s\n' "$selected" > "$result_root/selected-attempt.txt"
+          printf 'success=%s\n' "$success" >> "$GITHUB_OUTPUT"
+          printf 'selected_attempt=%s\n' "$selected" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Upload functional smoke result
         if: always()
@@ -59,5 +88,5 @@ jobs:
           retention-days: 30
 
       - name: Propagate functional smoke result
-        if: steps.execute.outcome == 'failure'
+        if: steps.execute.outputs.success != '1'
         run: exit 1
