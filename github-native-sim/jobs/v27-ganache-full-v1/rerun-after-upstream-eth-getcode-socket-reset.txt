@@ -1,0 +1,1 @@
+Manual one-shot rerun after GitHub Actions run 30724068249 reached Ganache preflight and the upstream read transport reset while fetching Yearn bytecode through eth_getCode. No state-changing Ganache call had started. This marker triggers one explicit rerun; the simulation runner itself has no retry loop.
