@@ -1,0 +1,22 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-3-checkpoint1-repair-required-v1-000005",
+  "workerId": "worker-3",
+  "sequence": 4,
+  "issueNumber": 91,
+  "branch": "audit-phase8/clean-room-control-merge-v1",
+  "checkpointSha": "45b9f12e90bd546b3f677f5508d2d3ce99df02c8",
+  "state": "checkpoint_repair_required",
+  "requiredRepairs": [
+    "derive server-owned index keys from closed identities and index kinds",
+    "bind visibility to read authorization and allowed role/lifecycle state",
+    "strict dense bounded validation for all grant and revocation arrays",
+    "complete hostile-reflection normalization",
+    "enforce encoded canonical byte limit",
+    "remove or justify Node-only crypto dependency for current-stack runtime",
+    "use canonical class-a/class-b operation vocabulary",
+    "split independent Phase 8 concerns into reviewable modules"
+  ],
+  "authoritativeCommentId": 5152426552,
+  "issuedAt": "2026-08-01T17:00:00Z"
+}
