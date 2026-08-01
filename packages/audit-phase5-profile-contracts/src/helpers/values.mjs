@@ -63,4 +63,3 @@ export function knownProfile(profileId) {
   if (!templateValue) throw new ValidationError('unknown_profile_id', `Unsupported Phase 5 profileId: ${profileId}`, '$.profileId');
   return templateValue;
 }
-

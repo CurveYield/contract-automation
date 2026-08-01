@@ -78,4 +78,3 @@ export function parseEchidna(profileId, parserVersion, prepared, root) {
     summary
   });
 }
-

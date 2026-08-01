@@ -15,4 +15,3 @@ export function canonicalInstant(value, path = '$.publishedAt') {
   }
   return value;
 }
-

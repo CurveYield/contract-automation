@@ -80,4 +80,3 @@ export function validatePhase5ProfileConfiguration(profileId, configuration) {
   }
   return structuredClone(result);
 }
-

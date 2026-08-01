@@ -69,4 +69,3 @@ export function exactKeys(value, expected, path = '$') {
     if (!(key in value)) throw new ValidationError('missing_field', `${path}.${key} is required`, `${path}.${key}`);
   }
 }
-

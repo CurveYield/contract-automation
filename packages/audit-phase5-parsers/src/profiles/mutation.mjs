@@ -62,4 +62,3 @@ export function parseMutation(profileId, parserVersion, prepared, root) {
     summary
   });
 }
-

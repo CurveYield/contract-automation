@@ -56,4 +56,3 @@ export function parseHardhat(profileId, parserVersion, prepared, root) {
     summary
   });
 }
-

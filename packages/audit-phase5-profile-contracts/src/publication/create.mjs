@@ -26,4 +26,3 @@ export function createPublishedPhase5ProfileContract(profileId, publication) {
     publishedAt: canonicalInstant(publication.publishedAt, '$.publication.publishedAt')
   });
 }
-
