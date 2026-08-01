@@ -214,17 +214,6 @@ function validateGrant(grant) {
   if (typeof grant.signature !== 'string' || grant.signature.length < 1 || grant.signature.length > 512) throw new ValidationError('invalid_signature', '$.grant.signature is invalid', '$.grant.signature');
   return structuredClone(grant);
 }
-function validateTenantIndex(index, tenantId, workspaceId) {
-  object(index, '$.tenantIndex'); scanAuditForbiddenFields(index, '$.tenantIndex');
-  const names = new Set(['schemaVersion', 'tenantId', 'workspaces', 'records']);
-  allowed(index, names, '$.tenantIndex'); required(index, new Set(['schemaVersion', 'tenantId', 'workspaces']), '$.tenantIndex');
-  if (index.schemaVersion !== 'tenant-workspaces-v1') throw new ValidationError('invalid_schema_version', '$.tenantIndex.schemaVersion must be tenant-workspaces-v1', '$.tenantIndex.schemaVersion');
-  if (index.tenantId !== tenantId) throw new ValidationError('tenant_mismatch', '$.tenantIndex.tenantId must match', '$.tenantIndex.tenantId');
-  if (!Array.isArray(index.workspaces) || !index.workspaces.includes(workspaceId)) throw new ValidationError('invalid_workspace_index', '$.tenantIndex.workspaces must include the workspace', '$.tenantIndex.workspaces');
-  index.workspaces.forEach((id, i) => assertAuditId(id, 'workspace', `$.tenantIndex.workspaces[${i}]`));
-  if (index.records !== undefined) object(index.records, '$.tenantIndex.records');
-  return structuredClone(index);
-}
 function validateStoredTenantIndex(index, tenantId) {
   object(index, '$.storedTenantIndex'); scanAuditForbiddenFields(index, '$.storedTenantIndex');
   const names = new Set(['schemaVersion', 'tenantId', 'workspaces', 'records']);
@@ -239,6 +228,20 @@ function validateStoredTenantIndex(index, tenantId) {
 function emptyTenantIndex(tenantId) {
   return { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [], records: {} };
 }
+function validateStoredLayerIndex(index, workspaceId) {
+  object(index, '$.storedLayerIndex'); scanAuditForbiddenFields(index, '$.storedLayerIndex');
+  const names = new Set(['schemaVersion', 'workspaceId', 'layers', 'records']);
+  allowed(index, names, '$.storedLayerIndex'); required(index, new Set(['schemaVersion', 'workspaceId', 'layers']), '$.storedLayerIndex');
+  if (index.schemaVersion !== 'workspace-layer-index-v1' || index.workspaceId !== workspaceId || !Array.isArray(index.layers)) {
+    throw new ValidationError('invalid_layer_index', 'Stored workspace layer index is invalid', '$.storedLayerIndex');
+  }
+  index.layers.forEach((id, i) => assertAuditId(id, 'layer', `$.storedLayerIndex.layers[${i}]`));
+  if (index.records !== undefined) object(index.records, '$.storedLayerIndex.records');
+  return structuredClone(index);
+}
+function emptyLayerIndex(workspaceId) {
+  return { schemaVersion: 'workspace-layer-index-v1', workspaceId, layers: [], records: {} };
+}
 function indexCondition(etag) { return etag ? { etagMatches: etag } : { etagDoesNotMatch: '*' }; }
 function assertExpectedIndexEtag(expected, record) {
   if (expected === undefined) return;
@@ -247,12 +250,12 @@ function assertExpectedIndexEtag(expected, record) {
 async function putImmutable(store, key, value, verifyExisting) {
   try {
     await store.put(key, value, { onlyIf: { etagDoesNotMatch: '*' } });
-    return false;
+    return null;
   } catch (error) {
     if (!(error instanceof ConditionalWriteError)) throw error;
     const existing = await store.get(key);
     if (!existing || !(await verifyExisting(existing))) throw error;
-    return true;
+    return existing;
   }
 }
 
@@ -271,10 +274,9 @@ export class WorkspaceService {
   }
   async sealUploadedWorkspace(input) {
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['workspaceId', 'grant', 'tenantIndex', 'indexEtag'])); required(input, new Set(['workspaceId', 'grant', 'tenantIndex']));
+    allowed(input, new Set(['workspaceId', 'grant', 'indexEtag'])); required(input, new Set(['workspaceId', 'grant']));
     assertAuditId(input.workspaceId, 'workspace', '$.workspaceId');
     const grant = validateGrant(input.grant);
-    validateTenantIndex(input.tenantIndex, grant.tenantId, input.workspaceId);
     const now = this.currentInstant();
     if (new Date(grant.expiresAt).getTime() <= now.getTime()) throw new ValidationError('expired_grant', 'Upload grant has expired', '$.grant.expiresAt');
     if (!(await this.verifyGrant(canonicalGrantPayload(grant), grant.signature))) throw new ValidationError('invalid_signature', 'Upload grant signature is invalid', '$.grant.signature');
@@ -297,67 +299,89 @@ export class WorkspaceService {
     });
     const seal = { schemaVersion: 'workspace-seal-v1', workspaceId: input.workspaceId, tenantId: grant.tenantId, sourceManifestKey: workspaceSourceManifestKey(input.workspaceId), sourceSha256: grant.sha256, sealedAt: manifest.sealedAt };
     const currentIndex = indexRecord ? validateStoredTenantIndex(json(indexRecord), grant.tenantId) : emptyTenantIndex(grant.tenantId);
-    const storedIndex = {
-      ...currentIndex,
-      workspaces: [...new Set([...currentIndex.workspaces, input.workspaceId])].sort(),
-      records: { ...(currentIndex.records ?? {}), [input.workspaceId]: { sourceKind: 'upload', sourceSha256: grant.sha256, sealedAt: manifest.sealedAt } }
-    };
     const archiveExisting = await putImmutable(this.store, durableKey, bytes, async (existing) => existing.size === bytes.byteLength && await digestHex(toBytes(existing.value)) === grant.sha256);
     const manifestExisting = await putImmutable(this.store, workspaceSourceManifestKey(input.workspaceId), JSON.stringify(manifest), async (existing) => {
       const parsed = json(existing);
       return parsed?.workspaceId === input.workspaceId && parsed?.tenantId === grant.tenantId && parsed?.sourceSha256 === grant.sha256 && parsed?.sourceObjectKey === durableKey;
     });
+    const effectiveManifest = manifestExisting ? validateWorkspaceManifest(json(manifestExisting)) : manifest;
     const sealExisting = await putImmutable(this.store, workspaceSealKey(input.workspaceId), JSON.stringify(seal), async (existing) => {
       const parsed = json(existing);
       return parsed?.workspaceId === input.workspaceId && parsed?.tenantId === grant.tenantId && parsed?.sourceSha256 === grant.sha256;
     });
+    const storedIndex = {
+      ...currentIndex,
+      workspaces: [...new Set([...currentIndex.workspaces, input.workspaceId])].sort(),
+      records: { ...(currentIndex.records ?? {}), [input.workspaceId]: { sourceKind: 'upload', sourceSha256: grant.sha256, sealedAt: effectiveManifest.sealedAt } }
+    };
     await this.store.put(indexKey, JSON.stringify(storedIndex), { onlyIf: indexCondition(indexRecord?.etag) });
-    return Object.freeze({ workspaceId: input.workspaceId, manifest: Object.freeze(manifest), idempotent: archiveExisting || manifestExisting || sealExisting });
+    return Object.freeze({ workspaceId: input.workspaceId, manifest: Object.freeze(effectiveManifest), idempotent: Boolean(archiveExisting || manifestExisting || sealExisting) });
   }
   async importGitHubWorkspace(input) {
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['workspaceId', 'source', 'archiveBytes', 'tenantIndex', 'indexEtag'])); required(input, new Set(['workspaceId', 'source', 'archiveBytes', 'tenantIndex']));
+    allowed(input, new Set(['workspaceId', 'source', 'archiveBytes', 'indexEtag'])); required(input, new Set(['workspaceId', 'source', 'archiveBytes']));
     assertAuditId(input.workspaceId, 'workspace', '$.workspaceId');
     const source = validateGitHubWorkspaceSource(input.source);
     const bytes = toBytes(input.archiveBytes);
     if (bytes.byteLength !== source.bytes) throw new ValidationError('size_mismatch', 'GitHub source size does not match metadata', '$.source.bytes');
     if (await digestHex(bytes) !== source.archiveSha256) throw new ValidationError('digest_mismatch', 'GitHub source digest does not match metadata', '$.source.archiveSha256');
-    const inspected = await inspectZipArchive(bytes); const now = this.currentInstant().toISOString();
+    const inspected = await inspectZipArchive(bytes);
+    const indexKey = tenantWorkspaceIndexKey(source.tenantId);
+    const indexRecord = await this.store.get(indexKey);
+    assertExpectedIndexEtag(input.indexEtag, indexRecord);
+    const currentIndex = indexRecord ? validateStoredTenantIndex(json(indexRecord), source.tenantId) : emptyTenantIndex(source.tenantId);
+    const now = this.currentInstant().toISOString();
     const archiveKey = workspaceSourceArchiveKey(input.workspaceId);
     const manifest = validateWorkspaceManifest({ schemaVersion: 'workspace-manifest-v1', workspaceId: input.workspaceId, tenantId: source.tenantId, sourceKind: 'github', sourceSha256: source.archiveSha256, sourceBytes: source.bytes, sourceObjectKey: archiveKey, sealedAt: now, canonicalArchiveSha256: inspected.canonicalArchiveSha256, fileCount: inspected.fileCount });
     const seal = { schemaVersion: 'workspace-seal-v1', workspaceId: input.workspaceId, tenantId: source.tenantId, sourceManifestKey: workspaceSourceManifestKey(input.workspaceId), sourceSha256: source.archiveSha256, sealedAt: now, repository: source.repository, commitSha: source.commitSha, refName: source.refName };
-    const suppliedIndex = validateTenantIndex(input.tenantIndex, source.tenantId, input.workspaceId);
-    const storedIndex = { ...suppliedIndex, workspaces: [...new Set(suppliedIndex.workspaces)].sort(), records: { ...(suppliedIndex.records ?? {}), [input.workspaceId]: { sourceKind: 'github', sourceSha256: source.archiveSha256, repository: source.repository, commitSha: source.commitSha, sealedAt: now } } };
-    await this.store.put(archiveKey, bytes, { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(workspaceSourceManifestKey(input.workspaceId), JSON.stringify(manifest), { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(workspaceSealKey(input.workspaceId), JSON.stringify(seal), { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(tenantWorkspaceIndexKey(source.tenantId), JSON.stringify(storedIndex), { onlyIf: indexCondition(input.indexEtag) });
-    return Object.freeze({ workspaceId: input.workspaceId, manifest: Object.freeze(manifest) });
+    const archiveExisting = await putImmutable(this.store, archiveKey, bytes, async (existing) => existing.size === bytes.byteLength && await digestHex(toBytes(existing.value)) === source.archiveSha256);
+    const manifestExisting = await putImmutable(this.store, workspaceSourceManifestKey(input.workspaceId), JSON.stringify(manifest), async (existing) => {
+      const parsed = json(existing);
+      return parsed?.workspaceId === input.workspaceId && parsed?.tenantId === source.tenantId && parsed?.sourceSha256 === source.archiveSha256 && parsed?.sourceObjectKey === archiveKey;
+    });
+    const effectiveManifest = manifestExisting ? validateWorkspaceManifest(json(manifestExisting)) : manifest;
+    const sealExisting = await putImmutable(this.store, workspaceSealKey(input.workspaceId), JSON.stringify(seal), async (existing) => {
+      const parsed = json(existing);
+      return parsed?.workspaceId === input.workspaceId && parsed?.tenantId === source.tenantId && parsed?.sourceSha256 === source.archiveSha256 && parsed?.commitSha === source.commitSha;
+    });
+    const storedIndex = {
+      ...currentIndex,
+      workspaces: [...new Set([...currentIndex.workspaces, input.workspaceId])].sort(),
+      records: { ...(currentIndex.records ?? {}), [input.workspaceId]: { sourceKind: 'github', sourceSha256: source.archiveSha256, repository: source.repository, commitSha: source.commitSha, sealedAt: effectiveManifest.sealedAt } }
+    };
+    await this.store.put(indexKey, JSON.stringify(storedIndex), { onlyIf: indexCondition(indexRecord?.etag) });
+    return Object.freeze({ workspaceId: input.workspaceId, manifest: Object.freeze(effectiveManifest), idempotent: Boolean(archiveExisting || manifestExisting || sealExisting) });
   }
   async attachLayer(input) {
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['archiveBytes', 'manifest', 'layerIndex', 'indexEtag', 'eventBatch'])); required(input, new Set(['archiveBytes', 'manifest', 'layerIndex', 'eventBatch']));
+    allowed(input, new Set(['archiveBytes', 'manifest', 'indexEtag', 'eventBatch'])); required(input, new Set(['archiveBytes', 'manifest', 'eventBatch']));
     const manifest = validateLayerManifest(input.manifest); const bytes = toBytes(input.archiveBytes);
     if (bytes.byteLength !== manifest.archiveBytes) throw new ValidationError('size_mismatch', 'Layer archive size does not match manifest', '$.manifest.archiveBytes');
     if (await digestHex(bytes) !== manifest.archiveSha256) throw new ValidationError('digest_mismatch', 'Layer archive digest does not match manifest', '$.manifest.archiveSha256');
     if (manifest.archiveObjectKey !== layerArchiveKey(manifest.workspaceId, manifest.layerId)) throw new ValidationError('invalid_object_key', 'Layer archive object key is not deterministic', '$.manifest.archiveObjectKey');
-    const index = this.validateLayerIndex(input.layerIndex, manifest.workspaceId, manifest.layerId);
     const event = this.validateEventBatch(input.eventBatch, manifest.workspaceId, manifest.layerId);
-    await this.store.put(manifest.archiveObjectKey, bytes, { onlyIf: { etagDoesNotMatch: '*' } });
-    const verified = await this.store.get(manifest.archiveObjectKey);
+    const indexKey = workspaceLayerIndexKey(manifest.workspaceId);
+    const indexRecord = await this.store.get(indexKey);
+    assertExpectedIndexEtag(input.indexEtag, indexRecord);
+    const currentIndex = indexRecord ? validateStoredLayerIndex(json(indexRecord), manifest.workspaceId) : emptyLayerIndex(manifest.workspaceId);
+    const storedIndex = {
+      ...currentIndex,
+      layers: [...new Set([...currentIndex.layers, manifest.layerId])].sort(),
+      records: { ...(currentIndex.records ?? {}), [manifest.layerId]: { attached: true } }
+    };
+    const archiveExisting = await putImmutable(this.store, manifest.archiveObjectKey, bytes, async (existing) => existing.size === bytes.byteLength && await digestHex(toBytes(existing.value)) === manifest.archiveSha256);
+    const verified = archiveExisting ?? await this.store.get(manifest.archiveObjectKey);
     if (!verified || verified.size !== bytes.byteLength) throw new ValidationError('verification_failed', 'Layer archive verification failed', '$.archiveBytes');
-    await this.store.put(`workspaces/${manifest.workspaceId}/layers/${manifest.layerId}-manifest-v1.json`, JSON.stringify(manifest), { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(workspaceLayerIndexKey(manifest.workspaceId), JSON.stringify(index), { onlyIf: indexCondition(input.indexEtag) });
-    await this.store.put(workspaceEventBatchKey(manifest.workspaceId, event.batchId), `${JSON.stringify(event)}\n`, { onlyIf: { etagDoesNotMatch: '*' } });
-    return Object.freeze({ workspaceId: manifest.workspaceId, layerId: manifest.layerId });
-  }
-  validateLayerIndex(index, workspaceId, layerId) {
-    object(index, '$.layerIndex'); scanAuditForbiddenFields(index, '$.layerIndex');
-    const names = new Set(['schemaVersion', 'workspaceId', 'layers', 'records']); allowed(index, names, '$.layerIndex'); required(index, new Set(['schemaVersion', 'workspaceId', 'layers']), '$.layerIndex');
-    if (index.schemaVersion !== 'workspace-layer-index-v1' || index.workspaceId !== workspaceId) throw new ValidationError('invalid_layer_index', 'Layer index identity is invalid', '$.layerIndex');
-    if (!Array.isArray(index.layers) || !index.layers.includes(layerId)) throw new ValidationError('invalid_layer_index', 'Layer index must include the layer', '$.layerIndex.layers');
-    index.layers.forEach((id, i) => assertAuditId(id, 'layer', `$.layerIndex.layers[${i}]`));
-    return { ...structuredClone(index), layers: [...new Set(index.layers)].sort(), records: { ...(index.records ?? {}), [layerId]: { attached: true } } };
+    const manifestKey = `workspaces/${manifest.workspaceId}/layers/${manifest.layerId}-manifest-v1.json`;
+    const manifestExisting = await putImmutable(this.store, manifestKey, JSON.stringify(manifest), async (existing) => {
+      const parsed = json(existing);
+      return parsed?.workspaceId === manifest.workspaceId && parsed?.layerId === manifest.layerId && parsed?.archiveSha256 === manifest.archiveSha256;
+    });
+    const eventKey = workspaceEventBatchKey(manifest.workspaceId, event.batchId);
+    const eventValue = `${JSON.stringify(event)}\n`;
+    const eventExisting = await putImmutable(this.store, eventKey, eventValue, async (existing) => new TextDecoder().decode(toBytes(existing.value)) === eventValue);
+    await this.store.put(indexKey, JSON.stringify(storedIndex), { onlyIf: indexCondition(indexRecord?.etag) });
+    return Object.freeze({ workspaceId: manifest.workspaceId, layerId: manifest.layerId, idempotent: Boolean(archiveExisting || manifestExisting || eventExisting) });
   }
   validateEventBatch(batch, workspaceId, layerId) {
     object(batch, '$.eventBatch'); scanAuditForbiddenFields(batch, '$.eventBatch');
