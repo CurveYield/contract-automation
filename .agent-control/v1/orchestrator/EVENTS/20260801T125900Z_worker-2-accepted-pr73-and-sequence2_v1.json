@@ -1,0 +1,22 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-2-accepted-pr73-and-sequence2-20260801T125900Z",
+  "eventType": "worker_completion_accepted_and_reassigned",
+  "workerId": "worker-2",
+  "completedSequence": 1,
+  "completedIssueNumber": 57,
+  "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+  "finalSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
+  "recommendation": "ACCEPT",
+  "integrationPullRequest": 73,
+  "integrationBase": "audit-phase4/integration-v3",
+  "integrationState": "draft-review-open-not-merged",
+  "nextSequence": 2,
+  "nextMessageId": "worker-2-phase4-result-contract-hardening-v2-000002",
+  "nextIssueNumber": 74,
+  "nextBranch": "audit-phase4/result-contract-hardening-v2",
+  "nextStartingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
+  "assignmentBlobSha": "b3097615b40415cf2760d5f602d398a52d7b9763",
+  "changedPathCountReviewed": 13,
+  "decisionAt": "2026-08-01T12:59:00Z"
+}
