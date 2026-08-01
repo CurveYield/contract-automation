@@ -29,18 +29,36 @@ async function digest(bytes) {
   const result = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
   return [...result].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+function runningStatus(overrides = {}) {
+  return {
+    schemaVersion: 'audit-job-status-v1',
+    jobId,
+    campaignId,
+    state: 'running',
+    revision: 7,
+    highestLogSequence: 0,
+    updatedAt: '2026-07-31T12:19:00.000Z',
+    executionEnabled: false,
+    attemptId,
+    ...overrides
+  };
+}
 
-test('writes one immutable log chunk with one Class A operation and strict sequence/size limits', async () => {
+test('writes one bound log chunk with two Class A and one Class B operations', async () => {
   const store = new InMemoryAuditStore();
-  const service = new EvidenceService(store);
+  await store.put(jobStatusKey(jobId), JSON.stringify(runningStatus()));
+  const service = new EvidenceService(store, { now: () => new Date('2026-07-31T12:20:00.000Z') });
   const bytes = new TextEncoder().encode('slither output');
   const before = store.usage();
-  await service.appendLogChunk({ jobId, attemptId, sequence: 1, bytes });
-  assert.deepEqual(delta(store.usage(), before), { classA: 1, classB: 0, free: 0 });
+  const result = await service.appendLogChunk({ jobId, attemptId, sequence: 1, bytes });
+  assert.equal(result.highestLogSequence, 1);
+  assert.deepEqual(delta(store.usage(), before), { classA: 2, classB: 1, free: 0 });
   assert.ok(await store.head(logChunkKey(jobId, attemptId, 1)));
+  const retried = await service.appendLogChunk({ jobId, attemptId, sequence: 1, bytes });
+  assert.equal(retried.recoveredPartialWrite, true);
   await assert.rejects(() => service.appendLogChunk({ jobId, attemptId, sequence: 65, bytes }), /64/);
   await assert.rejects(() => service.appendLogChunk({ jobId, attemptId, sequence: 2, bytes: new Uint8Array(1_000_001) }), /1000000/);
-  await assert.rejects(() => service.appendLogChunk({ jobId, attemptId, sequence: 1, bytes }), /precondition/i);
+  await assert.rejects(() => service.appendLogChunk({ jobId, attemptId, sequence: 1, bytes: 'conflicting bytes' }), /conflict|match/i);
 });
 
 test('reads a typical eight-chunk log set with exactly nine Class B operations', async () => {
