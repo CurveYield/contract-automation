@@ -598,6 +598,7 @@ contract CurveYieldSdYBTwoDestinationStrategyV26 is OwnableTwoStepStrategyV26, R
         _coverMigrationLoss(userBackingBefore);
     }
 
+
     function _checkpointRewards() internal {
         (, uint256 expected) = _pendingYield(true);
         if (expected > MIN_HARVEST_SDYB && !_harvest(true, true)) revert RetirementIncomplete();
