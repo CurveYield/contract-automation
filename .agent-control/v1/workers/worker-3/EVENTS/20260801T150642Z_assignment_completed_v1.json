@@ -1,0 +1,18 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_completed",
+  "workerId": "worker-3",
+  "sequence": 2,
+  "messageId": "worker-3-phase5-result-contract-hardening-v2-000002",
+  "issueNumber": 76,
+  "branch": "audit-phase5/result-contract-hardening-v2",
+  "startingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+  "implementationSha": "40b5ad7e60ed255ad7723592d91967ca3b05513d",
+  "finalSha": "dd78a76f9546c85e79357a617b219067704c1616",
+  "recommendation": "ACCEPT WITH REPAIR",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/76#issuecomment-5151992271",
+  "reportCommentUrl": "https://github.com/CurveYield/contract-automation/issues/76#issuecomment-5151992271",
+  "reportCommentId": 5151992271,
+  "state": "completed",
+  "occurredAt": "2026-08-01T15:06:42Z"
+}
