@@ -19,14 +19,14 @@ const EXPECTED_BUDGETS = Object.freeze({
   createCampaign: { classA: 3, classB: 2, storageBytes: 64_000 },
   submitJob: { classA: 5, classB: 3, storageBytes: 128_000 },
   claimAttempt: { classA: 3, classB: 3, storageBytes: 64_000 },
-  heartbeat: { classA: 1, classB: 0, storageBytes: 0 },
+  heartbeat: { classA: 1, classB: 1, storageBytes: 0 },
   eventBatch: { classA: 1, classB: 0, storageBytes: 256_000 },
-  logChunk: { classA: 1, classB: 0, storageBytes: 1_000_000 },
+  logChunk: { classA: 2, classB: 1, storageBytes: 1_000_000 },
   readTypicalLogs: { classA: 0, classB: 9, storageBytes: 0 },
   rawArtifacts: { classA: 2, classB: 0, storageBytes: 15_000_000 },
   acceptEvidence: { classA: 4, classB: 1, storageBytes: 10_000_000 },
   publishReport: { classA: 3, classB: 0, storageBytes: 1_000_000 },
-  completeJob: { classA: 3, classB: 1, storageBytes: 32_000 },
+  completeJob: { classA: 3, classB: 2, storageBytes: 32_000 },
   pollJob: { classA: 0, classB: 1, storageBytes: 0 }
 });
 
@@ -61,20 +61,24 @@ test('trusted fixture continuation is internal, replay protected, and disabled b
   assert.doesNotMatch(wrangler, /AUDIT_TRUSTED_FIXTURE_ENABLED/);
 });
 
-test('campaign state uses deterministic ETag-protected objects and no listing', async () => {
+test('campaign state uses server-read ETag-protected objects and no listing', async () => {
   const campaigns = await read('packages/audit-campaigns/src/index.mjs');
   assert.match(campaigns, /jobStatusKey/);
   assert.match(campaigns, /campaignJobIndexKey/);
+  assert.match(campaigns, /await this\.store\.get\(jobStatusKey/);
   assert.match(campaigns, /etagMatches/);
   assert.match(campaigns, /etagDoesNotMatch/);
+  assert.doesNotMatch(campaigns, /currentStatus/);
   assert.doesNotMatch(campaigns, /ListObjects|\.list\s*\(/);
 });
 
-test('logs, artifacts, evidence, and reports remain bundled deterministic objects', async () => {
+test('logs bind chunks to authoritative status and remain bundled deterministic objects', async () => {
   const evidence = await read('packages/audit-evidence/src/index.mjs');
-  for (const required of ['logChunkKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
+  for (const required of ['jobStatusKey','logChunkKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
     assert.match(evidence, new RegExp(`\\b${required}\\b`), required);
   }
+  assert.match(evidence, /highestLogSequence\s*\+\s*1/);
+  assert.match(evidence, /attempt_mismatch/);
   assert.match(evidence, /MAX_RAW_ARTIFACT_BYTES\s*=\s*64_000_000/);
   assert.match(evidence, /MAX_EVIDENCE_BUNDLE_BYTES\s*=\s*50_000_000/);
   assert.match(evidence, /MAX_REPORT_BUNDLE_BYTES\s*=\s*10_000_000/);
