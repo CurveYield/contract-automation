@@ -2,9 +2,15 @@
   "protocolVersion": 1,
   "agentId": "orchestrator",
   "state": "idle",
-  "lastPollAt": "2026-08-01T11:40:00Z",
-  "lastProcessedEvent": "orchestrator-control-plane-initialized-20260801T112700Z",
+  "lastPollAt": "2026-08-01T12:34:00Z",
+  "lastProcessedEvent": "worker-completions-reviewed-and-reassigned-20260801T123400Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
-  "updatedAt": "2026-08-01T11:40:00Z"
+  "pendingActions": [
+    "Await Worker 0 acknowledgement of sequence 1 and issue #70 progress.",
+    "Await Worker 1 owner-written completed status for issue #53.",
+    "Await Worker 2 actual issue #57 commits and final report.",
+    "Await Worker 3 acknowledgement of sequence 1 and issue #71 progress."
+  ],
+  "updatedAt": "2026-08-01T12:34:00Z"
 }
