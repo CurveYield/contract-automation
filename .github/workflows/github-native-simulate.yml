@@ -1,0 +1,88 @@
+name: GitHub-Native Contract Simulation
+
+on:
+  push:
+    branches:
+      - 'github-native-sim/**'
+    paths:
+      - 'github-native-sim/jobs/**'
+  workflow_dispatch:
+    inputs:
+      job_path:
+        description: 'Committed job manifest path: github-native-sim/jobs/<job-id>/job.json'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-native-sim-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      RPC_BASE: ${{ secrets.RPC_BASE }}
+      RPC_KATANA: ${{ secrets.RPC_KATANA }}
+      RPC_FRAXTAL: ${{ secrets.RPC_FRAXTAL }}
+      RPC_ARBITRUM: ${{ secrets.RPC_ARBITRUM }}
+      RPC_POLYGON: ${{ secrets.RPC_POLYGON }}
+      RPC_OPTIMISM: ${{ secrets.RPC_OPTIMISM }}
+    steps:
+      - name: Check out trusted runner and committed job
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Select one isolated job
+        id: select
+        env:
+          MANUAL_JOB_PATH: ${{ inputs.job_path || '' }}
+        run: |
+          git fetch --no-tags origin "$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          changed_paths="$(git diff --name-only "origin/$DEFAULT_BRANCH...$GITHUB_SHA")"
+          selection="$(CHANGED_PATHS="$changed_paths" node packages/github-native-sim/src/select-job.mjs)"
+          job_id="$(printf '%s' "$selection" | jq -r '.jobId')"
+          job_root="$(printf '%s' "$selection" | jq -r '.jobRoot')"
+          job_path="$(printf '%s' "$selection" | jq -r '.jobPath')"
+          test -f "$job_path"
+          test -d "$job_root"
+          output_dir="$RUNNER_TEMP/github-native-sim-$job_id"
+          printf 'job_id=%s\n' "$job_id" >> "$GITHUB_OUTPUT"
+          printf 'job_path=%s\n' "$job_path" >> "$GITHUB_OUTPUT"
+          printf 'output_dir=%s\n' "$output_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Execute GitHub-native job
+        id: execute
+        continue-on-error: true
+        run: >-
+          node packages/github-native-sim/src/cli.mjs
+          --job "${{ steps.select.outputs.job_path }}"
+          --output "${{ steps.select.outputs.output_dir }}"
+
+      - name: Upload GitHub-native result
+        if: always() && steps.select.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-native-sim-${{ steps.select.outputs.job_id }}-${{ github.run_id }}
+          path: ${{ steps.select.outputs.output_dir }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Propagate simulation failure
+        if: steps.execute.outcome == 'failure'
+        run: exit 1
