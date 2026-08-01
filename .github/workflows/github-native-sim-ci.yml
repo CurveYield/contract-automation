@@ -1,0 +1,52 @@
+name: GitHub-Native Simulation CI
+
+on:
+  pull_request:
+    paths:
+      - 'packages/github-native-sim/**'
+      - 'github-native-sim/**'
+      - 'docs/github-native-simulation.md'
+      - 'docs/superpowers/specs/2026-08-01-github-native-simulation-design.md'
+      - 'docs/superpowers/plans/2026-08-01-github-native-simulation.md'
+      - '.github/workflows/github-native-sim-ci.yml'
+      - '.github/workflows/github-native-simulate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packages/github-native-sim/**'
+      - 'github-native-sim/**'
+      - 'docs/github-native-simulation.md'
+      - '.github/workflows/github-native-sim-ci.yml'
+      - '.github/workflows/github-native-simulate.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-native-sim-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run GitHub-native simulation tests
+        run: node --test packages/github-native-sim/test/*.test.mjs
+
+      - name: Check GitHub-native JavaScript syntax
+        run: find packages/github-native-sim -type f -name '*.mjs' -print0 | xargs -0 -r -n1 node --check
