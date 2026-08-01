@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {assertPhase6PackageCompatibility} from '../packages/audit-phase6-tool-catalog/src/index.mjs';test('Phase 6 package compatibility defaults are exact',()=>{assert.equal(assertPhase6PackageCompatibility().compatible,true);});
