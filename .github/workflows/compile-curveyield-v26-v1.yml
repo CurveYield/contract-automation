@@ -1,0 +1,166 @@
+name: Compile CurveYield V26 v1
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: compile-curveyield-v26-v1
+  cancel-in-progress: false
+
+jobs:
+  compile:
+    if: github.event.issue.user.login == 'James-Nexus' && contains(github.event.issue.body, '<!-- curveyield-v26-direct-compile-v1 -->')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Announce run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "<!-- curveyield-v26-compile-started -->\nGitHub Actions compile run ID: $RUN_ID"
+
+      - name: Check out isolated source branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/compile-curveyield-v26-v1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Compile Solidity 0.8.28 contracts and measure bytecode
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs/promises';
+          import path from 'node:path';
+          import crypto from 'node:crypto';
+          import { compileProject } from './packages/runner/src/compiler.mjs';
+
+          const jobRoot = 'jobs/compile-curveyield-v26-v1';
+          const contractsDir = path.join(jobRoot, 'contracts');
+          const targets = [
+            ['CurveYieldSdYBHybridVaultV26.sol', 'CurveYieldSdYBHybridVaultV26'],
+            ['CurveYieldSdYBRewardConverterV26.sol', 'CurveYieldSdYBRewardConverterV26'],
+            ['CurveYieldSdYBTwoDestinationStrategyV26.sol', 'CurveYieldSdYBTwoDestinationStrategyV26']
+          ];
+          const sources = {};
+          for (const [file] of targets) {
+            const sourceName = `contracts/${file}`;
+            sources[sourceName] = await fs.readFile(path.join(contractsDir, file), 'utf8');
+          }
+
+          const compilerVersion = '0.8.28';
+          const settings = { optimizer: { enabled: true, runs: 200 }, viaIR: false };
+          const { artifacts, diagnostics, input } = await compileProject({ sources, compilerVersion, settings });
+          const outDir = 'compiled';
+          await fs.mkdir(outDir, { recursive: true });
+
+          const byteLength = (hex) => Math.max(0, (hex.replace(/^0x/, '').length / 2));
+          const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
+          const EIP170_LIMIT = 24576;
+          const EIP3860_LIMIT = 49152;
+          const sizes = [];
+
+          for (const [file, contractName] of targets) {
+            const sourceName = `contracts/${file}`;
+            const artifact = artifacts.get(contractName, sourceName);
+            const creationBytes = byteLength(artifact.bytecode);
+            const runtimeBytes = byteLength(artifact.deployedBytecode);
+            const record = {
+              compilerVersion,
+              optimizer: settings.optimizer,
+              viaIR: settings.viaIR,
+              sourceName,
+              contractName,
+              creationBytecodeBytes: creationBytes,
+              deployedRuntimeBytecodeBytes: runtimeBytes,
+              eip3860InitcodeLimitBytes: EIP3860_LIMIT,
+              eip3860InitcodeHeadroomBytes: EIP3860_LIMIT - creationBytes,
+              eip170RuntimeLimitBytes: EIP170_LIMIT,
+              eip170RuntimeHeadroomBytes: EIP170_LIMIT - runtimeBytes,
+              abi: artifact.abi,
+              metadata: artifact.metadata,
+              storageLayout: artifact.storageLayout,
+              methodIdentifiers: artifact.methodIdentifiers,
+              bytecode: artifact.bytecode,
+              deployedBytecode: artifact.deployedBytecode
+            };
+            const artifactJson = `${JSON.stringify(record, null, 2)}\n`;
+            await fs.writeFile(path.join(outDir, `${contractName}.artifact.json`), artifactJson);
+            await fs.writeFile(path.join(outDir, `${contractName}.abi.json`), `${JSON.stringify(artifact.abi, null, 2)}\n`);
+            await fs.writeFile(path.join(outDir, `${contractName}.creation.bin`), `${artifact.bytecode.replace(/^0x/, '')}\n`);
+            await fs.writeFile(path.join(outDir, `${contractName}.runtime.bin`), `${artifact.deployedBytecode.replace(/^0x/, '')}\n`);
+            sizes.push({
+              contractName,
+              sourceName,
+              creationBytecodeBytes: creationBytes,
+              deployedRuntimeBytecodeBytes: runtimeBytes,
+              eip3860InitcodeHeadroomBytes: EIP3860_LIMIT - creationBytes,
+              eip170RuntimeHeadroomBytes: EIP170_LIMIT - runtimeBytes,
+              artifactSha256: sha256(artifactJson)
+            });
+          }
+
+          await fs.writeFile(path.join(outDir, 'compiler-input.json'), `${JSON.stringify(input, null, 2)}\n`);
+          await fs.writeFile(path.join(outDir, 'compiler-diagnostics.json'), `${JSON.stringify(diagnostics, null, 2)}\n`);
+          await fs.writeFile(path.join(outDir, 'contract-sizes-v1.json'), `${JSON.stringify({ compilerVersion, optimizer: settings.optimizer, viaIR: settings.viaIR, contracts: sizes }, null, 2)}\n`);
+
+          const rows = sizes.map((item) => `| ${item.contractName} | ${item.creationBytecodeBytes.toLocaleString('en-US')} | ${item.deployedRuntimeBytecodeBytes.toLocaleString('en-US')} | ${item.eip170RuntimeHeadroomBytes.toLocaleString('en-US')} |`);
+          const summary = [
+            '# CurveYield V26 compilation results v1',
+            '',
+            '- Compiler: Solidity 0.8.28',
+            '- Optimizer: enabled, 200 runs',
+            '- viaIR: false',
+            '- Compilation location: GitHub Actions',
+            '',
+            '| Contract | Creation bytecode (bytes) | Runtime bytecode (bytes) | EIP-170 runtime headroom (bytes) |',
+            '|---|---:|---:|---:|',
+            ...rows,
+            ''
+          ].join('\n');
+          await fs.writeFile(path.join(outDir, 'COMPILATION_SUMMARY_v1.md'), summary);
+          console.log(summary);
+          NODE
+
+      - name: Upload compiled artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: curveyield-v26-compiled-v1
+          path: compiled/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish size summary
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          {
+            echo '<!-- curveyield-v26-compile-completed -->'
+            echo "GitHub Actions compile run ID: $RUN_ID"
+            echo
+            cat compiled/COMPILATION_SUMMARY_v1.md
+          } > /tmp/comment.md
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/comment.md
+
+      - name: Publish failure marker
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "<!-- curveyield-v26-compile-failed -->\nGitHub Actions compile run $RUN_ID failed."
