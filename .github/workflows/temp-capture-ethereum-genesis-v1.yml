@@ -23,7 +23,10 @@ jobs:
         with:
           node-version: '22'
       - name: Capture canonical Ethereum genesis response
-        run: node scripts/temp-capture-ethereum-genesis.mjs | tee ethereum-genesis-capture.log
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/temp-capture-ethereum-genesis.mjs | tee ethereum-genesis-capture.log
       - name: Upload captured public response
         if: always()
         uses: actions/upload-artifact@v4
@@ -31,6 +34,8 @@ jobs:
           name: ethereum-genesis-rpc-response-v1
           path: |
             ethereum-genesis-rpc-response.json
+            ethereum-genesis-rpc-response.sha256
+            ethereum-genesis-rpc-response-source.txt
             ethereum-genesis-capture.log
           if-no-files-found: error
           retention-days: 7
