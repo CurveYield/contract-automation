@@ -23,14 +23,14 @@ const EXPECTED_BUDGETS = Object.freeze({
   eventBatch: { classA: 1, classB: 0, storageBytes: 256_000 },
   logChunk: { classA: 2, classB: 1, storageBytes: 1_000_000 },
   readTypicalLogs: { classA: 0, classB: 9, storageBytes: 0 },
-  rawArtifacts: { classA: 2, classB: 0, storageBytes: 15_000_000 },
-  acceptEvidence: { classA: 4, classB: 1, storageBytes: 10_000_000 },
-  publishReport: { classA: 3, classB: 1, storageBytes: 1_000_000 },
+  rawArtifacts: { classA: 2, classB: 2, storageBytes: 15_000_000 },
+  acceptEvidence: { classA: 4, classB: 2, storageBytes: 10_000_000 },
+  publishReport: { classA: 3, classB: 3, storageBytes: 1_000_000 },
   completeJob: { classA: 3, classB: 2, storageBytes: 32_000 },
   pollJob: { classA: 0, classB: 1, storageBytes: 0 }
 });
 
-test('Phase 3 lifecycle, terminal states, limits, and R2 budgets match the approved v2 design', () => {
+test('Phase 3 lifecycle, terminal states, limits, and R2 budgets match the repaired current-stack design', () => {
   assert.deepEqual(JOB_STATES, ['submitted','validating','admitted','queued','awaiting_executor','provisioning','running','collecting_evidence','completed','failed','cancelled','timed_out','policy_rejected']);
   assert.deepEqual(TERMINAL_JOB_STATES, ['completed','failed','cancelled','timed_out','policy_rejected']);
   assert.equal(MAX_EVENT_BATCH_EVENTS, 32);
@@ -72,19 +72,32 @@ test('campaign state uses server-read ETag-protected objects and no listing', as
   assert.doesNotMatch(campaigns, /ListObjects|\.list\s*\(/);
 });
 
-test('logs and reports bind to authoritative state and server-owned indexes', async () => {
+test('large objects use deterministic R2 references and generated Ed25519 attestations', async () => {
   const evidence = await read('packages/audit-evidence/src/index.mjs');
-  for (const required of ['jobStatusKey','logChunkKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
+  const api = await read('apps/audit-api/src/phase3.mjs');
+  for (const required of ['jobStatusKey','rawArtifactIngressKey','evidenceIngressKey','reportIngressKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
     assert.match(evidence, new RegExp(`\\b${required}\\b`), required);
   }
+  assert.match(evidence, /audit-object-reference-v1/);
+  assert.match(evidence, /MAX_OBJECT_REFERENCE_LIFETIME_MS/);
+  assert.match(evidence, /attestation_signer_unavailable/);
+  assert.match(evidence, /algorithm:\s*'Ed25519'/);
+  assert.match(api, /AUDIT_ATTESTATION_PRIVATE_KEY/);
+  assert.match(api, /importKey\('pkcs8'.*Ed25519/);
+  assert.match(api, /objectRef/);
+  assert.doesNotMatch(api, /bundleBase64|reportBase64/);
+  assert.doesNotMatch(evidence, /ListObjects|\.list\s*\(|writeFile|mkdir|extractTo|extractAll|child_process|spawn\s*\(|exec\s*\(/);
+});
+
+test('logs and reports bind to authoritative state and server-owned indexes', async () => {
+  const evidence = await read('packages/audit-evidence/src/index.mjs');
   assert.match(evidence, /highestLogSequence\s*\+\s*1/);
   assert.match(evidence, /attempt_mismatch/);
-  assert.match(evidence, /await this\.store\.get\(reportIndexKey/);
+  assert.match(evidence, /this\.store\.get\(reportIndexKey/);
   assert.match(evidence, /report_exists/);
   assert.match(evidence, /MAX_RAW_ARTIFACT_BYTES\s*=\s*64_000_000/);
   assert.match(evidence, /MAX_EVIDENCE_BUNDLE_BYTES\s*=\s*50_000_000/);
   assert.match(evidence, /MAX_REPORT_BUNDLE_BYTES\s*=\s*10_000_000/);
-  assert.doesNotMatch(evidence, /ListObjects|\.list\s*\(|writeFile|mkdir|extractTo|extractAll|child_process|spawn\s*\(|exec\s*\(/);
 });
 
 test('browser exposes only public metadata operations', async () => {
