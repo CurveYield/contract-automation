@@ -12,6 +12,7 @@ import {
   eventBatchKey,
   evidenceAcceptedKey,
   evidenceAttestationKey,
+  evidenceIngressKey,
   evidenceManifestKey,
   evidenceQuarantineKey,
   jobRequestKey,
@@ -19,9 +20,11 @@ import {
   logChunkKey,
   logIndexKey,
   rawArtifactBundleKey,
+  rawArtifactIngressKey,
   rawArtifactManifestKey,
   reportBundleKey,
   reportIndexKey,
+  reportIngressKey,
   reportManifestKey,
   validateCampaignCreation,
   validateEventBatch,
@@ -54,9 +57,9 @@ test('publishes the exact Phase 3 lifecycle and approved operation budgets', () 
     eventBatch: { classA: 1, classB: 0, storageBytes: 256_000 },
     logChunk: { classA: 2, classB: 1, storageBytes: 1_000_000 },
     readTypicalLogs: { classA: 0, classB: 9, storageBytes: 0 },
-    rawArtifacts: { classA: 2, classB: 0, storageBytes: 15_000_000 },
-    acceptEvidence: { classA: 4, classB: 1, storageBytes: 10_000_000 },
-    publishReport: { classA: 3, classB: 1, storageBytes: 1_000_000 },
+    rawArtifacts: { classA: 2, classB: 2, storageBytes: 15_000_000 },
+    acceptEvidence: { classA: 4, classB: 2, storageBytes: 10_000_000 },
+    publishReport: { classA: 3, classB: 3, storageBytes: 1_000_000 },
     completeJob: { classA: 3, classB: 2, storageBytes: 32_000 },
     pollJob: { classA: 0, classB: 1, storageBytes: 0 }
   });
@@ -95,6 +98,9 @@ test('generates deterministic keys for every Phase 3 object family', () => {
   assert.equal(eventBatchKey(jobId, '00000001'), `jobs/${jobId}/events/00000001.jsonl`);
   assert.equal(logChunkKey(jobId, attemptId, 7), `jobs/${jobId}/attempts/${attemptId}/logs/00000007.log`);
   assert.equal(logIndexKey(jobId, attemptId), `jobs/${jobId}/attempts/${attemptId}/logs/index-v1.json`);
+  assert.equal(rawArtifactIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/artifacts/${artifactId}.tar.zst`);
+  assert.equal(evidenceIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/evidence/${artifactId}.tar.zst`);
+  assert.equal(reportIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/reports/${artifactId}.zip`);
   assert.equal(rawArtifactBundleKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}.tar.zst`);
   assert.equal(rawArtifactManifestKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}-manifest-v1.json`);
   assert.equal(evidenceQuarantineKey(jobId, artifactId), `jobs/${jobId}/evidence/quarantine/${artifactId}.tar.zst`);
