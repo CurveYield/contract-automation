@@ -5,8 +5,10 @@ import { CHAINS, validateCreateJobRequest } from '../../protocol/src/index.mjs';
 import { RunnerApiClient } from './api-client.mjs';
 import { collectSoliditySources, compileProject } from './compiler.mjs';
 import { startGanacheEngine } from './engine.mjs';
+import { startForkRpcGuard } from './fork-rpc-guard.mjs';
 import { materializeOpenZeppelin, materializeProject } from './project.mjs';
 import { renderHtmlReport } from './report.mjs';
+import { raceWithRpcPolicyTermination } from './rpc-method-policy.mjs';
 import { executeWorkflow } from './workflow.mjs';
 
 function serializeError(cause) {
@@ -14,6 +16,8 @@ function serializeError(cause) {
     name: cause?.name ?? 'Error',
     message: cause?.message ?? String(cause),
     code: cause?.code,
+    rpcCode: cause?.rpcCode,
+    method: cause?.method,
     shortMessage: cause?.shortMessage,
     data: cause?.data
   };
@@ -24,6 +28,8 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
   const startedAt = new Date().toISOString();
   const root = await fs.mkdtemp(path.join(os.tmpdir(), `preflightsim-${jobId}-`));
   let engine;
+  let forkGuard;
+  let forkTransport;
   let request;
   let compilerDiagnostics = [];
   let steps = [];
@@ -86,16 +92,29 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     if (!rpcUrl) throw new Error(`Runner secret ${chain.rpcEnv} is not configured`);
 
     await api.updateStatus(jobId, { status: 'running', stage: 'starting_fork' });
-    engine = await startGanacheEngine({
-      artifacts: compilation.artifacts,
-      workflow: request.workflow,
-      chainId: chain.chainId,
-      forkUrl: rpcUrl,
-      block: request.block
-    });
+    forkGuard = await startForkRpcGuard({ upstreamUrl: rpcUrl });
+    forkTransport = forkGuard.diagnostics;
+    engine = await raceWithRpcPolicyTermination(
+      startGanacheEngine({
+        artifacts: compilation.artifacts,
+        workflow: request.workflow,
+        chainId: chain.chainId,
+        forkUrl: forkGuard.url,
+        block: request.block
+      }),
+      forkGuard.termination,
+      {
+        async onLateValue(lateEngine) {
+          await Promise.resolve(lateEngine?.close?.()).catch(() => {});
+        }
+      }
+    );
 
     await api.updateStatus(jobId, { status: 'running', stage: 'executing_workflow' });
-    const execution = await executeWorkflow(request.workflow, engine.runtime, { aliases: engine.aliases });
+    const execution = await raceWithRpcPolicyTermination(
+      executeWorkflow(request.workflow, engine.runtime, { aliases: engine.aliases }),
+      forkGuard.termination
+    );
     steps = execution.steps;
     deployments = execution.context.deployments;
 
@@ -106,6 +125,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       chain: request.chain,
       chainId: chain.chainId,
       block: request.block,
+      forkTransport,
       compilerVersion: request.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -126,6 +146,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       mode: request?.mode,
       chain: request?.chain,
       block: request?.block,
+      forkTransport,
       compilerVersion: request?.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -146,6 +167,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     throw cause;
   } finally {
     if (engine) await engine.close().catch(() => {});
+    if (forkGuard) await forkGuard.close().catch(() => {});
     await fs.rm(root, { recursive: true, force: true });
   }
 }
