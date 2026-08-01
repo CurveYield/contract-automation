@@ -1,0 +1,20 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-2-sequence-2-accepted-working-20260801T131200Z",
+  "eventType": "assignment_accepted_working",
+  "actor": "worker-2",
+  "occurredAt": "2026-08-01T13:12:00Z",
+  "sequence": 2,
+  "messageId": "worker-2-phase4-result-contract-hardening-v2-000002",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000002_worker-2-phase4-result-contract-hardening-v2_v1.md",
+  "assignmentBlobSha": "b3097615b40415cf2760d5f602d398a52d7b9763",
+  "issueNumber": 74,
+  "branch": "audit-phase4/result-contract-hardening-v2",
+  "startingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
+  "details": {
+    "pointerValidated": true,
+    "assignmentValidated": true,
+    "acknowledgementCreated": true,
+    "status": "working"
+  }
+}
