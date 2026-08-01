@@ -106,6 +106,7 @@ test('evidence callback cannot supply an attestation and the control plane signs
 test('report callbacks accept a small object reference body for a bundle larger than one MiB', async () => {
   const calls = [];
   const env = {
+    AUDIT_TEST_MODE: 'true',
     AUDIT_TRUSTED_FIXTURE_ENABLED: 'true',
     AUDIT_INTERNAL_SERVICE_KEY: 'audit-internal-test-key',
     AUDIT_NONCE_STORE: new InMemoryAuditStore(),
