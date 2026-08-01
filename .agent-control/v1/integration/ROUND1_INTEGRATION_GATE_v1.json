@@ -1,77 +1,78 @@
 {
   "protocolVersion": 1,
   "gateId": "audit-round1-phases4-8-integration-v1",
-  "state": "integration_branch_prepared_waiting_for_worker_completion",
-  "observedAt": "2026-08-01T16:50:00Z",
+  "state": "replacement_reconstructions_active",
+  "observedAt": "2026-08-01T17:25:00Z",
   "latestMain": {
     "branch": "main",
-    "sha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2"
+    "sha": "c1f624cee5de9644736d6ab8f967661e6ae348fd"
   },
   "integrationBranch": {
     "branch": "audit-round1/integration-v1",
-    "startingSha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
-    "state": "created_no_audit_transplants_yet"
+    "baseSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+    "notesHeadSha": "fde20b52522706ff6bbb693935f52a8e9e9e81ec",
+    "state": "latest-main-based-no-audit-transplants-yet"
   },
-  "canonicalAuditSource": {
-    "phase3Sha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-    "sharedMergeBaseWithMain": "f0a1dd46551fc867778a295eef525262efb51b00",
-    "auditCommitsAfterMergeBase": 23,
-    "mainCommitsAfterMergeBase": 6,
-    "relationship": "diverged"
+  "historicalSources": {
+    "phase1To3": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+    "phase4Core": "d90099c201d3012c090b6f73dda604bd5b143c95 owned paths only",
+    "phase4Results": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75 owned paths only",
+    "phase5": "2982614879f1f6d252a7630eb5331031d5934b4e owned paths only",
+    "phase6": "1b20f634b6d3c5f1261d490e545415c81d7488f2 owned paths only"
   },
-  "lineageFindings": {
-    "phase4IntegrationBase": {
-      "sha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "relationshipToPhase3Source": "diverged",
-      "aheadBy": 125,
-      "behindBy": 18,
-      "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
-    },
-    "phase4ResultHardening": {
-      "sha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-      "relationshipToPhase3Source": "diverged",
-      "aheadBy": 156,
-      "behindBy": 18,
-      "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
-    },
-    "phase7Active": {
+  "rejectedSources": {
+    "phase7": {
+      "issue": 80,
       "branch": "audit-phase7/control-storage-mock-v1",
-      "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-      "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
-      "relationshipToPhase3Source": "direct_descendant"
+      "claimedFinalSha": "cbbdcba159fd08da1cd6ecb2834d685a2d1ed303",
+      "state": "rejected-untrusted-source-input-only",
+      "reason": "post-review change was documentation only; deletion ordering, idempotency, recovery, and tenant-index repairs remain"
     },
-    "phase8Active": {
+    "phase8": {
+      "issue": 91,
       "branch": "audit-phase8/clean-room-control-merge-v1",
-      "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-      "relationshipToPhase3Source": "direct_descendant"
+      "claimedFinalSha": "9b8c81631f6f75d3d888563071cab2ec709fb53d",
+      "state": "rejected-untrusted-source-input-only",
+      "reason": "final source retains caller-selected index paths and unresolved authorization, grant, byte, runtime, reflection, and operation-class defects"
     }
   },
-  "acceptedOrPendingInputs": {
-    "phase1To3": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-    "phase4ProfilesAdaptersParsersFixtures": "d90099c201d3012c090b6f73dda604bd5b143c95 owned paths only",
-    "phase4CatalogApi": "pending issue 72 final SHA",
-    "phase4ResultContracts": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-    "phase5CompleteWithLifecycleRepair": "2982614879f1f6d252a7630eb5331031d5934b4e",
-    "phase6Complete": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
-    "phase7": "pending issue 80 final SHA",
-    "phase8": "pending issue 91 final SHA"
+  "activeInputs": {
+    "phase4CatalogApi": {
+      "issue": 72,
+      "branch": "audit-phase4/catalog-api-integration-v2",
+      "state": "working-completion-gates-required"
+    },
+    "phase1To6Reconstruction": {
+      "issue": 95,
+      "branch": "audit-round1/phases1-6-reconstruction-v1",
+      "state": "ready-starting-sha-refresh-required-before-consumption"
+    },
+    "phase7To8Reconstruction": {
+      "issue": 97,
+      "branch": "audit-round1/phases7-8-reconstruction-v1",
+      "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+      "state": "ready"
+    }
+  },
+  "parallelPhase9": {
+    "issue": 98,
+    "branch": "audit-phase9/github-direct-core-v1",
+    "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+    "state": "ready-independent-not-round1-input"
   },
   "requiredReconstructionOrder": [
-    "Immediately before the first transplant, verify main still equals 49a606ef35e9e0f253e20c689e64c0f8945f8cb2; if it advanced, reset the empty integration branch to the new reviewed main head and update this gate.",
-    "Transplant the accepted Phase 1-3 Audit-only delta from f0a1dd46551fc867778a295eef525262efb51b00..2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c onto the latest main-based integration branch while preserving all packages/github-native-sim changes from main.",
-    "Reconstruct accepted Phase 4 profile contracts, adapters, parsers, fixtures, result contracts, catalog and API changes by owned path; never merge the stale Phase 4 topology.",
-    "Apply accepted Phase 5 packages and lifecycle repair onto the reconstructed Phase 4 head.",
-    "Apply accepted Phase 6 packages onto the reconstructed Phase 5 head.",
-    "Apply the accepted Phase 7 owned-path delta after issue 80 completion and independent review.",
-    "Apply the accepted Phase 8 owned-path delta only after Phase 7 acceptance and issue 91 completion.",
-    "Run combined cross-phase protocol, identity, result, storage, non-interference, lineage-preservation and static capability gates before Phase 9 implementation begins."
+    "Complete and independently accept issue 95 Phase 1-6 latest-main reconstruction after refreshing its empty branch to c1f624cee5de9644736d6ab8f967661e6ae348fd.",
+    "Complete and independently accept issue 72 Phase 4 catalog/API source, then apply it by owned path to the accepted Phase 1-6 candidate.",
+    "Complete and independently accept issue 97 Phase 7-8 latest-main reconstruction and repair.",
+    "Transplant the accepted Phase 1-6 plus Phase 4 catalog/API candidate and the accepted Phase 7-8 candidate onto audit-round1/integration-v1 by exact owned path and provenance.",
+    "Run combined Phase 1-8 protocol, identity, result, storage, authorization, non-interference, lineage-preservation, retry, and static capability gates.",
+    "Do not treat issue 98 Phase 9 GitHub Direct core as a Round 1 input; it has its own later integration gate."
   ],
   "prohibited": [
-    "Do not merge PR 43; it is closed and superseded.",
-    "Do not merge PR 73; it is closed and superseded.",
-    "Do not merge a worker branch wholesale when it carries stale ancestry.",
+    "Do not merge PR 43 or PR 73.",
+    "Do not merge stale worker ancestry wholesale.",
+    "Do not use issue 80 or issue 91 verdicts as accepted inputs.",
     "Do not overwrite or regress packages/github-native-sim changes present on latest main.",
-    "Do not treat isolated worker acceptance as combined integration acceptance.",
     "Do not merge to main or enable submitted-project execution."
   ]
 }
