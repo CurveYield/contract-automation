@@ -1,16 +1,16 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "completed",
+  "state": "ready",
   "lastConsumedSequence": 3,
-  "activeSequence": null,
-  "activeMessageId": null,
-  "issueNumber": 77,
-  "branch": "audit-phase6/result-contract-compatibility-v1",
-  "startingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-  "finalSha": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
-  "recommendation": "ACCEPT",
-  "reportReference": "https://github.com/CurveYield/contract-automation/issues/77#issuecomment-5151987088",
+  "activeSequence": 5,
+  "activeMessageId": "worker-2-round1-phases1-6-reconstruction-v2-000005",
+  "issueNumber": 95,
+  "branch": "audit-round1/phases1-6-reconstruction-v1",
+  "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:95",
   "blockers": [],
-  "updatedAt": "2026-08-01T15:06:10Z"
+  "updatedAt": "2026-08-01T17:27:00Z"
 }
