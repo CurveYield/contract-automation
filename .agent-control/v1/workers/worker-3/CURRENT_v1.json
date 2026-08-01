@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "sequence": 3,
-  "messageId": "worker-3-phase5-parser-lifecycle-repair-v1-000003",
-  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000003_worker-3-phase5-parser-lifecycle-repair-v1_v1.md",
-  "assignmentBlobSha": "b1e3f7882ecbd5b8641b5ba9da8d318068771559",
-  "issuedAt": "2026-08-01T15:20:45Z"
+  "sequence": 4,
+  "messageId": "worker-3-phase8-clean-room-control-merge-v1-000004",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000004_worker-3-phase8-clean-room-control-merge-v1_v1.md",
+  "assignmentBlobSha": "3853ae65a0873f9c26b7a07eb6bb169eff9e224e",
+  "issuedAt": "2026-08-01T16:15:00Z"
 }
