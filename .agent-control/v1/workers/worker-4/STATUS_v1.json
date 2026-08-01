@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-4",
-  "state": "ready",
-  "lastConsumedSequence": 0,
+  "state": "working",
+  "lastConsumedSequence": 1,
   "activeSequence": 1,
   "activeMessageId": "worker-4-phase9-web-reports-operator-ui-v1-000001",
   "issueNumber": 105,
@@ -10,8 +10,8 @@
   "startingSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:105",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/105#issuecomment-5154023274",
   "blockers": [],
-  "replacementRuntimeRequired": true,
-  "updatedAt": "2026-08-01T23:39:00Z"
+  "replacementRuntimeRequired": false,
+  "updatedAt": "2026-08-01T23:42:00Z"
 }
