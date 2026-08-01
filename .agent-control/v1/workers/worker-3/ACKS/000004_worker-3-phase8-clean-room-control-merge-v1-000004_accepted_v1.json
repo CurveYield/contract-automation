@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-3",
+  "sequence": 4,
+  "messageId": "worker-3-phase8-clean-room-control-merge-v1-000004",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000004_worker-3-phase8-clean-room-control-merge-v1_v1.md",
+  "assignmentBlobSha": "3853ae65a0873f9c26b7a07eb6bb169eff9e224e",
+  "issueNumber": 91,
+  "branch": "audit-phase8/clean-room-control-merge-v1",
+  "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+  "acceptedAt": "2026-08-01T16:31:00Z"
+}
