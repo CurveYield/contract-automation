@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "state": "working",
+  "lastConsumedSequence": 0,
+  "activeSequence": null,
+  "activeMessageId": null,
+  "issueNumber": 51,
+  "branch": "audit-repair/phases-1-3-acceptance-fixes-v1",
+  "startingSha": "6d26ef2fa73d04acb732e1ed1ab2ef385791f724",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:51",
+  "blockers": [],
+  "updatedAt": "2026-08-01T11:27:00Z"
+}
