@@ -1,23 +1,16 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "completed",
+  "state": "ready",
   "lastConsumedSequence": 2,
-  "activeSequence": null,
-  "activeMessageId": null,
-  "issueNumber": 80,
-  "branch": "audit-phase7/control-storage-mock-v1",
-  "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-  "finalSha": "cbbdcba159fd08da1cd6ecb2834d685a2d1ed303",
-  "recommendation": "ACCEPT",
-  "reportReference": "issue:80#issuecomment-5152543540",
+  "activeSequence": 3,
+  "activeMessageId": "worker-0-round1-phases7-8-reconstruction-v1-000003",
+  "issueNumber": 97,
+  "branch": "audit-round1/phases7-8-reconstruction-v1",
+  "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:97",
   "blockers": [],
-  "updatedAt": "2026-08-01T15:46:00Z",
-  "publishedArtifacts": {
-    "initialCheckpoint": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
-    "reviewCheckpoint": "f4520bed2b77842f922f17bc2e595cc6335bfc46",
-    "reviewRepairCommit": "cbbdcba159fd08da1cd6ecb2834d685a2d1ed303",
-    "acceptanceReview": "docs/audit/reviews/2026-08-01-audit-phase7-control-storage-mock-acceptance-v1.md",
-    "remediationAddendum": "docs/audit/reviews/2026-08-01-audit-phase7-control-storage-mock-review-remediation-v1.md"
-  }
+  "updatedAt": "2026-08-01T17:23:00Z"
 }
