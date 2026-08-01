@@ -5,7 +5,7 @@
   "operatingMode": "manual-original-chat-coordination",
   "activationState": "manual-active",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-01T13:23:00Z",
+  "lastOrchestratorReviewAt": "2026-08-01T13:51:00Z",
   "scheduledPolling": {
     "enabled": false,
     "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats.",
@@ -36,7 +36,7 @@
       "currentStartingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
       "mailboxState": "working",
       "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "wake-original-chat-now",
+      "manualAction": "leave-working-resumed",
       "futureAssignmentsAllowed": true,
       "acknowledgementPath": ".agent-control/v1/workers/worker-0/ACKS/000001_worker-0-phase1-3-pr-chain-000001_accepted_v1.json",
       "delegatedWriteRecovery": true
@@ -59,8 +59,8 @@
       "currentBranch": "audit-phase4/result-contract-hardening-v2",
       "currentStartingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
       "mailboxState": "working",
-      "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "wake-original-chat-now",
+      "observedBranchState": "1-commit-ahead-0-behind",
+      "manualAction": "leave-working",
       "futureAssignmentsAllowed": true,
       "priorCompletedIssueNumber": 57,
       "priorFinalSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
@@ -68,15 +68,20 @@
       "integrationState": "draft-review-open-not-merged"
     },
     "worker-3": {
-      "currentSequence": 1,
-      "currentMessageId": "worker-3-phase5-result-contract-compatibility-000001",
-      "currentIssueNumber": 71,
-      "currentBranch": "audit-phase5/result-contract-compatibility-v1",
-      "currentStartingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
-      "mailboxState": "working",
-      "observedBranchState": "5-commits-ahead-0-behind",
-      "manualAction": "leave-working-unless-chat-is-visibly-idle",
-      "futureAssignmentsAllowed": true
+      "currentSequence": 2,
+      "currentMessageId": "worker-3-phase5-result-contract-hardening-v2-000002",
+      "currentIssueNumber": 76,
+      "currentBranch": "audit-phase5/result-contract-hardening-v2",
+      "currentStartingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+      "mailboxState": "ready",
+      "observedBranchState": "identical-to-starting-sha",
+      "manualAction": "wake-original-chat-now",
+      "futureAssignmentsAllowed": true,
+      "supersededIssueNumber": 71,
+      "supersededMessageId": "worker-3-phase5-result-contract-compatibility-000001",
+      "supersededPinnedHead": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+      "supersededDisposition": "repair-required",
+      "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md"
     },
     "worker-4": {
       "mailboxState": "retired",
@@ -105,5 +110,5 @@
     "AUDIT_EXECUTION_ENABLED remains false",
     "no merge to main"
   ],
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T132300Z_manual-original-chat-mode_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T135100Z_worker-3-sequence2-hardening-published_v1.json"
 }
