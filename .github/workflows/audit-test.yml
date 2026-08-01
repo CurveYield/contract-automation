@@ -13,12 +13,14 @@ on:
       - "test/boundary/**"
       - ".github/workflows/audit-*.yml"
       - "package.json"
+      - "package-lock.json"
   push:
     branches:
       - "audit-phase1/**"
+      - "audit-repair/**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: curveyield-audit-phase1-test-${{ github.ref }}
@@ -32,20 +34,25 @@ jobs:
       - name: Check out trusted repository code
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install pinned trusted dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Export generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: audit-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit generated lockfile on repair branch
+        if: github.event_name == 'push' && startsWith(github.ref_name, 'audit-repair/')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already committed"
+            exit 0
+          fi
+          git commit -m "chore: commit npm lockfile"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - name: Run all unit and security tests
         run: npm test
       - name: Check JavaScript syntax
