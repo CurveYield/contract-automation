@@ -1,0 +1,51 @@
+name: Capture Audit Repair Failure Once
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/audit-repair-diagnostics.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-repair-diagnostics-once
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'audit-repair/phases-1-3-v1' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted repair branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: audit-repair/phases-1-3-v1
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Capture filtered failure
+        run: |
+          set +e
+          npm test > /tmp/audit-test.log 2>&1
+          status=$?
+          set -e
+          {
+            echo "exit_status=${status}"
+            grep -n -E "not ok|AssertionError|ERR_ASSERTION|expected:|actual:|error:|failureType:|location:" /tmp/audit-test.log || true
+          } > docs/audit/temporary-test-failures.txt
+          if [ "$status" -eq 0 ]; then
+            echo "Tests unexpectedly passed" >> docs/audit/temporary-test-failures.txt
+          fi
+      - name: Commit diagnostic excerpt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/audit/temporary-test-failures.txt
+          git commit -m "chore: capture temporary Audit failure excerpt"
+          git push origin "HEAD:audit-repair/phases-1-3-v1"
