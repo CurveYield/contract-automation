@@ -115,7 +115,7 @@ test('rejects evidence when the injected validator declines it before accepted w
   assert.equal(await store.get(evidenceAcceptedKey(jobId, artifactId)), null);
 });
 
-test('publishes a bundled report, manifest, and deterministic index using three Class A operations', async () => {
+test('publishes a bundled report, manifest, and server-owned index using three Class A and one Class B operations', async () => {
   const store = new InMemoryAuditStore();
   const service = new EvidenceService(store);
   const reportBytes = new TextEncoder().encode('report bundle');
@@ -124,11 +124,11 @@ test('publishes a bundled report, manifest, and deterministic index using three 
   const index = { schemaVersion: 'job-report-index-v1', jobId, reports: [artifactId], records: { [artifactId]: { sha256 } } };
   const before = store.usage();
   await service.publishReport({ jobId, artifactId, reportBytes, manifest, index });
-  assert.deepEqual(delta(store.usage(), before), { classA: 3, classB: 0, free: 0 });
+  assert.deepEqual(delta(store.usage(), before), { classA: 3, classB: 1, free: 0 });
   assert.ok(await store.head(reportBundleKey(jobId, artifactId)));
   assert.ok(await store.head(reportManifestKey(jobId, artifactId)));
   assert.ok(await store.head(reportIndexKey(jobId)));
-  await assert.rejects(() => service.publishReport({ jobId, artifactId, reportBytes, manifest, index }), /precondition/i);
+  await assert.rejects(() => service.publishReport({ jobId, artifactId, reportBytes, manifest, index }), /exists|conflict|precondition/i);
 });
 
 test('reads the deterministic report index with one Class B operation and exposes no list API', async () => {
