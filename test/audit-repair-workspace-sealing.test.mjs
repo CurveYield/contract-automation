@@ -62,8 +62,7 @@ test('sealing an upload copies source bytes into the durable workspace namespace
 
   const result = await service(store).sealUploadedWorkspace({
     workspaceId: workspaceOne,
-    grant,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceOne] }
+    grant
   });
 
   const durableKey = workspaceSourceArchiveKey(workspaceOne);
@@ -80,8 +79,7 @@ test('sealing a second workspace preserves the first server-owned tenant index e
   await store.put(ingressKey(tenantId, first.digest), firstBytes);
   await service(store).sealUploadedWorkspace({
     workspaceId: workspaceOne,
-    grant: first.grant,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceOne] }
+    grant: first.grant
   });
 
   const indexBefore = await store.get(tenantWorkspaceIndexKey(tenantId));
@@ -91,8 +89,7 @@ test('sealing a second workspace preserves the first server-owned tenant index e
   await service(store).sealUploadedWorkspace({
     workspaceId: workspaceTwo,
     grant: second.grant,
-    indexEtag: indexBefore.etag,
-    tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceTwo] }
+    indexEtag: indexBefore.etag
   });
 
   assert.deepEqual(parse(await store.get(tenantWorkspaceIndexKey(tenantId))).workspaces, [workspaceOne, workspaceTwo]);
