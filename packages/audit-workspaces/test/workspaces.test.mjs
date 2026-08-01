@@ -52,6 +52,7 @@ const sourceZip = zip([
   { name: 'contracts/BoostHub.sol', data: 'contract BoostHub {}' },
   { name: 'contracts/interfaces/IBoost.sol', data: 'interface IBoost {}' }
 ]);
+const grantExpiry = '2026-07-31T13:00:00.000Z';
 
 test('inspects an inert ZIP central directory without extracting files', async () => {
   const result = await inspectZipArchive(sourceZip);
@@ -63,7 +64,7 @@ test('inspects an inert ZIP central directory without extracting files', async (
 
 test('creates a stateless upload grant bound to tenant, digest, size, type, expiry, and destination', async () => {
   const digest = await sha256(sourceZip);
-  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z' }, {
+  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: grantExpiry }, {
     now: () => new Date('2026-07-31T12:00:00.000Z'),
     sign: async (payload) => `sig:${await sha256(new TextEncoder().encode(payload))}`
   });
@@ -76,7 +77,7 @@ test('durably seals one bundled upload using exactly four writes and two reads',
   const digest = await sha256(sourceZip);
   const store = new InMemoryAuditStore();
   await store.put(ingressKey(tenantId, digest), sourceZip);
-  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z' }, {
+  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: grantExpiry }, {
     now: () => new Date('2026-07-31T12:00:00.000Z'), sign: async () => 'valid-signature'
   });
   const writes = [];
@@ -104,7 +105,7 @@ test('rejects expired grants and digest mismatches before workspace writes', asy
   const store = new InMemoryAuditStore();
   await store.put(ingressKey(tenantId, digest), sourceZip);
   const service = new WorkspaceService(store, { now: () => new Date('2026-08-02T00:00:00.000Z'), verifyGrant: async () => true });
-  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z' }, { now: () => new Date('2026-07-31T12:00:00.000Z'), sign: async () => 'sig' });
+  const grant = await createUploadGrant({ tenantId, sha256: digest, bytes: sourceZip.length, contentType: 'application/zip', expiresAt: grantExpiry }, { now: () => new Date('2026-07-31T12:00:00.000Z'), sign: async () => 'sig' });
   await assert.rejects(() => service.sealUploadedWorkspace({ workspaceId, grant, tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] } }), /expired/i);
   const altered = new Uint8Array(sourceZip); altered[10] ^= 1;
   const store2 = new InMemoryAuditStore(); await store2.put(ingressKey(tenantId, digest), altered);
