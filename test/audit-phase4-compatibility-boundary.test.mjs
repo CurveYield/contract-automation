@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 
-const SOURCE = new URL('../packages/audit-tool-result-contracts/src/index.mjs', import.meta.url);
+const SOURCE_DIR = new URL('../packages/audit-tool-result-contracts/src/', import.meta.url);
 
+async function sourceFiles() {
+  return (await readdir(SOURCE_DIR)).filter((name) => name.endsWith('.mjs')).sort();
+}
 async function sourceText() {
-  return readFile(SOURCE, 'utf8');
+  const names = await sourceFiles();
+  return (await Promise.all(names.map((name) => readFile(new URL(name, SOURCE_DIR), 'utf8')))).join('\n');
 }
 
 test('production result-contract source imports no filesystem, process, network, container, package-manager, Lite, or dynamic-code primitive', async () => {
@@ -23,25 +27,33 @@ test('production result-contract source imports no filesystem, process, network,
   for (const pattern of forbidden) assert.doesNotMatch(source, pattern);
 });
 
-test('production package imports only accepted stable Phase 4 contracts', async () => {
+test('production package imports only local modules and accepted stable Phase 4 contracts', async () => {
   const source = await sourceText();
-  const imports = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1]).sort();
-  assert.deepEqual(imports, [
+  const imports = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1]);
+  const external = imports.filter((value) => value.startsWith('../')).sort();
+  const local = imports.filter((value) => value.startsWith('./')).sort();
+  assert.deepEqual(external, [
     '../../audit-executor-adapters/src/index.mjs',
     '../../audit-protocol/src/index.mjs',
+    '../../audit-protocol/src/index.mjs',
+    '../../audit-tool-parsers/src/index.mjs',
     '../../audit-tool-parsers/src/index.mjs',
     '../../audit-tool-profile-contracts/src/index.mjs'
   ].sort());
+  for (const value of local) assert.match(value, /^\.\/[a-z0-9-]+-v1\.mjs$/);
 });
 
-test('public exports contain validation only and no execution-like operation', async () => {
-  const source = await sourceText();
-  const exports = [...source.matchAll(/export\s+(?:function|const|class)\s+([A-Za-z0-9_]+)/g)].map((match) => match[1]);
-  assert.deepEqual(exports.sort(), [
+test('public exports contain validation and immutable contract metadata only', async () => {
+  const module = await import('../packages/audit-tool-result-contracts/src/index.mjs');
+  assert.deepEqual(Object.keys(module).sort(), [
+    'PHASE4_COMPATIBILITY_CONTRACT_VERSION',
+    'PHASE4_FIXTURE_INVENTORY',
     'PHASE4_RESULT_CONTRACT_SCHEMA_VERSION',
+    'PHASE4_TOOL_RESULT_CONTRACT_VERSION',
+    'assertPhase4FixtureInventory',
     'assertPhase4PackageCompatibility',
     'validatePhase4ResultForPlan',
     'validatePhase4ToolResult'
   ].sort());
-  for (const name of exports) assert.doesNotMatch(name, /submit|execute|run|spawn|install|fetch|network/i);
+  for (const name of Object.keys(module)) assert.doesNotMatch(name, /submit|execute|run|spawn|install|fetch|network/i);
 });
