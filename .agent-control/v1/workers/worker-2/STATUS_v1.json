@@ -1,16 +1,16 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "working",
+  "state": "completed",
   "lastConsumedSequence": 2,
-  "activeSequence": 2,
-  "activeMessageId": "worker-2-phase4-result-contract-hardening-v2-000002",
+  "activeSequence": null,
+  "activeMessageId": null,
   "issueNumber": 74,
   "branch": "audit-phase4/result-contract-hardening-v2",
   "startingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
-  "finalSha": null,
-  "recommendation": null,
-  "reportReference": "issue:74",
+  "finalSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+  "recommendation": "ACCEPT",
+  "reportReference": "issue:74#issuecomment-5151718894",
   "blockers": [],
-  "updatedAt": "2026-08-01T13:11:55Z"
+  "updatedAt": "2026-08-01T13:54:12Z"
 }
