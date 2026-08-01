@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "sequence": 3,
-  "messageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
-  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000003_worker-2-phase6-result-contract-compatibility-v1_v1.md",
-  "assignmentBlobSha": "3cddba86f8fd5a1e0159e64efbb025d695c96410",
-  "issuedAt": "2026-08-01T14:05:00Z"
+  "sequence": 4,
+  "messageId": "worker-2-round1-phases1-6-reconstruction-v1-000004",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000004_worker-2-round1-phases1-6-reconstruction-v1_v1.md",
+  "assignmentBlobSha": "068bc9646517801fb8a4834d5f6f8b6954d62e9f",
+  "issuedAt": "2026-08-01T17:00:00Z"
 }
