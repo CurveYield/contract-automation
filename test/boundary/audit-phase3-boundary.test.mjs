@@ -81,8 +81,9 @@ test('large objects use deterministic R2 references and generated Ed25519 attest
   assert.match(evidence, /audit-object-reference-v1/);
   assert.match(evidence, /MAX_OBJECT_REFERENCE_LIFETIME_MS/);
   assert.match(evidence, /attestation_signer_unavailable/);
-  assert.match(evidence, /algorithm:\s*'Ed25519'/);
+  assert.match(evidence, /value\.algorithm\s*!==\s*'Ed25519'/);
   assert.match(api, /AUDIT_ATTESTATION_PRIVATE_KEY/);
+  assert.match(api, /return Object\.freeze\(\{ algorithm: 'Ed25519'/);
   assert.match(api, /importKey\('pkcs8'.*Ed25519/);
   assert.match(api, /objectRef/);
   assert.doesNotMatch(api, /bundleBase64|reportBase64/);
