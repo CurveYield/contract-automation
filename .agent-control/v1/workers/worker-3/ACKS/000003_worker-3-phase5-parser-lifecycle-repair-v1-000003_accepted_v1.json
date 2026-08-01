@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-3",
+  "sequence": 3,
+  "messageId": "worker-3-phase5-parser-lifecycle-repair-v1-000003",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000003_worker-3-phase5-parser-lifecycle-repair-v1_v1.md",
+  "assignmentBlobSha": "b1e3f7882ecbd5b8641b5ba9da8d318068771559",
+  "issueNumber": 79,
+  "branch": "audit-phase5/parser-lifecycle-repair-v1",
+  "startingSha": "dd78a76f9546c85e79357a617b219067704c1616",
+  "acceptedAt": "2026-08-01T15:22:02Z"
+}
