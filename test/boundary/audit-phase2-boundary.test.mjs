@@ -33,7 +33,7 @@ test('Phase 2 packages preserve the approved R2 size and operation budgets', () 
   assert.equal(MAX_PROFILE_METADATA_BYTES, 5_000_000);
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS, {
     uploadSource: { classA: 1, classB: 0, storageBytes: 10_000_000 },
-    sealWorkspace: { classA: 3, classB: 1, storageBytes: 500_000 },
+    sealWorkspace: { classA: 4, classB: 2, storageBytes: 10_500_000 },
     importGitHub: { classA: 4, classB: 0, storageBytes: 10_500_000 },
     attachLayer: { classA: 4, classB: 1, storageBytes: 5_250_000 },
     readLayerIndex: { classA: 0, classB: 1, storageBytes: 0 }
