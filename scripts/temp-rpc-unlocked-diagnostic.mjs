@@ -8,7 +8,7 @@ import { startForkRpcProxy } from '../packages/github-native-sim/src/fork-rpc-pr
 const rpcUrl = process.env.RPC_ETHEREUM;
 const pinnedBlock = 25_660_886;
 const holder = '0x624Fc0A7B29002D7E06d35b9D7E0fc690a4FeBB6';
-const staking = '0xA6730b33203f005cab6c80a2fF1d8B73E1947F2C';
+const staking = '0xD63819Fef90981fAc8CD6240EA1f2559CD835CBa';
 const summary = { startedAt: new Date().toISOString(), calls: [], proxy: null, ganache: null };
 
 function safeError(error) {
@@ -78,11 +78,7 @@ let ganacheServer;
 let provider;
 try {
   const localAccounts = await getDeterministicGanacheAccounts(20);
-  forkProxy = await startForkRpcProxy({
-    upstreamUrl: loggedUpstreamUrl,
-    block: pinnedBlock,
-    localAccounts
-  });
+  forkProxy = await startForkRpcProxy({ upstreamUrl: loggedUpstreamUrl, block: pinnedBlock, localAccounts });
   summary.proxy = forkProxy.diagnostics;
   console.log(JSON.stringify({ event: 'fork-proxy-started', ...summary.proxy }));
 
@@ -98,13 +94,11 @@ try {
   await ganacheServer.listen(0, '127.0.0.1');
   const address = ganacheServer.address();
   provider = new ethers.JsonRpcProvider(`http://127.0.0.1:${address.port}`, 1, { staticNetwork: true });
-  const contract = new ethers.Contract(staking, ['function lp_token() view returns (address)'], provider);
+  const signer = await provider.getSigner(0);
+  const contract = new ethers.Contract(staking, ['function lp_token() view returns (address)'], signer);
   summary.ganache = {
     accounts: (await provider.send('eth_accounts', [])).length,
     blockNumber: await provider.getBlockNumber(),
-    holderBalance: (await provider.getBalance(holder)).toString(),
-    holderNonce: await provider.getTransactionCount(holder),
-    holderCodeBytes: Math.max(0, ((await provider.getCode(holder)).length - 2) / 2),
     stakingCodeBytes: Math.max(0, ((await provider.getCode(staking)).length - 2) / 2),
     stakingLpToken: await contract.lp_token()
   };
