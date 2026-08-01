@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {InMemoryAuditStore} from '../packages/audit-r2-store/src/index.mjs';
+import {InMemoryAuditStore} from './audit-phase7-in-memory-store-v1.mjs';
 async function modules(){try{return [await import('../packages/audit-fork-protocol/src/index.mjs'),await import('../packages/audit-forks/src/index.mjs')];}catch(cause){assert.fail(`Phase 7 state module unavailable: ${cause.code}`);}}
 const ids={tenantId:'ten_'+'1'.repeat(32),workspaceId:'ws_'+'2'.repeat(32),campaignId:'cmp_'+'3'.repeat(32),forkId:'fork_'+'4'.repeat(32),attemptId:'att_'+'5'.repeat(32)};
 function req(adapterKind='external'){return {schemaVersion:'fork-request-v1',...ids,profileId:'free-development-v1',policyVersion:'fork-policy-v1',requesterId:'usr_alice',scopes:['audit:read','audit:submit'],chainId:1,blockNumber:21000000,blockHash:'0x'+'a'.repeat(64),adapterKind,executionGate:adapterKind==='mock'?'trusted_mock':'awaiting_executor',createdAt:'2026-08-01T00:00:00.000Z',idempotencyKey:`create-${adapterKind}`};}
