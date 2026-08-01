@@ -1,11 +1,11 @@
 Function,Class A per use,Class B per use,Typical stored MB,Maximum stored MB,Default retention days,Free uses by Class A,Free uses by Class B,Free uses by typical storage,Free uses by maximum storage,Typical limiting capacity,Typical limiting dimension,Notes
 Issue upload session (stateless signed grant),0,0,0,0,0,,,,,,,No R2 request; actual upload is separate
 Upload source archive,1,0,10,262.144,30,1000000,,1000,38,1000,storage (typical),Single-part PUT; maximum follows the live Lite 250 MiB archive cap
-Seal workspace from uploaded archive,3,1,0.5,2.0,30,333333,10000000,20000,5000,20000,storage (typical),"Workspace record, source manifest, workspace index; one archive GET"
-Import GitHub source and seal workspace,4,0,10.5,264.144,30,250000,,952,37,952,storage (typical),Bundled source object plus seal metadata; GitHub traffic is not R2 usage
+Seal workspace from uploaded archive,4,2,0.5,2.0,30,250000,5000000,20000,5000,20000,storage (typical),"Durable source, manifest, seal, server-owned tenant index; ingress and index reads"
+Import GitHub source and seal workspace,4,1,10.5,264.144,30,250000,10000000,952,37,952,storage (typical),"Bundled source, manifest, seal, server-owned tenant index; one index read"
 Read workspace record,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
 Read workspace manifest,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
-Upload and attach generated layer,4,1,5.25,105.0,30,250000,10000000,1904,95,1904,storage (typical),"Layer PUT, manifest, layer index, event batch; one verification GET"
+Upload and attach generated layer,4,2,5.25,105.0,30,250000,5000000,1904,95,1904,storage (typical),"Layer PUT, manifest, server-owned layer index, event batch; index and verification reads"
 Read layer index,0,1,0,0,0,,10000000,,,10000000,Class B,Manifest-driven; no ListObjects
 Publish immutable profile metadata,4,0,1.0,5.0,90,250000,,3333,666,3333,storage (typical),"Profile, SBOM, signature metadata, profile index; image remains in GHCR"
 Read profile,0,1,0,0,0,,10000000,,,10000000,Class B,One GetObject
