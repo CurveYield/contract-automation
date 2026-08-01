@@ -1,0 +1,23 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_blocked",
+  "timestamp": "2026-08-01T14:46:56Z",
+  "sequence": 1,
+  "messageId": "worker-0-phase1-3-pr-chain-000001",
+  "issueNumber": 70,
+  "branch": "audit-repair/phases-1-3-pr-chain-v1",
+  "startingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+  "reportReference": "issue:70#issuecomment-5151918716",
+  "blocker": "External Cloudflare Workers Git integration is deploying PR #13, #24, and #35 branch heads to production; publishing the prepared branch refs would violate the no-deployment restriction.",
+  "preparedArtifacts": {
+    "phase1Commit": "67a898da0b1c222481253abcc70fdf3bc3d428ce",
+    "phase2Commit": "d95319c027995d4ba53afb88e6d17fe262a2e585",
+    "phase3Commit": "680a667f8f3e76f1aa78014d55cecbc8b3e64266",
+    "acceptedTreeVerificationCommit": "8a1c758425d5bb7493661cf1c38a9887bb54e027",
+    "ledgerCommit": "16c5fbe1dc6fe002dc034c43884660f2ef4eb14f"
+  },
+  "pullRequestDescriptionsUpdated": [13, 24, 35],
+  "refsMoved": false,
+  "deploymentTriggered": false
+}
