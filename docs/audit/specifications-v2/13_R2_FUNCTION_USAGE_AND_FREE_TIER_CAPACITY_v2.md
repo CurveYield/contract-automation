@@ -25,8 +25,9 @@ The table below uses typical sizes. The CSV also includes maximum-size capacitie
 | Function | A/use | B/use | Typical MB | Retention days | Conservative free uses | Limiting dimension |
 |---|---:|---:|---:|---:|---:|---|
 | Upload source archive | 1 | 0 | 10 | 30 | 1000 | storage (typical) |
-| Seal workspace from uploaded archive | 3 | 1 | 0.5 | 30 | 20000 | storage (typical) |
-| Upload and attach generated layer | 4 | 1 | 5.25 | 30 | 1904 | storage (typical) |
+| Seal workspace from uploaded archive | 4 | 2 | 0.5 | 30 | 20000 | storage (typical) |
+| Import GitHub source and seal workspace | 4 | 1 | 10.5 | 30 | 952 | storage (typical) |
+| Upload and attach generated layer | 4 | 2 | 5.25 | 30 | 1904 | storage (typical) |
 | Submit audit job | 5 | 3 | 0.128 | 30 | 78125 | storage (typical) |
 | One heartbeat/status update | 1 | 0 | 0 | 0 | 1000000 | Class A |
 | One immutable event batch | 1 | 0 | 0.256 | 30 | 39062 | storage (typical) |
@@ -42,9 +43,9 @@ The table below uses typical sizes. The CSV also includes maximum-size capacitie
 
 | Scenario | Class A | Class B | GB-month | Conservative free-tier scenarios/month | Limiting dimension |
 |---|---:|---:|---:|---:|---|
-| Conservative 30-minute audit job; new workspace, one layer, one campaign | 75 | 46 | 0.034117 | 293 | storage |
+| Conservative 30-minute audit job; new workspace, one layer, one campaign | 75 | 47 | 0.034117 | 293 | storage |
 | 30-minute job reusing workspace, layer, and campaign | 64 | 42 | 0.018367 | 544 | storage |
-| Conservative audit job under 90-day source/evidence policy | 75 | 46 | 0.10925 | 91 | storage |
+| Conservative audit job under 90-day source/evidence policy | 75 | 47 | 0.10925 | 91 | storage |
 | One active fork with eight 250 MB checkpoints retained 24 hours | 27 | 10 | 0.066667 | 150 | storage |
 | One active fork with eight 250 MB checkpoints retained seven days | 27 | 10 | 0.466667 | 21 | storage |
 
