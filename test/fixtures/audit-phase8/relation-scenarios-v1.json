@@ -1,0 +1,9 @@
+{
+  "schemaVersion":"phase8-relation-fixture-v1",
+  "findings":[
+    {"findingId":"finding-a1","campaignId":"campaign-a1","identityKey":"identity-duplicate","severity":"high","status":"open","remediation":"upgrade","location":"contracts-a-sol-10","materialDigest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","evidenceRefs":[{"id":"evidence-a1","digest":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}]},
+    {"findingId":"finding-a2","campaignId":"campaign-a2","identityKey":"identity-duplicate","severity":"high","status":"open","remediation":"upgrade","location":"contracts-a-sol-10","materialDigest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","evidenceRefs":[{"id":"evidence-a2","digest":"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}]},
+    {"findingId":"finding-a3","campaignId":"campaign-a3","identityKey":"identity-duplicate","severity":"critical","status":"accepted","remediation":"replace","location":"contracts-a-sol-10","materialDigest":"sha256:9999999999999999999999999999999999999999999999999999999999999999","evidenceRefs":[{"id":"evidence-a3","digest":"sha256:8888888888888888888888888888888888888888888888888888888888888888"}]},
+    {"findingId":"finding-unrelated","campaignId":"campaign-a4","identityKey":"identity-unrelated","severity":"low","status":"open","remediation":"monitor","location":"contracts-b-sol-20","materialDigest":"sha256:7777777777777777777777777777777777777777777777777777777777777777","evidenceRefs":[{"id":"evidence-a4","digest":"sha256:6666666666666666666666666666666666666666666666666666666666666666"}]}
+  ]
+}
