@@ -76,7 +76,7 @@ test('ZIP entries allow only stored or deflate compression and reject Unix symli
   await assert.rejects(() => inspectZipArchive(zipEntry({ method: 99 })), /compression|unsupported/i);
   const unixSymlink = (3 << 8) | 20;
   const symlinkMode = 0xa1ff << 16;
-  await assert.rejects(() => inspectZipArchive(zipEntry({ versionMadeBy: unixSymlink, externalAttributes: symlinkMode >>> 0 })), /symlink|unsupported/i);
+  await assert.rejects(() => inspectZipArchive(zipEntry({ versionMadeBy: unixSymlink, externalAttributes: symlinkMode >>> 0 })), /symbolic link|symlink|unsupported/i);
 });
 
 test('ZIP metadata is bounded by total uncompressed bytes and compression ratio', async () => {
