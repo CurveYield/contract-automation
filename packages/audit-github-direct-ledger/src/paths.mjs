@@ -1,0 +1,5 @@
+import { CONTROL_BRANCH, exactKeys, identifier, frozenClone } from '../../audit-github-direct-protocol/src/index.mjs';
+export const LEDGER_ROOT='.audit-direct/v1';
+export function ledgerPath(path){if(typeof path!=='string'||!path.startsWith(`${LEDGER_ROOT}/`)||path.includes('..')||path.includes('//')){const error=new Error('ledger_path_violation');error.code='ledger_path_violation';error.path='$.path';throw error;}return path;}
+export function buildLedgerPaths(input){const v=exactKeys(input,['jobId','eventId','resultId','reportId'],'$');const jobId=identifier(v.jobId,'$.jobId'),eventId=identifier(v.eventId,'$.eventId'),resultId=identifier(v.resultId,'$.resultId'),reportId=identifier(v.reportId,'$.reportId');return frozenClone({request:`${LEDGER_ROOT}/requests/${jobId}.json`,current:`${LEDGER_ROOT}/current/${jobId}.json`,event:`${LEDGER_ROOT}/events/${jobId}/${eventId}.json`,result:`${LEDGER_ROOT}/results/${jobId}/${resultId}.json`,report:`${LEDGER_ROOT}/reports/${jobId}/${reportId}.json`,manifest:`${LEDGER_ROOT}/manifests/${jobId}.json`,jobIndex:`${LEDGER_ROOT}/indexes/jobs-v1.json`});}
+export { CONTROL_BRANCH };
