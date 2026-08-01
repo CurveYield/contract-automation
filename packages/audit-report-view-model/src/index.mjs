@@ -20,6 +20,15 @@ export function toSafeText(value, max = MAX_TEXT) {
   return normalized.slice(0, Math.max(0, Math.min(max, MAX_LONG_TEXT)));
 }
 
+export function redactDiagnosticText(value, max = MAX_LONG_TEXT) {
+  return toSafeText(value, max)
+    .replace(/\bhttps?:\/\/[^\s"']+/gi, '[redacted-url]')
+    .replace(/\b[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s]+/g, '[redacted-path]')
+    .replace(/\/(?:home|Users|var|tmp|opt|srv|workspace|mnt)\/[^\s]+/g, '[redacted-path]')
+    .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+\/-]+=*/gi, '[redacted-secret]')
+    .replace(/\b(?:api[_-]?key|token|secret|password|authorization)\s*[:=]\s*[^\s,;]+/gi, '[redacted-secret]');
+}
+
 export function toSafeIdentifier(value) {
   return toSafeText(value, 160).replace(/\s+/g, '-');
 }
@@ -288,14 +297,14 @@ export function createDiagnosticViewModel(input) {
   const data = readUiEntityData('diagnostic', input);
   return deepFreeze({
     code: statusText(data.code, 'unknown-error').toUpperCase().slice(0, 80),
-    message: toSafeText(data.message, MAX_LONG_TEXT),
+    message: redactDiagnosticText(data.message, MAX_LONG_TEXT),
     correlationId: toSafeIdentifier(data.correlationId),
     retryAfterSeconds: toBoundedInteger(data.retryAfterSeconds, { max: 86_400 }),
     quotaRemaining: toBoundedInteger(data.quotaRemaining, { max: 1_000_000_000 }),
     retentionDays: toBoundedInteger(data.retentionDays, { max: 3650 }),
     publicationStatus: statusText(data.publicationStatus, 'unknown'),
     staleState: data.staleState === true,
-    details: toSafeText(data.details, MAX_LONG_TEXT)
+    details: redactDiagnosticText(data.details, MAX_LONG_TEXT)
   });
 }
 
