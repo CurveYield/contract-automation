@@ -2,12 +2,12 @@
   "protocolVersion": 1,
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
-  "operatingMode": "plus-compatible-orchestrator-plus-workers-0-3",
+  "operatingMode": "hybrid-local-wake-plus-hourly-polling",
   "scheduledTaskLimit": 5,
   "pollingFrequency": "hourly",
-  "activationState": "pending-worker-bootstrap-and-end-to-end-validation",
+  "activationState": "control-plane-active-local-wake-agent-awaiting-bootstrap",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorPollAt": "2026-08-01T11:40:00Z",
+  "lastOrchestratorPollAt": "2026-08-01T12:34:00Z",
   "scheduledAgents": [
     "orchestrator",
     "worker-0",
@@ -15,62 +15,91 @@
     "worker-2",
     "worker-3"
   ],
+  "localWakeAgent": {
+    "enabledByUser": true,
+    "state": "awaiting-local-bootstrap",
+    "protocolPath": ".agent-control/v1/local-wake-agent/PROTOCOL_v1.md",
+    "requestDirectory": ".agent-control/v1/local-wake-agent/REQUESTS/",
+    "pendingRequestCount": 4,
+    "orchestratorFirstOnDiscrepancy": true
+  },
   "workers": {
     "worker-0": {
-      "statusInitialization": "owner-pending",
-      "currentSequence": 0,
-      "currentIssueNumber": 51,
-      "currentBranch": "audit-repair/phases-1-3-acceptance-fixes-v1",
-      "currentStartingSha": "6d26ef2fa73d04acb732e1ed1ab2ef385791f724",
-      "migrationDisposition": "finish-existing-assignment-then-poll",
-      "futureAssignmentsAllowed": true
+      "statusInitialization": "owner-initialized",
+      "currentSequence": 1,
+      "currentMessageId": "worker-0-phase1-3-pr-chain-000001",
+      "currentIssueNumber": 70,
+      "currentBranch": "audit-repair/phases-1-3-pr-chain-v1",
+      "currentStartingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+      "migrationDisposition": "new-mailbox-assignment-ready",
+      "futureAssignmentsAllowed": true,
+      "priorCompletedIssueNumber": 51,
+      "priorFinalSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+      "priorRecommendation": "ACCEPT WITH REPAIR",
+      "wakeRequestId": "wake-worker-0-sequence-1-000001"
     },
     "worker-1": {
-      "statusInitialization": "owner-pending",
+      "statusInitialization": "owner-status-sync-required",
       "currentSequence": 0,
       "currentIssueNumber": 53,
       "currentBranch": "audit-phase4/catalog-api-boundary-v1",
       "currentStartingSha": "f55544ebb71a51f597e36b737de2d74e4e91d5ce",
-      "migrationDisposition": "finish-existing-assignment-then-poll",
-      "futureAssignmentsAllowed": true
+      "observedFinalSha": "934d27dc950ffed9a334f7c9fbb60d68ac2689aa",
+      "observedRecommendation": "ACCEPT WITH REPAIR",
+      "migrationDisposition": "completion-report-present-awaiting-worker-owned-status",
+      "futureAssignmentsAllowed": true,
+      "wakeRequestId": "wake-worker-1-status-sync-000002"
     },
     "worker-2": {
-      "statusInitialization": "owner-pending",
+      "statusInitialization": "owner-initialized",
       "currentSequence": 1,
+      "currentMessageId": "worker-2-phase4-result-contract-compatibility-000001",
       "currentIssueNumber": 57,
       "currentBranch": "audit-phase4/result-contract-compatibility-v1",
       "currentStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "migrationDisposition": "consume-mailbox-assignment-000001",
+      "migrationDisposition": "resume-existing-mailbox-assignment",
       "futureAssignmentsAllowed": true,
+      "observedBranchState": "identical-to-starting-sha",
+      "observedFinalReport": false,
+      "wakeRequestId": "wake-worker-2-resume-sequence-1-000003",
       "priorCompletedIssueNumber": 46,
       "priorCompletedBranch": "audit-phase4/parsers-fixtures-v3",
       "priorFinalSha": "353c1dc743b8657ea6f15f5a15954603beb78656",
       "priorRecommendation": "ACCEPT"
     },
     "worker-3": {
-      "statusInitialization": "owner-pending",
-      "currentSequence": 0,
-      "currentIssueNumber": 54,
-      "currentBranch": "audit-phase5/contracts-parsers-fixtures-v2",
-      "currentStartingSha": "ea1e59b285d55bd5e5449564881b04b908fd717e",
-      "migrationDisposition": "finish-existing-assignment-then-poll",
-      "futureAssignmentsAllowed": true
+      "statusInitialization": "owner-initialized",
+      "currentSequence": 1,
+      "currentMessageId": "worker-3-phase5-result-contract-compatibility-000001",
+      "currentIssueNumber": 71,
+      "currentBranch": "audit-phase5/result-contract-compatibility-v1",
+      "currentStartingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
+      "migrationDisposition": "new-mailbox-assignment-ready",
+      "futureAssignmentsAllowed": true,
+      "priorCompletedIssueNumber": 54,
+      "priorFinalSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
+      "priorRecommendation": "ACCEPT",
+      "wakeRequestId": "wake-worker-3-sequence-1-000004"
     },
     "worker-4": {
-      "statusInitialization": "not-participating",
+      "statusInitialization": "retired",
       "currentSequence": 0,
-      "currentIssueNumber": 55,
-      "currentBranch": "audit-phase6/contracts-parsers-fixtures-v2",
-      "currentStartingSha": "1f0019e7eca5d53349727e003b1739cd1583e73a",
-      "migrationDisposition": "finish-existing-assignment-then-retire",
+      "currentIssueNumber": null,
+      "currentBranch": null,
+      "currentStartingSha": null,
+      "migrationDisposition": "retired-after-completed-workload",
       "futureAssignmentsAllowed": false,
-      "retireAfterCurrent": true,
-      "scheduledPollingEnabled": false
+      "retired": true,
+      "scheduledPollingEnabled": false,
+      "priorCompletedIssueNumber": 55,
+      "priorCompletedBranch": "audit-phase6/contracts-parsers-fixtures-v2",
+      "priorFinalSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+      "priorRecommendation": "ACCEPT"
     }
   },
   "staleThresholdHours": {
     "potentiallyStale": 3,
     "blockedPendingReview": 6
   },
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T112700Z_control-plane-initialized_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T123400Z_worker-completions-reviewed-and-reassigned_v1.json"
 }
