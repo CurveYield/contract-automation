@@ -11,6 +11,12 @@ const TEST_ONLY_BINDINGS = new Set([
   'AUDIT_EVIDENCE_SERVICE'
 ]);
 
+const APPROVED_IDENTITY_ALIASES = Object.freeze({
+  AUDIT_SUBMIT_API_KEY: 'AUDIT_GPT_API_KEY',
+  AUDIT_ADMIN_API_KEY: 'AUDIT_CLIENT_API_KEY',
+  AUDIT_INTERNAL_SERVICE_KEY: 'AUDIT_EDGE_CONTROL_PLANE_TOKEN'
+});
+
 function stringConfigured(value, minimum = 1) {
   return typeof value === 'string' && value.length >= minimum;
 }
@@ -38,12 +44,32 @@ export function sanitizeAuditRuntimeEnv(env) {
   });
 }
 
+export function mapApprovedAuditRuntimeEnv(env) {
+  const sanitized = sanitizeAuditRuntimeEnv(env);
+  return new Proxy(sanitized ?? {}, {
+    get(target, property, receiver) {
+      const approvedName = APPROVED_IDENTITY_ALIASES[property];
+      if (approvedName && stringConfigured(Reflect.get(target, approvedName, receiver))) {
+        return Reflect.get(target, approvedName, receiver);
+      }
+      return Reflect.get(target, property, receiver);
+    },
+    has(target, property) {
+      const approvedName = APPROVED_IDENTITY_ALIASES[property];
+      if (approvedName && stringConfigured(Reflect.get(target, approvedName))) return true;
+      return Reflect.has(target, property);
+    }
+  });
+}
+
 export function auditRuntimeConfiguration(env) {
+  const clientKey = stringConfigured(env?.AUDIT_CLIENT_API_KEY, 32) || stringConfigured(env?.AUDIT_ADMIN_API_KEY);
+  const gptKey = stringConfigured(env?.AUDIT_GPT_API_KEY, 32) || stringConfigured(env?.AUDIT_SUBMIT_API_KEY);
+  const edgeControlKey = stringConfigured(env?.AUDIT_EDGE_CONTROL_PLANE_TOKEN, 32) || stringConfigured(env?.AUDIT_INTERNAL_SERVICE_KEY);
   const configuration = {
-    readKey: stringConfigured(env?.AUDIT_READ_API_KEY),
-    submitKey: stringConfigured(env?.AUDIT_SUBMIT_API_KEY),
-    adminKey: stringConfigured(env?.AUDIT_ADMIN_API_KEY),
-    internalKey: stringConfigured(env?.AUDIT_INTERNAL_SERVICE_KEY),
+    clientKey,
+    gptKey,
+    edgeControlKey,
     nonceStore: storeConfigured(env?.AUDIT_NONCE_STORE),
     controlStore: storeConfigured(env?.AUDIT_CONTROL_STORE),
     uploadGrantSigner: stringConfigured(env?.AUDIT_EDGE_CONTROL_PLANE_TOKEN, 32),
@@ -63,7 +89,7 @@ export function auditRuntimeConfiguration(env) {
 
 export function auditRuntimeReadiness(env) {
   const configuration = auditRuntimeConfiguration(env);
-  const coreReady = configuration.readKey && configuration.submitKey && configuration.adminKey && configuration.internalKey && configuration.nonceStore;
+  const coreReady = configuration.clientKey && configuration.gptKey && configuration.edgeControlKey && configuration.nonceStore;
   const ready = coreReady
     && configuration.controlStore
     && configuration.uploadGrantSigner
