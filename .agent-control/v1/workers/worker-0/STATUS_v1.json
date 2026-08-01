@@ -1,16 +1,39 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "working",
+  "state": "completed",
   "lastConsumedSequence": 3,
-  "activeSequence": 3,
-  "activeMessageId": "worker-0-round1-phases7-8-reconstruction-v1-000003",
+  "activeSequence": null,
+  "activeMessageId": null,
   "issueNumber": 97,
   "branch": "audit-round1/phases7-8-reconstruction-v1",
   "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
-  "finalSha": null,
-  "recommendation": null,
-  "reportReference": "issue:97",
+  "finalSha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b",
+  "recommendation": "ACCEPT",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/97#issuecomment-5152883433",
+  "reportCommentId": 5152883433,
   "blockers": [],
-  "updatedAt": "2026-08-01T17:32:00Z"
+  "updatedAt": "2026-08-01T18:48:00Z",
+  "publishedArtifacts": {
+    "implementationSha": "768437d01ae9d64b04a4755f7f697ed049e505b4",
+    "finalDocumentationSha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b",
+    "phase7SourceSha": "1a9d3f19c987d2da494e9fd35b03f12e6ca08d52",
+    "phase8SourceSha": "9b8c81631f6f75d3d888563071cab2ec709fb53d",
+    "provenanceManifest": "docs/audit/integration/2026-08-01-audit-round1-phases7-8-provenance-v1.md",
+    "acceptanceReview": "docs/audit/reviews/2026-08-01-audit-round1-phases7-8-reconstruction-acceptance-v1.md",
+    "checkpoint1CommentId": 5152687455,
+    "checkpoint2CommentId": 5152842311,
+    "checkpoint3CommentId": 5152843598,
+    "checkpoint4CommentId": 5152875071,
+    "finalReportCommentId": 5152883433
+  },
+  "verification": {
+    "tests": 105,
+    "passed": 105,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "changedFiles": 65,
+    "unownedChangedFiles": 0
+  }
 }
