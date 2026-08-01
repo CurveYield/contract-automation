@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import auditWorker from '../apps/audit-api/src/entry.mjs';
-import { deriveUploadGrantSigningKey } from '../apps/audit-api/src/index.mjs';
+import { deriveUploadGrantSigningKey } from '../apps/audit-api/src/upload-grants.mjs';
 import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
 
 const tenantId = `ten_${'1'.repeat(32)}`;
