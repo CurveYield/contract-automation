@@ -9,7 +9,7 @@ const roots=[
 async function files(root){const out=[];async function walk(path){for(const entry of await readdir(path,{withFileTypes:true})){const full=join(path,entry.name);if(entry.isDirectory())await walk(full);else if(entry.name.endsWith('.mjs'))out.push(full);}}await walk(root);return out;}
 
 test('Phase 8 production sources have no execution, filesystem, network, cloud, wallet, or deployment capability',async()=>{
-  const paths=(await Promise.all(roots.map(files))).flat().sort();assert.equal(paths.length,9);
+  const paths=(await Promise.all(roots.map(files))).flat().sort();assert.equal(paths.length,21);
   const forbidden=[
     [/from\s+['"](?:node:)?(?:fs|fs\/promises|child_process|worker_threads|http|https|net|dns|tls|dgram)['"]/,'forbidden import'],
     [/\b(?:spawn|exec|execFile|fork|fetch|eval)\s*\(/,'forbidden execution/network call'],
@@ -25,9 +25,9 @@ test('Phase 8 production sources have no execution, filesystem, network, cloud, 
   assert.equal(matches,0);
 });
 
-test('Phase 8 production imports remain within owned packages plus node crypto',async()=>{
+test('Phase 8 production imports remain within owned runtime-neutral packages',async()=>{
   const paths=(await Promise.all(roots.map(files))).flat();
-  for(const path of paths){const source=await readFile(path,'utf8');for(const match of source.matchAll(/from\s+['"]([^'"]+)['"]/g)){const spec=match[1];assert.ok(spec==='node:crypto'||spec.startsWith('.')||spec.includes('audit-clean-room-')||spec.includes('audit-controlled-merge')||spec.includes('audit-provenance'),`${path}: ${spec}`);}}
+  for(const path of paths){const source=await readFile(path,'utf8');for(const match of source.matchAll(/from\s+['"]([^'"]+)['"]/g)){const spec=match[1];assert.ok(spec.startsWith('.')||spec.includes('audit-clean-room-')||spec.includes('audit-controlled-merge')||spec.includes('audit-provenance'),`${path}: ${spec}`);}}
 });
 
 test('Phase 8 fixtures contain no credential, authorization, signed URL, or host-path leakage',async()=>{
