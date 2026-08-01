@@ -103,7 +103,7 @@ export function renderCatalogPage(input = {}) {
 export function renderDiagnosticsPage(inputs) {
   const diagnostics = Array.isArray(inputs) ? inputs.map(createDiagnosticViewModel).filter((item) => item.code).sort((a, b) => a.code.localeCompare(b.code)) : [];
   if (!diagnostics.length) return renderState({ kind: 'empty', message: 'No operator diagnostics are visible.' });
-  return `<ul class="diagnostics" role="list">${diagnostics.map((item) => `<li><h2>${escapeHtml(item.code)}</h2><p>${escapeHtml(item.message)}</p></li>`).join('')}</ul>`;
+  return `<ul class="diagnostics" role="list">${diagnostics.map((item) => `<li class="diagnostic-card"><h2>${escapeHtml(item.code)}</h2><p role="alert">${escapeHtml(item.message)}</p><dl><div><dt>Correlation ID</dt><dd>${item.correlationId ? renderIdentifier(item.correlationId) : '—'}</dd></div><div><dt>Retry after</dt><dd>${item.retryAfterSeconds} seconds</dd></div><div><dt>Quota remaining</dt><dd>${item.quotaRemaining}</dd></div><div><dt>Retention</dt><dd>${item.retentionDays} days</dd></div><div><dt>Publication</dt><dd>${statusBadge(item.publicationStatus)}</dd></div><div><dt>Stale-state conflict</dt><dd>${item.staleState ? 'Yes' : 'No'}</dd></div></dl>${item.details ? `<details class="expandable"><summary>Show full details</summary><p>${escapeHtml(item.details)}</p></details>` : ''}</li>`).join('')}</ul>`;
 }
 
 const PAGE_CONFIG = Object.freeze({
