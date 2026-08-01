@@ -44,6 +44,8 @@ export function planMergeStorageTransaction(input){
   return frozenClone({schemaVersion:'phase8-merge-storage-transaction-v1',tenantId,workspaceId,mergeId,operations,summary:{classA,classB,retainedBytes,retentionDays,variant},usesPrefixListing:false,conditionalWrites:true,serverOwnedIndexes:true,recovery:{existingImmutableDigests:existing,retrySafe:true}});
 }
 
+
+
 export function rebuildMergeIndex(input){
   const v=exactKeys(input,['tenantId','workspaceId','approvedEntries','rebuiltAt'],'$');const tenantId=identifier(v.tenantId,'$.tenantId'),workspaceId=identifier(v.workspaceId,'$.workspaceId');
   const entries=denseArray(v.approvedEntries,'$.approvedEntries',100_000).map((entry,index)=>{const p=`$.approvedEntries[${index}]`;const x=exactKeys(entry,['mergeId','manifestId','manifestDigest','visibleCampaignIds'],p);return{mergeId:identifier(x.mergeId,`${p}.mergeId`),manifestId:identifier(x.manifestId,`${p}.manifestId`),manifestDigest:digest(x.manifestDigest,`${p}.manifestDigest`),visibleCampaignIds:stringArray(x.visibleCampaignIds,`${p}.visibleCampaignIds`,{maximum:64,item:identifier})};}).sort((a,b)=>a.mergeId.localeCompare(b.mergeId));
