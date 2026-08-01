@@ -10,3 +10,8 @@ export {
   assertPhase4PackageCompatibility,
   validatePhase4ResultForPlan
 } from './compatibility-v1.mjs';
+export {
+  PHASE4_TOOL_RESULT_DOCUMENTATION,
+  PHASE4_TOOL_RESULT_DOCUMENTATION_VERSION,
+  serializePhase4ToolResultDocumentation
+} from './contract-documentation-v2.mjs';
