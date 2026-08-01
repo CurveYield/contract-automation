@@ -1,0 +1,53 @@
+name: Temporary V27 Live-Fork Smoke v1
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'github-native-sim/jobs/v27-live-fork-smoke-v1/**'
+      - '.github/workflows/temp-v27-live-fork-smoke-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - name: Check out merged suite and V27 job
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Execute merged GitHub-native suite
+        id: execute
+        continue-on-error: true
+        run: >-
+          node packages/github-native-sim/src/cli.mjs
+          --job github-native-sim/jobs/v27-live-fork-smoke-v1/job.json
+          --output "$RUNNER_TEMP/v27-live-fork-smoke-v1"
+
+      - name: Upload literal smoke result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V27-Live-Fork-Smoke-Results-v1
+          path: ${{ runner.temp }}/v27-live-fork-smoke-v1
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Propagate simulation result
+        if: steps.execute.outcome == 'failure'
+        run: exit 1
