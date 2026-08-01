@@ -11,6 +11,7 @@ const resumedJobId = `ajob_${'4'.repeat(32)}`;
 const attemptId = `att_${'5'.repeat(32)}`;
 const artifactId = `art_${'6'.repeat(32)}`;
 const profileId = 'slither-solidity-v1';
+const expiresAt = '2026-08-01T13:00:00.000Z';
 
 function request(path, init = {}) {
   return new Request(`https://api.audit.preflight.curveyield.online${path}`, init);
@@ -22,6 +23,17 @@ function post(path, key, body) {
 function jobRequest(id = jobId, overrides = {}) {
   return { schemaVersion: 'audit-job-request-v1', jobId: id, campaignId, workspaceId, profileId, tool: 'slither', configuration: { detectors: ['reentrancy'] }, resourceClass: 'standard-test', timeoutSeconds: 1800, expectedEvidence: ['findings.json'], idempotencyKey: `job-${id}`, submittedAt: '2026-07-31T12:05:00.000Z', ...overrides };
 }
+function objectRef(kind, contentType, bytes = 4) {
+  const suffix = kind === 'reports' ? '.zip' : '.tar.zst';
+  return {
+    schemaVersion: 'audit-object-reference-v1',
+    objectKey: `ingress/jobs/${jobId}/attempts/${attemptId}/${kind}/${artifactId}${suffix}`,
+    sha256: 'a'.repeat(64),
+    bytes,
+    contentType,
+    expiresAt
+  };
+}
 function env(overrides = {}) {
   const calls = [];
   const campaignService = {
@@ -30,8 +42,8 @@ function env(overrides = {}) {
     async pollJob(id) { calls.push(['pollJob', id]); return { jobId: id, campaignId, state: id === jobId ? 'cancelled' : 'awaiting_executor', executionEnabled: false }; },
     async cancelJob(id, reason) { calls.push(['cancelJob', id, reason]); return { jobId: id, campaignId, state: 'cancelled', reason, executionEnabled: false }; },
     async claimAttempt(input) { calls.push(['claimAttempt', input]); return { status: { jobId: input.jobId, state: 'provisioning', attemptId: input.attemptId, executionEnabled: false } }; },
-    async heartbeat(input) { calls.push(['heartbeat', input]); return input.status; },
-    async completeJob(input) { calls.push(['completeJob', input]); return { status: { ...input.currentStatus, state: input.finalState } }; }
+    async heartbeat(input) { calls.push(['heartbeat', input]); return { jobId: input.jobId, state: input.state, attemptId: input.attemptId, executionEnabled: false }; },
+    async completeJob(input) { calls.push(['completeJob', input]); return { status: { jobId: input.jobId, state: input.finalState, attemptId: input.attemptId, executionEnabled: false } }; }
   };
   const evidenceService = {
     async appendLogChunk(input) { calls.push(['appendLogChunk', input]); return { sequence: input.sequence }; },
@@ -140,15 +152,15 @@ test('signed internal fixture attempt is accepted once and replay is rejected', 
   assert.deepEqual(state.calls.map((item) => item[0]), ['claimAttempt']);
 });
 
-test('signed internal log, artifact, evidence, report, heartbeat, and completion routes call only reviewed services', async () => {
+test('signed internal log, referenced artifact, evidence, report, heartbeat, and completion routes call only reviewed services', async () => {
   const state = env({ AUDIT_TRUSTED_FIXTURE_ENABLED: 'true' });
   const routes = [
     [`/audit-internal/v1/jobs/${jobId}/logs`, { attemptId, sequence: 1, chunkBase64: 'bG9n' }, 'appendLogChunk'],
-    [`/audit-internal/v1/jobs/${jobId}/artifacts`, { artifactId, bundleBase64: 'YXJ0', manifest: { schemaVersion: 'raw-artifact-manifest-v1' } }, 'publishRawArtifacts'],
-    [`/audit-internal/v1/jobs/${jobId}/evidence`, { artifactId, bundleBase64: 'ZXZpZGVuY2U=', manifest: { schemaVersion: 'evidence-manifest-v1' }, attestation: { schemaVersion: 'evidence-attestation-v1' } }, 'acceptEvidence'],
-    [`/audit-internal/v1/jobs/${jobId}/reports`, { artifactId, reportBase64: 'cmVwb3J0', manifest: { schemaVersion: 'report-manifest-v1' }, index: { schemaVersion: 'job-report-index-v1' } }, 'publishReport'],
-    [`/audit-internal/v1/jobs/${jobId}/heartbeat`, { status: { jobId, state: 'running' }, statusEtag: 'etag' }, 'heartbeat'],
-    [`/audit-internal/v1/jobs/${jobId}/complete`, { currentStatus: { jobId, state: 'collecting_evidence' }, statusEtag: 'etag', finalState: 'completed' }, 'completeJob']
+    [`/audit-internal/v1/jobs/${jobId}/artifacts`, { attemptId, artifactId, objectRef: objectRef('artifacts', 'application/zstd'), manifest: { schemaVersion: 'raw-artifact-manifest-v1' } }, 'publishRawArtifacts'],
+    [`/audit-internal/v1/jobs/${jobId}/evidence`, { attemptId, artifactId, objectRef: objectRef('evidence', 'application/zstd'), manifest: { schemaVersion: 'evidence-manifest-v1' } }, 'acceptEvidence'],
+    [`/audit-internal/v1/jobs/${jobId}/reports`, { attemptId, artifactId, objectRef: objectRef('reports', 'application/zip', 5_000_000), manifest: { schemaVersion: 'report-manifest-v1' } }, 'publishReport'],
+    [`/audit-internal/v1/jobs/${jobId}/heartbeat`, { attemptId, state: 'running', statusEtag: 'etag' }, 'heartbeat'],
+    [`/audit-internal/v1/jobs/${jobId}/complete`, { attemptId, statusEtag: 'etag', finalState: 'completed' }, 'completeJob']
   ];
   let index = 0;
   for (const [path, payload, expected] of routes) {
@@ -157,6 +169,10 @@ test('signed internal log, artifact, evidence, report, heartbeat, and completion
     const response = await auditWorker.fetch(request(path, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body }), state);
     assert.ok([200, 201].includes(response.status), `${path}: ${response.status}`);
     assert.equal(state.calls.at(-1)[0], expected);
+    if (['publishRawArtifacts', 'acceptEvidence', 'publishReport'].includes(expected)) {
+      assert.equal('bundleBytes' in state.calls.at(-1)[1], false);
+      assert.equal('reportBytes' in state.calls.at(-1)[1], false);
+    }
     index += 1;
   }
 });
