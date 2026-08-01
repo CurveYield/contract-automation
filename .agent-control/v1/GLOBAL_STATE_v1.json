@@ -7,7 +7,7 @@
   "pollingFrequency": "hourly",
   "activationState": "control-plane-active-local-wake-agent-awaiting-bootstrap",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorPollAt": "2026-08-01T12:40:00Z",
+  "lastOrchestratorPollAt": "2026-08-01T12:42:00Z",
   "scheduledAgents": [
     "orchestrator",
     "worker-0",
@@ -21,10 +21,11 @@
     "protocolPath": ".agent-control/v1/local-wake-agent/PROTOCOL_v1.md",
     "bootstrapPromptPath": ".agent-control/v1/local-wake-agent/BOOTSTRAP_PROMPT_v1.md",
     "requestDirectory": ".agent-control/v1/local-wake-agent/REQUESTS/",
-    "actionableRequestCount": 3,
+    "actionableRequestCount": 2,
     "orchestratorFirstOnDiscrepancy": true,
     "alreadySatisfiedOrSupersededRequests": [
       "wake-worker-1-status-sync-000002",
+      "wake-worker-2-resume-sequence-1-000003",
       "wake-worker-3-sequence-1-000004"
     ]
   },
@@ -64,9 +65,10 @@
       "currentIssueNumber": 57,
       "currentBranch": "audit-phase4/result-contract-compatibility-v1",
       "currentStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "mailboxState": "working-resume-required",
+      "mailboxState": "working",
       "futureAssignmentsAllowed": true,
-      "observedBranchState": "identical-to-starting-sha",
+      "observedBranchState": "17-commits-ahead-0-behind",
+      "observedChangedFiles": 13,
       "observedFinalReport": false,
       "wakeRequestId": "wake-worker-2-resume-sequence-1-000003",
       "priorCompletedIssueNumber": 46,
@@ -83,6 +85,7 @@
       "currentStartingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
       "mailboxState": "working",
       "futureAssignmentsAllowed": true,
+      "observedBranchState": "1-commit-ahead-0-behind",
       "priorCompletedIssueNumber": 54,
       "priorFinalSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
       "priorRecommendation": "ACCEPT",
@@ -108,5 +111,5 @@
     "potentiallyStale": 3,
     "blockedPendingReview": 6
   },
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T124000Z_worker-1-reassigned-after-status-sync_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T124200Z_polling-resumed-workers-2-and-3_v1.json"
 }
