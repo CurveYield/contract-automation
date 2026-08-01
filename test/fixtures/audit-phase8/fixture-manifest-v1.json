@@ -1,0 +1,8 @@
+{
+  "schemaVersion":"phase8-fixture-manifest-v1",
+  "fixtures":[
+    {"file":"multi-tenant-campaigns-v1.json","purpose":"multi-tenant visibility, terminal states, sharing, hidden-name collisions"},
+    {"file":"relation-scenarios-v1.json","purpose":"duplicates, conflicts, unrelated findings, evidence attribution"},
+    {"file":"storage-recovery-v1.json","purpose":"operation accounting, quotas, stale writes, idempotent recovery"}
+  ]
+}
