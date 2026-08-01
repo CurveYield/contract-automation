@@ -278,9 +278,9 @@ async function routePhase2(request, env, path) {
     const denied = await authenticateRoute(request, env, ['audit:submit']);
     if (denied) return denied;
     const body = await parseJsonRequest(request);
-    const keys = new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName', 'tenantIndex', 'indexEtag']);
+    const keys = new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName', 'indexEtag']);
     strictObject(body, keys);
-    requiredKeys(body, new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName', 'tenantIndex']));
+    requiredKeys(body, new Set(['tenantId', 'workspaceId', 'repository', 'commitSha', 'refName']));
     assertAuditId(body.tenantId, 'tenant', '$.tenantId');
     assertAuditId(body.workspaceId, 'workspace', '$.workspaceId');
     if (typeof body.repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(body.repository)) {
@@ -306,7 +306,6 @@ async function routePhase2(request, env, path) {
       workspaceId: body.workspaceId,
       source,
       archiveBytes: resolved.archiveBytes,
-      tenantIndex: body.tenantIndex,
       ...(body.indexEtag ? { indexEtag: body.indexEtag } : {})
     }), 201);
   }
@@ -321,9 +320,9 @@ async function routePhase2(request, env, path) {
     const denied = await authenticateRoute(request, env, ['audit:admin']);
     if (denied) return denied;
     const body = await parseJsonRequest(request);
-    const keys = new Set(['layerBundleId', 'manifest', 'layerIndex', 'indexEtag', 'eventBatch']);
+    const keys = new Set(['layerBundleId', 'manifest', 'indexEtag', 'eventBatch']);
     strictObject(body, keys);
-    requiredKeys(body, new Set(['layerBundleId', 'manifest', 'layerIndex', 'eventBatch']));
+    requiredKeys(body, new Set(['layerBundleId', 'manifest', 'eventBatch']));
     if (typeof body.layerBundleId !== 'string' || !/^[a-z0-9][a-z0-9-]{2,79}$/.test(body.layerBundleId)) {
       throw new ValidationError('invalid_bundle_id', '$.layerBundleId is invalid', '$.layerBundleId');
     }
@@ -335,7 +334,6 @@ async function routePhase2(request, env, path) {
     return json(await workspaceService(env).attachLayer({
       archiveBytes: resolved.archiveBytes,
       manifest: body.manifest,
-      layerIndex: body.layerIndex,
       eventBatch: body.eventBatch,
       ...(body.indexEtag ? { indexEtag: body.indexEtag } : {})
     }), 201);
