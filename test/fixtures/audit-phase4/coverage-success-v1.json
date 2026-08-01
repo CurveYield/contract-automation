@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Successful Forge coverage output with deterministic file ordering and aggregate totals.",
+  "profileId": "coverage-forge-v1",
+  "input": {
+    "resultJson": "{\"files\":[{\"path\":\"contracts/Vault.sol\",\"lines\":{\"covered\":8,\"total\":10},\"functions\":{\"covered\":3,\"total\":4},\"branches\":{\"covered\":2,\"total\":4}},{\"path\":\"contracts/BoostHub.sol\",\"lines\":{\"covered\":90,\"total\":100},\"functions\":{\"covered\":18,\"total\":20},\"branches\":{\"covered\":10,\"total\":12}}]}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 55,
+    "terminationReason": "completed"
+  }
+}

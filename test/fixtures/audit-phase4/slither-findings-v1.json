@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Slither findings with duplicate source mappings and deterministic normalization.",
+  "profileId": "slither-v1",
+  "input": {
+    "resultJson": "{\"success\":true,\"results\":{\"detectors\":[{\"check\":\"reentrancy-eth\",\"impact\":\"High\",\"confidence\":\"Medium\",\"description\":\"Synthetic external call before state update\",\"elements\":[{\"source_mapping\":{\"filename_relative\":\"contracts/BoostHub.sol\",\"lines\":[45,44,44]}},{\"source_mapping\":{\"filename_relative\":\"contracts/BoostHub.sol\",\"lines\":[44,45]}}]},{\"check\":\"unused-state\",\"impact\":\"Informational\",\"confidence\":\"High\",\"description\":\"Synthetic unused state variable\",\"elements\":[{\"source_mapping\":{\"filename_relative\":\"contracts/Vault.sol\",\"lines\":[12]}}]}]}}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 60,
+    "terminationReason": "completed"
+  }
+}

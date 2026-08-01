@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Synthetic absolute source path normalized into a sanitized parser error.",
+  "profileId": "solidity-compile-v1",
+  "input": {
+    "resultJson": "{\"errors\":[{\"severity\":\"error\",\"type\":\"TypeError\",\"component\":\"general\",\"message\":\"Synthetic error\",\"sourceLocation\":{\"file\":\"/synthetic/private/Secret.sol\",\"start\":0,\"end\":1}}],\"contracts\":{}}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 5,
+    "terminationReason": "completed"
+  }
+}

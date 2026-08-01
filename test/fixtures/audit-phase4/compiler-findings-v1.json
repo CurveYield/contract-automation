@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Solidity compiler diagnostics with deterministic sorting and duplicate removal.",
+  "profileId": "solidity-compile-v1",
+  "input": {
+    "resultJson": "{\"errors\":[{\"severity\":\"warning\",\"type\":\"Warning\",\"component\":\"general\",\"message\":\"Synthetic warning\",\"formattedMessage\":\"Synthetic warning\",\"sourceLocation\":{\"file\":\"contracts/B.sol\",\"start\":8,\"end\":12}},{\"severity\":\"error\",\"type\":\"TypeError\",\"component\":\"general\",\"message\":\"Synthetic type mismatch\",\"formattedMessage\":\"Synthetic type mismatch\",\"sourceLocation\":{\"file\":\"contracts/A.sol\",\"start\":1,\"end\":5}},{\"severity\":\"error\",\"type\":\"TypeError\",\"component\":\"general\",\"message\":\"Synthetic type mismatch\",\"formattedMessage\":\"Synthetic type mismatch\",\"sourceLocation\":{\"file\":\"contracts/A.sol\",\"start\":1,\"end\":5}}],\"contracts\":{\"contracts/A.sol\":{\"A\":{}}}}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 40,
+    "terminationReason": "completed"
+  }
+}

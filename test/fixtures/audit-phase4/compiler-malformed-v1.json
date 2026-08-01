@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Malformed Solidity compiler JSON normalized into a stable parser error.",
+  "profileId": "solidity-compile-v1",
+  "input": {
+    "resultJson": "{\"errors\":[",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 5,
+    "terminationReason": "completed"
+  }
+}

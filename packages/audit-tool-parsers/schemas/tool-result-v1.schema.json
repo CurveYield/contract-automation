@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://curveyield.com/audit/schemas/tool-result-v1.schema.json",
+  "title": "CurveYield Audit normalized tool result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileId",
+    "parserVersion",
+    "exitClassification",
+    "terminationReason",
+    "durationMs",
+    "exitCode",
+    "truncated",
+    "diagnostics",
+    "tests",
+    "counterexamples",
+    "invariants",
+    "findings",
+    "coverage",
+    "parserWarnings",
+    "parserErrors",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "tool-result-v1" },
+    "profileId": {
+      "type": "string",
+      "enum": ["solidity-compile-v1", "foundry-test-v1", "foundry-fuzz-v1", "foundry-invariant-v1", "slither-v1", "coverage-forge-v1"]
+    },
+    "parserVersion": {
+      "type": "string",
+      "enum": ["solidity-compile-parser-v1", "foundry-test-parser-v1", "foundry-fuzz-parser-v1", "foundry-invariant-parser-v1", "slither-parser-v1", "coverage-forge-parser-v1"]
+    },
+    "exitClassification": {
+      "type": "string",
+      "enum": ["success", "tool_failure", "timeout", "cancelled", "resource_exhaustion", "parser_error"]
+    },
+    "terminationReason": {
+      "type": "string",
+      "enum": ["completed", "timeout", "cancelled", "resource_exhaustion"]
+    },
+    "durationMs": { "type": "integer", "minimum": 0, "maximum": 86400000 },
+    "exitCode": { "type": ["integer", "null"], "minimum": 0, "maximum": 255 },
+    "truncated": { "type": "boolean" },
+    "diagnostics": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/diagnostic" } },
+    "tests": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "oneOf": [{ "$ref": "#/$defs/unitTest" }, { "$ref": "#/$defs/fuzzTest" }] }
+    },
+    "counterexamples": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "oneOf": [{ "$ref": "#/$defs/fuzzCounterexample" }, { "$ref": "#/$defs/invariantCounterexample" }] }
+    },
+    "invariants": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/invariant" } },
+    "findings": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/finding" } },
+    "coverage": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/coverage" }] },
+    "parserWarnings": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/parserWarning" } },
+    "parserErrors": { "type": "array", "maxItems": 1, "items": { "$ref": "#/$defs/parserError" } },
+    "summary": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": ["string", "number", "integer", "boolean", "null"],
+        "minimum": 0,
+        "maximum": 1000000000000,
+        "maxLength": 4000
+      }
+    }
+  },
+  "$defs": {
+    "safeString": { "type": "string", "maxLength": 4000 },
+    "safeName": { "type": "string", "maxLength": 512 },
+    "safeCategory": { "type": "string", "maxLength": 160 },
+    "safePath": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*://).*$"
+    },
+    "boundedJson": {
+      "description": "JSON value additionally bounded at runtime to depth 12, 1000 entries per container, 4000 characters per string, absolute numeric value 1e12, and 256000 encoded bytes for counterexamples."
+    },
+    "sourceLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "start", "end"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "start": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000000000000 },
+        "end": { "type": ["integer", "null"], "minimum": 0, "maximum": 1000000000000 }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "category", "component", "message", "formattedMessage", "location"],
+      "properties": {
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "category": { "$ref": "#/$defs/safeCategory" },
+        "component": { "$ref": "#/$defs/safeCategory" },
+        "message": { "$ref": "#/$defs/safeString" },
+        "formattedMessage": { "$ref": "#/$defs/safeString" },
+        "location": { "$ref": "#/$defs/sourceLocation" }
+      }
+    },
+    "unitTest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite", "name", "status", "durationMs", "reason"],
+      "properties": {
+        "suite": { "$ref": "#/$defs/safeName" },
+        "name": { "$ref": "#/$defs/safeName" },
+        "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+        "durationMs": { "type": "number", "minimum": 0, "maximum": 86400000 },
+        "reason": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/safeString" }] }
+      }
+    },
+    "fuzzTest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test", "status", "runs", "seed"],
+      "properties": {
+        "test": { "$ref": "#/$defs/safeName" },
+        "status": { "type": "string", "enum": ["passed", "failed"] },
+        "runs": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 }
+      }
+    },
+    "traceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "function", "arguments", "result"],
+      "properties": {
+        "contract": { "$ref": "#/$defs/safeName" },
+        "function": { "$ref": "#/$defs/safeName" },
+        "arguments": { "$ref": "#/$defs/boundedJson" },
+        "result": { "$ref": "#/$defs/boundedJson" }
+      }
+    },
+    "trace": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/traceEntry" } },
+    "fuzzCounterexample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test", "seed", "value", "trace"],
+      "properties": {
+        "test": { "$ref": "#/$defs/safeName" },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "value": { "$ref": "#/$defs/boundedJson" },
+        "trace": { "$ref": "#/$defs/trace" }
+      }
+    },
+    "invariantCounterexample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "invariant", "seed", "value", "trace"],
+      "properties": {
+        "contract": { "$ref": "#/$defs/safeName" },
+        "invariant": { "$ref": "#/$defs/safeName" },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "value": { "$ref": "#/$defs/boundedJson" },
+        "trace": { "$ref": "#/$defs/trace" }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "name", "status", "runs", "depth", "seed", "counterexample", "trace"],
+      "properties": {
+        "contract": { "$ref": "#/$defs/safeName" },
+        "name": { "$ref": "#/$defs/safeName" },
+        "status": { "type": "string", "enum": ["passed", "failed"] },
+        "runs": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "depth": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "seed": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "counterexample": { "$ref": "#/$defs/boundedJson" },
+        "trace": { "$ref": "#/$defs/trace" }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "lines"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "lines": {
+          "type": "array",
+          "maxItems": 1000,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 1, "maximum": 10000000 }
+        }
+      }
+    },
+    "sourceReferences": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/sourceReference" } },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detector", "impact", "confidence", "description", "locations"],
+      "properties": {
+        "detector": { "$ref": "#/$defs/safeCategory" },
+        "impact": { "type": "string", "maxLength": 80 },
+        "confidence": { "type": "string", "maxLength": 80 },
+        "description": { "$ref": "#/$defs/safeString" },
+        "locations": { "$ref": "#/$defs/sourceReferences" }
+      }
+    },
+    "coverageMetric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["covered", "total", "percentage"],
+      "properties": {
+        "covered": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "total": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "percentage": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "coverageFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "lines", "functions", "branches"],
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "lines": { "$ref": "#/$defs/coverageMetric" },
+        "functions": { "$ref": "#/$defs/coverageMetric" },
+        "branches": { "$ref": "#/$defs/coverageMetric" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "totals"],
+      "properties": {
+        "files": { "type": "array", "maxItems": 1000, "items": { "$ref": "#/$defs/coverageFile" } },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lines", "functions", "branches"],
+          "properties": {
+            "lines": { "$ref": "#/$defs/coverageMetric" },
+            "functions": { "$ref": "#/$defs/coverageMetric" },
+            "branches": { "$ref": "#/$defs/coverageMetric" }
+          }
+        }
+      }
+    },
+    "parserWarning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "path", "omitted"],
+      "properties": {
+        "code": { "const": "truncated" },
+        "message": { "const": "Normalized entries were truncated at the configured bound." },
+        "path": { "$ref": "#/$defs/safeString" },
+        "omitted": { "type": "integer", "minimum": 1, "maximum": 10000 }
+      }
+    },
+    "parserError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "path"],
+      "properties": {
+        "code": { "type": "string", "maxLength": 80 },
+        "message": { "$ref": "#/$defs/safeString" },
+        "path": { "$ref": "#/$defs/safeString" }
+      }
+    }
+  }
+}

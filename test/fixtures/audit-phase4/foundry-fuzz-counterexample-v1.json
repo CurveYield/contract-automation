@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Foundry fuzz failure with a bounded synthetic counterexample and trace.",
+  "profileId": "foundry-fuzz-v1",
+  "input": {
+    "resultJson": "{\"cases\":[{\"test\":\"testFuzzWithdraw\",\"status\":\"failed\",\"runs\":812,\"seed\":42,\"counterexample\":{\"amount\":\"0\",\"actor\":\"0x0000000000000000000000000000000000000001\"},\"trace\":[{\"contract\":\"SyntheticHandler\",\"function\":\"withdraw\",\"arguments\":[\"0\"],\"result\":\"revert\"}]}]}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 70,
+    "terminationReason": "completed"
+  }
+}

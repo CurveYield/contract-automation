@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Foundry unit-test output with one deterministic synthetic failure.",
+  "profileId": "foundry-test-v1",
+  "input": {
+    "resultJson": "{\"tests\":[{\"suite\":\"SyntheticSuite\",\"name\":\"testWithdraw\",\"status\":\"failed\",\"durationMs\":10,\"reason\":\"synthetic assertion failure\"},{\"suite\":\"SyntheticSuite\",\"name\":\"testDeposit\",\"status\":\"passed\",\"durationMs\":5,\"reason\":null}]}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 20,
+    "terminationReason": "completed"
+  }
+}
