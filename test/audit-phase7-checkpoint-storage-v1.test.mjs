@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
+import { InMemoryAuditStore } from './audit-phase7-in-memory-store-v1.mjs';
 import { checkpointObjectKey, forkRestoreManifestKey, forkTombstoneKey, sha256Hex } from '../packages/audit-fork-protocol/src/index.mjs';
 async function forks(){ try { return await import('../packages/audit-forks/src/index.mjs'); } catch(cause) { assert.fail(`Phase 7 storage module unavailable: ${cause.code}`); } }
 const forkId='fork_'+'4'.repeat(32), tenantId='ten_'+'1'.repeat(32), attemptId='att_'+'5'.repeat(32);
