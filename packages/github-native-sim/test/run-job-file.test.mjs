@@ -76,3 +76,58 @@ test('missing RPC writes a failure report before rejecting', async () => {
     await fs.rm(temporary.root, { recursive: true, force: true });
   }
 });
+
+test('simulation routes Ganache through the retrying fork proxy and closes both resources', async () => {
+  const temporary = await temporaryOutput('github-native-proxy-routing-');
+  let proxyClosed = false;
+  let engineClosed = false;
+  try {
+    const jobFile = path.join(testDirectory, 'fixtures', 'missing-rpc', 'job.json');
+    const result = await runGitHubNativeJob({
+      jobFile,
+      outputDir: temporary.output,
+      environment: { RPC_ETHEREUM: 'http://127.0.0.1:1/private-rpc' },
+      services: {
+        startForkRpcProxy: async ({ upstreamUrl, block }) => {
+          assert.equal(upstreamUrl, 'http://127.0.0.1:1/private-rpc');
+          assert.equal(block, 'latest');
+          return {
+            url: 'http://127.0.0.1:8547',
+            blockNumber: 123,
+            diagnostics: {
+              resolvedBlock: 123,
+              blockNumberAttempts: 1,
+              prefetchAttempts: 2,
+              cacheHits: 0,
+              forwardedRequests: 0
+            },
+            async close() { proxyClosed = true; }
+          };
+        },
+        startGanacheEngine: async ({ forkUrl, block }) => {
+          assert.equal(forkUrl, 'http://127.0.0.1:8547');
+          assert.equal(block, 123);
+          return {
+            aliases: { account0: '0x0000000000000000000000000000000000000001' },
+            runtime: {
+              async execute(step) {
+                assert.equal(step.action, 'mine');
+                return { blocks: step.blocks };
+              }
+            },
+            async close() { engineClosed = true; }
+          };
+        }
+      }
+    });
+
+    assert.equal(result.status, 'completed');
+    assert.equal(result.resolvedBlock, 123);
+    assert.equal(result.forkTransport.prefetchAttempts, 2);
+    assert.equal(result.steps.length, 1);
+    assert.equal(proxyClosed, true);
+    assert.equal(engineClosed, true);
+  } finally {
+    await fs.rm(temporary.root, { recursive: true, force: true });
+  }
+});
