@@ -1,8 +1,9 @@
 import { ValidationError, createOperationBudget, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
+import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 
 export const MAX_PROFILE_METADATA_BYTES = 5_000_000;
 export const PROFILE_OPERATION_BUDGETS = Object.freeze({
-  publish: Object.freeze(createOperationBudget({ classA: 4, classB: 0, storageBytes: 1_000_000 })),
+  publish: Object.freeze(createOperationBudget({ classA: 4, classB: 1, storageBytes: 1_000_000 })),
   read: Object.freeze(createOperationBudget({ classA: 0, classB: 1, storageBytes: 0 })),
   revoke: Object.freeze(createOperationBudget({ classA: 2, classB: 1, storageBytes: 64_000 }))
 });
@@ -106,7 +107,23 @@ function validateIndex(value) {
   if (value.records !== undefined) object(value.records, '$.index.records');
   return structuredClone(value);
 }
+function emptyIndex() { return { schemaVersion: 'profile-index-v1', profiles: [], records: {} }; }
 function parse(record) { return record ? JSON.parse(typeof record.value === 'string' ? record.value : new TextDecoder().decode(record.value)) : null; }
+function sameJson(record, expected) {
+  try { return JSON.stringify(parse(record)) === JSON.stringify(expected); }
+  catch { return false; }
+}
+async function putImmutable(store, key, value) {
+  try {
+    await store.put(key, JSON.stringify(value), { onlyIf: { etagDoesNotMatch: '*' } });
+    return false;
+  } catch (error) {
+    if (!(error instanceof ConditionalWriteError)) throw error;
+    const existing = await store.get(key);
+    if (!existing || !sameJson(existing, value)) throw error;
+    return true;
+  }
+}
 
 export class ProfileRegistry {
   constructor(store) {
@@ -115,27 +132,43 @@ export class ProfileRegistry {
   }
   async publish(bundle) {
     object(bundle); scanAuditForbiddenFields(bundle);
-    keys(bundle, new Set(['manifest', 'sbom', 'attestation', 'index', 'indexEtag'])); required(bundle, new Set(['manifest', 'sbom', 'attestation', 'index']));
+    keys(bundle, new Set(['manifest', 'sbom', 'attestation', 'index', 'indexEtag']));
+    required(bundle, new Set(['manifest', 'sbom', 'attestation']));
     const manifest = validateProfileManifest(bundle.manifest);
     const sbom = validateReference(bundle.sbom, 'sbom', manifest.profileId);
     const attestation = validateReference(bundle.attestation, 'attestation', manifest.profileId);
-    const suppliedIndex = validateIndex(bundle.index);
-    if (!suppliedIndex.profiles.includes(manifest.profileId)) throw new ValidationError('invalid_profile_index', '$.index.profiles must include the published profile', '$.index.profiles');
+    if (bundle.index !== undefined) validateIndex(bundle.index);
     if (sbom.sha256 !== manifest.sbomSha256 || attestation.sha256 !== manifest.attestationSha256) throw new ValidationError('digest_mismatch', 'Profile reference digests must match the manifest', '$');
-    const storedIndex = { schemaVersion: 'profile-index-v1', profiles: [...new Set(suppliedIndex.profiles)].sort(), records: { ...(suppliedIndex.records ?? {}), [manifest.profileId]: { manifest, revoked: false, revocation: null } } };
+
+    const indexRecord = await this.store.get(profileIndexKey());
+    if (bundle.indexEtag !== undefined && (!indexRecord || indexRecord.etag !== bundle.indexEtag)) {
+      throw new ValidationError('stale_index', '$.indexEtag is stale', '$.indexEtag');
+    }
+    const currentIndex = indexRecord ? validateIndex(parse(indexRecord)) : emptyIndex();
+    if (currentIndex.records?.[manifest.profileId]) throw new ValidationError('profile_exists', 'Profile already exists', '$.profileId');
+    const storedIndex = {
+      schemaVersion: 'profile-index-v1',
+      profiles: [...new Set([...currentIndex.profiles, manifest.profileId])].sort(),
+      records: { ...(currentIndex.records ?? {}), [manifest.profileId]: { manifest, revoked: false, revocation: null } }
+    };
     const total = new TextEncoder().encode(JSON.stringify({ manifest, sbom, attestation, index: storedIndex })).byteLength;
     if (total > MAX_PROFILE_METADATA_BYTES) throw new ValidationError('profile_metadata_too_large', `Profile metadata exceeds ${MAX_PROFILE_METADATA_BYTES} bytes`, '$');
-    await this.store.put(profileManifestKey(manifest.profileId), JSON.stringify(manifest), { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(profileSbomKey(manifest.profileId), JSON.stringify(sbom), { onlyIf: { etagDoesNotMatch: '*' } });
-    await this.store.put(profileAttestationKey(manifest.profileId), JSON.stringify(attestation), { onlyIf: { etagDoesNotMatch: '*' } });
-    const onlyIf = bundle.indexEtag ? { etagMatches: bundle.indexEtag } : { etagDoesNotMatch: '*' };
+
+    const recoveredManifest = await putImmutable(this.store, profileManifestKey(manifest.profileId), manifest);
+    const recoveredSbom = await putImmutable(this.store, profileSbomKey(manifest.profileId), sbom);
+    const recoveredAttestation = await putImmutable(this.store, profileAttestationKey(manifest.profileId), attestation);
+    const onlyIf = indexRecord ? { etagMatches: indexRecord.etag } : { etagDoesNotMatch: '*' };
     await this.store.put(profileIndexKey(), JSON.stringify(storedIndex), { onlyIf });
-    return Object.freeze({ profileId: manifest.profileId, operationBudget: PROFILE_OPERATION_BUDGETS.publish });
+    return Object.freeze({
+      profileId: manifest.profileId,
+      recoveredPartialPublication: recoveredManifest || recoveredSbom || recoveredAttestation,
+      operationBudget: PROFILE_OPERATION_BUDGETS.publish
+    });
   }
   async readIndex() {
     const record = await this.store.get(profileIndexKey());
-    if (!record) return Object.freeze({ schemaVersion: 'profile-index-v1', profiles: [], records: {} });
-    return Object.freeze(parse(record));
+    if (!record) return Object.freeze(emptyIndex());
+    return Object.freeze(validateIndex(parse(record)));
   }
   async read(profileId) {
     assertProfileId(profileId);
@@ -150,7 +183,7 @@ export class ProfileRegistry {
     if (revocation.profileId !== profileId) throw new ValidationError('profile_mismatch', '$.revocation.profileId must match', '$.revocation.profileId');
     string(revocation.reason, '$.revocation.reason', 256); instant(revocation.revokedAt, '$.revocation.revokedAt');
     const indexRecord = await this.store.get(profileIndexKey()); if (!indexRecord) throw new ValidationError('not_found', 'Profile index not found', '$.profileId');
-    const index = parse(indexRecord); if (!index.records?.[profileId]) throw new ValidationError('not_found', 'Profile not found', '$.profileId');
+    const index = validateIndex(parse(indexRecord)); if (!index.records?.[profileId]) throw new ValidationError('not_found', 'Profile not found', '$.profileId');
     await this.store.put(profileRevocationKey(profileId), JSON.stringify(revocation), { onlyIf: { etagDoesNotMatch: '*' } });
     index.records[profileId] = { ...index.records[profileId], revoked: true, revocation: structuredClone(revocation) };
     await this.store.put(profileIndexKey(), JSON.stringify(index), { onlyIf: { etagMatches: indexRecord.etag } });
