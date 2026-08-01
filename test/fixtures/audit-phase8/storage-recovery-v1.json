@@ -1,0 +1,9 @@
+{
+  "schemaVersion":"phase8-storage-scenarios-v1",
+  "scenarios":[
+    {"name":"typical","inputCount":2,"classA":4,"classB":4,"retainedBytes":2000000,"retentionDays":90,"existingImmutable":0},
+    {"name":"three-input-retry","inputCount":3,"classA":4,"classB":5,"retainedBytes":2500000,"retentionDays":60,"existingImmutable":1},
+    {"name":"stale-pointer","inputCount":2,"expectedError":"stale_write"},
+    {"name":"input-quota","inputCount":3,"maxInputs":2,"expectedError":"quota_exceeded"}
+  ]
+}
