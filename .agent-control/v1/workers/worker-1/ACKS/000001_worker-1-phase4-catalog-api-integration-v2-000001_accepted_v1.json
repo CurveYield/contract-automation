@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-1",
+  "sequence": 1,
+  "messageId": "worker-1-phase4-catalog-api-integration-v2-000001",
+  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000001_worker-1-phase4-catalog-api-integration-v2_v1.md",
+  "assignmentBlobSha": "5bb7a6b2f1998502fb80c99ee44527b98f7ed046",
+  "issueNumber": 72,
+  "branch": "audit-phase4/catalog-api-integration-v2",
+  "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+  "acceptedAt": "2026-08-01T13:07:00Z"
+}
