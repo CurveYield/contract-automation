@@ -2,17 +2,17 @@
   "protocolVersion": 1,
   "agentId": "orchestrator",
   "state": "idle",
-  "lastPollAt": "2026-08-01T12:59:00Z",
-  "lastProcessedEvent": "worker-2-accepted-pr73-and-sequence2-20260801T125900Z",
+  "lastPollAt": "2026-08-01T13:54:00Z",
+  "lastProcessedEvent": "work-package-and-report-policy-updated-20260801T135300Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "pendingActions": [
-    "Await Worker 0 acknowledgement of sequence 1 and issue #70 progress.",
-    "Await Worker 1 acknowledgement of sequence 1 and issue #72 progress.",
-    "Await Worker 2 acknowledgement of sequence 2 and issue #74 progress.",
-    "Await Worker 3 completed status and pinned issue #71 final report.",
+    "Monitor Worker 0 sequence 1 issue #70 after its original chat resumed.",
+    "Await Worker 1 sequence 1 issue #72 completion and pinned report.",
+    "Await Worker 2 sequence 2 issue #74 completion and pinned report.",
+    "Wake Worker 3 original chat to consume sequence 2 and issue #76; require report only on #76 with verified comment URL and ID.",
     "Review draft PR #73 for mergeability into audit-phase4/integration-v3 after exact-head checks; do not merge to main.",
-    "Bootstrap the local wake agent; Workers 0, 1, and 2 currently require immediate wake."
+    "Keep Phase 5 integration blocked until Phase 4 is independently accepted."
   ],
-  "updatedAt": "2026-08-01T12:59:00Z"
+  "updatedAt": "2026-08-01T13:54:00Z"
 }
