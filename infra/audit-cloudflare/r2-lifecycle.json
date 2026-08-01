@@ -1,13 +1,137 @@
 {
   "Rules": [
-    { "ID": "audit-ingress-1d", "Status": "Enabled", "Filter": { "Prefix": "audit/ingress/" }, "Expiration": { "Days": 1 }, "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 } },
-    { "ID": "audit-raw-logs-7d", "Status": "Enabled", "Filter": { "Prefix": "audit/logs/raw/" }, "Expiration": { "Days": 7 } },
-    { "ID": "audit-source-30d", "Status": "Enabled", "Filter": { "Prefix": "audit/source/" }, "Expiration": { "Days": 30 } },
-    { "ID": "audit-layers-30d", "Status": "Enabled", "Filter": { "Prefix": "audit/layers/" }, "Expiration": { "Days": 30 } },
-    { "ID": "audit-evidence-30d", "Status": "Enabled", "Filter": { "Prefix": "audit/evidence/" }, "Expiration": { "Days": 30 } },
-    { "ID": "audit-reports-30d", "Status": "Enabled", "Filter": { "Prefix": "audit/reports/" }, "Expiration": { "Days": 30 } },
-    { "ID": "audit-active-forks-1d", "Status": "Enabled", "Filter": { "Prefix": "audit/forks/active/" }, "Expiration": { "Days": 1 } },
-    { "ID": "audit-exports-7d", "Status": "Enabled", "Filter": { "Prefix": "audit/exports/" }, "Expiration": { "Days": 7 } },
-    { "ID": "audit-internal-nonces-1d", "Status": "Enabled", "Filter": { "Prefix": "internal-nonces/" }, "Expiration": { "Days": 1 } }
+    {
+      "ID": "audit-ingress-1d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "ingress/"
+      },
+      "Expiration": {
+        "Days": 1
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    },
+    {
+      "ID": "audit-workspaces-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "workspaces/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-campaigns-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "campaigns/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-jobs-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "jobs/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-workspace-indexes-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "indexes/workspace/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-campaign-indexes-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "indexes/campaign/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-job-indexes-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "indexes/job/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-tenant-indexes-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "indexes/tenant/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "audit-active-forks-1d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "forks/active/"
+      },
+      "Expiration": {
+        "Days": 1
+      }
+    },
+    {
+      "ID": "audit-exports-7d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "exports/"
+      },
+      "Expiration": {
+        "Days": 7
+      }
+    },
+    {
+      "ID": "audit-internal-nonces-1d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "internal-nonces/"
+      },
+      "Expiration": {
+        "Days": 1
+      }
+    },
+    {
+      "ID": "expire-audit-job-logs-7d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "job-logs/"
+      },
+      "Expiration": {
+        "Days": 7
+      }
+    },
+    {
+      "ID": "expire-audit-job-artifacts-7d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "job-artifacts/"
+      },
+      "Expiration": {
+        "Days": 7
+      }
+    }
   ]
 }

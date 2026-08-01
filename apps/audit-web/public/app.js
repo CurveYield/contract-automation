@@ -3,10 +3,14 @@ import { createCapabilityViewModel, safeDisplayText } from './view-model.js';
 
 const connectionForm = document.querySelector('#connection-form');
 const workspaceForm = document.querySelector('#workspace-form');
+const campaignForm = document.querySelector('#campaign-form');
+const jobForm = document.querySelector('#job-form');
 const profilesButton = document.querySelector('#load-profiles');
 const status = document.querySelector('#connection-status');
 const workspaceResult = document.querySelector('#workspace-result');
 const profileResult = document.querySelector('#profile-result');
+const campaignResult = document.querySelector('#campaign-result');
+const jobResult = document.querySelector('#job-result');
 const phase = document.querySelector('#phase');
 const execution = document.querySelector('#execution');
 const executionState = document.querySelector('#execution-state');
@@ -64,5 +68,32 @@ profilesButton.addEventListener('click', async () => {
     setText(profileResult, JSON.stringify(profiles, null, 2));
   } catch (error) {
     setText(profileResult, error?.message || 'Profile lookup failed.');
+  }
+});
+
+campaignForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setText(campaignResult, 'Loading campaign metadata…');
+  try {
+    const campaignId = document.querySelector('#campaign-id').value;
+    const campaign = await requireClient().getCampaign(campaignId);
+    setText(campaignResult, JSON.stringify(campaign, null, 2));
+  } catch (error) {
+    setText(campaignResult, error?.message || 'Campaign lookup failed.');
+  }
+});
+
+jobForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setText(jobResult, 'Loading job metadata…');
+  try {
+    const jobId = document.querySelector('#job-id').value;
+    const attemptId = document.querySelector('#attempt-id').value.trim();
+    const requests = [requireClient().getJob(jobId), requireClient().getJobReports(jobId)];
+    if (attemptId) requests.push(requireClient().getJobLogs(jobId, attemptId));
+    const [job, reports, logs] = await Promise.all(requests);
+    setText(jobResult, JSON.stringify({ job, reports, ...(logs ? { logs } : {}) }, null, 2));
+  } catch (error) {
+    setText(jobResult, error?.message || 'Job lookup failed.');
   }
 });
