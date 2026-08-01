@@ -1,11 +1,11 @@
 {
   "schemaVersion": "curveyield-audit-specification-manifest-v2",
-  "generatedAtUtc": "2026-08-01T09:04:05Z",
+  "generatedAtUtc": "2026-08-01T15:36:00Z",
   "files": [
     {
       "file": "00_README_AND_GOVERNING_SCOPE_v2.md",
-      "sha256": "58842e71b9a798e48dd9fdc2820488779fd1ccdc8c6bc56af1d177ecb7570626",
-      "bytes": 2576
+      "sha256": "9a9699ac753e408bd6446775ab0ba924b8d2cdf18e4d383470bd21310ec1b104",
+      "bytes": 4145
     },
     {
       "file": "01_CURRENT_STACK_AND_LITE_BOUNDARY_v2.md",
@@ -14,13 +14,13 @@
     },
     {
       "file": "02_TARGET_ARCHITECTURE_CURRENT_STACK_v2.md",
-      "sha256": "e72c12b52ed7e6ceed295cfb1380df365f159d6add05c43257c3d3a144da476b",
-      "bytes": 2442
+      "sha256": "44baf7fb66e0873c41c0acbd3c3fd0f4352a9480490892547c3e0dbb68835b08",
+      "bytes": 5762
     },
     {
       "file": "03_PHASE_ROADMAP_v2.md",
-      "sha256": "b630acc6bbe4367a68a802a0ac02fdcb48f8445870702c9c3aae6d35a0f9e231",
-      "bytes": 1628
+      "sha256": "8cfa03e18d9dab7d30d1ca68a4a7e0ced4b983998877b4232d0f99b83dc94ec6",
+      "bytes": 3350
     },
     {
       "file": "04_PHASE_1_BOUNDARY_LOCK_AND_SCAFFOLD_v2.md",
@@ -54,13 +54,13 @@
     },
     {
       "file": "10_PHASE_9_WEB_REPORTS_GITHUB_INTEGRATIONS_v2.md",
-      "sha256": "abaaf86b9e0f573e78729845162ce164eb3782cd7fb5a47b7cdfc38ed21f6d9c",
-      "bytes": 1072
+      "sha256": "0d35e62d96294999edd044e39ba49b4afe5ef3944ff6434b3a4618dace71edf2",
+      "bytes": 5479
     },
     {
       "file": "11_PHASE_10_CURRENT_STACK_PRODUCTION_HARDENING_v2.md",
-      "sha256": "6e37c17955d0509da8ab91af0d3ae33d568d0a08e92452d31b61cc811f982851",
-      "bytes": 1128
+      "sha256": "fc0c2493630706a6b4b0f32a1678d0bfd3d5271d99fef7cdce3af72c38307984",
+      "bytes": 3690
     },
     {
       "file": "12_R2_OBJECT_MODEL_AND_OPERATION_RULES_v2.md",
@@ -74,8 +74,8 @@
     },
     {
       "file": "14_SECRETS_AND_IDENTITIES_CURRENT_STACK_v2.md",
-      "sha256": "05a147ca208b15f37a0ef6ecdc7ab36de177a50674a7f3ebbfcc69b5a3a88eda",
-      "bytes": 2133
+      "sha256": "37f00c311ccb4b95b317fec509cacebfab7bf0ed5caae369786bef909e56f1a8",
+      "bytes": 4730
     },
     {
       "file": "15_EXTERNAL_HARDENED_COMPUTE_DEFERRED_INTERFACE_v2.md",
@@ -84,13 +84,13 @@
     },
     {
       "file": "16_TESTING_AND_ACCEPTANCE_v2.md",
-      "sha256": "0a41673a0378347a9fdb3b92f50da187608079d67742fe655d09cb0e03c4b3a7",
-      "bytes": 1457
+      "sha256": "fc281a491ba44f0face56cc8765767356a3673136c75ece641b2f8eb62e2c2b0",
+      "bytes": 7113
     },
     {
       "file": "17_CAPABILITY_TRACEABILITY_v2.md",
-      "sha256": "d64619bc42e943c7d1887fbfc442cd57fe2fe5e41f39580dfab81e35625a6bd5",
-      "bytes": 1671
+      "sha256": "dd81a4264b21a2b4f9a5e83f5a1f6e96b1b750c590b0202e4584cbc54c3067e3",
+      "bytes": 3409
     },
     {
       "file": "18_R2_FUNCTION_USAGE_TABLE_v2.csv",
@@ -108,10 +108,15 @@
       "bytes": 1159
     },
     {
+      "file": "21_GITHUB_DIRECT_MODE_v1.md",
+      "sha256": "2df2cbdb9a1689007543200269fad2d653b455f7de0e63fcc91fa649728e752b",
+      "bytes": 14056
+    },
+    {
       "file": "SOURCES_v2.md",
       "sha256": "784333b6933263d0c187c8202d27bbad9eea3de4ae9c373829ec3f6d38ef950c",
       "bytes": 945
     }
   ],
-  "fileCount": 22
+  "fileCount": 23
 }
