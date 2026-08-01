@@ -37,10 +37,88 @@ const encoder = new TextEncoder();
 function fail(code, path, message = code) {
   throw new ValidationError(code, message, path);
 }
+function propertyPath(path, key) {
+  if (typeof key !== 'string' || key.length < 1 || key.length > 80 || !/^[A-Za-z0-9_-]+$/.test(key)) return `${path}.*`;
+  return `${path}.${key}`;
+}
+function reflectShape(value, path) {
+  try {
+    return {
+      prototype: Object.getPrototypeOf(value),
+      keys: Reflect.ownKeys(value),
+      descriptors: Object.getOwnPropertyDescriptors(value)
+    };
+  } catch (error) {
+    if (error instanceof ValidationError) throw error;
+    fail('hostile_object', path, `${path} could not be inspected safely`);
+  }
+}
 function isPlainObject(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+function sanitizeExternalValue(value, path = '$', seen = new WeakSet()) {
+  if (value === null || typeof value !== 'object') return value;
+  if (seen.has(value)) fail('cyclic_value', path, `${path} must be acyclic JSON-like data`);
+  seen.add(value);
+
+  const shape = reflectShape(value, path);
+  if (Array.isArray(value)) {
+    if (shape.prototype !== Array.prototype) fail('invalid_array', path, `${path} must be an ordinary array`);
+    const lengthDescriptor = shape.descriptors.length;
+    if (!lengthDescriptor || !Object.hasOwn(lengthDescriptor, 'value') || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0) {
+      fail('invalid_array', path, `${path} has an invalid length descriptor`);
+    }
+    const length = lengthDescriptor.value;
+    for (const key of shape.keys) {
+      if (typeof key === 'symbol') fail('unsupported_property', path, `${path} must not contain symbol properties`);
+      if (key === 'length') continue;
+      if (!/^(0|[1-9][0-9]*)$/.test(key)) fail('unsupported_property', propertyPath(path, key), 'Unsupported array property');
+      const index = Number(key);
+      if (!Number.isSafeInteger(index) || index >= length) fail('unsupported_property', propertyPath(path, key), 'Array property is outside the declared length');
+    }
+    const result = new Array(length);
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = shape.descriptors[String(index)];
+      if (!descriptor) fail('invalid_array', path, `${path} must not contain sparse entries`);
+      if (!Object.hasOwn(descriptor, 'value')) fail('accessor_property', `${path}[${index}]`, `${path}[${index}] must be a data property`);
+      if (descriptor.enumerable !== true) fail('unsupported_property', `${path}[${index}]`, `${path}[${index}] must be enumerable`);
+      result[index] = sanitizeExternalValue(descriptor.value, `${path}[${index}]`, seen);
+    }
+    seen.delete(value);
+    return result;
+  }
+
+  if (shape.prototype !== Object.prototype && shape.prototype !== null) {
+    fail('invalid_plain_object', path, `${path} must be a plain object`);
+  }
+  const stringKeys = [];
+  for (const key of shape.keys) {
+    if (typeof key === 'symbol') fail('unsupported_property', path, `${path} must not contain symbol properties`);
+    stringKeys.push(key);
+  }
+  stringKeys.sort(compareText);
+  const result = {};
+  for (const key of stringKeys) {
+    const descriptor = shape.descriptors[key];
+    const childPath = propertyPath(path, key);
+    if (!descriptor) fail('hostile_object', childPath, 'Property descriptor is unavailable');
+    if (!Object.hasOwn(descriptor, 'value')) fail('accessor_property', childPath, 'Accessor properties are not accepted');
+    if (descriptor.enumerable !== true) fail('unsupported_property', childPath, 'Non-enumerable properties are not accepted');
+    Object.defineProperty(result, key, {
+      value: sanitizeExternalValue(descriptor.value, childPath, seen),
+      enumerable: true,
+      writable: true,
+      configurable: true
+    });
+  }
+  seen.delete(value);
+  return result;
 }
 function plainObject(value, path) {
   if (!isPlainObject(value)) fail('invalid_plain_object', path, `${path} must be a plain object`);
@@ -49,7 +127,7 @@ function plainObject(value, path) {
 function exactKeys(value, keys, path) {
   const expected = new Set(keys);
   for (const key of Object.keys(value)) {
-    if (!expected.has(key)) fail('unknown_field', `${path}.${key}`, `${path}.${key} is not allowed`);
+    if (!expected.has(key)) { const childPath = propertyPath(path, key); fail('unknown_field', childPath, `${childPath} is not allowed`); }
   }
   for (const key of keys) {
     if (!Object.hasOwn(value, key)) fail('missing_field', `${path}.${key}`, `${path}.${key} is required`);
@@ -63,6 +141,7 @@ function boundedArray(value, path, maximum) {
 function boundedString(value, path, maximum = MAX_STRING_LENGTH) {
   if (typeof value !== 'string') fail('invalid_string', path, `${path} must be a string`);
   if (value.length > maximum) fail('string_too_long', path, `${path} exceeds ${maximum} characters`);
+  if (value.includes('\u0000')) fail('noncanonical_string', path, `${path} contains a noncanonical NUL character`);
   return value;
 }
 function enumValue(value, path, values) {
@@ -71,10 +150,12 @@ function enumValue(value, path, values) {
   return value;
 }
 function boundedInteger(value, path, minimum, maximum) {
+  if (Object.is(value, -0)) fail('noncanonical_number', path, `${path} must not be negative zero`);
   if (!Number.isSafeInteger(value) || value < minimum || value > maximum) fail('invalid_integer', path, `${path} is outside the configured range`);
   return value;
 }
 function boundedNumber(value, path, minimum, maximum) {
+  if (Object.is(value, -0)) fail('noncanonical_number', path, `${path} must not be negative zero`);
   if (typeof value !== 'number' || !Number.isFinite(value) || value < minimum || value > maximum) fail('numeric_out_of_range', path, `${path} is outside the configured range`);
   return value;
 }
@@ -101,13 +182,7 @@ function safePath(value, path) {
   return value;
 }
 function cloneValue(value) {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(cloneValue);
-  const result = {};
-  for (const [key, child] of Object.entries(value)) {
-    Object.defineProperty(result, key, { value: cloneValue(child), enumerable: true, writable: true, configurable: true });
-  }
-  return result;
+  return sanitizeExternalValue(value);
 }
 function compareText(left, right) {
   if (left < right) return -1;
@@ -124,12 +199,18 @@ function compareTuple(left, right) {
   }
   return 0;
 }
+function canonicalStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(',')}]`;
+  const keys = Object.keys(value).sort(compareText);
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalStringify(value[key])}`).join(',')}}`;
+}
 function assertCanonicalArray(values, path, compare) {
   const seen = new Set();
   let previous = null;
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index];
-    const serialized = JSON.stringify(value);
+    const serialized = canonicalStringify(value);
     if (seen.has(serialized)) fail('duplicate_entry', `${path}[${index}]`);
     seen.add(serialized);
     if (previous !== null && compare(previous, value) > 0) fail('noncanonical_order', `${path}[${index}]`);
@@ -164,7 +245,7 @@ function boundedJson(value, path, depth = 0) {
 }
 function counterexampleValue(value, path) {
   boundedJson(value, path);
-  if (encoder.encode(JSON.stringify(value)).byteLength > MAX_COUNTEREXAMPLE_BYTES) fail('data_too_large', path, `${path} exceeds the encoded byte bound`);
+  if (encoder.encode(canonicalStringify(value)).byteLength > MAX_COUNTEREXAMPLE_BYTES) fail('data_too_large', path, `${path} exceeds the encoded byte bound`);
 }
 
 export {
@@ -193,7 +274,9 @@ export {
   CLASSIFICATIONS,
   TERMINATIONS,
   fail,
+  propertyPath,
   isPlainObject,
+  sanitizeExternalValue,
   plainObject,
   exactKeys,
   boundedArray,
@@ -209,6 +292,7 @@ export {
   compareText,
   compareNumber,
   compareTuple,
+  canonicalStringify,
   assertCanonicalArray,
   deepFreeze,
   ensureEmpty,
