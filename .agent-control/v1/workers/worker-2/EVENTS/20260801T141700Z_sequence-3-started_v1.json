@@ -1,0 +1,11 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_started",
+  "workerId": "worker-2",
+  "sequence": 3,
+  "messageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
+  "issueNumber": 77,
+  "branch": "audit-phase6/result-contract-compatibility-v1",
+  "startingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+  "recordedAt": "2026-08-01T14:17:00Z"
+}
