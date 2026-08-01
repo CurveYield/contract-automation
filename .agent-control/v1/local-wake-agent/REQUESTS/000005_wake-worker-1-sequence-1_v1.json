@@ -1,0 +1,17 @@
+{
+  "protocolVersion": 1,
+  "wakeRequestId": "wake-worker-1-sequence-1-000005",
+  "requestSequence": 5,
+  "targetAgent": "worker-1",
+  "reason": "Worker 1 completed mailbox status synchronization and now has a new immutable assignment.",
+  "supersedesWakeRequestId": "wake-worker-1-status-sync-000002",
+  "expectedCurrentSequence": 1,
+  "expectedMessageId": "worker-1-phase4-catalog-api-integration-v2-000001",
+  "expectedIssueNumber": 72,
+  "expectedBranch": "audit-phase4/catalog-api-integration-v2",
+  "expectedStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+  "requiredAction": "Wake Worker 1 and instruct it to read and validate CURRENT_v1.json, acknowledge sequence 1 exactly once, then begin issue #72. Do not execute the superseded status-sync request.",
+  "issuedAt": "2026-08-01T12:38:00Z",
+  "issuedBy": "orchestrator",
+  "requestState": "ready"
+}
