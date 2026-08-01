@@ -1,0 +1,178 @@
+{
+  "protocolVersion": 1,
+  "manifestId": "audit-round1-reconstruction-v1",
+  "createdAt": "2026-08-01T16:52:00Z",
+  "target": {
+    "branch": "audit-round1/integration-v1",
+    "baseSha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
+    "baseKind": "latest-reviewed-main",
+    "auditExecutionEnabled": false
+  },
+  "preserveUnchanged": [
+    "packages/github-native-sim/**",
+    ".github/workflows/github-native-sim*.yml",
+    "github-native-sim/**",
+    "all non-Audit files present on latest main"
+  ],
+  "components": [
+    {
+      "order": 1,
+      "name": "phases-1-to-3-control-plane",
+      "sourceSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+      "deltaBaseSha": "f0a1dd46551fc867778a295eef525262efb51b00",
+      "observedCommitCount": 23,
+      "include": [
+        "apps/audit-api/**",
+        "apps/audit-web/**",
+        "infra/audit-cloudflare/**",
+        "packages/audit-protocol/**",
+        "packages/audit-r2-store/**",
+        "packages/audit-workspace-protocol/**",
+        "packages/audit-workspaces/**",
+        "packages/audit-profile-registry/**",
+        "packages/audit-campaign-protocol/**",
+        "packages/audit-campaigns/**",
+        "packages/audit-evidence/**",
+        "docs/audit/specifications-v2/**",
+        "scripts/build-audit.mjs",
+        "scripts/check-audit-boundary.mjs",
+        "scripts/rebuild-audit-spec-manifest.mjs",
+        "test/audit-*.test.mjs",
+        "test/boundary/audit-*.test.mjs",
+        ".github/workflows/audit-*.yml",
+        "package.json",
+        "package-lock.json"
+      ],
+      "exclude": [
+        "packages/github-native-sim/**",
+        "github-native-sim/**",
+        "non-Audit applications and contracts"
+      ],
+      "verification": [
+        "Every transplanted byte must equal sourceSha for that path unless an explicit latest-main compatibility resolution is documented.",
+        "No latest-main GitHub-native simulation file may be deleted, reverted, or replaced by an older source copy."
+      ]
+    },
+    {
+      "order": 2,
+      "name": "phase-4-profile-adapter-parser-fixture-core",
+      "sourceSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+      "include": [
+        "packages/audit-tool-profile-contracts/**",
+        "packages/audit-executor-adapters/**",
+        "packages/audit-tool-parsers/**",
+        "test/fixtures/audit-phase4/**"
+      ],
+      "exclude": [
+        "Phase 1-3 files carried by the stale Phase 4 ancestry",
+        "apps/audit-api/** until the separately accepted catalog/API source is pinned",
+        "workflows, deployment, Cloudflare configuration and specifications"
+      ]
+    },
+    {
+      "order": 3,
+      "name": "phase-4-result-contracts-v2",
+      "sourceSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+      "deltaBaseSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+      "observedFileCount": 21,
+      "include": [
+        "packages/audit-tool-result-contracts/**",
+        "test/audit-phase4-compatibility-boundary.test.mjs",
+        "test/audit-phase4-result-fixtures.test.mjs",
+        "test/audit-phase4-result-hardening-boundary.test.mjs",
+        "test/audit-phase4-result-schema-congruence.test.mjs"
+      ]
+    },
+    {
+      "order": 4,
+      "name": "phase-4-catalog-api",
+      "source": "audit-phase4/catalog-api-integration-v2",
+      "finalSha": null,
+      "blockedBy": "issue 72 final acceptance",
+      "include": [
+        "packages/audit-tool-catalog/**",
+        "apps/audit-api/src/phase4-catalog.mjs",
+        "the accepted minimal apps/audit-api/src/entry.mjs composition delta",
+        "apps/audit-api/test/phase4*.test.mjs",
+        "test/audit-phase4-catalog-*.test.mjs",
+        "test/audit-phase4-api-*.test.mjs",
+        "the accepted Phase 4 catalog/API review"
+      ]
+    },
+    {
+      "order": 5,
+      "name": "phase-5-complete-with-lifecycle-repair",
+      "sourceSha": "2982614879f1f6d252a7630eb5331031d5934b4e",
+      "include": [
+        "packages/audit-phase5-profile-contracts/**",
+        "packages/audit-phase5-parsers/**",
+        "packages/audit-phase5-result-contracts/**",
+        "packages/audit-phase5-tool-catalog/**",
+        "test/fixtures/audit-phase5/**",
+        "test/audit-phase5-*.test.mjs",
+        "docs/audit/reviews/2026-08-01-audit-phase5-*.md"
+      ],
+      "requiredFinalBehavior": "timeout, cancelled and resource_exhaustion parser envelopes use exitCode null across all four Phase 5 profiles"
+    },
+    {
+      "order": 6,
+      "name": "phase-6-complete",
+      "sourceSha": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
+      "deltaBaseSha": "6d26ef2fa73d04acb732e1ed1ab2ef385791f724",
+      "observedCommitCount": 34,
+      "include": [
+        "packages/audit-phase6-profile-contracts/**",
+        "packages/audit-phase6-parsers/**",
+        "packages/audit-phase6-result-contracts/**",
+        "packages/audit-phase6-tool-catalog/**",
+        "test/fixtures/audit-phase6/**",
+        "test/audit-phase6-*.test.mjs",
+        "docs/audit/reviews/2026-08-01-audit-phase6-*.md"
+      ]
+    },
+    {
+      "order": 7,
+      "name": "phase-7-persistent-fork-control-storage-mock",
+      "source": "audit-phase7/control-storage-mock-v1",
+      "finalSha": null,
+      "blockedBy": "issue 80 final acceptance and repair of checkpoint deletion/idempotency findings",
+      "include": [
+        "packages/audit-fork-protocol/**",
+        "packages/audit-forks/**",
+        "packages/audit-fork-mock-adapter/**",
+        "test/audit-phase7-*.test.mjs",
+        "the accepted Phase 7 review"
+      ]
+    },
+    {
+      "order": 8,
+      "name": "phase-8-clean-room-controlled-merge-provenance",
+      "source": "audit-phase8/clean-room-control-merge-v1",
+      "finalSha": null,
+      "blockedBy": "issue 91 final acceptance after all four checkpoints",
+      "include": [
+        "packages/audit-clean-room-protocol/**",
+        "packages/audit-clean-room-access/**",
+        "packages/audit-clean-room-campaigns/**",
+        "packages/audit-controlled-merge/**",
+        "packages/audit-provenance/**",
+        "test/fixtures/audit-phase8/**",
+        "test/audit-phase8-*.test.mjs",
+        "the accepted Phase 8 review"
+      ]
+    }
+  ],
+  "combinedAcceptance": [
+    "latest-main preservation and ancestry check",
+    "changed-path allowlist and no stale-branch wholesale merge",
+    "all JSON and package manifests parse",
+    "all direct Node Audit tests pass",
+    "cross-phase profile, parser, result and catalog identity congruence",
+    "Phase 1-3 authentication and identity behavior remains unchanged except explicitly accepted Phase 4 read composition",
+    "Phase 7 and Phase 8 storage operations never use prefix listing",
+    "hidden-resource non-interference and tenant isolation",
+    "no process, network, RPC, wallet, signer, transaction, broadcast, deployment or submitted-execution capability is introduced",
+    "AUDIT_EXECUTION_ENABLED remains false",
+    "GitHub-native simulation suite remains byte-preserved except for separately reviewed latest-main changes"
+  ]
+}
