@@ -5,7 +5,7 @@
   "operatingMode": "manual-original-chat-coordination",
   "activationState": "manual-active",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-01T13:53:00Z",
+  "lastOrchestratorReviewAt": "2026-08-01T14:07:00Z",
   "scheduledPolling": {
     "enabled": false,
     "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats.",
@@ -19,13 +19,13 @@
   },
   "localWakeAgent": {
     "enabled": false,
-    "reason": "User chose manual coordination through the original chats."
+    "reason": "User chose coordination through durable GitHub mailboxes consumed by the original worker chats."
   },
   "manualWorkflow": {
-    "wakeTarget": "original worker chat only",
-    "completionSignal": "user forwards worker completion or blocker report to orchestrator",
+    "wakeTarget": "GitHub mailbox watched by the original worker chat",
+    "completionSignal": "durable worker issue report and worker status file; user forwarding is optional",
     "durableSourceOfTruth": "GitHub issues, pinned SHAs, mailbox assignments, and worker status files",
-    "orchestratorResponsibility": "review completed work, integrate or request repair, publish next assignment, and provide one concise manual wake message"
+    "orchestratorResponsibility": "review completed work, integrate or request repair, and publish the next assignment plus its durable wake marker entirely in GitHub without asking the user to paste relay text"
   },
   "activePolicies": {
     "reportDestination": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
@@ -60,19 +60,25 @@
       "futureAssignmentsAllowed": true
     },
     "worker-2": {
-      "currentSequence": 2,
-      "currentMessageId": "worker-2-phase4-result-contract-hardening-v2-000002",
-      "currentIssueNumber": 74,
-      "currentBranch": "audit-phase4/result-contract-hardening-v2",
-      "currentStartingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
-      "mailboxState": "working",
-      "observedBranchState": "1-commit-ahead-0-behind",
-      "manualAction": "leave-working",
+      "currentSequence": 3,
+      "currentMessageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
+      "currentIssueNumber": 77,
+      "currentBranch": "audit-phase6/result-contract-compatibility-v1",
+      "currentStartingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+      "mailboxState": "ready",
+      "observedBranchState": "identical-to-starting-sha",
+      "manualAction": "await-github-mailbox-consumption",
       "futureAssignmentsAllowed": true,
-      "priorCompletedIssueNumber": 57,
-      "priorFinalSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
-      "integrationPullRequest": 73,
-      "integrationState": "draft-review-open-not-merged"
+      "priorCompletedSequence": 2,
+      "priorCompletedIssueNumber": 74,
+      "priorCompletedBranch": "audit-phase4/result-contract-hardening-v2",
+      "priorFinalSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+      "priorReportReference": "issue:74#issuecomment-5151718894",
+      "priorRecommendation": "ACCEPT",
+      "acceptedPhase6SourceIssue": 55,
+      "acceptedPhase6SourceBranch": "audit-phase6/contracts-parsers-fixtures-v2",
+      "acceptedPhase6SourceSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+      "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md"
     },
     "worker-3": {
       "currentSequence": 2,
@@ -80,9 +86,9 @@
       "currentIssueNumber": 76,
       "currentBranch": "audit-phase5/result-contract-hardening-v2",
       "currentStartingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
-      "mailboxState": "ready",
+      "mailboxState": "acknowledged",
       "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "wake-original-chat-now",
+      "manualAction": "await-working-transition-and-progress-on-issue-76",
       "futureAssignmentsAllowed": true,
       "supersededIssueNumber": 71,
       "supersededMessageId": "worker-3-phase5-result-contract-compatibility-000001",
@@ -117,5 +123,5 @@
     "AUDIT_EXECUTION_ENABLED remains false",
     "no merge to main"
   ],
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T135300Z_work-package-and-report-policy-updated_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T140700Z_worker-2-sequence3-phase6-published_v1.json"
 }
