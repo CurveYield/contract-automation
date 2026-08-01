@@ -1,0 +1,115 @@
+{
+  "version": "github-native-sim/v1",
+  "id": "v27-live-fork-smoke-v1",
+  "mode": "simulate",
+  "projectPath": "project",
+  "compilerVersion": "0.8.28",
+  "chain": "ethereum",
+  "block": 25660886,
+  "timeoutMinutes": 35,
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "viaIR": true,
+  "workflow": {
+    "steps": [
+      {
+        "action": "staticCall",
+        "label": "Read YB/sdYB pool coin 0",
+        "target": "0x98b540fa89690969D111D045afCa575C91519B1A",
+        "function": "coins(uint256) view returns (address)",
+        "args": [0],
+        "saveAs": "mainPoolCoin0"
+      },
+      {
+        "action": "staticCall",
+        "label": "Read YB/sdYB pool coin 1",
+        "target": "0x98b540fa89690969D111D045afCa575C91519B1A",
+        "function": "coins(uint256) view returns (address)",
+        "args": [1],
+        "saveAs": "mainPoolCoin1"
+      },
+      {
+        "action": "staticCall",
+        "label": "Read Yearn underlying token",
+        "target": "0xeC456f00E1f1a6A9097b723Ab979c27AB45C5906",
+        "function": "token() view returns (address)",
+        "args": [],
+        "saveAs": "yearnUnderlying"
+      },
+      {
+        "action": "staticCall",
+        "label": "Read crvUSD/YB pool coin 0",
+        "target": "0xec977F46467a3021785Cff88894886E617abd65b",
+        "function": "coins(uint256) view returns (address)",
+        "args": [0],
+        "saveAs": "rewardPoolCoin0"
+      },
+      {
+        "action": "staticCall",
+        "label": "Read crvUSD/YB pool coin 1",
+        "target": "0xec977F46467a3021785Cff88894886E617abd65b",
+        "function": "coins(uint256) view returns (address)",
+        "args": [1],
+        "saveAs": "rewardPoolCoin1"
+      },
+      {
+        "action": "staticCall",
+        "label": "Read configured BoostHub staking LP token",
+        "target": "0xA6730b33203f005cab6c80a2fF1d8B73E1947F2C",
+        "function": "lp_token() view returns (address)",
+        "args": [],
+        "saveAs": "boostHubLpToken"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify YB/sdYB pool coin 0 is YB",
+        "target": "0x98b540fa89690969D111D045afCa575C91519B1A",
+        "function": "coins(uint256) view returns (address)",
+        "args": [0],
+        "equals": "0x01791F726B4103694969820be083196cC7c045fF"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify YB/sdYB pool coin 1 is sdYB",
+        "target": "0x98b540fa89690969D111D045afCa575C91519B1A",
+        "function": "coins(uint256) view returns (address)",
+        "args": [1],
+        "equals": "0x0c057598dcE1891688829581f890DD2a3685a43f"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify Yearn vault underlying is YB/sdYB LP",
+        "target": "0xeC456f00E1f1a6A9097b723Ab979c27AB45C5906",
+        "function": "token() view returns (address)",
+        "args": [],
+        "equals": "0x98b540fa89690969D111D045afCa575C91519B1A"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify crvUSD/YB pool coin 0 is crvUSD",
+        "target": "0xec977F46467a3021785Cff88894886E617abd65b",
+        "function": "coins(uint256) view returns (address)",
+        "args": [0],
+        "equals": "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify crvUSD/YB pool coin 1 is YB",
+        "target": "0xec977F46467a3021785Cff88894886E617abd65b",
+        "function": "coins(uint256) view returns (address)",
+        "args": [1],
+        "equals": "0x01791F726B4103694969820be083196cC7c045fF"
+      },
+      {
+        "action": "assertCall",
+        "label": "Verify configured BoostHub staking accepts sdYB",
+        "target": "0xA6730b33203f005cab6c80a2fF1d8B73E1947F2C",
+        "function": "lp_token() view returns (address)",
+        "args": [],
+        "equals": "0x0c057598dcE1891688829581f890DD2a3685a43f"
+      }
+    ]
+  }
+}
