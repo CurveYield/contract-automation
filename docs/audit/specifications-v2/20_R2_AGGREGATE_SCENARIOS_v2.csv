@@ -1,6 +1,6 @@
 Scenario,Class A,Class B,GB-month per scenario,Free scenarios by Class A,Free scenarios by Class B,Free scenarios by storage,Conservative free-tier capacity,Limiting dimension,Assumptions
-"Conservative 30-minute audit job; new workspace, one layer, one campaign",75,46,0.034117,13333,217391,293,293,storage,10 MB source; 5 MB layer; 8 MB logs/7d; 15 MB artifacts/7d; 10 MB evidence/30d; 1 MB report/30d; 30 heartbeats; six event batches; 20 status polls.
+"Conservative 30-minute audit job; new workspace, one layer, one campaign",75,47,0.034117,13333,212765,293,293,storage,10 MB source; 5 MB layer; 8 MB logs/7d; 15 MB artifacts/7d; 10 MB evidence/30d; 1 MB report/30d; 30 heartbeats; six event batches; 20 status polls.
 "30-minute job reusing workspace, layer, and campaign",64,42,0.018367,15625,238095,544,544,storage,"Retains only job metadata, events, logs, artifacts, evidence, and report."
-Conservative audit job under 90-day source/evidence policy,75,46,0.10925,13333,217391,91,91,storage,"Source, layer, metadata, evidence, and report at 90d; logs and raw artifacts at 30d."
+Conservative audit job under 90-day source/evidence policy,75,47,0.10925,13333,212765,91,91,storage,"Source, layer, metadata, evidence, and report at 90d; logs and raw artifacts at 30d."
 One active fork with eight 250 MB checkpoints retained 24 hours,27,10,0.066667,37037,1000000,150,150,storage,Active compute is excluded; this is only checkpoint storage and control metadata.
 One active fork with eight 250 MB checkpoints retained seven days,27,10,0.466667,37037,1000000,21,21,storage,Exported checkpoints retained seven days.
