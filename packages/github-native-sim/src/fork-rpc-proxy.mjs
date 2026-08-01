@@ -1,7 +1,18 @@
 import http from 'node:http';
 
 const DEFAULT_RETRY_DELAYS_MS = Object.freeze([0, 250, 1_000, 2_500]);
-const TRANSIENT_MESSAGE = /(?:timeout|timed out|temporar|try again|gateway|too many requests|rate limit|free plan)/i;
+const TRANSIENT_MESSAGE = /(?:timeout|timed out|temporar|try again|gateway|too many requests|rate limit|free plan|socket hang up|connection reset|fetch failed)/i;
+const TRANSIENT_NETWORK_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'EPIPE',
+  'ETIMEDOUT',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET'
+]);
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -23,6 +34,19 @@ function isTransientHttpStatus(status) {
 
 function isTransientRpcError(error) {
   return Boolean(error && TRANSIENT_MESSAGE.test(String(error.message ?? error)));
+}
+
+function isTransientNetworkError(error) {
+  let current = error;
+  const visited = new Set();
+  while (current && typeof current === 'object' && !visited.has(current)) {
+    visited.add(current);
+    if (current.name === 'AbortError') return true;
+    if (TRANSIENT_NETWORK_CODES.has(current.code)) return true;
+    if (TRANSIENT_MESSAGE.test(String(current.message ?? ''))) return true;
+    current = current.cause;
+  }
+  return false;
 }
 
 function responseForId(response, id) {
@@ -77,8 +101,7 @@ async function requestRpc({
       if (!transient || attempt === retryDelaysMs.length - 1) throw lastFailure;
     } catch (error) {
       lastFailure = error;
-      const transient = error?.name === 'AbortError' || TRANSIENT_MESSAGE.test(String(error?.message ?? error));
-      if (!transient || attempt === retryDelaysMs.length - 1) throw error;
+      if (!isTransientNetworkError(error) || attempt === retryDelaysMs.length - 1) throw error;
     } finally {
       clearTimeout(timeout);
     }

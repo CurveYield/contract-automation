@@ -96,3 +96,40 @@ test('proxy forwards ordinary JSON-RPC reads through Node fetch', async () => {
     await close(upstream);
   }
 });
+
+test('proxy retries an upstream connection reset during a forwarded fork read', async () => {
+  let codeAttempts = 0;
+  const upstream = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (payload.method === 'eth_getCode') {
+      codeAttempts += 1;
+      if (codeAttempts === 1) {
+        request.socket.destroy();
+        return;
+      }
+    }
+    const result = payload.method === 'eth_getBlockByNumber'
+      ? { number: '0x7b', transactions: [] }
+      : '0x6000';
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ jsonrpc: '2.0', id: payload.id, result }));
+  });
+
+  const upstreamUrl = await listen(upstream);
+  let proxy;
+  try {
+    proxy = await startForkRpcProxy({
+      upstreamUrl,
+      block: 123,
+      retryDelaysMs: [0, 1]
+    });
+    const response = await rpc(proxy.url, 11, 'eth_getCode', ['0x0000000000000000000000000000000000000001', '0x7b']);
+    assert.deepEqual(response, { jsonrpc: '2.0', id: 11, result: '0x6000' });
+    assert.equal(codeAttempts, 2);
+  } finally {
+    await proxy?.close();
+    await close(upstream);
+  }
+});
