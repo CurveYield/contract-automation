@@ -117,6 +117,6 @@ test('bounds inert input bytes and returns a stable parser error without executi
   assert.deepEqual(result.parserErrors, [{ code: 'input_too_large', message: `Tool result exceeds ${MAX_PHASE5_INPUT_BYTES} bytes` }]);
 
   const unknown = parsePhase5ToolResult('unknown-v1', input('{}'));
-  assertStableEnvelope(unknown, 'unknown-v1', 'parser_error');
+  assertStableEnvelope(unknown, 'invalid-profile-v1', 'parser_error');
   assert.equal(unknown.parserErrors[0].code, 'unknown_profile_id');
 });
