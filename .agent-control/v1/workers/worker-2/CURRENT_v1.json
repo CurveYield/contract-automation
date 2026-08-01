@@ -1,0 +1,9 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-2",
+  "sequence": 1,
+  "messageId": "worker-2-phase4-result-contract-compatibility-000001",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000001_worker-2-phase4-result-contract-compatibility_v1.md",
+  "assignmentBlobSha": "91ab825bf4abf4d70b305ad9e85a77ba439566ec",
+  "issuedAt": "2026-08-01T11:27:00Z"
+}
