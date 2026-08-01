@@ -59,6 +59,11 @@ const commonPolicy = deepFreeze({
     maxArtifacts: 32,
     maxArtifactBytes: 8_388_608
   },
+  executor: {
+    available: false,
+    status: 'unavailable',
+    contractVersion: null
+  },
   publication: {
     status: 'unpublished',
     imageDigest: null,
@@ -250,11 +255,17 @@ export function publishPhase6Profile(profileId, publication) {
   if (typeof publication.imageDigest !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(publication.imageDigest)) {
     throw new Phase6ValidationError('invalid_image_digest', '$.publication.imageDigest must be a real lowercase sha256 digest', '$.publication.imageDigest');
   }
-  if (!('releaseIdentifier' in publication)) {
-    throw new Phase6ValidationError('missing_field', '$.publication.releaseIdentifier is required', '$.publication.releaseIdentifier');
-  }
+  assertRequiredKeys(publication, allowed, '$.publication');
   assertString(publication.releaseIdentifier, '$.publication.releaseIdentifier', 160);
   const template = clone(PHASE6_PROFILE_TEMPLATES[profileId]);
+  const expectedReleaseIdentifier = template.versions.tool.releaseIdentifier;
+  if (publication.releaseIdentifier !== expectedReleaseIdentifier) {
+    throw new Phase6ValidationError(
+      'invalid_release_identifier',
+      '$.publication.releaseIdentifier must exactly match the immutable profile template',
+      '$.publication.releaseIdentifier'
+    );
+  }
   template.publication = {
     ...template.publication,
     status: 'published',
@@ -263,5 +274,6 @@ export function publishPhase6Profile(profileId, publication) {
   };
   template.runnable = false;
   template.executionEnabled = false;
+  template.executor = { available: false, status: 'unavailable', contractVersion: null };
   return deepFreeze(template);
 }

@@ -2,6 +2,7 @@ export {
   PHASE6_BOUNDS,
   PHASE6_OUTCOMES,
   Phase6ValidationError,
+  sanitizeValidationPath,
   scanPhase6ForbiddenFields
 } from './base.mjs';
 

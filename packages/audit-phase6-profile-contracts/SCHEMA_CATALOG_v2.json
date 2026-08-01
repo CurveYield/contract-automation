@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "audit-phase6-schema-catalog-v2",
+  "profiles": [
+    "solidity-smt-v1",
+    "halmos-v1",
+    "formal-obligations-v1"
+  ],
+  "captureProducer": {
+    "field": "trustedProducer",
+    "exactValue": "curveyield-formal-capture-producer-v1",
+    "arbitraryValuesAllowed": false
+  },
+  "normalizedResult": "formal-result-v1",
+  "outcomes": [
+    "proved",
+    "disproved",
+    "unknown",
+    "timeout",
+    "resource_exhausted",
+    "cancelled",
+    "parser_error"
+  ],
+  "identityRules": {
+    "obligations": "id",
+    "assertions": "id",
+    "models": "id",
+    "modelEntries": "name",
+    "traces": "id",
+    "traceSteps": "index",
+    "counterexamples": "id",
+    "sourceReferences": "id",
+    "diagnostics": "code+severity+sorted-source-reference-ids",
+    "parserWarnings": "code+sanitized-path"
+  },
+  "duplicateRule": "exact normalized duplicates deduplicate; conflicting equal identities reject with conflicting_duplicate",
+  "referentialIntegrityOwner": "audit-phase6-profile-contracts-v2",
+  "publication": {
+    "requiredFields": ["imageDigest", "releaseIdentifier"],
+    "releaseIdentifierSource": "immutable profile template tool releaseIdentifier",
+    "runnable": false,
+    "executionEnabled": false,
+    "executorAvailable": false
+  }
+}
