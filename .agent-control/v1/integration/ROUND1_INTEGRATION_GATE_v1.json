@@ -1,20 +1,35 @@
 {
   "protocolVersion": 1,
   "gateId": "audit-round1-phases4-8-integration-v1",
-  "state": "waiting_for_worker_completion",
-  "canonicalPhase3Base": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-  "observedAt": "2026-08-01T16:40:00Z",
+  "state": "integration_branch_prepared_waiting_for_worker_completion",
+  "observedAt": "2026-08-01T16:50:00Z",
+  "latestMain": {
+    "branch": "main",
+    "sha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2"
+  },
+  "integrationBranch": {
+    "branch": "audit-round1/integration-v1",
+    "startingSha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
+    "state": "created_no_audit_transplants_yet"
+  },
+  "canonicalAuditSource": {
+    "phase3Sha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+    "sharedMergeBaseWithMain": "f0a1dd46551fc867778a295eef525262efb51b00",
+    "auditCommitsAfterMergeBase": 23,
+    "mainCommitsAfterMergeBase": 6,
+    "relationship": "diverged"
+  },
   "lineageFindings": {
     "phase4IntegrationBase": {
       "sha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "relationshipToCanonicalPhase3": "diverged",
+      "relationshipToPhase3Source": "diverged",
       "aheadBy": 125,
       "behindBy": 18,
       "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
     },
     "phase4ResultHardening": {
       "sha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-      "relationshipToCanonicalPhase3": "diverged",
+      "relationshipToPhase3Source": "diverged",
       "aheadBy": 156,
       "behindBy": 18,
       "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
@@ -23,34 +38,39 @@
       "branch": "audit-phase7/control-storage-mock-v1",
       "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
       "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
-      "relationshipToCanonicalPhase3": "direct_descendant"
+      "relationshipToPhase3Source": "direct_descendant"
     },
     "phase8Active": {
       "branch": "audit-phase8/clean-room-control-merge-v1",
       "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
-      "relationshipToCanonicalPhase3": "direct_descendant"
+      "relationshipToPhase3Source": "direct_descendant"
     }
   },
   "acceptedOrPendingInputs": {
+    "phase1To3": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+    "phase4ProfilesAdaptersParsersFixtures": "d90099c201d3012c090b6f73dda604bd5b143c95 owned paths only",
     "phase4CatalogApi": "pending issue 72 final SHA",
     "phase4ResultContracts": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-    "phase5LifecycleRepair": "2982614879f1f6d252a7630eb5331031d5934b4e",
-    "phase6ResultContracts": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
+    "phase5CompleteWithLifecycleRepair": "2982614879f1f6d252a7630eb5331031d5934b4e",
+    "phase6Complete": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
     "phase7": "pending issue 80 final SHA",
     "phase8": "pending issue 91 final SHA"
   },
   "requiredReconstructionOrder": [
-    "Create the Round 1 integration branch from canonical Phase 3 SHA 2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c.",
-    "Reconstruct accepted Phase 4 profile contracts, adapters, parsers, fixtures, result contracts, catalog and API changes without merging stale Phase 4 PR topology.",
+    "Immediately before the first transplant, verify main still equals 49a606ef35e9e0f253e20c689e64c0f8945f8cb2; if it advanced, reset the empty integration branch to the new reviewed main head and update this gate.",
+    "Transplant the accepted Phase 1-3 Audit-only delta from f0a1dd46551fc867778a295eef525262efb51b00..2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c onto the latest main-based integration branch while preserving all packages/github-native-sim changes from main.",
+    "Reconstruct accepted Phase 4 profile contracts, adapters, parsers, fixtures, result contracts, catalog and API changes by owned path; never merge the stale Phase 4 topology.",
     "Apply accepted Phase 5 packages and lifecycle repair onto the reconstructed Phase 4 head.",
     "Apply accepted Phase 6 packages onto the reconstructed Phase 5 head.",
-    "Integrate the accepted Phase 7 final head, preserving its direct Phase 3 ancestry and resolving only explicit shared-interface differences.",
-    "Integrate the accepted Phase 8 final head after Phase 7 acceptance.",
-    "Run combined cross-phase protocol, identity, result, storage, non-interference and static capability gates before any Phase 9 implementation begins."
+    "Apply the accepted Phase 7 owned-path delta after issue 80 completion and independent review.",
+    "Apply the accepted Phase 8 owned-path delta only after Phase 7 acceptance and issue 91 completion.",
+    "Run combined cross-phase protocol, identity, result, storage, non-interference, lineage-preservation and static capability gates before Phase 9 implementation begins."
   ],
   "prohibited": [
-    "Do not merge PR 43.",
-    "Do not merge PR 73.",
+    "Do not merge PR 43; it is closed and superseded.",
+    "Do not merge PR 73; it is closed and superseded.",
+    "Do not merge a worker branch wholesale when it carries stale ancestry.",
+    "Do not overwrite or regress packages/github-native-sim changes present on latest main.",
     "Do not treat isolated worker acceptance as combined integration acceptance.",
     "Do not merge to main or enable submitted-project execution."
   ]
