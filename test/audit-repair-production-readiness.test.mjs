@@ -13,10 +13,8 @@ function request(path, init = {}) {
 function bearer(key) { return { authorization: `Bearer ${key}` }; }
 function baseEnv(overrides = {}) {
   return {
-    AUDIT_READ_API_KEY: 'audit-read-test-key',
-    AUDIT_SUBMIT_API_KEY: 'audit-submit-test-key',
-    AUDIT_ADMIN_API_KEY: 'audit-admin-test-key',
-    AUDIT_INTERNAL_SERVICE_KEY: 'audit-internal-test-key',
+    AUDIT_CLIENT_API_KEY: 'audit-client-test-key-000000000001',
+    AUDIT_GPT_API_KEY: 'audit-gpt-test-key-000000000000001',
     AUDIT_EDGE_CONTROL_PLANE_TOKEN: 'audit-edge-control-plane-test-token-0001',
     AUDIT_NONCE_STORE: new InMemoryAuditStore(),
     AUDIT_CONTROL_STORE: new InMemoryAuditStore(),
@@ -34,7 +32,7 @@ test('production capabilities ignore function-valued test seams and report unava
     AUDIT_EVIDENCE_VALIDATOR: async () => { calls += 1; },
     AUDIT_EVIDENCE_ATTESTATION_SIGNER: async () => { calls += 1; }
   });
-  const response = await auditWorker.fetch(request('/audit/v1/capabilities', { headers: bearer('audit-read-test-key') }), env);
+  const response = await auditWorker.fetch(request('/audit/v1/capabilities', { headers: bearer(env.AUDIT_CLIENT_API_KEY) }), env);
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.executionEnabled, false);
@@ -47,18 +45,21 @@ test('production capabilities ignore function-valued test seams and report unava
   assert.equal(calls, 0);
 });
 
-test('admin readiness contains booleans only and is false when optional production integrations are absent', async () => {
+test('admin readiness contains canonical identity booleans only', async () => {
   const env = baseEnv({
     AUDIT_UPLOAD_URL_SIGNER: async () => 'should be ignored',
     AUDIT_GITHUB_ARCHIVE_RESOLVER: async () => 'should be ignored'
   });
-  const response = await auditWorker.fetch(request('/audit/v1/readiness', { headers: bearer('audit-admin-test-key') }), env);
+  const response = await auditWorker.fetch(request('/audit/v1/readiness', { headers: bearer(env.AUDIT_CLIENT_API_KEY) }), env);
   assert.equal(response.status, 200);
   const text = await response.text();
-  assert.doesNotMatch(text, /audit-(?:read|submit|admin|internal|upload|edge)-test-key/);
+  assert.doesNotMatch(text, /audit-(?:client|gpt|edge)-/);
   const body = JSON.parse(text);
   assert.equal(body.ready, false);
   assert.equal(body.coreReady, true);
+  assert.equal(body.configuration.clientKey, true);
+  assert.equal(body.configuration.gptKey, true);
+  assert.equal(body.configuration.edgeControlKey, true);
   assert.equal(body.configuration.controlStore, true);
   assert.equal(body.configuration.uploadGrantSigner, true);
   assert.equal(body.configuration.directUploadSigner, false);
@@ -67,7 +68,15 @@ test('admin readiness contains booleans only and is false when optional producti
   assert.equal(body.configuration.evidenceValidator, false);
   assert.equal(body.configuration.attestationSigner, false);
   assert.equal(body.configuration.executionEnabled, false);
+  assert.equal('readKey' in body.configuration, false);
+  assert.equal('internalKey' in body.configuration, false);
   for (const value of Object.values(body.configuration)) assert.equal(typeof value, 'boolean');
+});
+
+test('GPT identity cannot use admin readiness', async () => {
+  const env = baseEnv();
+  const response = await auditWorker.fetch(request('/audit/v1/readiness', { headers: bearer(env.AUDIT_GPT_API_KEY) }), env);
+  assert.equal(response.status, 403);
 });
 
 test('production upload-grant route rejects function-valued signer before calling it', async () => {
@@ -75,7 +84,7 @@ test('production upload-grant route rejects function-valued signer before callin
   const env = baseEnv({ AUDIT_UPLOAD_URL_SIGNER: async () => { calls += 1; return {}; } });
   const response = await auditWorker.fetch(request('/audit/v1/workspace-upload-grants', {
     method: 'POST',
-    headers: { ...bearer('audit-submit-test-key'), 'content-type': 'application/json' },
+    headers: { ...bearer(env.AUDIT_GPT_API_KEY), 'content-type': 'application/json' },
     body: JSON.stringify({
       tenantId,
       sha256: 'a'.repeat(64),
@@ -101,7 +110,7 @@ test('explicit test mode may use injected adapters without making them productio
   });
   const response = await auditWorker.fetch(request('/audit/v1/workspace-upload-grants', {
     method: 'POST',
-    headers: { ...bearer('audit-submit-test-key'), 'content-type': 'application/json' },
+    headers: { ...bearer(env.AUDIT_GPT_API_KEY), 'content-type': 'application/json' },
     body: JSON.stringify({
       tenantId,
       sha256: 'a'.repeat(64),
@@ -119,7 +128,7 @@ test('deployed route rejects retention classes that current R2 keys cannot enfor
     const env = baseEnv();
     const response = await auditWorker.fetch(request('/audit/v1/campaigns', {
       method: 'POST',
-      headers: { ...bearer('audit-submit-test-key'), 'content-type': 'application/json' },
+      headers: { ...bearer(env.AUDIT_GPT_API_KEY), 'content-type': 'application/json' },
       body: JSON.stringify({
         creation: {
           schemaVersion: 'campaign-creation-v1', campaignId, workspaceId,
