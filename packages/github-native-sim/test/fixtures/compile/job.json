@@ -1,0 +1,16 @@
+{
+  "version": "github-native-sim/v1",
+  "id": "compile-fixture",
+  "mode": "compile",
+  "projectPath": "project",
+  "compilerVersion": "0.8.30",
+  "timeoutMinutes": 10,
+  "optimizer": {
+    "enabled": true,
+    "runs": 200
+  },
+  "viaIR": false,
+  "workflow": {
+    "steps": []
+  }
+}
