@@ -1,0 +1,182 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
+import {
+  checkpointManifestKey,
+  checkpointObjectKey,
+  exportManifestKey,
+  forkCurrentKey,
+  forkTombstoneKey,
+  sha256Hex
+} from '../packages/audit-fork-protocol/src/index.mjs';
+import { ForkService } from '../packages/audit-forks/src/index.mjs';
+
+const ids = {
+  tenantId: `ten_${'1'.repeat(32)}`,
+  workspaceId: `ws_${'2'.repeat(32)}`,
+  campaignId: `cmp_${'3'.repeat(32)}`,
+  forkId: `fork_${'4'.repeat(32)}`,
+  attemptId: `att_${'5'.repeat(32)}`,
+  checkpointId: `snap_${'6'.repeat(32)}`,
+  exportId: `exp_${'7'.repeat(32)}`
+};
+const occurredAt = '2026-08-01T02:00:00.000Z';
+const reason = 'user-request';
+
+function request() {
+  return {
+    schemaVersion: 'fork-request-v1',
+    tenantId: ids.tenantId,
+    workspaceId: ids.workspaceId,
+    campaignId: ids.campaignId,
+    forkId: ids.forkId,
+    attemptId: ids.attemptId,
+    profileId: 'free-development-v1',
+    policyVersion: 'fork-policy-v1',
+    requesterId: 'usr',
+    scopes: ['audit:read', 'audit:submit'],
+    chainId: 1,
+    blockNumber: 21_000_000,
+    blockHash: `0x${'a'.repeat(64)}`,
+    adapterKind: 'mock',
+    executionGate: 'trusted_mock',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    idempotencyKey: 'create'
+  };
+}
+
+class ArmedFailureStore {
+  constructor() {
+    this.inner = new InMemoryAuditStore();
+    this.rule = null;
+    this.failed = false;
+  }
+  arm(method, predicate) {
+    this.rule = { method, predicate };
+    this.failed = false;
+  }
+  maybeFail(method, key, value) {
+    if (!this.failed && this.rule?.method === method && this.rule.predicate(key, value)) {
+      this.failed = true;
+      throw new Error(`simulated-${method}-failure:${key}`);
+    }
+  }
+  async put(key, value, options) {
+    this.maybeFail('put', key, value);
+    return this.inner.put(key, value, options);
+  }
+  async get(key) { return this.inner.get(key); }
+  async head(key) { return this.inner.head(key); }
+  async delete(key) {
+    this.maybeFail('delete', key);
+    return this.inner.delete(key);
+  }
+}
+
+async function setup() {
+  const store = new ArmedFailureStore();
+  const service = new ForkService(store);
+  await service.createFork(request());
+  const bytes = new Uint8Array([1, 2, 3]);
+  const objectKey = checkpointObjectKey(ids.forkId, ids.checkpointId);
+  const digest = await sha256Hex(bytes);
+  await service.publishCheckpoint({
+    manifest: {
+      schemaVersion: 'fork-checkpoint-manifest-v1',
+      checkpointId: ids.checkpointId,
+      forkId: ids.forkId,
+      tenantId: ids.tenantId,
+      attemptId: ids.attemptId,
+      chainId: 1,
+      blockNumber: 21_000_000,
+      blockHash: `0x${'a'.repeat(64)}`,
+      objectKey,
+      sha256: digest,
+      bytes: bytes.byteLength,
+      contentType: 'application/octet-stream',
+      opaque: true,
+      encryption: { mode: 'client-managed', keyReference: 'opaque' },
+      createdAt: '2026-08-01T00:30:00.000Z',
+      expiresAt: '2026-08-02T00:30:00.000Z'
+    },
+    bytes
+  });
+  await service.exportCheckpoint({
+    schemaVersion: 'fork-export-manifest-v1',
+    exportId: ids.exportId,
+    forkId: ids.forkId,
+    tenantId: ids.tenantId,
+    checkpointId: ids.checkpointId,
+    sourceObjectKey: objectKey,
+    sourceSha256: digest,
+    createdAt: '2026-08-01T01:00:00.000Z',
+    expiresAt: '2026-08-08T01:00:00.000Z'
+  });
+  return { service, store, objectKey };
+}
+
+function deletionInput(overrides = {}) {
+  return {
+    forkId: ids.forkId,
+    tenantId: ids.tenantId,
+    attemptId: ids.attemptId,
+    occurredAt,
+    reason,
+    ...overrides
+  };
+}
+
+async function expectRetryConverges(method, predicate) {
+  const { service, store } = await setup();
+  store.arm(method, predicate);
+  await assert.rejects(() => service.deleteFork(deletionInput()), /simulated-/);
+  assert.equal((await service.readFork(ids.forkId)).state, 'deleting');
+  const recovered = await service.deleteFork(deletionInput());
+  assert.equal(recovered.state, 'deleted');
+  return { service, store, recovered };
+}
+
+test('enters deleting before any destructive mutation', async () => {
+  const { service, store, objectKey } = await setup();
+  store.arm('put', (key, value) => key === forkCurrentKey(ids.forkId) && String(value).includes('"state":"deleting"'));
+  await assert.rejects(() => service.deleteFork(deletionInput()), /simulated-put-failure/);
+  assert.ok(await store.head(objectKey), 'checkpoint object must survive a failed deleting transition');
+  assert.ok(await store.head(checkpointManifestKey(ids.forkId, ids.checkpointId)));
+  assert.ok(await store.head(exportManifestKey(ids.forkId, ids.exportId)));
+  assert.equal((await service.readFork(ids.forkId)).state, 'ready');
+});
+
+test('recovers after checkpoint object deletion failure', async () => {
+  await expectRetryConverges('delete', (key) => key === checkpointObjectKey(ids.forkId, ids.checkpointId));
+});
+
+test('recovers after checkpoint manifest deletion failure', async () => {
+  await expectRetryConverges('delete', (key) => key === checkpointManifestKey(ids.forkId, ids.checkpointId));
+});
+
+test('recovers after export manifest deletion failure', async () => {
+  await expectRetryConverges('delete', (key) => key === exportManifestKey(ids.forkId, ids.exportId));
+});
+
+test('recovers after immutable tombstone publication failure', async () => {
+  await expectRetryConverges('put', (key) => key === forkTombstoneKey(ids.forkId));
+});
+
+test('recovers after the final deleted compare-and-swap failure', async () => {
+  await expectRetryConverges('put', (key, value) => key === forkCurrentKey(ids.forkId) && String(value).includes('"state":"deleted"'));
+});
+
+test('matching retry after successful deletion is idempotent and conflicting retry is rejected', async () => {
+  const { service } = await setup();
+  const completed = await service.deleteFork(deletionInput());
+  const retry = await service.deleteFork(deletionInput());
+  assert.equal(retry.state, 'deleted');
+  assert.equal(retry.etag, completed.etag);
+  await assert.rejects(() => service.deleteFork(deletionInput({ reason: 'different-reason' })), { code: 'deletion_conflict' });
+  await assert.rejects(() => service.deleteFork(deletionInput({ occurredAt: '2026-08-01T02:00:01.000Z' })), { code: 'deletion_conflict' });
+});
+
+test('tenant index mutation seam is private and request-bound', async () => {
+  const service = new ForkService(new InMemoryAuditStore());
+  assert.equal(service.upsertTenantForkState, undefined);
+});
