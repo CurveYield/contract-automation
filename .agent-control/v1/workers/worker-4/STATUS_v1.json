@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-4",
+  "state": "working",
+  "lastConsumedSequence": 0,
+  "activeSequence": null,
+  "activeMessageId": null,
+  "issueNumber": 55,
+  "branch": "audit-phase6/contracts-parsers-fixtures-v2",
+  "startingSha": "1f0019e7eca5d53349727e003b1739cd1583e73a",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:55",
+  "blockers": [],
+  "updatedAt": "2026-08-01T11:27:00Z"
+}
