@@ -15,3 +15,8 @@ CORS_ORIGIN = "https://audit.preflight.curveyield.online"
 binding = "AUDIT_NONCE_STORE"
 bucket_name = "curveyield-audit-control"
 preview_bucket_name = "curveyield-audit-control-preview"
+
+[[r2_buckets]]
+binding = "AUDIT_CONTROL_STORE"
+bucket_name = "curveyield-audit-control"
+preview_bucket_name = "curveyield-audit-control-preview"
