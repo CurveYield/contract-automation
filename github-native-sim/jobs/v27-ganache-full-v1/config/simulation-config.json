@@ -1,0 +1,39 @@
+{
+  "version": "v27-ganache-full/v1",
+  "chainId": 1,
+  "forkBlock": 25660886,
+  "compilerVersion": "0.8.28",
+  "optimizer": { "enabled": true, "runs": 200 },
+  "viaIR": true,
+  "feesBps": {
+    "performance": 1000,
+    "withdrawal": 20,
+    "retainedPostFeeHarvest": 400,
+    "maxPerformanceExpected": 1500,
+    "maxWithdrawalExpected": 50
+  },
+  "time": {
+    "yieldCycleSeconds": 864000,
+    "delayedConfigSeconds": 259200
+  },
+  "addresses": {
+    "sdYB": "0x0c057598dcE1891688829581f890DD2a3685a43f",
+    "YB": "0x01791F726B4103694969820be083196cC7c045fF",
+    "crvUSD": "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E",
+    "curvePoolAndLP": "0x98b540fa89690969D111D045afCa575C91519B1A",
+    "yearnVault": "0xeC456f00E1f1a6A9097b723Ab979c27AB45C5906",
+    "boostHubStaking": "0xD63819Fef90981fAc8CD6240EA1f2559CD835CBa",
+    "ybCrvUsdPool": "0xec977F46467a3021785Cff88894886E617abd65b"
+  },
+  "mainJourney": [
+    { "cycle": 1, "destination": 0, "depositSdYB": "10000", "advanceSeconds": 864000, "withdrawMode": "leave-backing", "leaveBackingSdYB": "1000" },
+    { "cycle": 2, "destination": 1, "depositSdYB": "9000", "advanceSeconds": 864000, "withdrawGrossSdYB": "2000" },
+    { "cycle": 3, "destination": 0, "depositSdYB": "2000", "advanceSeconds": 864000, "withdrawGrossSdYB": "5000" },
+    { "cycle": 4, "destination": 0, "depositSdYB": "2000", "advanceSeconds": 864000, "withdrawMode": "all" }
+  ],
+  "migrationSeed": { "destination": 0, "depositSdYB": "10000", "advanceSeconds": 864000 },
+  "postMigrationCycles": [
+    { "cycle": "M1", "destination": 1, "depositSdYB": "5000", "advanceSeconds": 864000, "withdrawGrossSdYB": "2000" },
+    { "cycle": "M2", "destination": 0, "depositSdYB": "2000", "advanceSeconds": 864000, "withdrawMode": "all" }
+  ]
+}
