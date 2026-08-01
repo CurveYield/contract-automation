@@ -42,7 +42,7 @@ test('health is public and consumes no R2 operations', async () => {
   const response = await auditApi.fetch(request('/audit/v1/health'), state);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    status: 'ok', service: 'curveyield-audit-api', version: '0.1.0', phase: 1
+    status: 'ok', service: 'curveyield-audit-api', version: '0.2.0', phase: 2
   });
   assert.deepEqual(state.AUDIT_NONCE_STORE.usage(), { classA: 0, classB: 0, free: 0, storedBytes: 0 });
 });
