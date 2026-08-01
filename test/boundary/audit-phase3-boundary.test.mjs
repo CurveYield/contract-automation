@@ -25,7 +25,7 @@ const EXPECTED_BUDGETS = Object.freeze({
   readTypicalLogs: { classA: 0, classB: 9, storageBytes: 0 },
   rawArtifacts: { classA: 2, classB: 0, storageBytes: 15_000_000 },
   acceptEvidence: { classA: 4, classB: 1, storageBytes: 10_000_000 },
-  publishReport: { classA: 3, classB: 0, storageBytes: 1_000_000 },
+  publishReport: { classA: 3, classB: 1, storageBytes: 1_000_000 },
   completeJob: { classA: 3, classB: 2, storageBytes: 32_000 },
   pollJob: { classA: 0, classB: 1, storageBytes: 0 }
 });
@@ -72,13 +72,15 @@ test('campaign state uses server-read ETag-protected objects and no listing', as
   assert.doesNotMatch(campaigns, /ListObjects|\.list\s*\(/);
 });
 
-test('logs bind chunks to authoritative status and remain bundled deterministic objects', async () => {
+test('logs and reports bind to authoritative state and server-owned indexes', async () => {
   const evidence = await read('packages/audit-evidence/src/index.mjs');
   for (const required of ['jobStatusKey','logChunkKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
     assert.match(evidence, new RegExp(`\\b${required}\\b`), required);
   }
   assert.match(evidence, /highestLogSequence\s*\+\s*1/);
   assert.match(evidence, /attempt_mismatch/);
+  assert.match(evidence, /await this\.store\.get\(reportIndexKey/);
+  assert.match(evidence, /report_exists/);
   assert.match(evidence, /MAX_RAW_ARTIFACT_BYTES\s*=\s*64_000_000/);
   assert.match(evidence, /MAX_EVIDENCE_BUNDLE_BYTES\s*=\s*50_000_000/);
   assert.match(evidence, /MAX_REPORT_BUNDLE_BYTES\s*=\s*10_000_000/);
