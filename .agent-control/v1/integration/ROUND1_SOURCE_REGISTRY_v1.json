@@ -1,0 +1,54 @@
+{
+  "protocolVersion": 1,
+  "registryId": "audit-round1-source-registry-v1",
+  "updatedAt": "2026-08-01T16:54:00Z",
+  "sources": {
+    "latestMain": {
+      "branch": "main",
+      "sha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
+      "verifiedIdenticalToBranch": true
+    },
+    "phase1To3": {
+      "sha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+      "sharedMainMergeBase": "f0a1dd46551fc867778a295eef525262efb51b00",
+      "state": "accepted"
+    },
+    "phase4Core": {
+      "sha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+      "state": "accepted-owned-path-source-only"
+    },
+    "phase4Results": {
+      "sha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+      "state": "accepted"
+    },
+    "phase4CatalogApi": {
+      "branch": "audit-phase4/catalog-api-integration-v2",
+      "issue": 72,
+      "sha": null,
+      "state": "working"
+    },
+    "phase5": {
+      "sha": "2982614879f1f6d252a7630eb5331031d5934b4e",
+      "state": "accepted"
+    },
+    "phase6": {
+      "sha": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
+      "state": "accepted"
+    },
+    "phase7": {
+      "branch": "audit-phase7/control-storage-mock-v1",
+      "issue": 80,
+      "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
+      "finalSha": null,
+      "state": "working-with-review-findings"
+    },
+    "phase8": {
+      "branch": "audit-phase8/clean-room-control-merge-v1",
+      "issue": 91,
+      "finalSha": null,
+      "state": "working"
+    }
+  },
+  "closedStalePullRequests": [43, 73],
+  "integrationBranch": "audit-round1/integration-v1"
+}
