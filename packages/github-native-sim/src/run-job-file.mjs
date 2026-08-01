@@ -13,6 +13,7 @@ import { startGanacheEngine } from '../../runner/src/engine.mjs';
 import { materializeOpenZeppelin } from '../../runner/src/project.mjs';
 import { renderHtmlReport } from '../../runner/src/report.mjs';
 import { executeWorkflow } from '../../runner/src/workflow.mjs';
+import { getGenesisBlockFixture } from './chain-fixtures.mjs';
 import { startForkRpcProxy } from './fork-rpc-proxy.mjs';
 import { getDeterministicGanacheAccounts } from './ganache-accounts.mjs';
 import { resolveJobProjectRoot } from './project.mjs';
@@ -103,6 +104,7 @@ export async function runGitHubNativeJob({
   if (typeof jobFile !== 'string' || jobFile.length === 0) throw new Error('jobFile is required');
   if (typeof outputDir !== 'string' || outputDir.length === 0) throw new Error('outputDir is required');
 
+  const loadGenesisFixture = services.getGenesisBlockFixture ?? getGenesisBlockFixture;
   const discoverGanacheAccounts = services.getDeterministicGanacheAccounts ?? getDeterministicGanacheAccounts;
   const startProxy = services.startForkRpcProxy ?? startForkRpcProxy;
   const startEngine = services.startGanacheEngine ?? startGanacheEngine;
@@ -155,10 +157,15 @@ export async function runGitHubNativeJob({
       const rpcUrl = environment[chain.rpcEnv];
       if (!rpcUrl) throw new Error(`Runner secret ${chain.rpcEnv} is not configured`);
 
-      const localAccounts = await discoverGanacheAccounts(20);
+      const [localAccounts, genesisBlock] = await Promise.all([
+        discoverGanacheAccounts(20),
+        loadGenesisFixture(chain.chainId)
+      ]);
       forkProxy = await startProxy({
         upstreamUrl: rpcUrl,
         block: job.block,
+        chainId: chain.chainId,
+        genesisBlock,
         localAccounts
       });
       resolvedBlock = forkProxy.blockNumber;
