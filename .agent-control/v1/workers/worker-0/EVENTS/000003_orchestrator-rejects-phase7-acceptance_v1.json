@@ -1,0 +1,21 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-0-orchestrator-rejects-phase7-acceptance-v1-000003",
+  "workerId": "worker-0",
+  "sequence": 2,
+  "issueNumber": 80,
+  "branch": "audit-phase7/control-storage-mock-v1",
+  "candidateSha": "f4520bed2b77842f922f17bc2e595cc6335bfc46",
+  "state": "repair_required",
+  "reason": "No production or test changes were made after mandatory orchestrator source-review findings; only the acceptance review document changed.",
+  "requiredRepairs": [
+    "transition to deleting before destructive object mutation",
+    "idempotent matching retry after deleted",
+    "deterministic conflicting retry rejection",
+    "failure-injection coverage at every deletion boundary",
+    "bind tenant index update to immutable fork identity"
+  ],
+  "supersededReportCommentId": 5152363284,
+  "authoritativeRepairCommentId": 5152423968,
+  "issuedAt": "2026-08-01T16:58:00Z"
+}
