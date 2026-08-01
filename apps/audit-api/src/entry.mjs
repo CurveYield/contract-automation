@@ -3,7 +3,7 @@ import {
   auditPhase3Capabilities,
   auditRuntimeReadiness,
   isUnsupportedRetentionPolicy,
-  sanitizeAuditRuntimeEnv
+  mapApprovedAuditRuntimeEnv
 } from './runtime.mjs';
 import {
   deriveUploadGrantSigningKey,
@@ -43,7 +43,7 @@ function jsonWithHeaders(value, response, status = response.status) {
   return new Response(JSON.stringify(value), { status, statusText: response.statusText, headers });
 }
 async function prepareAuditRuntimeEnv(env) {
-  const sanitized = sanitizeAuditRuntimeEnv(env);
+  const sanitized = mapApprovedAuditRuntimeEnv(env);
   let uploadGrantSigningKey;
   if (typeof sanitized?.AUDIT_EDGE_CONTROL_PLANE_TOKEN === 'string' && sanitized.AUDIT_EDGE_CONTROL_PLANE_TOKEN.length > 0) {
     uploadGrantSigningKey = encodeUploadGrantSigningKey(await deriveUploadGrantSigningKey(sanitized.AUDIT_EDGE_CONTROL_PLANE_TOKEN));
@@ -87,10 +87,10 @@ export default {
 
     const response = await worker.fetch(request, runtimeEnv);
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
-      return jsonWithHeaders(auditPhase3Capabilities(env), response);
+      return jsonWithHeaders(auditPhase3Capabilities(runtimeEnv), response);
     }
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/readiness') {
-      return jsonWithHeaders(auditRuntimeReadiness(env), response);
+      return jsonWithHeaders(auditRuntimeReadiness(runtimeEnv), response);
     }
     return response;
   }
