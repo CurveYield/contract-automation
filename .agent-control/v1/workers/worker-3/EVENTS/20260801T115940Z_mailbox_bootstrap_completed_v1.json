@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "eventType": "mailbox_bootstrap_completed",
+  "workerId": "worker-3",
+  "timestamp": "2026-08-01T11:59:40Z",
+  "pointerSequence": 0,
+  "issueNumber": 54,
+  "branch": "audit-phase5/contracts-parsers-fixtures-v2",
+  "assignmentState": "working"
+}
