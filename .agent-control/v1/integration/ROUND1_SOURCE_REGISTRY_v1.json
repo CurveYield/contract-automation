@@ -1,25 +1,25 @@
 {
   "protocolVersion": 1,
   "registryId": "audit-round1-source-registry-v1",
-  "updatedAt": "2026-08-01T17:05:00Z",
+  "updatedAt": "2026-08-01T17:24:00Z",
   "sources": {
     "latestMain": {
       "branch": "main",
-      "sha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
+      "sha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
       "verifiedIdenticalToBranch": true
     },
-    "phase1To3": {
+    "phase1To3HistoricalSource": {
       "sha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
       "sharedMainMergeBase": "f0a1dd46551fc867778a295eef525262efb51b00",
-      "state": "accepted"
+      "state": "accepted-source-input-only"
     },
-    "phase4Core": {
+    "phase4CoreHistoricalSource": {
       "sha": "d90099c201d3012c090b6f73dda604bd5b143c95",
       "state": "accepted-owned-path-source-only"
     },
-    "phase4Results": {
+    "phase4ResultsHistoricalSource": {
       "sha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-      "state": "accepted"
+      "state": "accepted-owned-path-source-only"
     },
     "phase4CatalogApi": {
       "branch": "audit-phase4/catalog-api-integration-v2",
@@ -28,37 +28,56 @@
       "state": "working-completion-gates-required",
       "requiredCommentId": 5152432370
     },
-    "phase5": {
-      "sha": "2982614879f1f6d252a7630eb5331031d5934b4e",
-      "state": "accepted"
+    "phase1To6Reconstruction": {
+      "branch": "audit-round1/phases1-6-reconstruction-v1",
+      "issue": 95,
+      "startingSha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
+      "latestMainAdvancedTo": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+      "finalSha": null,
+      "state": "working-rebase-or-preservation-refresh-required"
     },
-    "phase6": {
-      "sha": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
-      "state": "accepted"
-    },
-    "phase7": {
+    "phase7HistoricalSource": {
       "branch": "audit-phase7/control-storage-mock-v1",
       "issue": 80,
-      "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
       "rejectedCandidateSha": "f4520bed2b77842f922f17bc2e595cc6335bfc46",
-      "finalSha": null,
-      "state": "repair-required-current-acceptance-superseded",
-      "requiredCommentId": 5152423968
+      "claimedRemediationSha": "cbbdcba159fd08da1cd6ecb2834d685a2d1ed303",
+      "state": "rejected-untrusted-source-input-only",
+      "reason": "claimed remediation changed documentation only; deletion ordering, idempotency, recovery, and tenant-index defects remain"
     },
-    "phase8": {
+    "phase8HistoricalSource": {
       "branch": "audit-phase8/clean-room-control-merge-v1",
       "issue": 91,
-      "checkpointSha": "45b9f12e90bd546b3f677f5508d2d3ce99df02c8",
+      "rejectedCandidateSha": "9b8c81631f6f75d3d888563071cab2ec709fb53d",
+      "state": "rejected-untrusted-source-input-only",
+      "reason": "final source retains caller-selected index paths, authorization/grant/byte/runtime/reflection defects, and noncanonical operation classes"
+    },
+    "phase7To8Reconstruction": {
+      "branch": "audit-round1/phases7-8-reconstruction-v1",
+      "issue": 97,
+      "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
       "finalSha": null,
-      "state": "checkpoint1-repair-and-expansion-required",
-      "requiredCommentId": 5152426552
+      "state": "ready",
+      "mailboxSequence": 3
+    },
+    "phase9GithubDirectCore": {
+      "branch": "audit-phase9/github-direct-core-v1",
+      "issue": 98,
+      "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+      "finalSha": null,
+      "state": "ready-independent-phase9-work",
+      "mailboxSequence": 5
     }
   },
   "closedStalePullRequests": [43, 73],
-  "integrationBranch": "audit-round1/integration-v1",
+  "supersededIssues": [80, 91],
+  "integrationBranch": {
+    "branch": "audit-round1/integration-v1",
+    "baseSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+    "notesHeadSha": "fde20b52522706ff6bbb693935f52a8e9e9e81ec"
+  },
   "integrationBlockedUntil": [
     "issue 72 accepted final SHA",
-    "issue 80 replacement accepted final SHA after deletion repairs",
-    "issue 91 all four checkpoints and accepted final SHA"
+    "issue 95 accepted Phase 1-6 latest-main reconstruction refreshed for current main",
+    "issue 97 accepted Phase 7-8 latest-main reconstruction and repair"
   ]
 }
