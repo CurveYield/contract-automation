@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_acknowledged",
+  "timestamp": "2026-08-01T23:34:00Z",
+  "sequence": 4,
+  "messageId": "worker-0-phase9-phase78-service-reporting-v1-000004",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000004_worker-0-phase9-phase78-service-reporting-v1_v1.md",
+  "assignmentBlobSha": "e9744263a965226b6ff10a80771845a0c81e0131",
+  "issueNumber": 101,
+  "branch": "audit-phase9/phase78-service-reporting-v1",
+  "startingSha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b"
+}
