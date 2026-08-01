@@ -5,6 +5,10 @@ import {
   isUnsupportedRetentionPolicy,
   sanitizeAuditRuntimeEnv
 } from './runtime.mjs';
+import {
+  deriveUploadGrantSigningKey,
+  encodeUploadGrantSigningKey
+} from './upload-grants.mjs';
 
 const encoder = new TextEncoder();
 
@@ -38,14 +42,31 @@ function jsonWithHeaders(value, response, status = response.status) {
   headers.set('content-type', 'application/json; charset=utf-8');
   return new Response(JSON.stringify(value), { status, statusText: response.statusText, headers });
 }
-async function unsupportedRetentionResponse(request, env, url) {
+async function prepareAuditRuntimeEnv(env) {
+  const sanitized = sanitizeAuditRuntimeEnv(env);
+  let uploadGrantSigningKey;
+  if (typeof sanitized?.AUDIT_EDGE_CONTROL_PLANE_TOKEN === 'string' && sanitized.AUDIT_EDGE_CONTROL_PLANE_TOKEN.length > 0) {
+    uploadGrantSigningKey = encodeUploadGrantSigningKey(await deriveUploadGrantSigningKey(sanitized.AUDIT_EDGE_CONTROL_PLANE_TOKEN));
+  }
+  return new Proxy(sanitized ?? {}, {
+    get(target, property, receiver) {
+      if (property === 'AUDIT_UPLOAD_GRANT_SIGNING_KEY') return uploadGrantSigningKey;
+      return Reflect.get(target, property, receiver);
+    },
+    has(target, property) {
+      if (property === 'AUDIT_UPLOAD_GRANT_SIGNING_KEY') return uploadGrantSigningKey !== undefined;
+      return Reflect.has(target, property);
+    }
+  });
+}
+async function unsupportedRetentionResponse(request, runtimeEnv, url) {
   if (request.method !== 'POST' || url.pathname !== '/audit/v1/campaigns') return null;
   let body;
   try { body = await request.clone().json(); }
   catch { return null; }
   if (!isUnsupportedRetentionPolicy(body?.creation?.retentionPolicy)) return null;
-  if (!(await hasSubmitScope(request, env))) return null;
-  const probe = await worker.fetch(new Request(request.url, { method: 'GET', headers: request.headers }), sanitizeAuditRuntimeEnv(env));
+  if (!(await hasSubmitScope(request, runtimeEnv))) return null;
+  const probe = await worker.fetch(new Request(request.url, { method: 'GET', headers: request.headers }), runtimeEnv);
   const headers = new Headers(probe.headers);
   headers.set('content-type', 'application/json; charset=utf-8');
   return new Response(JSON.stringify({
@@ -60,10 +81,11 @@ async function unsupportedRetentionResponse(request, env, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const retentionDenied = await unsupportedRetentionResponse(request, env, url);
+    const runtimeEnv = await prepareAuditRuntimeEnv(env);
+    const retentionDenied = await unsupportedRetentionResponse(request, runtimeEnv, url);
     if (retentionDenied) return retentionDenied;
 
-    const response = await worker.fetch(request, sanitizeAuditRuntimeEnv(env));
+    const response = await worker.fetch(request, runtimeEnv);
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
       return jsonWithHeaders(auditPhase3Capabilities(env), response);
     }
