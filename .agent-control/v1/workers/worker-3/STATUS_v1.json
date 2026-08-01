@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "state": "acknowledged",
+  "state": "working",
   "lastConsumedSequence": 2,
   "activeSequence": 2,
   "activeMessageId": "worker-3-phase5-result-contract-hardening-v2-000002",
@@ -12,5 +12,5 @@
   "recommendation": null,
   "reportReference": "issue:76",
   "blockers": [],
-  "updatedAt": "2026-08-01T14:01:15Z"
+  "updatedAt": "2026-08-01T14:01:30Z"
 }
