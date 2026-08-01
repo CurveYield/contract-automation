@@ -1,10 +1,10 @@
 {
   "protocolVersion": 1,
   "agentId": "orchestrator",
-  "state": "initializing",
-  "lastPollAt": null,
-  "lastProcessedEvent": null,
+  "state": "idle",
+  "lastPollAt": "2026-08-01T11:35:00Z",
+  "lastProcessedEvent": "orchestrator-control-plane-initialized-20260801T112700Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
-  "updatedAt": "2026-08-01T11:27:00Z"
+  "updatedAt": "2026-08-01T11:35:00Z"
 }
