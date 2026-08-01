@@ -1,0 +1,21 @@
+{
+  "schemaVersion":"curveyield-audit-phase5-fixture-manifest-v1",
+  "owner":"CurveYield",
+  "thirdPartySourceIncluded":false,
+  "submittedUserSourceIncluded":false,
+  "fixtures":[
+    "hardhat-success-v1.json",
+    "hardhat-findings-v1.json",
+    "echidna-success-v1.json",
+    "echidna-findings-v1.json",
+    "mutation-success-v1.json",
+    "mutation-findings-v1.json",
+    "dependency-success-v1.json",
+    "dependency-findings-v1.json",
+    "parser-error-unsafe-path-v1.json",
+    "malformed-output-v1.txt",
+    "timeout-v1.json",
+    "cancellation-v1.json",
+    "resource-exhaustion-v1.json"
+  ]
+}

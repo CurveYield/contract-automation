@@ -1,0 +1,5 @@
+{
+  "results": [
+    {"source":{"path":"package-lock.json","type":"lockfile"},"packages":[{"package":{"name":"example-safe","version":"1.0.0","ecosystem":"npm"},"vulnerabilities":[]}]}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "seed": 41,
+  "tests": [
+    {"contract":"ExampleProperties","name":"echidna_supply_bounded","status":"passed","testType":"property","transactions":[]},
+    {"contract":"ExampleProperties","name":"echidna_balance_nonnegative","status":"passed","testType":"property","transactions":[]}
+  ]
+}
