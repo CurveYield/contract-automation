@@ -1,0 +1,31 @@
+{
+  "protocolVersion": 1,
+  "eventId": "polling-resumed-workers-2-and-3-20260801T124200Z",
+  "eventType": "worker_progress_observed",
+  "occurredAt": "2026-08-01T12:42:00Z",
+  "observations": [
+    {
+      "workerId": "worker-2",
+      "sequence": 1,
+      "issueNumber": 57,
+      "branch": "audit-phase4/result-contract-compatibility-v1",
+      "branchRelation": "17_commits_ahead_0_behind",
+      "changedFilesObserved": 13,
+      "status": "working",
+      "decision": "resume_wake_request_condition_satisfied_do_not_duplicate_wake"
+    },
+    {
+      "workerId": "worker-3",
+      "sequence": 1,
+      "issueNumber": 71,
+      "branch": "audit-phase5/result-contract-compatibility-v1",
+      "branchRelation": "1_commit_ahead_0_behind",
+      "status": "working",
+      "decision": "assignment_consumed_do_not_duplicate_wake"
+    }
+  ],
+  "remainingActionableWakeTargets": [
+    "worker-0",
+    "worker-1"
+  ]
+}
