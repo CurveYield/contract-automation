@@ -81,7 +81,7 @@ test('production upload-grant route rejects function-valued signer before callin
       sha256: 'a'.repeat(64),
       bytes: 100,
       contentType: 'application/zip',
-      expiresAt: '2026-08-01T08:30:00.000Z'
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
     })
   }), env);
   assert.equal(response.status, 503);
