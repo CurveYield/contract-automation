@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Successful Foundry unit-test output.",
+  "profileId": "foundry-test-v1",
+  "input": {
+    "resultJson": "{\"tests\":[{\"suite\":\"SyntheticSuite\",\"name\":\"testDeposit\",\"status\":\"passed\",\"durationMs\":5,\"reason\":null}]}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 10,
+    "terminationReason": "completed"
+  }
+}
