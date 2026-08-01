@@ -78,6 +78,26 @@ function localAccountResponse(entry, localAccounts) {
   }
 }
 
+function localMetadataResponse(entry, { chainId, resolvedTag, genesisBlock }) {
+  switch (entry.method) {
+    case 'eth_chainId':
+      if (chainId === undefined) return null;
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: `0x${chainId.toString(16)}` };
+    case 'net_version':
+      if (chainId === undefined) return null;
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: String(chainId) };
+    case 'eth_blockNumber':
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: resolvedTag };
+    case 'eth_getBlockByNumber': {
+      const tag = entry.params?.[0];
+      if (!genesisBlock || (tag !== 'earliest' && tag !== '0x0')) return null;
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: genesisBlock };
+    }
+    default:
+      return null;
+  }
+}
+
 async function requestRpc({
   upstreamUrl,
   payload,
@@ -153,12 +173,18 @@ async function closeServer(server) {
 export async function startForkRpcProxy({
   upstreamUrl,
   block = 'latest',
+  chainId,
+  genesisBlock,
   localAccounts = [],
   retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
   requestTimeoutMs = 30_000,
   fetchImpl = globalThis.fetch
 }) {
   if (typeof upstreamUrl !== 'string' || upstreamUrl.length === 0) throw new Error('upstreamUrl is required');
+  if (chainId !== undefined && (!Number.isSafeInteger(chainId) || chainId < 1)) throw new Error('chainId must be a positive safe integer');
+  if (genesisBlock !== undefined && (genesisBlock === null || typeof genesisBlock !== 'object' || genesisBlock.number !== '0x0')) {
+    throw new Error('genesisBlock must be a canonical block-zero object');
+  }
   if (!Array.isArray(localAccounts)) throw new Error('localAccounts must be an array');
   if (!Array.isArray(retryDelaysMs) || retryDelaysMs.length === 0) throw new Error('retryDelaysMs is required');
   if (typeof fetchImpl !== 'function') throw new Error('fetchImpl must be a function');
@@ -197,14 +223,12 @@ export async function startForkRpcProxy({
   const cache = new Map([
     [cacheKey('eth_getBlockByNumber', [resolvedTag, true]), prefetched.decoded]
   ]);
-  if (block === 'latest') {
-    cache.set(cacheKey('eth_blockNumber', []), { jsonrpc: '2.0', id: 1, result: resolvedTag });
-  }
 
   const diagnostics = {
     resolvedBlock: Number.parseInt(resolvedTag.slice(2), 16),
     blockNumberAttempts,
     prefetchAttempts: prefetched.attempts,
+    localMetadataHits: 0,
     localAccountHits: 0,
     cacheHits: 0,
     forwardedRequests: 0
@@ -226,6 +250,12 @@ export async function startForkRpcProxy({
       const requests = Array.isArray(payload) ? payload : [payload];
       const outputs = [];
       for (const entry of requests) {
+        const metadata = localMetadataResponse(entry, { chainId, resolvedTag, genesisBlock });
+        if (metadata) {
+          diagnostics.localMetadataHits += 1;
+          outputs.push(metadata);
+          continue;
+        }
         const local = localAccountResponse(entry, localAccountSet);
         if (local) {
           diagnostics.localAccountHits += 1;
