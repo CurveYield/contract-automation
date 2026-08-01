@@ -45,13 +45,13 @@ export function validatePhase6ToolCatalog(value) {
   exactKeys(safe, catalogKeys);
   if (safe.catalogVersion !== PHASE6_TOOL_CATALOG_VERSION) fail('invalid_catalog_version', '$.catalogVersion');
   if (!Array.isArray(safe.entries) || safe.entries.length !== 3) fail('catalog_membership_mismatch', '$.entries');
-  const expectedIds = Object.keys(PHASE6_PROFILE_TEMPLATES).sort();
-  if (safe.entries.map((entry) => entry.profileId).join('\0') !== expectedIds.join('\0')) fail('catalog_membership_mismatch', '$.entries');
   const published = [];
   for (let index = 0; index < safe.entries.length; index += 1) {
     const entry = safe.entries[index]; exactKeys(entry, entryKeys, `$.entries[${index}]`);
     if (entry.publication.status === 'published') { const template = structuredClone(PHASE6_PROFILE_TEMPLATES[entry.profileId]); template.publication = entry.publication; template.runnable = false; template.executionEnabled = false; template.executor = { available: false, status: 'unavailable', contractVersion: null }; published.push(template); }
   }
+  const expectedIds = Object.keys(PHASE6_PROFILE_TEMPLATES).sort();
+  if (safe.entries.map((entry) => entry.profileId).join('\0') !== expectedIds.join('\0')) fail('catalog_membership_mismatch', '$.entries');
   const expected = createPhase6ToolCatalog(published);
   if (canonicalJson(expected) !== canonicalJson(safe)) fail('catalog_identity_drift', '$');
   return expected;
