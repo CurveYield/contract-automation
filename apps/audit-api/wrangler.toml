@@ -3,6 +3,10 @@ main = "src/entry.mjs"
 compatibility_date = "2026-07-31"
 workers_dev = false
 
+# Production secrets are configured out-of-band with these approved names only:
+# AUDIT_CLIENT_API_KEY, AUDIT_GPT_API_KEY, AUDIT_EDGE_CONTROL_PLANE_TOKEN,
+# AUDIT_ATTESTATION_PRIVATE_KEY. Secret values must never be committed here.
+
 [vars]
 AUDIT_EXECUTION_ENABLED = "false"
 CORS_ORIGIN = "https://audit.preflight.curveyield.online"
