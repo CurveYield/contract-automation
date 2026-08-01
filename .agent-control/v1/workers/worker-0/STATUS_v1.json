@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "ready",
-  "lastConsumedSequence": 3,
+  "state": "working",
+  "lastConsumedSequence": 4,
   "activeSequence": 4,
   "activeMessageId": "worker-0-phase9-phase78-service-reporting-v1-000004",
   "issueNumber": 101,
@@ -14,5 +14,5 @@
   "blockers": [],
   "priorCompletedIssueNumber": 97,
   "priorFinalSha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b",
-  "updatedAt": "2026-08-01T23:32:00Z"
+  "updatedAt": "2026-08-01T23:34:00Z"
 }
