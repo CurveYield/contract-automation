@@ -29,14 +29,19 @@ test('Audit Worker and R2 lifecycle remain separate and execution disabled', asy
 
   const lifecycle = JSON.parse(await read('infra/audit-cloudflare/r2-lifecycle.json'));
   const rules = new Map(lifecycle.Rules.map((rule) => [rule.Filter.Prefix, rule.Expiration.Days]));
-  assert.equal(rules.get('audit/ingress/'), 1);
-  assert.equal(rules.get('audit/logs/raw/'), 7);
-  assert.equal(rules.get('audit/source/'), 30);
-  assert.equal(rules.get('audit/layers/'), 30);
-  assert.equal(rules.get('audit/evidence/'), 30);
-  assert.equal(rules.get('audit/reports/'), 30);
-  assert.equal(rules.get('audit/forks/active/'), 1);
-  assert.equal(rules.get('audit/exports/'), 7);
+  assert.equal(rules.get('ingress/'), 1);
+  assert.equal(rules.get('workspaces/'), 30);
+  assert.equal(rules.get('campaigns/'), 30);
+  assert.equal(rules.get('jobs/'), 30);
+  assert.equal(rules.get('indexes/workspace/'), 30);
+  assert.equal(rules.get('indexes/campaign/'), 30);
+  assert.equal(rules.get('indexes/job/'), 30);
+  assert.equal(rules.get('indexes/tenant/'), 30);
+  assert.equal(rules.get('forks/active/'), 1);
+  assert.equal(rules.get('exports/'), 7);
+  assert.equal(rules.get('internal-nonces/'), 1);
+  assert.equal(rules.has('profiles/'), false);
+  assert.equal(rules.has('indexes/profiles-v1.json'), false);
   assert.doesNotMatch(JSON.stringify(lifecycle), /Infrequent|Transition|DataCatalog|SQL/i);
 });
 
