@@ -1,0 +1,23 @@
+{
+  "token": "0x0c057598dcE1891688829581f890DD2a3685a43f",
+  "operator": "0x28C6c06298d514Db089934071355E5743bf21d60",
+  "targetAmountWei": "18500000000000000000000",
+  "sources": [
+    {
+      "address": "0x1B82850E491e6176170b32eC3f29AF48Eb2Fe372",
+      "transferAmountWei": "11700000000000000000000",
+      "minimumPinnedBalanceWei": "11700000000000000000000"
+    },
+    {
+      "address": "0x624Fc0A7B29002D7E06d35b9D7E0fc690a4FeBB6",
+      "transferAmountWei": "6800000000000000000000",
+      "minimumPinnedBalanceWei": "6800000000000000000000"
+    }
+  ],
+  "rules": [
+    "revalidate balances at pinned block",
+    "ordinary ERC20 transfer calls only",
+    "no protocol contract funding source",
+    "no synthetic funding"
+  ]
+}
