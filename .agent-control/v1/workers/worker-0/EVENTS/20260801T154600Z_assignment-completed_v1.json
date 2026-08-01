@@ -1,0 +1,22 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_completed",
+  "timestamp": "2026-08-01T15:46:00Z",
+  "sequence": 2,
+  "messageId": "worker-0-phase7-control-storage-mock-v1-000002",
+  "issueNumber": 80,
+  "branch": "audit-phase7/control-storage-mock-v1",
+  "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+  "finalSha": "cbbdcba159fd08da1cd6ecb2834d685a2d1ed303",
+  "recommendation": "ACCEPT",
+  "reportReference": "issue:80#issuecomment-5152543540",
+  "orchestratorReviewReference": "issue:80#issuecomment-5152529938",
+  "tests": {
+    "total": 32,
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0
+  },
+  "blockers": []
+}
