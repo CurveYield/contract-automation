@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "sequence": 5,
-  "messageId": "worker-2-round1-phases1-6-reconstruction-v2-000005",
-  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000005_worker-2-round1-phases1-6-reconstruction-v2_v1.md",
-  "assignmentBlobSha": "0591bbfcfd37a82d3b8a9d6f47e3a1db4865de9a",
-  "issuedAt": "2026-08-01T17:26:00Z"
+  "sequence": 6,
+  "messageId": "worker-2-round2-phases1-8-integration-v1-000006",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000006_worker-2-round2-phases1-8-integration-v1_v1.md",
+  "assignmentBlobSha": "10e2a253a2341d329975505d5f6d24ce0f41f8b8",
+  "issuedAt": "2026-08-01T23:34:00Z"
 }
