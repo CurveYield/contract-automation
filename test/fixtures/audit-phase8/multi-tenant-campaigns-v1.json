@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "phase8-scenario-fixture-v1",
+  "tenants": [
+    {
+      "tenantId": "tenant-a",
+      "workspaces": [
+        {
+          "workspaceId": "workspace-a",
+          "sourceDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "campaigns": [
+            {"campaignId":"campaign-a1","completionKind":"findings","terminalState":"completed","partialEvidence":false,"truncated":false},
+            {"campaignId":"campaign-a2","completionKind":"findings","terminalState":"completed","partialEvidence":false,"truncated":false},
+            {"campaignId":"campaign-a3","completionKind":"partial","terminalState":"completed","partialEvidence":true,"truncated":false},
+            {"campaignId":"campaign-a4","completionKind":"truncated","terminalState":"completed","partialEvidence":false,"truncated":true},
+            {"campaignId":"campaign-a5","completionKind":"failed","terminalState":"failed","partialEvidence":false,"truncated":false},
+            {"campaignId":"campaign-a6","completionKind":"cancelled","terminalState":"cancelled","partialEvidence":false,"truncated":false}
+          ]
+        },
+        {"workspaceId":"workspace-a2","sourceDigest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","campaigns":[{"campaignId":"campaign-shared-name","completionKind":"success","terminalState":"completed","partialEvidence":false,"truncated":false}]}
+      ]
+    },
+    {
+      "tenantId": "tenant-b",
+      "workspaces": [
+        {"workspaceId":"workspace-b","sourceDigest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","campaigns":[{"campaignId":"campaign-shared-name","completionKind":"success","terminalState":"completed","partialEvidence":false,"truncated":false}]}
+      ]
+    }
+  ],
+  "shareGrants": [
+    {"sourceCampaignId":"campaign-a1","targetCampaignId":"campaign-a2","artifactId":"base-artifact-a","status":"active"},
+    {"sourceCampaignId":"campaign-a1","targetCampaignId":"campaign-a3","artifactId":"base-artifact-a","status":"revoked"},
+    {"sourceCampaignId":"campaign-a1","targetCampaignId":"campaign-a4","artifactId":"base-artifact-a","status":"expired"}
+  ]
+}
