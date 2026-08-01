@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-1",
-  "sequence": 1,
-  "messageId": "worker-1-phase4-catalog-api-integration-v2-000001",
-  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000001_worker-1-phase4-catalog-api-integration-v2_v1.md",
-  "assignmentBlobSha": "5bb7a6b2f1998502fb80c99ee44527b98f7ed046",
-  "issuedAt": "2026-08-01T12:38:00Z"
+  "sequence": 2,
+  "messageId": "worker-1-phase9-catalog-api-gpt-composition-v1-000002",
+  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000002_worker-1-phase9-catalog-api-gpt-composition-v1_v1.md",
+  "assignmentBlobSha": "d92c51f300b005876cf50ed247ff7f0331e3828c",
+  "issuedAt": "2026-08-01T23:33:00Z"
 }
