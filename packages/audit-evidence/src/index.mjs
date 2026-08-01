@@ -5,14 +5,17 @@ import {
   MAX_LOG_CHUNKS_PER_ATTEMPT,
   evidenceAcceptedKey,
   evidenceAttestationKey,
+  evidenceIngressKey,
   evidenceManifestKey,
   evidenceQuarantineKey,
   jobStatusKey,
   logChunkKey,
   rawArtifactBundleKey,
+  rawArtifactIngressKey,
   rawArtifactManifestKey,
   reportBundleKey,
   reportIndexKey,
+  reportIngressKey,
   reportManifestKey,
   validateJobStatus
 } from '../../audit-campaign-protocol/src/index.mjs';
@@ -20,10 +23,11 @@ import {
 export const MAX_RAW_ARTIFACT_BYTES = 64_000_000;
 export const MAX_EVIDENCE_BUNDLE_BYTES = 50_000_000;
 export const MAX_REPORT_BUNDLE_BYTES = 10_000_000;
+export const MAX_OBJECT_REFERENCE_LIFETIME_MS = 60 * 60 * 1000;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-const LOGGABLE_STATES = new Set(['provisioning', 'running', 'collecting_evidence']);
+const ACTIVE_STATES = new Set(['provisioning', 'running', 'collecting_evidence']);
 
 function object(value, path = '$') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('invalid_type', `${path} must be an object`, path);
@@ -44,12 +48,13 @@ function instant(value, path) {
   if (Number.isNaN(date.getTime()) || date.toISOString() !== value) throw new ValidationError('invalid_timestamp', `${path} must be a canonical ISO instant`, path);
   return value;
 }
-function currentInstant(now) {
+function currentDate(now) {
   const value = now();
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) throw new TypeError('now must produce a valid date');
-  return date.toISOString();
+  return date;
 }
+function currentInstant(now) { return currentDate(now).toISOString(); }
 function sha256(value, path) {
   if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) throw new ValidationError('invalid_sha256', `${path} must be a lowercase SHA-256 digest`, path);
   return value;
@@ -66,8 +71,7 @@ function toBytes(value) {
   throw new TypeError('Evidence values must be strings or byte arrays');
 }
 function bytesEqual(left, right) {
-  const a = toBytes(left);
-  const b = toBytes(right);
+  const a = toBytes(left); const b = toBytes(right);
   if (a.byteLength !== b.byteLength) return false;
   for (let index = 0; index < a.byteLength; index += 1) if (a[index] !== b[index]) return false;
   return true;
@@ -90,8 +94,7 @@ function record(value, code, message, path) {
   return value;
 }
 function validateIdentity(value, jobId, artifactId, schemaVersion, path = '$.manifest') {
-  object(value, path);
-  scanAuditForbiddenFields(value, path);
+  object(value, path); scanAuditForbiddenFields(value, path);
   if (value.schemaVersion !== schemaVersion) throw new ValidationError('invalid_schema_version', `${path}.schemaVersion must be ${schemaVersion}`, `${path}.schemaVersion`);
   if (value.jobId !== jobId || value.artifactId !== artifactId) throw new ValidationError('identity_mismatch', `${path} identity does not match`, path);
   return value;
@@ -99,52 +102,30 @@ function validateIdentity(value, jobId, artifactId, schemaVersion, path = '$.man
 function validateRawManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'raw-artifact-manifest-v1');
   const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'bytes', 'contentType', 'createdAt']);
-  allowed(value, keys, '$.manifest');
-  required(value, keys, '$.manifest');
-  sha256(value.sha256, '$.manifest.sha256');
-  positiveBytes(value.bytes, '$.manifest.bytes', MAX_RAW_ARTIFACT_BYTES);
+  allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
+  sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_RAW_ARTIFACT_BYTES);
   if (value.contentType !== 'application/zstd') throw new ValidationError('invalid_content_type', '$.manifest.contentType must be application/zstd', '$.manifest.contentType');
-  instant(value.createdAt, '$.manifest.createdAt');
-  return structuredClone(value);
+  instant(value.createdAt, '$.manifest.createdAt'); return structuredClone(value);
 }
 function validateEvidenceManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'evidence-manifest-v1');
   const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'bytes', 'evidenceContract', 'acceptedAt']);
-  allowed(value, keys, '$.manifest');
-  required(value, keys, '$.manifest');
-  sha256(value.sha256, '$.manifest.sha256');
-  positiveBytes(value.bytes, '$.manifest.bytes', MAX_EVIDENCE_BUNDLE_BYTES);
-  string(value.evidenceContract, '$.manifest.evidenceContract', 80);
-  instant(value.acceptedAt, '$.manifest.acceptedAt');
-  return structuredClone(value);
-}
-function validateAttestation(value, jobId, artifactId) {
-  validateIdentity(value, jobId, artifactId, 'evidence-attestation-v1', '$.attestation');
-  const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'validator', 'attestedAt']);
-  allowed(value, keys, '$.attestation');
-  required(value, keys, '$.attestation');
-  sha256(value.sha256, '$.attestation.sha256');
-  string(value.validator, '$.attestation.validator', 160);
-  instant(value.attestedAt, '$.attestation.attestedAt');
+  allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
+  sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_EVIDENCE_BUNDLE_BYTES);
+  string(value.evidenceContract, '$.manifest.evidenceContract', 80); instant(value.acceptedAt, '$.manifest.acceptedAt');
   return structuredClone(value);
 }
 function validateReportManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'report-manifest-v1');
   const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'bytes', 'formats', 'createdAt']);
-  allowed(value, keys, '$.manifest');
-  required(value, keys, '$.manifest');
-  sha256(value.sha256, '$.manifest.sha256');
-  positiveBytes(value.bytes, '$.manifest.bytes', MAX_REPORT_BUNDLE_BYTES);
+  allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
+  sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_REPORT_BUNDLE_BYTES);
   if (!Array.isArray(value.formats) || value.formats.length < 1 || value.formats.length > 8 || value.formats.some((item) => !['html', 'pdf', 'json'].includes(item))) throw new ValidationError('invalid_formats', '$.manifest.formats is invalid', '$.manifest.formats');
-  instant(value.createdAt, '$.manifest.createdAt');
-  return structuredClone(value);
+  instant(value.createdAt, '$.manifest.createdAt'); return structuredClone(value);
 }
 function validateReportIndex(value, jobId, artifactId) {
-  object(value, '$.index');
-  scanAuditForbiddenFields(value, '$.index');
-  const keys = new Set(['schemaVersion', 'jobId', 'reports', 'records']);
-  allowed(value, keys, '$.index');
-  required(value, new Set(['schemaVersion', 'jobId', 'reports']), '$.index');
+  object(value, '$.index'); scanAuditForbiddenFields(value, '$.index');
+  const keys = new Set(['schemaVersion', 'jobId', 'reports', 'records']); allowed(value, keys, '$.index'); required(value, new Set(['schemaVersion', 'jobId', 'reports']), '$.index');
   if (value.schemaVersion !== 'job-report-index-v1' || value.jobId !== jobId) throw new ValidationError('invalid_report_index', '$.index identity is invalid', '$.index');
   if (!Array.isArray(value.reports)) throw new ValidationError('invalid_report_index', '$.index.reports must be an array', '$.index.reports');
   value.reports.forEach((id, index) => assertAuditId(id, 'artifact', `$.index.reports[${index}]`));
@@ -152,25 +133,64 @@ function validateReportIndex(value, jobId, artifactId) {
   if (artifactId !== undefined && !value.reports.includes(artifactId)) throw new ValidationError('invalid_report_index', '$.index.reports must include the report artifact', '$.index.reports');
   return { ...structuredClone(value), records: structuredClone(value.records ?? {}) };
 }
-function emptyReportIndex(jobId) {
-  return { schemaVersion: 'job-report-index-v1', jobId, reports: [], records: {} };
+function emptyReportIndex(jobId) { return { schemaVersion: 'job-report-index-v1', jobId, reports: [], records: {} }; }
+function validateObjectReference(value, expected, now, maximumBytes) {
+  object(value, '$.objectRef'); scanAuditForbiddenFields(value, '$.objectRef');
+  const keys = new Set(['schemaVersion', 'objectKey', 'sha256', 'bytes', 'contentType', 'expiresAt']);
+  allowed(value, keys, '$.objectRef'); required(value, keys, '$.objectRef');
+  if (value.schemaVersion !== 'audit-object-reference-v1') throw new ValidationError('invalid_schema_version', '$.objectRef.schemaVersion must be audit-object-reference-v1', '$.objectRef.schemaVersion');
+  if (value.objectKey !== expected.objectKey) throw new ValidationError('invalid_object_key', '$.objectRef.objectKey is not the deterministic ingress key', '$.objectRef.objectKey');
+  sha256(value.sha256, '$.objectRef.sha256'); positiveBytes(value.bytes, '$.objectRef.bytes', maximumBytes);
+  if (value.contentType !== expected.contentType) throw new ValidationError('invalid_content_type', `$.objectRef.contentType must be ${expected.contentType}`, '$.objectRef.contentType');
+  instant(value.expiresAt, '$.objectRef.expiresAt');
+  const expires = new Date(value.expiresAt).getTime(); const issued = now.getTime();
+  if (expires <= issued || expires - issued > MAX_OBJECT_REFERENCE_LIFETIME_MS) throw new ValidationError('invalid_object_reference_lifetime', '$.objectRef.expiresAt must be within one hour', '$.objectRef.expiresAt');
+  return structuredClone(value);
+}
+function validateActiveAttempt(status, attemptId) {
+  if (status.attemptId !== attemptId) throw new ValidationError('attempt_mismatch', 'Object reference attempt does not match current job attempt', '$.attemptId');
+  if (!ACTIVE_STATES.has(status.state)) throw new ValidationError('invalid_artifact_state', 'Large objects may only be published while the job is active', '$.jobId');
+}
+async function loadReferencedObject(store, input, expected, maximumBytes, now) {
+  const [statusRecord, ingressRecord] = await Promise.all([
+    store.get(jobStatusKey(input.jobId)),
+    store.get(expected.objectKey)
+  ]);
+  const status = validateJobStatus(parse(record(statusRecord, 'job_not_found', 'Job status not found', '$.jobId')));
+  validateActiveAttempt(status, input.attemptId);
+  const objectRef = validateObjectReference(input.objectRef, expected, now, maximumBytes);
+  const ingress = record(ingressRecord, 'ingress_object_missing', 'Referenced ingress object is missing', '$.objectRef.objectKey');
+  const bytes = toBytes(ingress.value);
+  if (ingress.size !== objectRef.bytes || bytes.byteLength !== objectRef.bytes) throw new ValidationError('size_mismatch', 'Referenced object size does not match', '$.objectRef.bytes');
+  if (await digestHex(bytes) !== objectRef.sha256) throw new ValidationError('digest_mismatch', 'Referenced object digest does not match', '$.objectRef.sha256');
+  return { bytes, objectRef, status };
+}
+function validateSignedAttestation(value, payload) {
+  object(value, '$.signature');
+  const keys = new Set(['algorithm', 'keyId', 'signature']); allowed(value, keys, '$.signature'); required(value, keys, '$.signature');
+  if (value.algorithm !== 'Ed25519') throw new ValidationError('invalid_attestation_algorithm', '$.signature.algorithm must be Ed25519', '$.signature.algorithm');
+  if (typeof value.keyId !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(value.keyId)) throw new ValidationError('invalid_attestation_key_id', '$.signature.keyId is invalid', '$.signature.keyId');
+  if (typeof value.signature !== 'string' || !/^[A-Za-z0-9_-]{86}$/.test(value.signature)) throw new ValidationError('invalid_attestation_signature', '$.signature.signature must be an Ed25519 base64url signature', '$.signature.signature');
+  return {
+    schemaVersion: 'evidence-attestation-v1',
+    ...payload,
+    algorithm: value.algorithm,
+    keyId: value.keyId,
+    signature: value.signature
+  };
 }
 async function putImmutableBytes(store, key, bytes) {
-  try {
-    await store.put(key, bytes, createOnly());
-    return false;
-  } catch (error) {
+  try { await store.put(key, bytes, createOnly()); return false; }
+  catch (error) {
     if (!(error instanceof ConditionalWriteError)) throw error;
     const existing = await store.get(key);
-    if (!existing || !bytesEqual(existing.value, bytes)) throw new ValidationError('report_conflict', 'Existing report bundle differs from the retry', '$.reportBytes');
+    if (!existing || !bytesEqual(existing.value, bytes)) throw new ValidationError('report_conflict', 'Existing report bundle differs from the retry', '$.objectRef');
     return true;
   }
 }
 async function putImmutableJson(store, key, value) {
-  try {
-    await store.put(key, JSON.stringify(value), createOnly());
-    return false;
-  } catch (error) {
+  try { await store.put(key, JSON.stringify(value), createOnly()); return false; }
+  catch (error) {
     if (!(error instanceof ConditionalWriteError)) throw error;
     const existing = await store.get(key);
     if (!existing || JSON.stringify(parse(existing)) !== JSON.stringify(value)) throw new ValidationError('report_conflict', 'Existing report manifest differs from the retry', '$.manifest');
@@ -184,15 +204,12 @@ export class EvidenceService {
     this.store = store;
     this.now = options.now ?? (() => new Date());
     this.validateEvidence = options.validateEvidence ?? (async () => { throw new ValidationError('validator_unavailable', 'Evidence validator is unavailable', '$'); });
+    this.signAttestation = options.signAttestation ?? (async () => { throw new ValidationError('attestation_signer_unavailable', 'Evidence attestation signer is unavailable', '$'); });
   }
 
   async appendLogChunk(input) {
-    object(input);
-    scanAuditForbiddenFields(input);
-    allowed(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes', 'statusEtag']));
-    required(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes']));
-    assertAuditId(input.jobId, 'job', '$.jobId');
-    assertAuditId(input.attemptId, 'attempt', '$.attemptId');
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes', 'statusEtag'])); required(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
     if (!Number.isSafeInteger(input.sequence) || input.sequence < 1 || input.sequence > MAX_LOG_CHUNKS_PER_ATTEMPT) throw new ValidationError('invalid_log_sequence', `$.sequence must be from 1 to ${MAX_LOG_CHUNKS_PER_ATTEMPT}`, '$.sequence');
     const bytes = toBytes(input.bytes);
     if (bytes.byteLength < 1 || bytes.byteLength > MAX_LOG_CHUNK_BYTES) throw new ValidationError('invalid_log_size', `Log chunks must contain 1 to ${MAX_LOG_CHUNK_BYTES} bytes`, '$.bytes');
@@ -200,7 +217,7 @@ export class EvidenceService {
     if (input.statusEtag !== undefined && input.statusEtag !== statusRecord.etag) throw new ValidationError('stale_status', '$.statusEtag is stale', '$.statusEtag');
     const status = validateJobStatus(parse(statusRecord));
     if (status.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Log attempt does not match current job attempt', '$.attemptId');
-    if (!LOGGABLE_STATES.has(status.state)) throw new ValidationError('invalid_log_state', 'Logs may only be appended while the job is active', '$.jobId');
+    if (!ACTIVE_STATES.has(status.state)) throw new ValidationError('invalid_log_state', 'Logs may only be appended while the job is active', '$.jobId');
     const chunkKey = logChunkKey(input.jobId, input.attemptId, input.sequence);
     if (status.highestLogSequence === input.sequence) {
       const existing = record(await this.store.get(chunkKey), 'log_chunk_missing', 'Committed log chunk is missing', '$.sequence');
@@ -209,9 +226,8 @@ export class EvidenceService {
     }
     if (input.sequence !== status.highestLogSequence + 1) throw new ValidationError('invalid_log_sequence', `$.sequence must equal ${status.highestLogSequence + 1}`, '$.sequence');
     let recoveredPartialWrite = false;
-    try {
-      await this.store.put(chunkKey, bytes, createOnly());
-    } catch (cause) {
+    try { await this.store.put(chunkKey, bytes, createOnly()); }
+    catch (cause) {
       if (!(cause instanceof ConditionalWriteError)) throw cause;
       const existing = await this.store.get(chunkKey);
       if (!existing || !bytesEqual(existing.value, bytes)) throw cause;
@@ -223,13 +239,9 @@ export class EvidenceService {
   }
 
   async readLogs(input) {
-    object(input);
-    allowed(input, new Set(['jobId', 'attemptId']));
-    required(input, new Set(['jobId', 'attemptId']));
-    assertAuditId(input.jobId, 'job', '$.jobId');
-    assertAuditId(input.attemptId, 'attempt', '$.attemptId');
-    const statusRecord = await this.store.get(jobStatusKey(input.jobId));
-    const status = validateJobStatus(parse(record(statusRecord, 'job_not_found', 'Job status not found', '$.jobId')));
+    object(input); allowed(input, new Set(['jobId', 'attemptId'])); required(input, new Set(['jobId', 'attemptId']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
+    const status = validateJobStatus(parse(record(await this.store.get(jobStatusKey(input.jobId)), 'job_not_found', 'Job status not found', '$.jobId')));
     if (status.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Requested attempt is not current for the job', '$.attemptId');
     const chunks = [];
     for (let sequence = 1; sequence <= status.highestLogSequence; sequence += 1) {
@@ -240,79 +252,71 @@ export class EvidenceService {
   }
 
   async publishRawArtifacts(input) {
-    object(input);
-    scanAuditForbiddenFields(input);
-    allowed(input, new Set(['jobId', 'artifactId', 'bundleBytes', 'manifest']));
-    required(input, new Set(['jobId', 'artifactId', 'bundleBytes', 'manifest']));
-    assertAuditId(input.jobId, 'job', '$.jobId');
-    assertAuditId(input.artifactId, 'artifact', '$.artifactId');
-    const bytes = toBytes(input.bundleBytes);
-    positiveBytes(bytes.byteLength, '$.bundleBytes', MAX_RAW_ARTIFACT_BYTES);
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest'])); required(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId'); assertAuditId(input.artifactId, 'artifact', '$.artifactId');
     const manifest = validateRawManifest(input.manifest, input.jobId, input.artifactId);
-    if (manifest.bytes !== bytes.byteLength || manifest.sha256 !== await digestHex(bytes)) throw new ValidationError('digest_mismatch', 'Raw artifact bundle does not match its manifest', '$.manifest');
-    await this.store.put(rawArtifactBundleKey(input.jobId, input.artifactId), bytes, createOnly());
+    const loaded = await loadReferencedObject(this.store, input, { objectKey: rawArtifactIngressKey(input.jobId, input.attemptId, input.artifactId), contentType: 'application/zstd' }, MAX_RAW_ARTIFACT_BYTES, currentDate(this.now));
+    if (manifest.bytes !== loaded.objectRef.bytes || manifest.sha256 !== loaded.objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Raw artifact manifest does not match the object reference', '$.manifest');
+    await this.store.put(rawArtifactBundleKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
     await this.store.put(rawArtifactManifestKey(input.jobId, input.artifactId), JSON.stringify(manifest), createOnly());
     return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId });
   }
 
   async acceptEvidence(input) {
-    object(input);
-    scanAuditForbiddenFields(input);
-    allowed(input, new Set(['jobId', 'artifactId', 'bundleBytes', 'manifest', 'attestation']));
-    required(input, new Set(['jobId', 'artifactId', 'bundleBytes', 'manifest', 'attestation']));
-    assertAuditId(input.jobId, 'job', '$.jobId');
-    assertAuditId(input.artifactId, 'artifact', '$.artifactId');
-    const bytes = toBytes(input.bundleBytes);
-    positiveBytes(bytes.byteLength, '$.bundleBytes', MAX_EVIDENCE_BUNDLE_BYTES);
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest'])); required(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId'); assertAuditId(input.artifactId, 'artifact', '$.artifactId');
     const manifest = validateEvidenceManifest(input.manifest, input.jobId, input.artifactId);
-    const attestation = validateAttestation(input.attestation, input.jobId, input.artifactId);
-    const digest = await digestHex(bytes);
-    if (manifest.bytes !== bytes.byteLength || manifest.sha256 !== digest || attestation.sha256 !== digest) throw new ValidationError('digest_mismatch', 'Evidence bundle does not match its metadata', '$');
-    const quarantineKey = evidenceQuarantineKey(input.jobId, input.artifactId);
-    await this.store.put(quarantineKey, bytes, createOnly());
-    const quarantined = record(await this.store.get(quarantineKey), 'quarantine_missing', 'Quarantined evidence is missing', '$.artifactId');
-    const verdict = await this.validateEvidence({ jobId: input.jobId, artifactId: input.artifactId, bytes: quarantined.value, sha256: digest, manifest });
+    const now = currentDate(this.now);
+    const loaded = await loadReferencedObject(this.store, input, { objectKey: evidenceIngressKey(input.jobId, input.attemptId, input.artifactId), contentType: 'application/zstd' }, MAX_EVIDENCE_BUNDLE_BYTES, now);
+    if (manifest.bytes !== loaded.objectRef.bytes || manifest.sha256 !== loaded.objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Evidence manifest does not match the object reference', '$.manifest');
+    await this.store.put(evidenceQuarantineKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
+    const verdict = await this.validateEvidence({ jobId: input.jobId, attemptId: input.attemptId, artifactId: input.artifactId, bytes: loaded.bytes, sha256: manifest.sha256, manifest });
     if (!verdict || verdict.accepted !== true) throw new ValidationError('evidence_rejected', verdict?.reason ?? 'Evidence validation failed', '$.artifactId');
-    if (verdict.validator && verdict.validator !== attestation.validator) throw new ValidationError('validator_mismatch', 'Attestation validator does not match validation result', '$.attestation.validator');
-    await this.store.put(evidenceAcceptedKey(input.jobId, input.artifactId), quarantined.value, createOnly());
+    const validator = string(verdict.validator, '$.validator', 160);
+    const payload = {
+      schemaVersion: 'evidence-attestation-payload-v1',
+      jobId: input.jobId,
+      attemptId: input.attemptId,
+      artifactId: input.artifactId,
+      sha256: manifest.sha256,
+      validator,
+      evidenceContract: manifest.evidenceContract,
+      attestedAt: now.toISOString()
+    };
+    const attestation = validateSignedAttestation(await this.signAttestation(Object.freeze({ ...payload })), payload);
+    await this.store.put(evidenceAcceptedKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
     await this.store.put(evidenceManifestKey(input.jobId, input.artifactId), JSON.stringify(manifest), createOnly());
     await this.store.put(evidenceAttestationKey(input.jobId, input.artifactId), JSON.stringify(attestation), createOnly());
     return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true });
   }
 
   async publishReport(input) {
-    object(input);
-    scanAuditForbiddenFields(input);
-    allowed(input, new Set(['jobId', 'artifactId', 'reportBytes', 'manifest', 'index', 'indexEtag']));
-    required(input, new Set(['jobId', 'artifactId', 'reportBytes', 'manifest']));
-    assertAuditId(input.jobId, 'job', '$.jobId');
-    assertAuditId(input.artifactId, 'artifact', '$.artifactId');
-    const bytes = toBytes(input.reportBytes);
-    positiveBytes(bytes.byteLength, '$.reportBytes', MAX_REPORT_BUNDLE_BYTES);
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest', 'index', 'indexEtag'])); required(input, new Set(['jobId', 'attemptId', 'artifactId', 'objectRef', 'manifest']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId'); assertAuditId(input.artifactId, 'artifact', '$.artifactId');
     const manifest = validateReportManifest(input.manifest, input.jobId, input.artifactId);
     if (input.index !== undefined) validateReportIndex(input.index, input.jobId, input.artifactId);
-    if (manifest.bytes !== bytes.byteLength || manifest.sha256 !== await digestHex(bytes)) throw new ValidationError('digest_mismatch', 'Report bundle does not match its manifest', '$.manifest');
-
-    const indexRecord = await this.store.get(reportIndexKey(input.jobId));
+    const now = currentDate(this.now);
+    const [statusRecord, ingressRecord, indexRecord] = await Promise.all([
+      this.store.get(jobStatusKey(input.jobId)),
+      this.store.get(reportIngressKey(input.jobId, input.attemptId, input.artifactId)),
+      this.store.get(reportIndexKey(input.jobId))
+    ]);
+    const status = validateJobStatus(parse(record(statusRecord, 'job_not_found', 'Job status not found', '$.jobId'))); validateActiveAttempt(status, input.attemptId);
+    const objectRef = validateObjectReference(input.objectRef, { objectKey: reportIngressKey(input.jobId, input.attemptId, input.artifactId), contentType: 'application/zip' }, now, MAX_REPORT_BUNDLE_BYTES);
+    const ingress = record(ingressRecord, 'ingress_object_missing', 'Referenced report object is missing', '$.objectRef.objectKey');
+    const bytes = toBytes(ingress.value);
+    if (ingress.size !== objectRef.bytes || bytes.byteLength !== objectRef.bytes) throw new ValidationError('size_mismatch', 'Referenced report size does not match', '$.objectRef.bytes');
+    if (await digestHex(bytes) !== objectRef.sha256) throw new ValidationError('digest_mismatch', 'Referenced report digest does not match', '$.objectRef.sha256');
+    if (manifest.bytes !== objectRef.bytes || manifest.sha256 !== objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Report manifest does not match the object reference', '$.manifest');
     if (input.indexEtag !== undefined && (!indexRecord || input.indexEtag !== indexRecord.etag)) throw new ValidationError('stale_index', '$.indexEtag is stale', '$.indexEtag');
     const index = indexRecord ? validateReportIndex(parse(indexRecord), input.jobId) : emptyReportIndex(input.jobId);
     if (index.reports.includes(input.artifactId) || index.records[input.artifactId]) throw new ValidationError('report_exists', 'Report already exists', '$.artifactId');
-
     const recoveredBundle = await putImmutableBytes(this.store, reportBundleKey(input.jobId, input.artifactId), bytes);
     const recoveredManifest = await putImmutableJson(this.store, reportManifestKey(input.jobId, input.artifactId), manifest);
     const updatedIndex = {
-      schemaVersion: 'job-report-index-v1',
-      jobId: input.jobId,
+      schemaVersion: 'job-report-index-v1', jobId: input.jobId,
       reports: [...index.reports, input.artifactId].sort(),
-      records: {
-        ...index.records,
-        [input.artifactId]: {
-          sha256: manifest.sha256,
-          bytes: manifest.bytes,
-          formats: [...manifest.formats],
-          createdAt: manifest.createdAt
-        }
-      }
+      records: { ...index.records, [input.artifactId]: { sha256: manifest.sha256, bytes: manifest.bytes, formats: [...manifest.formats], createdAt: manifest.createdAt } }
     };
     await this.store.put(reportIndexKey(input.jobId), JSON.stringify(updatedIndex), indexRecord ? match(indexRecord.etag) : createOnly());
     return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, recoveredPartialPublication: recoveredBundle || recoveredManifest });
