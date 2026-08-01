@@ -1,6 +1,7 @@
 {
   "schemaVersion": "curveyield-audit-specification-manifest-v2",
-  "generatedAtUtc": "2026-08-01T09:04:05Z",
+  "package": "CurveYield Audit Current-Stack Specifications",
+  "version": 2,
   "files": [
     {
       "file": "00_README_AND_GOVERNING_SCOPE_v2.md",
@@ -29,8 +30,8 @@
     },
     {
       "file": "05_PHASE_2_R2_WORKSPACES_AND_PROFILE_REGISTRY_v2.md",
-      "sha256": "61be5d0de8935a4d4cebdfbdae6e8d2726c4efd015a6abd341e0335e6b47fd7d",
-      "bytes": 2708
+      "sha256": "46cd85f0484d745b0542d9bdb3ca26e57f330f4c189a93e56a31a2278ad7ff20",
+      "bytes": 3409
     },
     {
       "file": "06_PHASE_3_R2_CAMPAIGNS_JOBS_LOGS_EVIDENCE_v2.md",
@@ -69,13 +70,13 @@
     },
     {
       "file": "13_R2_FUNCTION_USAGE_AND_FREE_TIER_CAPACITY_v2.md",
-      "sha256": "cb8c3edb46eeddccdbfd9cb5f2103666c0606353d1fa0df56cd9d67d584ee9b3",
-      "bytes": 4084
+      "sha256": "d267cc95f6d1aae09deffa34396065892316423ea2849d16e5e9059cc6a1b1bb",
+      "bytes": 4174
     },
     {
       "file": "14_SECRETS_AND_IDENTITIES_CURRENT_STACK_v2.md",
-      "sha256": "05a147ca208b15f37a0ef6ecdc7ab36de177a50674a7f3ebbfcc69b5a3a88eda",
-      "bytes": 2133
+      "sha256": "1ee1de5effb4ad24a9ed4b308833e401a2eceb76e09dfcc04b2dd5754300f0a4",
+      "bytes": 3204
     },
     {
       "file": "15_EXTERNAL_HARDENED_COMPUTE_DEFERRED_INTERFACE_v2.md",
@@ -84,7 +85,7 @@
     },
     {
       "file": "16_TESTING_AND_ACCEPTANCE_v2.md",
-      "sha256": "0a41673a0378347a9fdb3b92f50da187608079d67742fe655d09cb0e03c4b3a7",
+      "sha256": "5b7fa971498186a45ff3f14d1e3ec206187a5afe3403a95e9c5e88600f64f4e9",
       "bytes": 1457
     },
     {
@@ -94,8 +95,8 @@
     },
     {
       "file": "18_R2_FUNCTION_USAGE_TABLE_v2.csv",
-      "sha256": "65912f2347be0f0da0c83ae00eef8a42c184e0d8f9ba8cf79231983f4ed985d8",
-      "bytes": 4828
+      "sha256": "d059f59c1952db3b70059b70746bab3090a068d72ab1bcf9c647702b11ba0542",
+      "bytes": 4873
     },
     {
       "file": "19_R2_USAGE_ASSUMPTIONS_v2.json",
@@ -104,7 +105,7 @@
     },
     {
       "file": "20_R2_AGGREGATE_SCENARIOS_v2.csv",
-      "sha256": "0b27686f0fb0a0d02c61f8c43479d85d7c3794a42b4dc125fdebcdf3d13169e9",
+      "sha256": "6753f0d34144631dafec7972545b6e9a6507b911974595f552a9747cc9486f3f",
       "bytes": 1159
     },
     {
