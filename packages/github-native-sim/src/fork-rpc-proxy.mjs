@@ -1,5 +1,11 @@
 import http from 'node:http';
 
+import {
+  createRpcPolicyTermination,
+  rpcCallNotSupportedResponse,
+  unsupportedForkRpcMethod
+} from '../../runner/src/rpc-method-policy.mjs';
+
 const DEFAULT_RETRY_DELAYS_MS = Object.freeze([0, 250, 1_000, 2_500]);
 const TRANSIENT_MESSAGE = /(?:timeout|timed out|temporar|try again|gateway|too many requests|rate limit|free plan|socket hang up|connection reset|fetch failed)/i;
 const TRANSIENT_NETWORK_CODES = new Set([
@@ -103,12 +109,15 @@ async function requestRpc({
   payload,
   retryDelaysMs,
   requestTimeoutMs,
-  fetchImpl
+  fetchImpl,
+  terminationSignal
 }) {
   let lastFailure;
   for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+    if (terminationSignal?.aborted) throw terminationSignal.reason;
     const delay = retryDelaysMs[attempt];
     if (delay > 0) await sleep(delay);
+    if (terminationSignal?.aborted) throw terminationSignal.reason;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
@@ -121,7 +130,9 @@ async function requestRpc({
           'accept-encoding': 'gzip, deflate, br'
         },
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: terminationSignal
+          ? AbortSignal.any([controller.signal, terminationSignal])
+          : controller.signal
       });
       const text = await response.text();
       let decoded;
@@ -144,6 +155,7 @@ async function requestRpc({
       );
       if (!transient || attempt === retryDelaysMs.length - 1) throw lastFailure;
     } catch (error) {
+      if (terminationSignal?.aborted) throw terminationSignal.reason;
       lastFailure = error;
       if (!isTransientNetworkError(error) || attempt === retryDelaysMs.length - 1) throw error;
     } finally {
@@ -170,6 +182,14 @@ async function closeServer(server) {
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
+function closeAfterResponse(server, response) {
+  response.once('finish', () => {
+    setImmediate(() => {
+      void closeServer(server).catch(() => {});
+    });
+  });
+}
+
 export async function startForkRpcProxy({
   upstreamUrl,
   block = 'latest',
@@ -189,6 +209,7 @@ export async function startForkRpcProxy({
   if (!Array.isArray(retryDelaysMs) || retryDelaysMs.length === 0) throw new Error('retryDelaysMs is required');
   if (typeof fetchImpl !== 'function') throw new Error('fetchImpl must be a function');
   const localAccountSet = new Set(localAccounts.map((account) => String(account).toLowerCase()));
+  const policy = createRpcPolicyTermination();
 
   let resolvedTag = blockTag(block);
   let blockNumberAttempts = 0;
@@ -198,7 +219,8 @@ export async function startForkRpcProxy({
       payload: { jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] },
       retryDelaysMs,
       requestTimeoutMs,
-      fetchImpl
+      fetchImpl,
+      terminationSignal: policy.signal
     });
     blockNumberAttempts = latest.attempts;
     resolvedTag = latest.decoded.result;
@@ -218,7 +240,8 @@ export async function startForkRpcProxy({
     payload: fullBlockPayload,
     retryDelaysMs,
     requestTimeoutMs,
-    fetchImpl
+    fetchImpl,
+    terminationSignal: policy.signal
   });
   const cache = new Map([
     [cacheKey('eth_getBlockByNumber', [resolvedTag, true]), prefetched.decoded]
@@ -231,7 +254,9 @@ export async function startForkRpcProxy({
     localMetadataHits: 0,
     localAccountHits: 0,
     cacheHits: 0,
-    forwardedRequests: 0
+    forwardedRequests: 0,
+    terminated: false,
+    unsupportedMethod: null
   };
 
   const server = http.createServer(async (request, response) => {
@@ -243,6 +268,17 @@ export async function startForkRpcProxy({
     } catch {
       response.writeHead(400, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }));
+      return;
+    }
+
+    const unsupportedMethod = policy.error?.method ?? unsupportedForkRpcMethod(payload);
+    if (unsupportedMethod) {
+      const error = policy.terminate(unsupportedMethod);
+      diagnostics.terminated = true;
+      diagnostics.unsupportedMethod = error.method;
+      closeAfterResponse(server, response);
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify(rpcCallNotSupportedResponse(payload, error)));
       return;
     }
 
@@ -275,18 +311,20 @@ export async function startForkRpcProxy({
           payload: upstreamEntry,
           retryDelaysMs,
           requestTimeoutMs,
-          fetchImpl
+          fetchImpl,
+          terminationSignal: policy.signal
         });
         outputs.push(responseForId(forwarded.decoded, entry.id ?? null));
       }
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify(Array.isArray(payload) ? outputs : outputs[0]));
     } catch (error) {
+      const cause = policy.error ?? error;
       response.writeHead(502, { 'content-type': 'application/json' });
       response.end(JSON.stringify({
         jsonrpc: '2.0',
         id: Array.isArray(payload) ? null : payload.id ?? null,
-        error: { code: -32000, message: error?.message ?? String(error) }
+        error: { code: cause?.rpcCode ?? -32000, message: cause?.message ?? String(cause) }
       }));
     }
   });
@@ -296,6 +334,8 @@ export async function startForkRpcProxy({
     url,
     blockNumber: diagnostics.resolvedBlock,
     diagnostics,
+    termination: policy.termination,
+    signal: policy.signal,
     close: () => closeServer(server)
   };
 }
