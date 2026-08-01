@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "registryId": "audit-round1-source-registry-v1",
-  "updatedAt": "2026-08-01T17:24:00Z",
+  "updatedAt": "2026-08-01T17:27:00Z",
   "sources": {
     "latestMain": {
       "branch": "main",
@@ -31,10 +31,11 @@
     "phase1To6Reconstruction": {
       "branch": "audit-round1/phases1-6-reconstruction-v1",
       "issue": 95,
-      "startingSha": "49a606ef35e9e0f253e20c689e64c0f8945f8cb2",
-      "latestMainAdvancedTo": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+      "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
       "finalSha": null,
-      "state": "working-rebase-or-preservation-refresh-required"
+      "state": "ready",
+      "mailboxSequence": 5,
+      "assignmentBlobSha": "0591bbfcfd37a82d3b8a9d6f47e3a1db4865de9a"
     },
     "phase7HistoricalSource": {
       "branch": "audit-phase7/control-storage-mock-v1",
@@ -57,7 +58,8 @@
       "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
       "finalSha": null,
       "state": "ready",
-      "mailboxSequence": 3
+      "mailboxSequence": 3,
+      "assignmentBlobSha": "470ad9570cb9ea59d65406095884de5fd7549ab6"
     },
     "phase9GithubDirectCore": {
       "branch": "audit-phase9/github-direct-core-v1",
@@ -65,7 +67,8 @@
       "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
       "finalSha": null,
       "state": "ready-independent-phase9-work",
-      "mailboxSequence": 5
+      "mailboxSequence": 5,
+      "assignmentBlobSha": "ac89ef9e65b2a8999aeb0eeef354da024a7fad1e"
     }
   },
   "closedStalePullRequests": [43, 73],
@@ -77,7 +80,7 @@
   },
   "integrationBlockedUntil": [
     "issue 72 accepted final SHA",
-    "issue 95 accepted Phase 1-6 latest-main reconstruction refreshed for current main",
+    "issue 95 accepted Phase 1-6 latest-main reconstruction",
     "issue 97 accepted Phase 7-8 latest-main reconstruction and repair"
   ]
 }
