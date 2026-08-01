@@ -57,7 +57,7 @@ test('heartbeat reads authoritative status and cannot replace job identity or re
   await assert.rejects(() => new CampaignService(store).heartbeat({
     status: status({ campaignId: otherCampaignId, revision: 999 }),
     statusEtag: 'attacker-controlled-etag'
-  }), /unknown|jobId|missing/i);
+  }), /unknown|not allowed|jobId|missing/i);
   await assert.rejects(() => new CampaignService(store).heartbeat({ jobId, attemptId: otherAttemptId, state: 'running' }), /attempt/i);
 });
 
@@ -85,7 +85,7 @@ test('completion reads current status and index instead of trusting caller statu
     currentStatus: status({ campaignId: otherCampaignId, state: 'collecting_evidence' }),
     statusEtag: 'forged',
     finalState: 'completed'
-  }), /unknown|jobId|missing/i);
+  }), /unknown|not allowed|jobId|missing/i);
 });
 
 test('log append validates active attempt, exact sequence, and advances status', async () => {
