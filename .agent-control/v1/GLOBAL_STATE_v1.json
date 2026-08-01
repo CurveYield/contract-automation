@@ -5,7 +5,7 @@
   "operatingMode": "manual-original-chat-coordination",
   "activationState": "manual-active",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-01T13:51:00Z",
+  "lastOrchestratorReviewAt": "2026-08-01T13:53:00Z",
   "scheduledPolling": {
     "enabled": false,
     "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats.",
@@ -26,6 +26,13 @@
     "completionSignal": "user forwards worker completion or blocker report to orchestrator",
     "durableSourceOfTruth": "GitHub issues, pinned SHAs, mailbox assignments, and worker status files",
     "orchestratorResponsibility": "review completed work, integrate or request repair, publish next assignment, and provide one concise manual wake message"
+  },
+  "activePolicies": {
+    "reportDestination": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
+    "workPackage": ".agent-control/v1/WORK_PACKAGE_POLICY_v2.md",
+    "workPackageTarget": "largest coherent non-overlapping package normally completable in 60-120 minutes",
+    "overlapGateRequired": true,
+    "verifiedReportCommentReferenceRequired": true
   },
   "workers": {
     "worker-0": {
@@ -110,5 +117,5 @@
     "AUDIT_EXECUTION_ENABLED remains false",
     "no merge to main"
   ],
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T135100Z_worker-3-sequence2-hardening-published_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T135300Z_work-package-and-report-policy-updated_v1.json"
 }
