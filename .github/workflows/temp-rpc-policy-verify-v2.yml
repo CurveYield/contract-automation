@@ -1,0 +1,39 @@
+name: Temporary RPC Policy Verification v2
+
+on:
+  push:
+    branches:
+      - agent/fail-closed-rpc-method-policy-v2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-rpc-policy-verify-v2
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run focused dependency-free tests
+        run: >-
+          node --test
+          packages/runner/test/rpc-method-policy.test.mjs
+          packages/runner/test/fork-rpc-guard.test.mjs
+          packages/runner/test/rpc-policy-termination.test.mjs
+          packages/github-native-sim/test/fork-rpc-policy.test.mjs
+      - name: Check modified JavaScript syntax
+        run: |
+          node --check packages/runner/src/rpc-method-policy.mjs
+          node --check packages/runner/src/fork-rpc-guard.mjs
+          node --check packages/runner/src/run-job.mjs
+          node --check packages/github-native-sim/src/fork-rpc-proxy.mjs
+          node --check packages/github-native-sim/src/run-job-file.mjs
