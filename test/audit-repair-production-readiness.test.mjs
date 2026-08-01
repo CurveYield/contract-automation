@@ -17,7 +17,7 @@ function baseEnv(overrides = {}) {
     AUDIT_SUBMIT_API_KEY: 'audit-submit-test-key',
     AUDIT_ADMIN_API_KEY: 'audit-admin-test-key',
     AUDIT_INTERNAL_SERVICE_KEY: 'audit-internal-test-key',
-    AUDIT_UPLOAD_GRANT_SIGNING_KEY: 'audit-upload-grant-test-key',
+    AUDIT_EDGE_CONTROL_PLANE_TOKEN: 'audit-edge-control-plane-test-token-0001',
     AUDIT_NONCE_STORE: new InMemoryAuditStore(),
     AUDIT_CONTROL_STORE: new InMemoryAuditStore(),
     CORS_ORIGIN: 'https://audit.preflight.curveyield.online',
@@ -55,11 +55,12 @@ test('admin readiness contains booleans only and is false when optional producti
   const response = await auditWorker.fetch(request('/audit/v1/readiness', { headers: bearer('audit-admin-test-key') }), env);
   assert.equal(response.status, 200);
   const text = await response.text();
-  assert.doesNotMatch(text, /audit-(?:read|submit|admin|internal|upload)-test-key/);
+  assert.doesNotMatch(text, /audit-(?:read|submit|admin|internal|upload|edge)-test-key/);
   const body = JSON.parse(text);
   assert.equal(body.ready, false);
   assert.equal(body.coreReady, true);
   assert.equal(body.configuration.controlStore, true);
+  assert.equal(body.configuration.uploadGrantSigner, true);
   assert.equal(body.configuration.directUploadSigner, false);
   assert.equal(body.configuration.githubArchiveResolver, false);
   assert.equal(body.configuration.generatedLayerResolver, false);
