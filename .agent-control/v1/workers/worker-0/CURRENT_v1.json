@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "sequence": 0,
-  "messageId": null,
-  "assignmentPath": null,
-  "assignmentBlobSha": null,
-  "issuedAt": null
+  "sequence": 1,
+  "messageId": "worker-0-phase1-3-pr-chain-000001",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000001_worker-0-phase1-3-pr-chain_v1.md",
+  "assignmentBlobSha": "d0507998aa9a9468390a35b999ec80c9fb8ee26e",
+  "issuedAt": "2026-08-01T12:26:00Z"
 }
