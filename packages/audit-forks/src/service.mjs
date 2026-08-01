@@ -1,4 +1,3 @@
-import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 import {
   FREE_DEVELOPMENT_FORK_CAPABILITY,
   FORK_TRANSITIONS,
@@ -93,7 +92,7 @@ export class ForkService {
         );
         return index;
       } catch (cause) {
-        if (!(cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed')) throw cause;
+        if (cause?.code !== 'precondition_failed') throw cause;
       }
     }
     throw new ForkStateError('index_conflict', `Unable to update tenant index for ${state.forkId}`);
@@ -130,7 +129,7 @@ export class ForkService {
         { onlyIf: { etagDoesNotMatch: '*' } }
       );
     } catch (cause) {
-      if (!(cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed')) throw cause;
+      if (cause?.code !== 'precondition_failed') throw cause;
     }
 
     let current = await this.readFork(request.forkId);
@@ -233,7 +232,7 @@ export class ForkService {
         { onlyIf: { etagMatches: current.etag } }
       );
     } catch (cause) {
-      if (cause instanceof ConditionalWriteError || cause?.code === 'precondition_failed') {
+      if (cause?.code === 'precondition_failed') {
         throw new ForkStateError('stale_state', 'Current state ETag changed');
       }
       throw cause;
