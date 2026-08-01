@@ -1,0 +1,62 @@
+{
+  "protocolVersion": 1,
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "plus-compatible-orchestrator-plus-workers-0-3",
+  "scheduledTaskLimit": 5,
+  "pollingFrequency": "hourly",
+  "activationState": "pending-worker-bootstrap-and-end-to-end-validation",
+  "installedAt": "2026-08-01T11:27:00Z",
+  "lastOrchestratorPollAt": null,
+  "scheduledAgents": [
+    "orchestrator",
+    "worker-0",
+    "worker-1",
+    "worker-2",
+    "worker-3"
+  ],
+  "workers": {
+    "worker-0": {
+      "currentSequence": 0,
+      "currentIssueNumber": 51,
+      "currentBranch": "audit-repair/phases-1-3-acceptance-fixes-v1",
+      "migrationDisposition": "finish-existing-assignment-then-poll",
+      "futureAssignmentsAllowed": true
+    },
+    "worker-1": {
+      "currentSequence": 0,
+      "currentIssueNumber": 53,
+      "currentBranch": "audit-phase4/catalog-api-boundary-v1",
+      "migrationDisposition": "finish-existing-assignment-then-poll",
+      "futureAssignmentsAllowed": true
+    },
+    "worker-2": {
+      "currentSequence": 1,
+      "currentIssueNumber": 57,
+      "currentBranch": "audit-phase4/result-contract-compatibility-v1",
+      "migrationDisposition": "consume-mailbox-assignment-000001",
+      "futureAssignmentsAllowed": true
+    },
+    "worker-3": {
+      "currentSequence": 0,
+      "currentIssueNumber": 54,
+      "currentBranch": "audit-phase5/contracts-parsers-fixtures-v2",
+      "migrationDisposition": "finish-existing-assignment-then-poll",
+      "futureAssignmentsAllowed": true
+    },
+    "worker-4": {
+      "currentSequence": 0,
+      "currentIssueNumber": 55,
+      "currentBranch": "audit-phase6/contracts-parsers-fixtures-v2",
+      "migrationDisposition": "finish-existing-assignment-then-retire",
+      "futureAssignmentsAllowed": false,
+      "retireAfterCurrent": true,
+      "scheduledPollingEnabled": false
+    }
+  },
+  "staleThresholdHours": {
+    "potentiallyStale": 3,
+    "blockedPendingReview": 6
+  },
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T112700Z_control-plane-initialized_v1.json"
+}
