@@ -1,0 +1,14 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_started",
+  "workerId": "worker-2",
+  "sequence": 6,
+  "messageId": "worker-2-round2-phases1-8-integration-v1-000006",
+  "issueNumber": 103,
+  "branch": "audit-round2/phases1-8-integration-v1",
+  "startingSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+  "assignmentBlobSha": "10e2a253a2341d329975505d5f6d24ce0f41f8b8",
+  "runtimeId": "d89a687791fe",
+  "workspace": "/mnt/data/contract-automation-worker-2-round2-phases1-8",
+  "recordedAt": "2026-08-01T23:37:01Z"
+}
