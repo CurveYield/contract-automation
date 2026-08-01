@@ -2,118 +2,108 @@
   "protocolVersion": 1,
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
-  "operatingMode": "hybrid-local-wake-plus-hourly-polling",
-  "scheduledTaskLimit": 5,
-  "pollingFrequency": "hourly",
-  "activationState": "control-plane-active-local-wake-agent-awaiting-bootstrap",
+  "operatingMode": "manual-original-chat-coordination",
+  "activationState": "manual-active",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorPollAt": "2026-08-01T13:09:00Z",
-  "scheduledAgents": [
-    "orchestrator",
-    "worker-0",
-    "worker-1",
-    "worker-2",
-    "worker-3"
-  ],
-  "localWakeAgent": {
-    "enabledByUser": true,
-    "state": "awaiting-local-bootstrap",
-    "protocolPath": ".agent-control/v1/local-wake-agent/PROTOCOL_v1.md",
-    "bootstrapPromptPath": ".agent-control/v1/local-wake-agent/BOOTSTRAP_PROMPT_v1.md",
-    "requestDirectory": ".agent-control/v1/local-wake-agent/REQUESTS/",
-    "actionableRequestCount": 2,
-    "orchestratorFirstOnDiscrepancy": true,
-    "alreadySatisfiedOrSupersededRequests": [
-      "wake-worker-1-status-sync-000002",
-      "wake-worker-2-resume-sequence-1-000003",
-      "wake-worker-3-sequence-1-000004",
-      "wake-worker-0-sequence-1-000001"
+  "lastOrchestratorReviewAt": "2026-08-01T13:23:00Z",
+  "scheduledPolling": {
+    "enabled": false,
+    "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats.",
+    "disabledTasks": [
+      "CurveYield Orchestrator Poll",
+      "CurveYield Worker 0 Poll",
+      "CurveYield Worker 1 Poll",
+      "CurveYield Worker 2 Poll",
+      "CurveYield Worker 3 Poll"
     ]
+  },
+  "localWakeAgent": {
+    "enabled": false,
+    "reason": "User chose manual coordination through the original chats."
+  },
+  "manualWorkflow": {
+    "wakeTarget": "original worker chat only",
+    "completionSignal": "user forwards worker completion or blocker report to orchestrator",
+    "durableSourceOfTruth": "GitHub issues, pinned SHAs, mailbox assignments, and worker status files",
+    "orchestratorResponsibility": "review completed work, integrate or request repair, publish next assignment, and provide one concise manual wake message"
   },
   "workers": {
     "worker-0": {
-      "statusInitialization": "owner-initialized",
       "currentSequence": 1,
       "currentMessageId": "worker-0-phase1-3-pr-chain-000001",
       "currentIssueNumber": 70,
       "currentBranch": "audit-repair/phases-1-3-pr-chain-v1",
       "currentStartingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
       "mailboxState": "working",
+      "observedBranchState": "identical-to-starting-sha",
+      "manualAction": "wake-original-chat-now",
       "futureAssignmentsAllowed": true,
-      "priorCompletedIssueNumber": 51,
-      "priorFinalSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
-      "priorRecommendation": "ACCEPT WITH REPAIR",
-      "wakeRequestId": "wake-worker-0-sequence-1-000001",
       "acknowledgementPath": ".agent-control/v1/workers/worker-0/ACKS/000001_worker-0-phase1-3-pr-chain-000001_accepted_v1.json",
-      "delegatedWriteRecovery": true,
-      "delegatedWriteRecoveryEvent": ".agent-control/v1/workers/worker-0/EVENTS/20260801T130800Z_sequence-1-delegated-write-recovery_v1.json"
+      "delegatedWriteRecovery": true
     },
     "worker-1": {
-      "statusInitialization": "owner-initialized",
       "currentSequence": 1,
       "currentMessageId": "worker-1-phase4-catalog-api-integration-v2-000001",
       "currentIssueNumber": 72,
       "currentBranch": "audit-phase4/catalog-api-integration-v2",
       "currentStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "mailboxState": "ready-awaiting-acknowledgement",
-      "futureAssignmentsAllowed": true,
-      "priorCompletedIssueNumber": 53,
-      "priorFinalSha": "934d27dc950ffed9a334f7c9fbb60d68ac2689aa",
-      "priorRecommendation": "ACCEPT WITH REPAIR",
-      "wakeRequestId": "wake-worker-1-sequence-1-000005"
+      "mailboxState": "working",
+      "observedBranchState": "5-commits-ahead-0-behind",
+      "manualAction": "leave-working-unless-chat-is-visibly-idle",
+      "futureAssignmentsAllowed": true
     },
     "worker-2": {
-      "statusInitialization": "owner-initialized",
       "currentSequence": 2,
       "currentMessageId": "worker-2-phase4-result-contract-hardening-v2-000002",
       "currentIssueNumber": 74,
       "currentBranch": "audit-phase4/result-contract-hardening-v2",
       "currentStartingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
-      "mailboxState": "ready-awaiting-acknowledgement",
+      "mailboxState": "working",
+      "observedBranchState": "identical-to-starting-sha",
+      "manualAction": "wake-original-chat-now",
       "futureAssignmentsAllowed": true,
       "priorCompletedIssueNumber": 57,
-      "priorCompletedBranch": "audit-phase4/result-contract-compatibility-v1",
       "priorFinalSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
-      "priorRecommendation": "ACCEPT",
       "integrationPullRequest": 73,
-      "integrationState": "draft-review-open-not-merged",
-      "wakeRequestId": "wake-worker-2-sequence-2-000006"
+      "integrationState": "draft-review-open-not-merged"
     },
     "worker-3": {
-      "statusInitialization": "owner-initialized",
       "currentSequence": 1,
       "currentMessageId": "worker-3-phase5-result-contract-compatibility-000001",
       "currentIssueNumber": 71,
       "currentBranch": "audit-phase5/result-contract-compatibility-v1",
       "currentStartingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
       "mailboxState": "working",
-      "futureAssignmentsAllowed": true,
-      "observedBranchState": "1-commit-ahead-0-behind",
-      "priorCompletedIssueNumber": 54,
-      "priorFinalSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
-      "priorRecommendation": "ACCEPT",
-      "wakeRequestId": "wake-worker-3-sequence-1-000004"
+      "observedBranchState": "5-commits-ahead-0-behind",
+      "manualAction": "leave-working-unless-chat-is-visibly-idle",
+      "futureAssignmentsAllowed": true
     },
     "worker-4": {
-      "statusInitialization": "retired",
-      "currentSequence": 0,
-      "currentIssueNumber": null,
-      "currentBranch": null,
-      "currentStartingSha": null,
       "mailboxState": "retired",
       "futureAssignmentsAllowed": false,
       "retired": true,
-      "scheduledPollingEnabled": false,
       "priorCompletedIssueNumber": 55,
       "priorCompletedBranch": "audit-phase6/contracts-parsers-fixtures-v2",
       "priorFinalSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
       "priorRecommendation": "ACCEPT"
     }
   },
-  "staleThresholdHours": {
-    "potentiallyStale": 3,
-    "blockedPendingReview": 6
+  "phaseGates": {
+    "phase4IntegrationBranch": "audit-phase4/integration-v3",
+    "phase4CurrentAcceptedHead": "d90099c201d3012c090b6f73dda604bd5b143c95",
+    "phase5Integration": "blocked-until-phase4-accepted",
+    "phase6Integration": "blocked-until-phase5-accepted"
   },
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T130900Z_worker-0-delegated-write-recovery_v1.json",
-  "delegatedWriteRecoveryPolicyPath": ".agent-control/v1/DELEGATED_WRITE_RECOVERY_v1.md"
+  "standingRestrictions": [
+    "no dependency installation or download",
+    "no compilation",
+    "no deployment",
+    "no submitted-project or external audit-tool execution",
+    "no production secrets",
+    "no AWS",
+    "no CurveYield Lite modification",
+    "AUDIT_EXECUTION_ENABLED remains false",
+    "no merge to main"
+  ],
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T132300Z_manual-original-chat-mode_v1.json"
 }
