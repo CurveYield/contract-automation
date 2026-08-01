@@ -1,221 +1,223 @@
-# Phase 8 Clean-Room Control and Controlled Merge Review v1
+# Phase 8 Clean-Room Control and Controlled Merge Review v1 — Superseding Repair
 
 ## Disposition
 
 **Recommendation: ACCEPT**
 
-The isolated Phase 8 control/storage implementation satisfies all eighteen ordered work sections from issue #91. It implements tenant/workspace/campaign authorization, exact visibility and immutable base-artifact sharing, hidden-resource non-interference, terminal campaign manifests, deterministic controlled merge state, duplicate/conflict relations, provenance, merged-report references, exact-key storage planning, quota/retention/recovery controls, multi-tenant end-to-end scenarios, hostile-boundary validation, and static execution/confidentiality gates.
+This review supersedes the earlier completion candidate at `9b8c81631f6f75d3d888563071cab2ec709fb53d` and its issue report. Orchestrator source review comment `5152426552` identified eight mandatory checkpoint-1 defects that had not been incorporated before that completion was reported. Worker 3 reopened mailbox sequence `4`, reproduced all eight defects test-first, repaired them in the same assigned branch, reran the entire Phase 8 acceptance corpus, and preserved the original Phase 8 implementation boundaries.
 
-Phase 8 integration remains gated on independently accepted Phase 7. This branch does not execute submitted projects, external audit tools, processes, containers, network/RPC requests, transactions, or deployments.
+Phase 8 remains an isolated control/storage implementation. It does not execute submitted projects, tools, scripts, processes, containers, RPC calls, transactions, deployments, workflows, or source-code merges. Integration remains gated on independent Phase 7 acceptance.
 
-## Repository state
+## Repository and assignment state
 
 - Repository: `CurveYield/contract-automation`
 - Worker: `worker-3`
 - Issue: `#91`
+- Mailbox sequence: `4`
+- Message ID: `worker-3-phase8-clean-room-control-merge-v1-000004`
 - Branch: `audit-phase8/clean-room-control-merge-v1`
 - Required starting SHA: `2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c`
-- Implementation candidate SHA before this review file: `dd1067192835b8e3e6363ebb1fbb0a2f3ef0f323`
-- Exact final branch SHA: recorded in the final issue report, Worker 3 completed status, and completion event after this review commit. A commit cannot truthfully contain its own Git SHA.
-- Candidate comparison: 23 commits ahead, 0 behind, merge base equal to the required starting SHA.
-- Candidate changed-file count: 20 before this review; 21 including this review.
+- Superseded candidate SHA: `9b8c81631f6f75d3d888563071cab2ec709fb53d`
+- Mandatory repair comment: `https://github.com/CurveYield/contract-automation/issues/91#issuecomment-5152426552`
+- Repair implementation head before this review update: `68e32d077f6cbf92efc3c7f0c636a12c0634d59a`
+- Exact repaired final SHA: recorded in the superseding final issue report, completed mailbox status, and repair-completion event after this review update.
+- Expected repaired changed-file inventory: 34 files — 21 production modules, 8 focused tests, 4 inert fixtures, and this review.
 
-## Package and interface map
+## Package and module map
 
-### `packages/audit-clean-room-protocol`
+### Clean-room protocol — `packages/audit-clean-room-protocol/src`
 
-`src/boundary.mjs` owns Phase 8-local hostile object boundaries and canonicalization:
+| Module | Responsibility |
+|---|---|
+| `index.mjs` | Stable export-only facade. |
+| `boundary.mjs` | Hostile reflection boundary, canonical values, UTF-8 byte limits, defensive clone/freeze, canonical hashing entrypoint. |
+| `digest.mjs` | Runtime-neutral synchronous SHA-256 and UTF-8 byte utilities using standard JavaScript only. |
+| `constants.mjs` | Versioned schemas, scopes, roles, and campaign states. |
+| `policy.mjs` | Clean-room policy builder and validator. |
+| `access-context.mjs` | Campaign access-context builder and validator. |
+| `grants.mjs` | Immutable base-artifact grants and revocation records. |
+| `references.mjs` | Strict immutable reference-list validation. |
 
-- plain ordinary/null-prototype objects only;
-- dense ordinary arrays only;
-- exact keys and bounded collections;
-- canonical identifiers, paths, timestamps, digests, strings, booleans, enums, and safe integers;
-- negative-zero, NaN, Infinity, unsafe integer, control-character, sparse-array, accessor, symbol, class/custom-prototype, cycle, nesting, and hostile-reflection rejection;
-- deterministic canonical JSON, SHA-256 identities, defensive clones, and recursive freezing.
+### Clean-room access — `packages/audit-clean-room-access/src`
 
-`src/index.mjs` exports:
+| Module | Responsibility |
+|---|---|
+| `index.mjs` | Stable export-only facade. |
+| `constants.mjs` | Resource kinds, decision reasons, and closed role/state read matrix. |
+| `authorization.mjs` | Exact tenant/workspace/campaign authorization and read-scope/role-state gate. |
+| `visibility.mjs` | Resource visibility and fully validated grant/revocation evaluation. |
+| `non-interference.mjs` | Byte-stable hidden-resource envelope and enforcement contract. |
+| `storage-keys.mjs` | Deterministic scoped object and server-owned index key derivation. |
+| `index-planning.mjs` | Conditional server-owned index mutation planning and canonical operation traces. |
 
-- `createCleanRoomPolicy` / `validateCleanRoomPolicy`;
-- `createCampaignAccessContext` / `validateCampaignAccessContext`;
-- `createShareGrant` / `validateShareGrant`;
-- `createShareGrantRevocation` / `validateShareGrantRevocation`;
-- strict reference-list validation and all boundary utilities.
+### Terminal campaigns — `packages/audit-clean-room-campaigns/src/index.mjs`
 
-### `packages/audit-clean-room-access`
+Owns immutable terminal campaign manifests, derived inventories, terminal semantics, deterministic identity/digest, and merge eligibility.
 
-`src/index.mjs` exports:
+### Controlled merge — `packages/audit-controlled-merge/src`
 
-- `authorizeCampaignAccess` / `validateAccessDecision`;
-- `decideResourceVisibility` / `validateVisibilityDecision`;
-- `createHiddenResourceEnvelope`;
-- `enforceHiddenResourceNonInterference`;
-- `planScopedStorageKeys`;
-- `planConditionalIndexUpdate`.
+| Module | Responsibility |
+|---|---|
+| `index.mjs` | Stable export facade. |
+| `request-state.mjs` | Merge requests, state, events, CAS transitions, and validation. |
+| `relations.mjs` | Duplicate/conflict relation construction, attribution, and validation. |
+| `publication-storage.mjs` | Merge manifests, canonical `class-a`/`class-b` transaction planning, quotas, retries, and deterministic index rebuild. |
 
-### `packages/audit-clean-room-campaigns`
+### Provenance — `packages/audit-provenance/src/index.mjs`
 
-`src/index.mjs` exports:
+Owns provenance nodes, edges, indexes, referential integrity, cycle rejection, authorized origin tracing, and merged-report references.
 
-- `createTerminalCampaignManifest`;
-- `validateTerminalCampaignManifest`;
-- `terminalEligibility`.
+## Mandatory repair evidence
 
-### `packages/audit-controlled-merge`
-
-`src/index.mjs` is a stable facade over three responsibility-focused modules.
-
-`src/request-state.mjs` exports:
-
-- `createMergeRequest` / `validateMergeRequest`;
-- `createInitialMergeState` / `validateMergeState`;
-- `transitionMergeState`;
-- `validateMergeEvent`.
-
-`src/relations.mjs` exports:
-
-- `buildRelationMaps`;
-- `createDuplicateRelation` / `validateDuplicateRelation`;
-- `createConflictRelation` / `validateConflictRelation`.
-
-`src/publication-storage.mjs` exports:
-
-- `createMergeManifest` / `validateMergeManifest`;
-- `planMergeStorageTransaction`;
-- `rebuildMergeIndex`.
-
-### `packages/audit-provenance`
-
-`src/index.mjs` exports:
-
-- `createProvenanceNode` / `validateProvenanceNode`;
-- `createProvenanceEdge` / `validateProvenanceEdge`;
-- `createProvenanceIndex` / `validateProvenanceIndex`;
-- `traceAuthorizedOrigins`;
-- `createMergedReportReference` / `validateMergedReportReference`.
-
-## Test-first evidence
-
-### Initial interface red
-
-Command:
+### Red command
 
 ```text
-node --test test/audit-phase8-clean-room-interfaces-red-v1.test.mjs
+node --test test/audit-phase8-clean-room-checkpoint1-repair-v1.test.mjs
 ```
 
-Result before production packages existed:
+Result against the untouched superseded completion candidate:
 
 ```text
-5 tests
+8 tests
 0 passed
-5 failed
+8 failed
 ```
 
-All failures were the expected absent package/interface failures.
+Each failing test mapped one-to-one to an orchestrator repair item.
 
-### Sections 2–7 behavior red
+### Repair matrix
 
-```text
-12 tests
-5 passed
-7 failed
-```
+| Item | Red behavior | Repaired behavior | Focused green |
+|---|---|---|---:|
+| 1. Caller-selected index key | Caller supplied arbitrary `indexKey`. | Input accepts validated tenant/workspace/campaign plus closed `indexKind`; exact index key is server-derived. | 1/1 |
+| 2. Visibility authorization bypass | Identity match alone exposed campaign resources. | Visibility requires `campaign:read` and a closed allowed role/state combination before any own-resource or grant evaluation. | 1/1 |
+| 3. Non-strict grant arrays | Sparse/custom arrays and malformed unrelated records could escape full validation. | Grants and revocations use bounded ordinary dense-array validation and every entry is validated before matching. | 1/1 |
+| 4. Hostile reflection | Throwing/revoked proxies could escape as raw trap errors. | All relevant reflection is guarded and returns stable `hostile_reflection`. | 1/1 |
+| 5. Unused byte limit | `LIMITS.bytes` did not constrain canonical output. | Canonical JSON, cloning, freezing, and hashing enforce exact UTF-8 encoded bytes. | 1/1 |
+| 6. Node-only digest | Production imported `node:crypto`. | Pure standard-JavaScript SHA-256 uses `TextEncoder`; production has zero Node built-in imports. | 1/1 |
+| 7. Operation-class drift | Traces used `A` and `B`. | Index and merge traces use exact `class-a` and `class-b` vocabulary. | 1/1 |
+| 8. Oversized facades | Independent responsibilities were compressed into large `index.mjs` files. | Protocol and access responsibilities are split into 15 focused modules with export-only facades. | 1/1 |
 
-The failures demonstrated builder/validator schema-boundary defects before repair.
-
-### Sections 8–11 behavior red
-
-```text
-10 tests
-4 passed
-6 failed
-```
-
-The failures demonstrated terminal-manifest builder/validator reconstruction defects before repair.
-
-### Sections 12–14 behavior red
+Focused repair result:
 
 ```text
-10 tests
-3 passed
-7 failed
-```
-
-Six failures demonstrated provenance/report validator reconstruction defects. One demonstrated incomplete operation accounting when a three-input merge read only two terminal manifests.
-
-### Hostile-reflection red
-
-The adversarial corpus demonstrated that a revoked proxy could escape `Array.isArray()` as a raw `TypeError`. The Phase 8 boundary now converts this and other reflection traps to bounded `hostile_reflection` errors without invoking caller accessors.
-
-## Final verification
-
-Fresh command:
-
-```text
-node --test \
-  test/audit-phase8-clean-room-interfaces-red-v1.test.mjs \
-  test/audit-phase8-clean-room-protocol-access-v1.test.mjs \
-  test/audit-phase8-controlled-merge-relations-v1.test.mjs \
-  test/audit-phase8-provenance-storage-publication-v1.test.mjs \
-  test/audit-phase8-end-to-end-multi-tenant-v1.test.mjs \
-  test/audit-phase8-clean-room-adversarial-v1.test.mjs \
-  test/audit-phase8-clean-room-static-boundary-v1.test.mjs
-```
-
-Result:
-
-```text
-54 tests
-54 passed
+8 tests
+8 passed
 0 failed
-0 cancelled
-0 skipped
 ```
 
-Additional gates:
+## Hostile-object matrix
 
-```text
-production_mjs_files=9
-syntax_failures=0
-fixture_json_files=4
-static_prohibited_capability_matches=0
-diff_check=clean
-owned_paths_only=true
-```
+The repair-specific matrix contains these direct cases:
 
-## Authorization truth table
+1. throwing ordinary-object `ownKeys` proxy;
+2. revoked ordinary-object proxy;
+3. revoked array proxy;
+4. throwing array `ownKeys` proxy;
+5. sparse grant array;
+6. custom-prototype grant array;
+7. malformed unrelated grant entry;
+8. malformed unrelated revocation entry.
 
-| Condition | Result | Stable reason |
+The broader adversarial corpus additionally covers accessors, symbols, class instances, custom object prototypes, cycles, negative zero, NaN, Infinity, unsafe integers, control characters, unsafe paths, oversized collections, duplicate identities, and cross-scope substitution. All rejections use bounded stable code/path data and do not reflect attacker-controlled text.
+
+## Authorization and visibility truth tables
+
+### Exact authorization identity/scope cases
+
+| Condition | Decision | Stable reason |
 |---|---|---|
-| Same tenant/workspace/campaign and every exact scope present | Allow | `allowed` |
+| Exact tenant/workspace/campaign and all required scopes | Allow | `allowed` |
 | Tenant differs | Deny | `tenant_mismatch` |
 | Workspace differs | Deny | `workspace_mismatch` |
 | Campaign differs | Deny | `campaign_mismatch` |
-| Required exact scope absent | Deny | `scope_missing` |
-| Wildcard or caller-authored decision field | Reject input | bounded validation code/path |
+| Exact required scope missing | Deny | `scope_missing` |
+| Wildcard/caller-authored decision | Reject input | bounded schema error |
 
-Authorization decisions bind server-owned context identities, requester ID, role/state, policy ID, required scopes, resource class, and decision timestamp. Request-provided booleans cannot authorize access.
+### Read scope, role, and campaign-state matrix
 
-## Sharing and visibility truth table
+Every role/state combination is tested both with and without `campaign:read`, for 24 repair-specific cases.
+
+| Role | `active` | `terminal` | `archived` |
+|---|---:|---:|---:|
+| `owner` | Allow | Allow | Allow |
+| `reviewer` | Allow | Allow | Allow |
+| `operator` | Allow | Allow | Deny `role_state_denied` |
+| `reader` | Allow | Allow | Allow |
+
+Removing `campaign:read` denies all twelve role/state combinations with `scope_missing`.
+
+### Resource visibility
 
 Twelve resource classes are covered: source manifest, base artifact, layer, job, attempt, log, artifact, evidence, report, fork reference, notification, and search entry.
 
-| Resource relationship | Visibility |
+| Resource relationship | Result |
 |---|---|
-| Campaign-owned resource in exact scope | Visible |
+| Exact campaign-owned resource with read authorization | Visible |
+| Same identities without read scope | Hidden |
+| Disallowed role/state | Hidden |
 | Foreign campaign-private resource | Hidden |
-| Exact immutable base artifact with valid same-scope grant | Visible |
-| Base artifact with digest/source/campaign drift | Hidden |
-| Campaign derivative under a base-artifact grant | Hidden |
-| Expired grant | Hidden |
-| Revoked grant after revocation timestamp | Hidden |
-| Missing or cross-scope grant target | Hidden |
+| Exact immutable base artifact with valid same-scope grant and read authorization | Visible |
+| Base-artifact digest/source/campaign drift | Hidden |
+| Campaign derivative under base grant | Hidden |
+| Expired or revoked grant | Hidden |
+| Missing/cross-scope grant | Hidden |
 
-Grant records bind exact tenant, workspace, source campaign, target campaign, artifact ID, artifact digest, source digest, issue time, and expiry. Revocation is an immutable record and does not rewrite historical provenance. Transitive sharing and mutable aliases such as `latest` are rejected.
+## Derived storage key and operation-class tables
 
-## Hidden-resource non-interference matrix
+### Closed index kinds
 
-For hidden-existing versus absent resources, the deterministic response model is byte-identical across all thirteen caller-observable fields:
+| `indexKind` | Derived key suffix |
+|---|---|
+| `campaigns` | `indexes/campaigns-v1.json` |
+| `share-grants` | `indexes/share-grants-v1.json` |
+| `merges` | `indexes/merges-v1.json` |
+
+The full key is always derived as:
+
+```text
+tenants/{tenantId}/workspaces/{workspaceId}/{suffix}
+```
+
+`planConditionalIndexUpdate()` no longer accepts `indexKey`. Unknown fields and unsupported kinds are rejected before a plan is produced.
+
+### Operation vocabulary
+
+| Operation | Class |
+|---|---|
+| `GetObject` / exact authoritative read | `class-b` |
+| `PutObject` / conditional or immutable write | `class-a` |
+
+Conditional index update remains one `class-b` read plus one `class-a` write. A typical two-input merge remains four Class B-equivalent reads and four Class A-equivalent writes, with every trace entry carrying the canonical string vocabulary.
+
+## Exact encoded-byte boundary cases
+
+`LIMITS.bytes` is 20,000,000 encoded UTF-8 bytes.
+
+| Case | Encoded canonical JSON size | Result |
+|---|---:|---|
+| ASCII string sized to boundary | 20,000,000 | Accept |
+| Same ASCII string plus one byte | 20,000,001 | Reject `encoded_bytes_exceeded` |
+| Multibyte `é` string sized to boundary | 20,000,000 | Accept |
+| Same multibyte string plus one character | 20,000,002 | Reject `encoded_bytes_exceeded` |
+
+The limit is checked before returned canonical JSON, before defensive clone/freeze completion, and before hashing canonical structured values.
+
+## Runtime-neutral digest verification
+
+Production imports no `node:` modules. The pure JavaScript SHA-256 implementation was compared with Node's independent reference implementation for five vectors:
+
+1. empty string;
+2. `abc`;
+3. `hello world`;
+4. multibyte `é🙂`;
+5. one million `x` characters.
+
+All five digests matched byte-for-byte. The standard known vector for `abc` is also pinned directly in the repair suite.
+
+## Hidden-resource non-interference
+
+Hidden-existing and absent resources remain byte-identical across thirteen caller-observable surfaces:
 
 1. status;
 2. code;
@@ -225,31 +227,29 @@ For hidden-existing versus absent resources, the deterministic response model is
 6. facets;
 7. notifications;
 8. signed-resource planning;
-9. relation hints;
-10. cache tag/ETag class;
+9. duplicate/conflict hints;
+10. cache/ETag class;
 11. Class A operation count;
-12. Class B/byte operation summary;
-13. timing class.
+12. Class B and byte summary;
+13. deterministic timing class.
 
-Authorized provenance tracing also returns byte-identical `not_found` envelopes for hidden and absent nodes. No wall-clock timing benchmark is used; operation traces and response classes are compared explicitly.
+Authorized provenance tracing likewise emits the same bounded `not_found` result for absent and hidden nodes.
 
-## Terminal campaign eligibility table
+## Terminal campaign and controlled merge tables
 
-| Terminal state | Completion kind | Partial/truncated truth | Merge eligible |
-|---|---|---|---|
-| `completed` | `success` | neither | Yes |
-| `completed` | `findings` | neither | Yes |
-| `completed` | `partial` | partial evidence true | Yes |
-| `completed` | `truncated` | truncated true | Yes |
-| `failed` | `failed` | explicit | No |
-| `cancelled` | `cancelled` | explicit | No |
-| `policy_rejected` | `policy_rejected` | explicit | No |
+### Terminal campaign eligibility
 
-Inventories are derived from immutable finding/evidence references. Identity, digest, inventory, and eligibility drift are rejected. Original campaign objects remain unchanged.
+| Terminal state | Completion kind | Merge eligible |
+|---|---|---:|
+| `completed` | `success` | Yes |
+| `completed` | `findings` | Yes |
+| `completed` | `partial` | Yes |
+| `completed` | `truncated` | Yes |
+| `failed` | `failed` | No |
+| `cancelled` | `cancelled` | No |
+| `policy_rejected` | `policy_rejected` | No |
 
-## Merge state transition table
-
-Canonical successful path:
+### Canonical merge state path
 
 ```text
 requested
@@ -261,192 +261,135 @@ requested
   -> completed
 ```
 
-Failure, cancellation, and policy-rejection transitions are allowed only from their specified nonterminal states. Completed, failed, cancelled, and policy-rejected states are terminal. Every state transition requires an exact ETag precondition and creates an immutable event with a deterministic ID and digest. Stale writes and invalid transitions are rejected.
+Every transition requires exact CAS state and emits an immutable deterministic event. Stale writes, invalid terminal transitions, implicit campaign discovery, and request-selected executable algorithms are rejected.
 
-## Duplicate and conflict relations
+## Duplicate, conflict, and provenance guarantees
 
-### Duplicate relation identity
+- Exact duplicates become deterministic relation groups without deleting or rewriting original findings or evidence.
+- Materially different records with one comparison identity become conflict relations retaining every competing campaign, finding, field value, material digest, and evidence reference.
+- Relation output is byte-identical under complete input reversal.
+- Provenance nodes and edges are exact, sorted, frozen, and referentially validated.
+- Dangling references, conflicting/duplicate nodes, cross-scope nodes, and cycles are rejected.
+- Authorized origin tracing filters hidden campaign nodes and edges.
+- Merged-report references point to immutable approved report/evidence digests and reject script content, URLs, credential text, and host paths.
 
-Comparison input is the normalized finding identity key plus material fields: severity, status, remediation, location, and material digest. Exact material duplicates are grouped without deleting or rewriting originals.
-
-Every duplicate member retains:
-
-- source campaign ID;
-- original finding ID;
-- original material digest;
-- every evidence reference.
-
-### Conflict relation identity
-
-Findings with one comparison identity but differing severity, status, remediation, location, or material digest create a conflict relation. The relation records stable conflicting field names and every competing value/source. It performs no semantic resolution or confidence scoring.
-
-Relation group/member IDs and digests are deterministic and byte-identical under complete finding-order reversal. A comparison key may contain an exact duplicate subgroup and a conflict simultaneously without first-record-wins data loss.
-
-## Provenance model
-
-Supported node types include source, workspace, base artifact, campaign, layer, job, attempt, finding, evidence, report, duplicate/conflict relation, merge request/attempt/manifest, and merged-report reference.
-
-Supported edge types include derived-from, belongs-to, produced, supports, reported-by, member-of, merged-into, and references.
-
-Acceptance gates cover:
-
-- exact node/edge schemas;
-- deterministic canonical ordering;
-- node and edge validator replay;
-- referential integrity;
-- dangling-reference rejection;
-- conflicting-node and duplicate-node rejection;
-- tenant/workspace substitution rejection;
-- cycle rejection;
-- hidden-campaign filtering during authorized origin tracing.
-
-Representative tested graphs include a 3-node/2-edge graph and a 5-node/4-edge multi-campaign visibility graph.
-
-## Merge manifest and report publication
-
-Merge manifests pin:
-
-- merge request identity/digest;
-- final state;
-- sorted terminal-manifest digests;
-- duplicate-map digest;
-- conflict-map digest;
-- provenance-index digest;
-- sorted merged-report references;
-- policy ID;
-- exact operation summary;
-- publication timestamp.
-
-Merged-report references point to immutable approved report and evidence digests. They distinguish complete, partial, cancelled, and policy-rejected sources. They do not copy or mutate original evidence. Script/iframe/object content, raw HTTP URLs, authorization/bearer material, private-key labels, and Windows/POSIX host paths are rejected.
-
-## Storage operation, quota, retention, and recovery tables
-
-### Operation scenarios
+## Storage, quota, retention, and recovery
 
 | Scenario | Class A | Class B | Retained bytes | Retention | Variant |
 |---|---:|---:|---:|---:|---|
 | Typical two-input merge | 4 | 4 | 2,000,000 | 90 days | `typical-4a-4b-2mb-90d` |
 | Three-input partial-write retry | 4 | 5 | 2,500,000 | 60 days | `idempotent-retry` |
-| Conditional server-owned index update | 1 | 1 | bounded input | policy-bound | exact CAS |
+| Conditional server-owned index update | 1 | 1 | bounded | policy-bound | exact CAS |
 
-The planner reads every approved terminal manifest, exact current state, and the exact server-owned index key. It creates immutable request/event, relation/provenance, and manifest objects, then conditionally updates current/index state. No prefix listing exists.
+The planner reads every approved terminal manifest, exact current state, and exact server-owned index. It creates immutable request/event, relation/provenance, and manifest records, then conditionally updates current/index state. No prefix listing or silent operation omission is possible. Input count, retained bytes, retention days, collection sizes, nesting, and immutable retry digests are bounded.
 
-### Quotas and recovery
+## Fixture and end-to-end inventory
 
-The implementation enforces merge input count, retained bytes, retention days, collection sizes, string sizes, safe integers, and nesting limits. Existing immutable digests are recorded for retry; immutable writes are retry-safe; stale current/index updates are rejected. Index rebuild accepts only approved immutable manifest entries, sorts deterministically, and does not discover hidden campaigns.
+Four inert JSON fixtures cover two tenants, three workspaces, multiple campaigns, matching hidden identifiers, active/revoked/expired grants, six terminal variants, duplicates, conflicts, unrelated findings, immutable evidence, stale writes, retry, and quota rejection.
 
-## End-to-end fixture inventory
+The end-to-end path validates authorization, visibility, non-interference, terminal manifests, merge admission, relations, provenance, report references, publication, storage traces, retry, stale writes, and complete input reversal without executing a workload.
 
-Four valid JSON files are present:
+## Adversarial and mutation totals
 
-1. `fixture-manifest-v1.json` — complete unique inventory;
-2. `multi-tenant-campaigns-v1.json` — two tenants, three workspaces, same-name hidden campaigns, six terminal campaign variants, active/revoked/expired grants;
-3. `relation-scenarios-v1.json` — exact duplicates, conflict member, unrelated finding, immutable evidence attribution;
-4. `storage-recovery-v1.json` — typical operations, three-input retry, stale pointer, and quota rejection.
+- Existing one-field invalid mutations: 176 across 17 public result contracts.
+- Mandatory repair-specific tests: 8.
+- Repair-specific scope/role/state visibility cases: 24.
+- Repair-specific hostile/array cases: 8.
+- Runtime digest reference vectors: 5.
+- Encoded-byte boundary cases: 4.
 
-The end-to-end suite proves validation, authorization, non-interference, terminal manifests, merge admission, relation maps, provenance, report publication, storage planning, stale-write rejection, retry, and full input reversal. It creates no executable workload.
+## Final verification
 
-## Adversarial and mutation corpus
+Command:
 
-The suite performs **176 one-field invalid mutations** across seventeen public output contracts:
+```text
+node --test test/audit-phase8-*.test.mjs
+```
 
-- policy;
-- access context;
-- share grant;
-- share revocation;
-- access decision;
-- visibility decision;
-- terminal manifest;
-- merge request;
-- merge state;
-- merge event;
-- duplicate relation;
-- conflict relation;
-- provenance node;
-- provenance edge;
-- provenance index;
-- merged-report reference;
-- merge manifest.
+Fresh result after all mandatory repairs:
 
-Additional hostile cases cover tenant/workspace/campaign/source/digest substitution, extra/missing fields, invalid timestamps, unsafe paths, control characters, oversized/duplicate collections, negative zero, NaN, Infinity, unsafe integers, accessors, symbols, class/custom prototypes, sparse arrays, cycles, throwing proxies, and revoked proxies. Rejections return stable bounded codes and paths.
+```text
+62 tests
+62 passed
+0 failed
+0 cancelled
+0 skipped
+```
+
+Additional fresh gates:
+
+```text
+production_mjs_files=21
+syntax_failures=0
+fixture_json_files=4
+sha256_reference_vectors=5
+node_runtime_import_matches=0
+legacy_A_B_operation_label_matches=0
+static_prohibited_capability_matches=0
+diff_check=clean
+owned_paths_only=true
+```
 
 ## Static execution and confidentiality boundary
 
-All nine production `.mjs` sources were scanned. Matches: **0**.
+All 21 production modules were scanned. There are zero matches for filesystem/repository enumeration, process/shell/worker execution, network/HTTP/RPC/fetch/DNS/socket access, package managers, containers, dynamic code, cloud SDK coupling, credentials, wallets, signing, transactions, deployment, arbitrary URLs, CurveYield Lite imports, or execution-enablement states.
 
-Forbidden capabilities include:
+The previous `node:crypto` exception has been removed. Production code is runtime-neutral standard JavaScript.
 
-- process/child process/worker thread/shell/command/script execution;
-- filesystem reads, writes, or repository enumeration;
-- network, HTTP, fetch, DNS, sockets, WebSocket, RPC, or arbitrary URL access;
-- package installation, containers/images/binaries, dynamic code, or workflows;
-- credentials, keys, mnemonics, wallets, signing, transactions, calldata, broadcasts, or deployment;
-- direct Cloudflare/AWS SDK coupling;
-- CurveYield Lite imports;
-- execution-enablement state.
+## Exact changed-file inventory
 
-The only Node built-in production dependency is `node:crypto` for deterministic SHA-256 identities. Fixture scanning found no authorization header, bearer token, private key, mnemonic, API key, raw URL, or host-path leakage.
+### Production — 21 modules
 
-## Exact changed files and responsibilities
+- `packages/audit-clean-room-protocol/src/index.mjs`
+- `packages/audit-clean-room-protocol/src/boundary.mjs`
+- `packages/audit-clean-room-protocol/src/digest.mjs`
+- `packages/audit-clean-room-protocol/src/constants.mjs`
+- `packages/audit-clean-room-protocol/src/policy.mjs`
+- `packages/audit-clean-room-protocol/src/access-context.mjs`
+- `packages/audit-clean-room-protocol/src/grants.mjs`
+- `packages/audit-clean-room-protocol/src/references.mjs`
+- `packages/audit-clean-room-access/src/index.mjs`
+- `packages/audit-clean-room-access/src/constants.mjs`
+- `packages/audit-clean-room-access/src/authorization.mjs`
+- `packages/audit-clean-room-access/src/visibility.mjs`
+- `packages/audit-clean-room-access/src/non-interference.mjs`
+- `packages/audit-clean-room-access/src/storage-keys.mjs`
+- `packages/audit-clean-room-access/src/index-planning.mjs`
+- `packages/audit-clean-room-campaigns/src/index.mjs`
+- `packages/audit-controlled-merge/src/index.mjs`
+- `packages/audit-controlled-merge/src/request-state.mjs`
+- `packages/audit-controlled-merge/src/relations.mjs`
+- `packages/audit-controlled-merge/src/publication-storage.mjs`
+- `packages/audit-provenance/src/index.mjs`
 
-### Production
+### Focused tests — 8 files
 
-- `packages/audit-clean-room-protocol/src/boundary.mjs` — strict hostile boundary, canonicalization, SHA identities, defensive freeze.
-- `packages/audit-clean-room-protocol/src/index.mjs` — policy, access context, share grants/revocations.
-- `packages/audit-clean-room-access/src/index.mjs` — authorization, visibility, hidden envelopes, scoped keys, CAS index planning.
-- `packages/audit-clean-room-campaigns/src/index.mjs` — immutable terminal campaign manifests and eligibility.
-- `packages/audit-controlled-merge/src/index.mjs` — stable package facade.
-- `packages/audit-controlled-merge/src/request-state.mjs` — requests, state, events, CAS transitions.
-- `packages/audit-controlled-merge/src/relations.mjs` — duplicate/conflict relation maps and validators.
-- `packages/audit-controlled-merge/src/publication-storage.mjs` — merge manifests, operation planning, deterministic index rebuild.
-- `packages/audit-provenance/src/index.mjs` — provenance graph, tracing, merged-report references.
-
-### Focused tests
-
+- `test/audit-phase8-clean-room-checkpoint1-repair-v1.test.mjs`
 - `test/audit-phase8-clean-room-interfaces-red-v1.test.mjs`
 - `test/audit-phase8-clean-room-protocol-access-v1.test.mjs`
+- `test/audit-phase8-clean-room-adversarial-v1.test.mjs`
+- `test/audit-phase8-clean-room-static-boundary-v1.test.mjs`
 - `test/audit-phase8-controlled-merge-relations-v1.test.mjs`
 - `test/audit-phase8-provenance-storage-publication-v1.test.mjs`
 - `test/audit-phase8-end-to-end-multi-tenant-v1.test.mjs`
-- `test/audit-phase8-clean-room-adversarial-v1.test.mjs`
-- `test/audit-phase8-clean-room-static-boundary-v1.test.mjs`
 
-### Fixtures
+### Inert fixtures — 4 files
 
 - `test/fixtures/audit-phase8/fixture-manifest-v1.json`
 - `test/fixtures/audit-phase8/multi-tenant-campaigns-v1.json`
 - `test/fixtures/audit-phase8/relation-scenarios-v1.json`
 - `test/fixtures/audit-phase8/storage-recovery-v1.json`
 
-### Review
+### Durable review — 1 file
 
 - `docs/audit/reviews/2026-08-01-audit-phase8-clean-room-control-merge-v1.md`
 
-## Blocked and intentionally unperformed checks
+## Blocked checks and residual risks
 
-Not performed because prohibited or outside this isolated package:
+- Phase 8 integration remains blocked until Phase 7 is independently accepted.
+- Live R2 bindings, API routes, and Cloudflare deployment composition require later integration review.
+- The synchronous pure-JavaScript SHA-256 implementation is verified against reference vectors but should receive an independent performance review for very large production control objects.
+- Production infrastructure must preserve the modeled hidden-resource timing, cache, operation, and response classes.
+- Operation estimates must be cross-checked against the final storage adapter implementation.
 
-- dependency installation or download;
-- package-manager, compilation, or build commands;
-- submitted project or external audit-tool execution;
-- process/container/image execution;
-- Cloudflare/R2 live calls, GitHub Direct execution, arbitrary network/RPC calls;
-- wallet/signing/transaction/deployment operations;
-- API/web integration changes;
-- Phase 7 integration or merge;
-- workflow creation or approval;
-- main-branch merge.
-
-## Residual risks
-
-- Phase 8 is an isolated deterministic control/storage model; deployment-specific R2 adapters and API routes require later integration review.
-- Operation accounting is a truthful planner model and must be rechecked against the final storage adapter implementation.
-- Hidden-resource timing is modeled by explicit response and operation classes; production infrastructure must preserve those classes without adding distinguishable latency branches.
-- Future finding schemas may require a separately versioned comparison-identity policy rather than widening the current contracts.
-- Phase 8 cannot integrate until Phase 7 is independently accepted.
-
-## Final recommendation
-
-**ACCEPT**
-
-All eighteen ordered sections, four-fixture inventory, multi-tenant scenario suite, 176-field mutation corpus, non-interference gates, operation-accounting scenarios, and static security boundaries are implemented and verified within exclusive Phase 8 ownership.
+No dependency installation/download, compilation, build, submitted-project execution, external audit-tool execution, process/container/network/RPC activity, signing, transaction, deployment, workflow approval, production secret, AWS, CurveYield Lite change, execution enablement, PR integration, or merge to `main` occurred.
