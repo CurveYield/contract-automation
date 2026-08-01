@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "sequence": 2,
-  "messageId": "worker-0-phase7-control-storage-mock-v1-000002",
-  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000002_worker-0-phase7-control-storage-mock-v1_v1.md",
-  "assignmentBlobSha": "d21ee6f22385f74f1dfc163bec8afaa2ddb9a1bc",
-  "issuedAt": "2026-08-01T15:33:00Z"
+  "sequence": 3,
+  "messageId": "worker-0-round1-phases7-8-reconstruction-v1-000003",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000003_worker-0-round1-phases7-8-reconstruction-v1_v1.md",
+  "assignmentBlobSha": "470ad9570cb9ea59d65406095884de5fd7549ab6",
+  "issuedAt": "2026-08-01T17:22:00Z"
 }
