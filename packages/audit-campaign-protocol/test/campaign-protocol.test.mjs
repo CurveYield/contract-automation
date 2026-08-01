@@ -56,7 +56,7 @@ test('publishes the exact Phase 3 lifecycle and approved operation budgets', () 
     readTypicalLogs: { classA: 0, classB: 9, storageBytes: 0 },
     rawArtifacts: { classA: 2, classB: 0, storageBytes: 15_000_000 },
     acceptEvidence: { classA: 4, classB: 1, storageBytes: 10_000_000 },
-    publishReport: { classA: 3, classB: 0, storageBytes: 1_000_000 },
+    publishReport: { classA: 3, classB: 1, storageBytes: 1_000_000 },
     completeJob: { classA: 3, classB: 2, storageBytes: 32_000 },
     pollJob: { classA: 0, classB: 1, storageBytes: 0 }
   });
