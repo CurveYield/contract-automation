@@ -39,6 +39,13 @@ jobs:
           node-version: "22"
       - name: Install pinned trusted dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Export generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 1
       - name: Run all unit and security tests
         run: npm test
       - name: Check JavaScript syntax
