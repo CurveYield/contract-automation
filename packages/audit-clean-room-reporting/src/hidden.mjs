@@ -1,0 +1,2 @@
+import {frozenClone} from '../../audit-phase78-service/src/index.mjs';
+export function createHiddenReportProjection(){return frozenClone({schemaVersion:'audit-phase9-hidden-report-v1',status:'not_found',code:'resource_not_found',message:'Resource not found',items:[],total:0,facets:{},relations:[],notifications:[],signedResource:null,operationBudget:{classA:0,classB:0,free:0,bytes:0},cacheTag:'hidden-v1',timingClass:'constant-hidden-v1'});}
