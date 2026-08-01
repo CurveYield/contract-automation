@@ -54,18 +54,23 @@ test('Audit static build produces a separate output without altering Lite assets
   assert.doesNotMatch(script, /apps['"], ['"]web|dist['"], ['"]web/);
 });
 
-test('v2 current-stack specifications are complete and hash-verified', async () => {
+test('v2 current-stack specifications use one canonical hash-verified manifest', async () => {
   const directory = path.join(root, 'docs/audit/specifications-v2');
   const manifest = JSON.parse(await fs.readFile(path.join(directory, 'MANIFEST_v2.json'), 'utf8'));
+  assert.deepEqual(Object.keys(manifest), ['schemaVersion', 'package', 'version', 'files', 'fileCount']);
+  assert.equal(manifest.schemaVersion, 'curveyield-audit-specification-manifest-v2');
   assert.equal(manifest.version, 2);
   assert.equal(manifest.package, 'CurveYield Audit Current-Stack Specifications');
+  assert.equal(manifest.fileCount, 22);
   assert.equal(manifest.files.length, 22);
+  assert.deepEqual(manifest.files.map((entry) => entry.file), [...manifest.files.map((entry) => entry.file)].sort());
   const mismatches = [];
   for (const entry of manifest.files) {
+    assert.deepEqual(Object.keys(entry), ['file', 'sha256', 'bytes']);
     const bytes = await fs.readFile(path.join(directory, entry.file));
     const actual = createHash('sha256').update(bytes).digest('hex');
-    if (actual !== entry.sha256) {
-      mismatches.push({ file: entry.file, expected: entry.sha256, actual, actualBytes: bytes.byteLength });
+    if (actual !== entry.sha256 || bytes.byteLength !== entry.bytes) {
+      mismatches.push({ file: entry.file, expected: entry.sha256, actual, expectedBytes: entry.bytes, actualBytes: bytes.byteLength });
     }
   }
   assert.deepEqual(mismatches, []);
