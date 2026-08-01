@@ -7,6 +7,7 @@ import { getDeterministicGanacheAccounts } from '../packages/github-native-sim/s
 const rpcUrl = process.env.RPC_ETHEREUM;
 const pinnedBlock = 25_660_886;
 const holder = '0x624Fc0A7B29002D7E06d35b9D7E0fc690a4FeBB6';
+const staking = '0xA6730b33203f005cab6c80a2fF1d8B73E1947F2C';
 const ZERO_STORAGE = `0x${'00'.repeat(32)}`;
 const summary = { startedAt: new Date().toISOString(), local: [], calls: [], ganache: null };
 
@@ -15,6 +16,8 @@ function safeError(error) {
     name: error?.name ?? 'Error',
     message: String(error?.message ?? error).replaceAll(rpcUrl ?? '', '[REDACTED_RPC]'),
     code: error?.code,
+    shortMessage: error?.shortMessage,
+    data: error?.data,
     cause: error?.cause ? safeError(error.cause) : undefined
   };
 }
@@ -32,6 +35,13 @@ function localResponse(entry, accounts) {
     return { jsonrpc: '2.0', id: entry.id ?? null, result: ZERO_STORAGE };
   }
   return null;
+}
+
+function normalize(entry) {
+  if (entry.method === 'eth_getBlockByNumber' && entry.params?.[0] === 'earliest') {
+    return { ...entry, params: ['0x0', ...entry.params.slice(1)] };
+  }
+  return entry;
 }
 
 if (!rpcUrl) throw new Error('RPC_ETHEREUM is missing');
@@ -55,7 +65,7 @@ const proxy = http.createServer(async (request, response) => {
       console.log(JSON.stringify({ event: 'local-overlay', ...row }));
       outputs.push(local);
     } else {
-      forwarded.push(entry);
+      forwarded.push(normalize(entry));
     }
   }
 
@@ -83,7 +93,13 @@ const proxy = http.createServer(async (request, response) => {
       elapsedMs: Math.round(performance.now() - started),
       status: upstream.status,
       responseBytes: Buffer.byteLength(text),
-      errors: decodedEntries.filter(Boolean).map((entry) => entry.error).filter(Boolean)
+      errors: decodedEntries.filter(Boolean).map((entry) => entry.error).filter(Boolean),
+      resultSummaries: decodedEntries.filter(Boolean).map((entry) => {
+        if (entry.error) return null;
+        if (typeof entry.result === 'string') return entry.result.slice(0, 130);
+        if (entry.result && typeof entry.result === 'object') return Object.keys(entry.result).sort();
+        return entry.result;
+      })
     };
     summary.calls.push(row);
     console.log(JSON.stringify({ event: 'upstream', ...row }));
@@ -117,12 +133,15 @@ try {
   await ganacheServer.listen(0, '127.0.0.1');
   const address = ganacheServer.address();
   provider = new ethers.JsonRpcProvider(`http://127.0.0.1:${address.port}`, 1, { staticNetwork: true });
+  const contract = new ethers.Contract(staking, ['function lp_token() view returns (address)'], provider);
   summary.ganache = {
     accounts: (await provider.send('eth_accounts', [])).length,
     blockNumber: await provider.getBlockNumber(),
     holderBalance: (await provider.getBalance(holder)).toString(),
     holderNonce: await provider.getTransactionCount(holder),
-    holderCodeBytes: Math.max(0, ((await provider.getCode(holder)).length - 2) / 2)
+    holderCodeBytes: Math.max(0, ((await provider.getCode(holder)).length - 2) / 2),
+    stakingCodeBytes: Math.max(0, ((await provider.getCode(staking)).length - 2) / 2),
+    stakingLpToken: await contract.lp_token()
   };
   console.log(JSON.stringify({ event: 'ganache-success', ...summary.ganache }));
 } catch (error) {
