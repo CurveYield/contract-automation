@@ -19,12 +19,20 @@ function descriptors(value, path) {
   let result;
   try { result = Object.getOwnPropertyDescriptors(value); }
   catch { fail('hostile_reflection', path, 'Object boundary could not be inspected'); }
-  if (Object.getOwnPropertySymbols(value).length) fail('symbol_field', path, 'Symbol fields are forbidden');
+  let symbols;
+  try { symbols = Object.getOwnPropertySymbols(value); }
+  catch { fail('hostile_reflection', path, 'Object boundary could not be inspected'); }
+  if (symbols.length) fail('symbol_field', path, 'Symbol fields are forbidden');
   return result;
 }
 
+function guardedIsArray(value, path) {
+  try { return Array.isArray(value); }
+  catch { fail('hostile_reflection', path, 'Object boundary could not be inspected'); }
+}
+
 export function plainObject(value, path = '$') {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) fail('invalid_object', path, 'Expected object');
+  if (value === null || typeof value !== 'object' || guardedIsArray(value, path)) fail('invalid_object', path, 'Expected object');
   let prototype;
   try { prototype = Object.getPrototypeOf(value); }
   catch { fail('hostile_reflection', path, 'Object boundary could not be inspected'); }
@@ -37,7 +45,11 @@ export function plainObject(value, path = '$') {
 }
 
 export function denseArray(value, path = '$', maximum = LIMITS.array) {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) fail('invalid_array', path, 'Expected ordinary array');
+  if (!guardedIsArray(value, path)) fail('invalid_array', path, 'Expected ordinary array');
+  let prototype;
+  try { prototype = Object.getPrototypeOf(value); }
+  catch { fail('hostile_reflection', path, 'Array boundary could not be inspected'); }
+  if (prototype !== Array.prototype) fail('invalid_array', path, 'Expected ordinary array');
   if (value.length > maximum) fail('collection_too_large', path, 'Collection exceeds limit');
   for (let i = 0; i < value.length; i += 1) if (!Object.hasOwn(value, i)) fail('sparse_array', `${path}[${i}]`, 'Sparse arrays are forbidden');
   if (Object.keys(value).some((key) => !/^\d+$/.test(key))) fail('array_property', path, 'Array properties are forbidden');
@@ -128,7 +140,7 @@ function canonical(value, path, seen, depth) {
   if (seen.has(value)) fail('cycle', path, 'Cycles are forbidden');
   seen.add(value);
   let output;
-  if (Array.isArray(value)) {
+  if (guardedIsArray(value, path)) {
     denseArray(value, path);
     output = value.map((entry, index) => canonical(entry, `${path}[${index}]`, seen, depth + 1));
   } else {
