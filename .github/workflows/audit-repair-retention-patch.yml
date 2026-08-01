@@ -1,0 +1,101 @@
+name: Apply Audit Retention Repair Once
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/audit-repair-retention-patch.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-retention-repair-once
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    if: github.head_ref == 'audit-repair/phases-1-3-v1' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted repair branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: audit-repair/phases-1-3-v1
+          persist-credentials: true
+      - name: Apply exact reviewed replacements
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          function replaceExact(path, before, after) {
+            const text = fs.readFileSync(path, 'utf8');
+            if (!text.includes(before)) throw new Error(`Expected text not found in ${path}: ${before}`);
+            fs.writeFileSync(path, text.replace(before, after));
+          }
+
+          const protocol = 'packages/audit-campaign-protocol/src/index.mjs';
+          replaceExact(protocol,
+            "export const logChunkKey = (jobId, attemptId, value) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/${sequence(value)}.log`;",
+            "export const logChunkKey = (jobId, attemptId, value) => `job-logs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/${sequence(value)}.log`;"
+          );
+          replaceExact(protocol,
+            "export const logIndexKey = (jobId, attemptId) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/index-v1.json`;",
+            "export const logIndexKey = (jobId, attemptId) => `job-logs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/index-v1.json`;"
+          );
+          replaceExact(protocol,
+            "export const rawArtifactBundleKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;",
+            "export const rawArtifactBundleKey = (jobId, artifactId) => `job-artifacts/${id(jobId,'job','$.jobId')}/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;"
+          );
+          replaceExact(protocol,
+            "export const rawArtifactManifestKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;",
+            "export const rawArtifactManifestKey = (jobId, artifactId) => `job-artifacts/${id(jobId,'job','$.jobId')}/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;"
+          );
+
+          const evidence = 'packages/audit-evidence/src/index.mjs';
+          replaceExact(evidence,
+            "    await this.store.put(evidenceAttestationKey(input.jobId, input.artifactId), JSON.stringify(attestation), createOnly());\n    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true });",
+            "    await this.store.put(evidenceAttestationKey(input.jobId, input.artifactId), JSON.stringify(attestation), createOnly());\n    let quarantineCleanupPending = false;\n    if (typeof this.store.delete === 'function') {\n      try { await this.store.delete(evidenceQuarantineKey(input.jobId, input.artifactId)); }\n      catch { quarantineCleanupPending = true; }\n    } else {\n      quarantineCleanupPending = true;\n    }\n    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true, quarantineCleanupPending });"
+          );
+
+          const protocolTest = 'packages/audit-campaign-protocol/test/campaign-protocol.test.mjs';
+          replaceExact(protocolTest,
+            "assert.equal(logChunkKey(jobId, attemptId, 7), `jobs/${jobId}/attempts/${attemptId}/logs/00000007.log`);",
+            "assert.equal(logChunkKey(jobId, attemptId, 7), `job-logs/${jobId}/attempts/${attemptId}/00000007.log`);"
+          );
+          replaceExact(protocolTest,
+            "assert.equal(logIndexKey(jobId, attemptId), `jobs/${jobId}/attempts/${attemptId}/logs/index-v1.json`);",
+            "assert.equal(logIndexKey(jobId, attemptId), `job-logs/${jobId}/attempts/${attemptId}/index-v1.json`);"
+          );
+          replaceExact(protocolTest,
+            "assert.equal(rawArtifactBundleKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}.tar.zst`);",
+            "assert.equal(rawArtifactBundleKey(jobId, artifactId), `job-artifacts/${jobId}/${artifactId}.tar.zst`);"
+          );
+          replaceExact(protocolTest,
+            "assert.equal(rawArtifactManifestKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}-manifest-v1.json`);",
+            "assert.equal(rawArtifactManifestKey(jobId, artifactId), `job-artifacts/${jobId}/${artifactId}-manifest-v1.json`);"
+          );
+
+          const evidenceTest = 'packages/audit-evidence/test/evidence.test.mjs';
+          replaceExact(evidenceTest,
+            "  assert.ok(await store.head(evidenceQuarantineKey(jobId, artifactId)));",
+            "  assert.equal(await store.get(evidenceQuarantineKey(jobId, artifactId)), null);"
+          );
+
+          const lifecyclePath = 'infra/audit-cloudflare/r2-lifecycle.json';
+          const lifecycle = JSON.parse(fs.readFileSync(lifecyclePath, 'utf8'));
+          const additions = [
+            { ID: 'expire-audit-job-logs-7d', Status: 'Enabled', Filter: { Prefix: 'job-logs/' }, Expiration: { Days: 7 } },
+            { ID: 'expire-audit-job-artifacts-7d', Status: 'Enabled', Filter: { Prefix: 'job-artifacts/' }, Expiration: { Days: 7 } }
+          ];
+          const prefixes = new Set(lifecycle.Rules.map((rule) => rule.Filter?.Prefix));
+          for (const rule of additions) if (!prefixes.has(rule.Filter.Prefix)) lifecycle.Rules.push(rule);
+          fs.writeFileSync(lifecyclePath, `${JSON.stringify(lifecycle, null, 2)}\n`);
+          NODE
+      - name: Commit repaired retention paths
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/audit-campaign-protocol/src/index.mjs packages/audit-campaign-protocol/test/campaign-protocol.test.mjs packages/audit-evidence/src/index.mjs packages/audit-evidence/test/evidence.test.mjs infra/audit-cloudflare/r2-lifecycle.json
+          git commit -m "fix: align Audit retention keys and quarantine cleanup"
+          git push origin "HEAD:audit-repair/phases-1-3-v1"
