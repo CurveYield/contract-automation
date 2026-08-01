@@ -37,7 +37,7 @@ Each worker may write only:
 - its own `EVENTS/` files;
 - its assigned implementation branch, issue, or pull request.
 
-No agent may overwrite another agent's status, acknowledgement, event, assignment, or implementation files.
+No agent may overwrite another agent's status, acknowledgement, event, assignment, or implementation files. During bootstrap, the orchestrator records migration state only in `GLOBAL_STATE_v1.json`; each participating worker creates its own initial `STATUS_v1.json`.
 
 ## Immutable assignments
 
@@ -71,17 +71,18 @@ Cancellation, retirement, or supersession requires a new higher-sequence immutab
 Each scheduled worker runs hourly:
 
 1. Read its own `CURRENT_v1.json` and `STATUS_v1.json` from `agent-control-plane-v1`.
-2. If the pointer sequence is absent, unchanged, or not greater than `lastConsumedSequence`, make no writes and end quietly.
-3. For a new sequence, verify protocol version, exact worker ID, pointer integrity, assignment blob SHA, sequence, message ID, issue, branch, and starting SHA.
-4. Reject malformed, stale, cross-worker, or mismatched instructions without consuming them.
-5. Create `ACKS/<sequence>_<message-id>_accepted_v1.json` before implementation.
-6. Update its own status to `acknowledged`, then `working`.
-7. Execute or resume the assignment while preserving every issue, path-ownership, phase-order, and security restriction.
-8. Commit and push only to the assigned implementation branch.
-9. Post the required report to the assigned GitHub issue.
-10. Update status to `completed`, `blocked`, or `rejected`, including immutable final SHA and report reference when applicable.
-11. Set `lastConsumedSequence` only after validating the immutable assignment.
-12. Write a create-only completion or blocker event.
+2. If its status file is absent, create the exact initial status from the worker's migration record in `GLOBAL_STATE_v1.json`. This initialization does not consume or execute an assignment.
+3. If the pointer sequence is absent, unchanged, or not greater than `lastConsumedSequence`, make no further writes and end quietly.
+4. For a new sequence, verify protocol version, exact worker ID, pointer integrity, assignment blob SHA, sequence, message ID, issue, branch, and starting SHA.
+5. Reject malformed, stale, cross-worker, or mismatched instructions without consuming them.
+6. Create `ACKS/<sequence>_<message-id>_accepted_v1.json` before implementation.
+7. Update its own status to `acknowledged`, then `working`.
+8. Execute or resume the assignment while preserving every issue, path-ownership, phase-order, and security restriction.
+9. Commit and push only to the assigned implementation branch.
+10. Post the required report to the assigned GitHub issue.
+11. Update status to `completed`, `blocked`, or `rejected`, including immutable final SHA and report reference when applicable.
+12. Set `lastConsumedSequence` only after validating the immutable assignment.
+13. Write a create-only completion or blocker event.
 
 A worker never executes the same sequence twice. If one hourly run cannot finish the work, status remains `working`; the next run resumes from GitHub state rather than restarting blindly.
 
@@ -102,15 +103,16 @@ Completion is valid only when both a worker status record and the required issue
 
 The orchestrator runs hourly:
 
-1. Read all worker status files and `GLOBAL_STATE_v1.json`.
-2. Detect newly completed, blocked, rejected, stale, or retired workers.
-3. Pin each reported final SHA before review.
-4. Inspect changed paths, issue report, ownership, tests, security boundaries, and governing acceptance gates.
-5. Accept, request repair, reject, integrate, or reassign under the existing orchestration plan.
-6. Never issue two active assignments to one worker.
-7. Publish each new immutable assignment first, then update `CURRENT_v1.json`.
-8. Record every decision as a create-only orchestrator event.
-9. Update global state last.
+1. Read `GLOBAL_STATE_v1.json`, every worker pointer, and every available worker status file.
+2. Treat a missing Worker 0-3 status as uninitialized pending that worker's bootstrap. Worker-4 is a legacy current-workload-only worker; monitor issue #55 and its pinned final report directly until retirement rather than requiring a recurring mailbox status.
+3. Detect newly completed, blocked, rejected, stale, or retired workers.
+4. Pin each reported final SHA before review.
+5. Inspect changed paths, issue report, ownership, tests, security boundaries, and governing acceptance gates.
+6. Accept, request repair, reject, integrate, or reassign under the existing orchestration plan.
+7. Never issue two active assignments to one worker.
+8. Publish each new immutable assignment first, then update `CURRENT_v1.json`.
+9. Record every decision as a create-only orchestrator event.
+10. Update global state last.
 
 The orchestrator must perform the review and authorized follow-up publication itself. It must not merely notify James that a worker finished.
 
@@ -140,7 +142,11 @@ The mailbox does not authorize dependency installation, downloads, compilation, 
 
 ## Migration and activation
 
-Existing assignments active at migration are represented only in status snapshots with mailbox sequence `0`. Sequence `0` is not work and must never be acknowledged or executed. Those workers finish their existing issue assignments normally. Their first mailbox-issued follow-up is sequence `1`.
+Existing assignments active at migration are represented in the orchestrator-owned worker records inside `GLOBAL_STATE_v1.json`, with mailbox pointer sequence `0`. Sequence `0` is not work and must never be acknowledged or executed. During bootstrap, each worker creates its own status describing the already-active issue and branch, then finishes that assignment normally. Its first mailbox-issued follow-up is sequence `1`.
+
+Worker-2 had completed its prior issue before migration and had not received the proposed follow-up manually. Therefore issue #57 is validly published as its immutable sequence-1 mailbox assignment.
+
+Worker-4 does not join recurring mailbox polling. It finishes issue #55 under the prior workflow, receives no future assignment, and is then retired in global state.
 
 The migration is not considered fully active until:
 
