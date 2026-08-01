@@ -1,0 +1,154 @@
+name: Temporary Compile CurveYield V26 v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/temp-compile-v26-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact staged contract sources
+        uses: actions/checkout@v4
+        with:
+          ref: automation/compile-curveyield-v26-v1
+          persist-credentials: false
+
+      - name: Build standard JSON compiler input
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('jobs/compile-curveyield-v26-v1/contracts')
+          sources = {}
+          for path in sorted(root.glob('*.sol')):
+              sources[path.name] = {'content': path.read_text(encoding='utf-8')}
+
+          compiler_input = {
+              'language': 'Solidity',
+              'sources': sources,
+              'settings': {
+                  'optimizer': {'enabled': True, 'runs': 200},
+                  'viaIR': False,
+                  'outputSelection': {
+                      '*': {
+                          '*': [
+                              'abi',
+                              'metadata',
+                              'storageLayout',
+                              'evm.bytecode.object',
+                              'evm.deployedBytecode.object',
+                              'evm.methodIdentifiers'
+                          ]
+                      }
+                  }
+              }
+          }
+          Path('compiler-input.json').write_text(json.dumps(compiler_input), encoding='utf-8')
+          PY
+
+      - name: Compile with official Solidity 0.8.28 image
+        shell: bash
+        run: |
+          docker run --rm -i ethereum/solc:0.8.28 --standard-json < compiler-input.json > compiler-output.json
+
+      - name: Extract artifacts and contract sizes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          output = json.loads(Path('compiler-output.json').read_text(encoding='utf-8'))
+          diagnostics = output.get('errors', [])
+          errors = [d for d in diagnostics if d.get('severity') == 'error']
+          if errors:
+              for item in errors:
+                  print(item.get('formattedMessage') or item.get('message'), file=sys.stderr)
+              sys.exit(1)
+
+          targets = {
+              'CurveYieldSdYBHybridVaultV26.sol': 'CurveYieldSdYBHybridVaultV26',
+              'CurveYieldSdYBRewardConverterV26.sol': 'CurveYieldSdYBRewardConverterV26',
+              'CurveYieldSdYBTwoDestinationStrategyV26.sol': 'CurveYieldSdYBTwoDestinationStrategyV26'
+          }
+
+          out_dir = Path('compiled')
+          out_dir.mkdir()
+          sizes = []
+
+          for source_name, contract_name in targets.items():
+              artifact = output['contracts'][source_name][contract_name]
+              creation = artifact['evm']['bytecode']['object']
+              runtime = artifact['evm']['deployedBytecode']['object']
+              record = {
+                  'sourceName': source_name,
+                  'contractName': contract_name,
+                  'compilerVersion': '0.8.28',
+                  'optimizer': {'enabled': True, 'runs': 200},
+                  'viaIR': False,
+                  'creationBytecodeBytes': len(creation) // 2,
+                  'deployedBytecodeBytes': len(runtime) // 2,
+                  'eip170LimitBytes': 24576,
+                  'eip170RemainingBytes': 24576 - (len(runtime) // 2)
+              }
+              sizes.append(record)
+
+              normalized = {
+                  'sourceName': source_name,
+                  'contractName': contract_name,
+                  'abi': artifact.get('abi', []),
+                  'metadata': artifact.get('metadata'),
+                  'storageLayout': artifact.get('storageLayout'),
+                  'methodIdentifiers': artifact.get('evm', {}).get('methodIdentifiers', {}),
+                  'bytecode': '0x' + creation,
+                  'deployedBytecode': '0x' + runtime,
+                  'compiler': {
+                      'version': '0.8.28',
+                      'optimizer': {'enabled': True, 'runs': 200},
+                      'viaIR': False
+                  }
+              }
+              (out_dir / f'{contract_name}.json').write_text(json.dumps(normalized, indent=2), encoding='utf-8')
+              (out_dir / f'{contract_name}.abi.json').write_text(json.dumps(artifact.get('abi', []), indent=2), encoding='utf-8')
+              (out_dir / f'{contract_name}.bin').write_text(creation + '\n', encoding='utf-8')
+              (out_dir / f'{contract_name}.deployed.bin').write_text(runtime + '\n', encoding='utf-8')
+
+          (out_dir / 'contract-sizes-v1.json').write_text(json.dumps(sizes, indent=2), encoding='utf-8')
+          lines = [
+              '# CurveYield V26 Contract Sizes v1',
+              '',
+              'Compiler: Solidity 0.8.28; optimizer enabled, 200 runs; viaIR disabled.',
+              '',
+              '| Contract | Creation bytecode | Deployed bytecode | EIP-170 remaining |',
+              '|---|---:|---:|---:|'
+          ]
+          for item in sizes:
+              lines.append(
+                  f"| {item['contractName']} | {item['creationBytecodeBytes']:,} bytes | "
+                  f"{item['deployedBytecodeBytes']:,} bytes | {item['eip170RemainingBytes']:,} bytes |"
+              )
+          (out_dir / 'contract-sizes-v1.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          (out_dir / 'compiler-diagnostics-v1.json').write_text(json.dumps(diagnostics, indent=2), encoding='utf-8')
+          PY
+
+      - name: Upload compiled contract package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V26-compiled-contracts-v1
+          path: |
+            compiled/
+            compiler-input.json
+            compiler-output.json
+          if-no-files-found: error
+          retention-days: 7
