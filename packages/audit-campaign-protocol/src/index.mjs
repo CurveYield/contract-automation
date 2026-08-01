@@ -16,7 +16,7 @@ export const CAMPAIGN_OPERATION_BUDGETS = Object.freeze({
   readTypicalLogs: Object.freeze(createOperationBudget({ classA: 0, classB: 9, storageBytes: 0 })),
   rawArtifacts: Object.freeze(createOperationBudget({ classA: 2, classB: 0, storageBytes: 15_000_000 })),
   acceptEvidence: Object.freeze(createOperationBudget({ classA: 4, classB: 1, storageBytes: 10_000_000 })),
-  publishReport: Object.freeze(createOperationBudget({ classA: 3, classB: 0, storageBytes: 1_000_000 })),
+  publishReport: Object.freeze(createOperationBudget({ classA: 3, classB: 1, storageBytes: 1_000_000 })),
   completeJob: Object.freeze(createOperationBudget({ classA: 3, classB: 2, storageBytes: 32_000 })),
   pollJob: Object.freeze(createOperationBudget({ classA: 0, classB: 1, storageBytes: 0 }))
 });
