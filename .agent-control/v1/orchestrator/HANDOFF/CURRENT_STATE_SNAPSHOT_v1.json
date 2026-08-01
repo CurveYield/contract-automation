@@ -1,0 +1,87 @@
+{
+  "protocolVersion": 1,
+  "snapshotType": "replacement-orchestrator-handoff",
+  "snapshotCreatedAt": "2026-08-01T12:10:30Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "continuityIssue": 63,
+  "warning": "This is a dated hint only. Refresh all mailbox files, issues, branches, reports, PRs, SHAs, and Scheduled Tasks before acting.",
+  "phaseState": {
+    "phase4IntegrationBranch": "audit-phase4/integration-v3",
+    "phase4KnownIntegrationHead": "d90099c201d3012c090b6f73dda604bd5b143c95",
+    "integratedWorker1Pr": 52,
+    "integratedWorker2Pr": 56,
+    "phase5IntegrationGate": "blocked-until-phase4-accepted",
+    "phase6IntegrationGate": "blocked-until-phase5-accepted"
+  },
+  "workers": {
+    "worker-0": {
+      "mailboxSequence": 0,
+      "stateAtSnapshot": "completed",
+      "issueNumber": 51,
+      "branch": "audit-repair/phases-1-3-acceptance-fixes-v1",
+      "startingSha": "6d26ef2fa73d04acb732e1ed1ab2ef385791f724",
+      "reportedFinalSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "nextOrchestratorAction": "independently review exact final SHA and issue report; do not infer acceptance from status alone"
+    },
+    "worker-1": {
+      "mailboxSequence": 0,
+      "stateAtSnapshot": "bootstrap-status-missing",
+      "issueNumber": 53,
+      "branch": "audit-phase4/catalog-api-boundary-v1",
+      "startingSha": "f55544ebb71a51f597e36b737de2d74e4e91d5ce",
+      "nextOrchestratorAction": "allow Worker 1 Scheduled Task to bootstrap its owned status, then monitor issue and branch"
+    },
+    "worker-2": {
+      "mailboxSequence": 1,
+      "stateAtSnapshot": "working",
+      "issueNumber": 57,
+      "branch": "audit-phase4/result-contract-compatibility-v1",
+      "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+      "messageId": "worker-2-phase4-result-contract-compatibility-000001",
+      "assignmentBlobSha": "91ab825bf4abf4d70b305ad9e85a77ba439566ec",
+      "nextOrchestratorAction": "wait for valid completed status and pinned final report, then independently review"
+    },
+    "worker-3": {
+      "mailboxSequence": 0,
+      "stateAtSnapshot": "working",
+      "issueNumber": 54,
+      "branch": "audit-phase5/contracts-parsers-fixtures-v2",
+      "startingSha": "ea1e59b285d55bd5e5449564881b04b908fd717e",
+      "nextOrchestratorAction": "wait for valid completed status; Phase 5 integration remains gated on accepted Phase 4"
+    },
+    "worker-4": {
+      "mailboxParticipation": "none-after-current-workload",
+      "stateAtSnapshot": "working-or-not-yet-reported",
+      "issueNumber": 55,
+      "branch": "audit-phase6/contracts-parsers-fixtures-v2",
+      "startingSha": "1f0019e7eca5d53349727e003b1739cd1583e73a",
+      "nextOrchestratorAction": "review final issue #55 report when present, then record retired and issue no future assignment"
+    }
+  },
+  "scheduledTasksAtSnapshot": {
+    "activeCount": 5,
+    "hourlyFloor": true,
+    "tasks": [
+      "CurveYield Orchestrator Poll",
+      "CurveYield Worker 0 Poll",
+      "CurveYield Worker 1 Poll",
+      "CurveYield Worker 2 Poll",
+      "CurveYield Worker 3 Poll"
+    ],
+    "lastRunObservation": "All five existed and were enabled, but last_run_time was null at the snapshot. Verify current execution history rather than assuming they ran."
+  },
+  "standingRestrictions": [
+    "no dependency installation or download",
+    "no compilation",
+    "no deployment",
+    "no submitted-project or external audit-tool execution",
+    "no production secrets",
+    "no AWS",
+    "no CurveYield Lite modification",
+    "AUDIT_EXECUTION_ENABLED remains false",
+    "no merge to main"
+  ]
+}
