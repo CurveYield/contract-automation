@@ -72,16 +72,16 @@ Each scheduled worker runs hourly:
 
 1. Read its own `CURRENT_v1.json` and `STATUS_v1.json` from `agent-control-plane-v1`.
 2. If its status file is absent, create the exact initial status from the worker's migration record in `GLOBAL_STATE_v1.json`. This initialization does not consume or execute an assignment.
-3. If the pointer sequence is absent, unchanged, or not greater than `lastConsumedSequence`, make no further writes and end quietly.
-4. For a new sequence, verify protocol version, exact worker ID, pointer integrity, assignment blob SHA, sequence, message ID, issue, branch, and starting SHA.
-5. Reject malformed, stale, cross-worker, or mismatched instructions without consuming them.
-6. Create `ACKS/<sequence>_<message-id>_accepted_v1.json` before implementation.
-7. Update its own status to `acknowledged`, then `working`.
-8. Execute or resume the assignment while preserving every issue, path-ownership, phase-order, and security restriction.
-9. Commit and push only to the assigned implementation branch.
-10. Post the required report to the assigned GitHub issue.
-11. Update status to `completed`, `blocked`, or `rejected`, including immutable final SHA and report reference when applicable.
-12. Set `lastConsumedSequence` only after validating the immutable assignment.
+3. If status is `working` and `activeSequence` equals both the current pointer sequence and `lastConsumedSequence`, revalidate the immutable assignment and resume it from GitHub state. Do not create a second acknowledgement and do not restart completed steps blindly.
+4. Otherwise, if the pointer sequence is absent, unchanged, or not greater than `lastConsumedSequence`, make no further writes and end quietly.
+5. For a new sequence, verify protocol version, exact worker ID, pointer integrity, assignment blob SHA, sequence, message ID, issue, branch, and starting SHA.
+6. Reject malformed, stale, cross-worker, or mismatched instructions without consuming them.
+7. Create `ACKS/<sequence>_<message-id>_accepted_v1.json` before implementation.
+8. Update its own status to `acknowledged`, then `working`. Set `lastConsumedSequence`, `activeSequence`, and `activeMessageId` only after all immutable-content checks succeed.
+9. Execute or resume the assignment while preserving every issue, path-ownership, phase-order, and security restriction.
+10. Commit and push only to the assigned implementation branch.
+11. Post the required report to the assigned GitHub issue.
+12. Update status to `completed`, `blocked`, or `rejected`, including immutable final SHA and report reference when applicable.
 13. Write a create-only completion or blocker event.
 
 A worker never executes the same sequence twice. If one hourly run cannot finish the work, status remains `working`; the next run resumes from GitHub state rather than restarting blindly.
@@ -120,7 +120,7 @@ The orchestrator must perform the review and authorized follow-up publication it
 
 - Assignment, acknowledgement, and event files are create-only.
 - Sequences increase by exactly one per worker.
-- Workers process only sequences greater than `lastConsumedSequence`.
+- Workers process only sequences greater than `lastConsumedSequence`, except that a validated `working` assignment resumes when its active sequence equals the current consumed sequence.
 - Status files are writable only by their owner.
 - Reads or writes that fail leave the prior valid state intact.
 - The orchestrator reviews immutable final SHAs, never an unpinned mutable branch head.
