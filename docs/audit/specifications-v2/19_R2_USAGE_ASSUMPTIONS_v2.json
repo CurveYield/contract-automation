@@ -1,0 +1,28 @@
+{
+  "pricing_snapshot_date": "2026-07-31",
+  "r2_standard_free_tier": {
+    "storage_gb_month": 10,
+    "class_a_operations": 1000000,
+    "class_b_operations": 10000000,
+    "egress": "free"
+  },
+  "typical_source_mb": 10,
+  "max_source_mib": 250,
+  "typical_generated_layer_mb": 5,
+  "typical_log_mb_per_job": 8,
+  "typical_raw_artifact_mb_per_job": 15,
+  "typical_evidence_mb_per_job": 10,
+  "typical_report_mb_per_job": 1,
+  "heartbeat_seconds": 60,
+  "typical_job_minutes": 30,
+  "event_batch_minutes": 5,
+  "free_development_retention_days": {
+    "ingress": 1,
+    "source_and_layers": 30,
+    "logs_and_raw_artifacts": 7,
+    "evidence_and_reports": 30,
+    "active_fork_checkpoints": 1,
+    "fork_exports": 7
+  },
+  "calculation": "storage uses GB-month = stored decimal GB * retention_days / 30; operation capacities are integer floors."
+}

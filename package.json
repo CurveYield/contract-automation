@@ -19,7 +19,14 @@
     "integration:local": "node packages/runner/src/integration-local.mjs",
     "cfbuild": "npm test && npm run lint && npm run build",
     "cfdeploy": "wrangler r2 bucket create curveyield-preflight || true && wrangler deploy --config apps/api/wrangler.toml",
-    "deploy": "wrangler r2 bucket create curveyield-preflight || true && wrangler deploy --config apps/api/wrangler.toml"
+    "deploy": "wrangler r2 bucket create curveyield-preflight || true && wrangler deploy --config apps/api/wrangler.toml",
+    "build:audit": "npm run audit:build",
+    "test:audit": "npm run audit:test",
+    "dry-run:audit": "wrangler deploy --dry-run --outdir dist/audit-worker --config apps/audit-api/wrangler.toml",
+    "audit:boundary": "node scripts/check-audit-boundary.mjs",
+    "audit:test": "node --test apps/audit-*/test/*.test.mjs packages/audit-*/test/*.test.mjs test/audit-*.test.mjs",
+    "audit:lint": "node scripts/check.mjs",
+    "audit:build": "node scripts/build-audit.mjs"
   },
   "dependencies": {
     "ethers": "6.15.0",
