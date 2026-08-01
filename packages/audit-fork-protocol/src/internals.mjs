@@ -1,4 +1,4 @@
-import { ValidationError, assertAuditId, assertProfileId } from '../../audit-protocol/src/index.mjs';
+import { ValidationError, assertAuditId, assertProfileId } from './base-primitives.mjs';
 
 const FORBIDDEN_KEYS = new Set([
   'shell', 'command', 'commands', 'script', 'scripts', 'executable', 'binary',
