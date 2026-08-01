@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Successful Solidity compiler output with two synthetic contracts.",
+  "profileId": "solidity-compile-v1",
+  "input": {
+    "resultJson": "{\"errors\":[],\"contracts\":{\"contracts/A.sol\":{\"A\":{}},\"contracts/B.sol\":{\"B\":{}}}}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 0,
+    "durationMs": 30,
+    "terminationReason": "completed"
+  }
+}
