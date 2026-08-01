@@ -23,6 +23,19 @@ Specifications:
 - client/GPT keys: separate revocable 32-byte random values.
 - attestation key: Ed25519 private key in PKCS#8 or another explicitly versioned WebCrypto-compatible format; current-stack attestations are preproduction/service attestations, not a substitute for a future isolated production signer.
 
+## Runtime scope mapping
+
+Production configuration uses only the approved persistent identity names above. Runtime compatibility aliases are derived in memory and do not require additional stored secrets:
+
+| Approved identity | Runtime scope | Compatibility alias |
+|---|---|---|
+| `AUDIT_CLIENT_API_KEY` | `audit:read`, `audit:submit`, `audit:admin` | `AUDIT_ADMIN_API_KEY` |
+| `AUDIT_GPT_API_KEY` | `audit:read`, `audit:submit` | `AUDIT_SUBMIT_API_KEY` |
+| `AUDIT_EDGE_CONTROL_PLANE_TOKEN` | replay-protected internal control-plane authentication and upload-grant KDF only | `AUDIT_INTERNAL_SERVICE_KEY` |
+| `AUDIT_ATTESTATION_PRIVATE_KEY` | evidence attestation signing only | none |
+
+The edge-control token is never accepted as a public bearer credential. The GPT identity cannot access admin routes. The client identity does not replace internal HMAC authentication. Legacy alias names may be accepted temporarily for compatibility, but deployment documentation and readiness are canonicalized to the approved identities and no extra persistent secret is required.
+
 ## GitHub identity
 
 ```text
