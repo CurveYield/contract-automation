@@ -43,6 +43,13 @@ function match(etag) {
   if (typeof etag !== 'string' || etag.length < 1) throw new ValidationError('missing_etag', 'An ETag precondition is required', '$.etag');
   return { onlyIf: { etagMatches: etag } };
 }
+function indexWriteCondition(record) {
+  return record ? match(record.etag) : createOnly();
+}
+function assertOptionalExpectedEtag(expected, record, path) {
+  if (expected === undefined) return;
+  if (!record || record.etag !== expected) throw new ValidationError('stale_index', `${path} is stale`, path);
+}
 function instant(now) {
   const value = now();
   const date = value instanceof Date ? value : new Date(value);
@@ -64,6 +71,9 @@ function validateWorkspaceIndex(value, workspaceId) {
   value.campaigns.forEach((id, index) => assertAuditId(id, 'campaign', `$.workspaceIndex.campaigns[${index}]`));
   return structuredClone(value);
 }
+function emptyWorkspaceIndex(workspaceId) {
+  return { schemaVersion: 'workspace-campaign-index-v1', workspaceId, campaigns: [], records: {} };
+}
 function validateJobIndex(value, campaignId) {
   object(value, '$.jobIndex'); scanAuditForbiddenFields(value, '$.jobIndex');
   const keys = new Set(['schemaVersion', 'campaignId', 'jobs', 'records']);
@@ -73,6 +83,9 @@ function validateJobIndex(value, campaignId) {
   }
   value.jobs.forEach((id, index) => assertAuditId(id, 'job', `$.jobIndex.jobs[${index}]`));
   return structuredClone(value);
+}
+function emptyJobIndex(campaignId) {
+  return { schemaVersion: 'campaign-job-index-v1', campaignId, jobs: [], records: {} };
 }
 function validateCampaign(value, campaignId, workspaceId) {
   object(value, '$.campaign');
@@ -99,28 +112,27 @@ export class CampaignService {
 
   async createCampaign(input) {
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['creation', 'workspaceIndexEtag'])); required(input, new Set(['creation', 'workspaceIndexEtag']));
+    allowed(input, new Set(['creation', 'workspaceIndexEtag'])); required(input, new Set(['creation']));
     const creation = validateCampaignCreation(input.creation);
     const [workspaceRecord, indexRecord] = await Promise.all([
       this.store.get(workspaceSourceManifestKey(creation.workspaceId)),
       this.store.get(workspaceCampaignIndexKey(creation.workspaceId))
     ]);
     requireRecord(workspaceRecord, 'workspace_not_found', 'Workspace is not sealed', '$.workspaceId');
-    requireRecord(indexRecord, 'campaign_index_not_found', 'Workspace campaign index is missing', '$.workspaceId');
-    if (indexRecord.etag !== input.workspaceIndexEtag) throw new ValidationError('stale_index', 'Workspace campaign index ETag is stale', '$.workspaceIndexEtag');
-    const index = validateWorkspaceIndex(parse(indexRecord), creation.workspaceId);
+    assertOptionalExpectedEtag(input.workspaceIndexEtag, indexRecord, '$.workspaceIndexEtag');
+    const index = indexRecord ? validateWorkspaceIndex(parse(indexRecord), creation.workspaceId) : emptyWorkspaceIndex(creation.workspaceId);
     if (index.campaigns.includes(creation.campaignId)) throw new ValidationError('campaign_exists', 'Campaign already exists', '$.campaignId');
     const current = { schemaVersion: 'campaign-current-v1', campaignId: creation.campaignId, workspaceId: creation.workspaceId, state: 'active', revision: 1, updatedAt: creation.createdAt };
     const updatedIndex = { ...index, campaigns: [...index.campaigns, creation.campaignId].sort(), records: { ...(index.records ?? {}), [creation.campaignId]: { state: 'active', createdAt: creation.createdAt } } };
     await this.store.put(campaignCreationKey(creation.campaignId), JSON.stringify(creation), createOnly());
     await this.store.put(campaignCurrentKey(creation.campaignId), JSON.stringify(current), createOnly());
-    await this.store.put(workspaceCampaignIndexKey(creation.workspaceId), JSON.stringify(updatedIndex), match(indexRecord.etag));
+    await this.store.put(workspaceCampaignIndexKey(creation.workspaceId), JSON.stringify(updatedIndex), indexWriteCondition(indexRecord));
     return Object.freeze({ campaignId: creation.campaignId, current: Object.freeze(current) });
   }
 
   async submitJob(input) {
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['request', 'jobIndexEtag'])); required(input, new Set(['request', 'jobIndexEtag']));
+    allowed(input, new Set(['request', 'jobIndexEtag'])); required(input, new Set(['request']));
     const request = validateJobRequest(input.request);
     const [campaignRecord, profileRecord, indexRecord] = await Promise.all([
       this.store.get(campaignCurrentKey(request.campaignId)),
@@ -129,9 +141,8 @@ export class CampaignService {
     ]);
     const campaign = validateCampaign(parse(requireRecord(campaignRecord, 'campaign_not_found', 'Campaign not found', '$.campaignId')), request.campaignId, request.workspaceId);
     validateProfile(parse(requireRecord(profileRecord, 'profile_index_not_found', 'Profile index not found', '$.profileId')), request.profileId);
-    requireRecord(indexRecord, 'job_index_not_found', 'Campaign job index is missing', '$.campaignId');
-    if (indexRecord.etag !== input.jobIndexEtag) throw new ValidationError('stale_index', 'Campaign job index ETag is stale', '$.jobIndexEtag');
-    const index = validateJobIndex(parse(indexRecord), request.campaignId);
+    assertOptionalExpectedEtag(input.jobIndexEtag, indexRecord, '$.jobIndexEtag');
+    const index = indexRecord ? validateJobIndex(parse(indexRecord), request.campaignId) : emptyJobIndex(request.campaignId);
     if (index.jobs.includes(request.jobId)) throw new ValidationError('job_exists', 'Job already exists', '$.jobId');
     const at = instant(this.now);
     const status = validateJobStatus({ schemaVersion: 'audit-job-status-v1', jobId: request.jobId, campaignId: request.campaignId, state: 'awaiting_executor', revision: 5, highestLogSequence: 0, updatedAt: at, executionEnabled: false });
@@ -140,12 +151,12 @@ export class CampaignService {
       { type: 'job_submitted', at }, { type: 'job_validating', at }, { type: 'job_admitted', at },
       { type: 'job_queued', at }, { type: 'job_awaiting_executor', at }
     ]);
-    const updatedIndex = { ...index, jobs: [...index.jobs, request.jobId].sort(), records: { ...(index.records ?? {}), [request.jobId]: { state: status.state, profileId: request.profileId, submittedAt: request.submittedAt } } };
+    const updatedIndex = { ...index, jobs: [...index.jobs, request.jobId].sort(), records: { ...(index.records ?? {}), [request.jobId]: { state: status.state, profileId: request.profileId, submittedAt: request.submittedAt, idempotencyKey: request.idempotencyKey } } };
     if (metadataSize(request) > 64_000 || metadataSize(policy) > 32_000 || metadataSize(status) > 32_000) throw new ValidationError('job_metadata_too_large', 'Job metadata exceeds Phase 3 limits', '$');
     await this.store.put(jobRequestKey(request.jobId), JSON.stringify(request), createOnly());
     await this.store.put(jobPolicyKey(request.jobId), JSON.stringify(policy), createOnly());
     await this.store.put(jobStatusKey(request.jobId), JSON.stringify(status), createOnly());
-    await this.store.put(campaignJobIndexKey(request.campaignId), JSON.stringify(updatedIndex), match(indexRecord.etag));
+    await this.store.put(campaignJobIndexKey(request.campaignId), JSON.stringify(updatedIndex), indexWriteCondition(indexRecord));
     await this.store.put(eventBatchKey(request.jobId, events.batchId), `${JSON.stringify(events)}\n`, createOnly());
     return Object.freeze({
       campaign,
