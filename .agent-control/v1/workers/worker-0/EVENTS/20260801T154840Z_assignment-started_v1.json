@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_started",
+  "timestamp": "2026-08-01T15:48:40Z",
+  "sequence": 2,
+  "messageId": "worker-0-phase7-control-storage-mock-v1-000002",
+  "issueNumber": 80,
+  "branch": "audit-phase7/control-storage-mock-v1",
+  "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+  "assignmentBlobSha": "d21ee6f22385f74f1dfc163bec8afaa2ddb9a1bc"
+}
