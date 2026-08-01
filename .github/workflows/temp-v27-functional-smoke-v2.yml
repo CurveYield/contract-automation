@@ -54,10 +54,13 @@ jobs:
           for attempt in $(seq 1 8); do
             output="$result_root/attempt-$attempt"
             echo "Starting isolated live-fork attempt $attempt"
+
+            set +e
             node packages/github-native-sim/src/cli.mjs \
               --job github-native-sim/jobs/v27-functional-smoke-v2/job.json \
               --output "$output"
             status=$?
+            set -e
 
             if test -f "$output/result.json"; then
               jq '{status, stepCount: (.steps | length), error}' "$output/result.json" || true
