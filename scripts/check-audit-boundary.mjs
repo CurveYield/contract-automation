@@ -22,7 +22,10 @@ const AUDIT_CODE_ROOTS = [
   'packages/audit-r2-store/src',
   'packages/audit-workspace-protocol/src',
   'packages/audit-workspaces/src',
-  'packages/audit-profile-registry/src'
+  'packages/audit-profile-registry/src',
+  'packages/audit-campaign-protocol/src',
+  'packages/audit-campaigns/src',
+  'packages/audit-evidence/src'
 ];
 const LITE_ROOTS = [
   'apps/api',
@@ -105,6 +108,9 @@ export async function checkAuditBoundary() {
   ]) {
     if (!protocol.toLowerCase().includes(`'${key}'`)) violations.push(`packages/audit-protocol/src/index.mjs: forbidden key ${key} is not enforced`);
   }
+  requireMatch(violations, 'packages/audit-protocol/src/index.mjs', protocol, /job:\s*'ajob'/, 'job IDs do not use the governed ajob_ prefix');
+  requireMatch(violations, 'packages/audit-protocol/src/index.mjs', protocol, /artifact:\s*'art'/, 'artifact IDs do not use the governed art_ prefix');
+  requireMatch(violations, 'packages/audit-protocol/src/index.mjs', protocol, /snapshot:\s*'snap'/, 'snapshot IDs do not use the governed snap_ prefix');
   if (!/executionEnabled:\s*false/.test(protocol)) violations.push('packages/audit-protocol/src/index.mjs: execution is not hard-disabled');
 
   const workspaceProtocol = await read('packages/audit-workspace-protocol/src/index.mjs');
@@ -125,14 +131,61 @@ export async function checkAuditBoundary() {
   requireMatch(violations, 'packages/audit-profile-registry/src/index.mjs', profiles, /\^sha256:\[0-9a-f\]\{64\}\$/, 'profile registry does not require immutable image digests');
   addMatch(violations, 'packages/audit-profile-registry/src/index.mjs', profiles, /docker\s+pull|container\s+run|child_process|spawn\s*\(/i, 'profile registry attempts to pull or execute images');
 
+  const campaignProtocol = await read('packages/audit-campaign-protocol/src/index.mjs');
+  for (const state of ['submitted','validating','admitted','queued','awaiting_executor','provisioning','running','collecting_evidence','completed','failed','cancelled','timed_out','policy_rejected']) {
+    if (!campaignProtocol.includes(`'${state}'`)) violations.push(`packages/audit-campaign-protocol/src/index.mjs: lifecycle state ${state} is missing`);
+  }
+  requireMatch(violations, 'packages/audit-campaign-protocol/src/index.mjs', campaignProtocol, /MAX_EVENT_BATCH_EVENTS\s*=\s*32/, 'event batches are not capped at 32 events');
+  requireMatch(violations, 'packages/audit-campaign-protocol/src/index.mjs', campaignProtocol, /MAX_LOG_CHUNK_BYTES\s*=\s*1_000_000/, 'log chunks are not capped at 1 MB');
+  requireMatch(violations, 'packages/audit-campaign-protocol/src/index.mjs', campaignProtocol, /MAX_LOG_CHUNKS_PER_ATTEMPT\s*=\s*64/, 'attempt logs are not capped at 64 chunks');
+  requireMatch(violations, 'packages/audit-campaign-protocol/src/index.mjs', campaignProtocol, /trusted_fixture_required/, 'executor-boundary transition does not require trusted fixture authorization');
+  for (const budget of [
+    /createCampaign:[\s\S]*classA:\s*3,[\s\S]*classB:\s*2/,
+    /submitJob:[\s\S]*classA:\s*5,[\s\S]*classB:\s*3/,
+    /claimAttempt:[\s\S]*classA:\s*3,[\s\S]*classB:\s*3/,
+    /acceptEvidence:[\s\S]*classA:\s*4,[\s\S]*classB:\s*1/,
+    /completeJob:[\s\S]*classA:\s*3,[\s\S]*classB:\s*1/
+  ]) requireMatch(violations, 'packages/audit-campaign-protocol/src/index.mjs', campaignProtocol, budget, 'an approved Phase 3 R2 operation budget is missing');
+
+  const campaigns = await read('packages/audit-campaigns/src/index.mjs');
+  requireMatch(violations, 'packages/audit-campaigns/src/index.mjs', campaigns, /state:\s*'awaiting_executor'/, 'public jobs do not stop at awaiting_executor');
+  requireMatch(violations, 'packages/audit-campaigns/src/index.mjs', campaigns, /execution_plane_unavailable/, 'public jobs do not return the disabled-executor result');
+  requireMatch(violations, 'packages/audit-campaigns/src/index.mjs', campaigns, /executionEnabled:\s*false/, 'campaign state does not keep execution disabled');
+  requireMatch(violations, 'packages/audit-campaigns/src/index.mjs', campaigns, /etagMatches/, 'mutable campaign/job state lacks ETag protection');
+  addMatch(violations, 'packages/audit-campaigns/src/index.mjs', campaigns, /queue\.send|dispatchWorkflow|child_process|spawn\s*\(|exec\s*\(/i, 'campaign service attempts execution or dispatch');
+
+  const evidence = await read('packages/audit-evidence/src/index.mjs');
+  requireMatch(violations, 'packages/audit-evidence/src/index.mjs', evidence, /MAX_RAW_ARTIFACT_BYTES\s*=\s*64_000_000/, 'raw artifact limit is not enforced');
+  requireMatch(violations, 'packages/audit-evidence/src/index.mjs', evidence, /MAX_EVIDENCE_BUNDLE_BYTES\s*=\s*50_000_000/, 'evidence bundle limit is not enforced');
+  requireMatch(violations, 'packages/audit-evidence/src/index.mjs', evidence, /MAX_REPORT_BUNDLE_BYTES\s*=\s*10_000_000/, 'report bundle limit is not enforced');
+  for (const key of ['logChunkKey','rawArtifactBundleKey','rawArtifactManifestKey','evidenceQuarantineKey','evidenceAcceptedKey','evidenceManifestKey','evidenceAttestationKey','reportBundleKey','reportManifestKey','reportIndexKey']) {
+    if (!evidence.includes(key)) violations.push(`packages/audit-evidence/src/index.mjs: deterministic bundled object key ${key} is missing`);
+  }
+  addMatch(violations, 'packages/audit-evidence/src/index.mjs', evidence, /writeFile|mkdir|extractTo|extractAll|child_process|spawn\s*\(|exec\s*\(/i, 'evidence service fans out or executes stored content');
+
   const auditApi = await read('apps/audit-api/src/index.mjs');
   requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /workspaces:\s*true/, 'Phase 2 workspace capability is missing');
   requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /profileRegistry:\s*true/, 'Phase 2 profile-registry capability is missing');
   requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /executionEnabled:\s*false/, 'Phase 2 API does not keep execution disabled');
   requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /execution_plane_unavailable/, 'disabled job route is missing');
 
+  const phase3Api = await read('apps/audit-api/src/phase3.mjs');
+  for (const capability of ['campaigns','jobs','logs','evidence','reports']) requireMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, new RegExp(`${capability}:\\s*true`), `Phase 3 capability ${capability} is missing`);
+  requireMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, /executionEnabled:\s*false/, 'Phase 3 API does not keep execution disabled');
+  requireMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, /executionState:\s*'awaiting_executor'/, 'Phase 3 execution state is not awaiting_executor');
+  requireMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, /AUDIT_TRUSTED_FIXTURE_ENABLED\s*!==\s*'true'/, 'trusted fixture routes are not disabled by default');
+  for (const header of ['x-audit-timestamp','x-audit-nonce','x-audit-signature']) requireMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, new RegExp(header), `internal fixture auth header ${header} is missing`);
+  addMatch(violations, 'apps/audit-api/src/phase3.mjs', phase3Api, /queue\.send|dispatchWorkflow|child_process|spawn\s*\(|exec\s*\(/i, 'Phase 3 API attempts execution or dispatch');
+  const entry = await read('apps/audit-api/src/entry.mjs');
+  requireMatch(violations, 'apps/audit-api/src/entry.mjs', entry, /\.\/phase3\.mjs/, 'deployed Worker entry does not use the Phase 3 composition');
+
+  const browserClient = await read('apps/audit-web/src/client.mjs');
+  for (const method of ['createCampaign','getCampaign','submitCampaignJob','getJob','cancelJob','resumeJob','getJobLogs','getJobReports']) requireMatch(violations, 'apps/audit-web/src/client.mjs', browserClient, new RegExp(`async ${method}\\(`), `public metadata client method ${method} is missing`);
+  addMatch(violations, 'apps/audit-web/src/client.mjs', browserClient, /claimAttempt|appendLogChunk|acceptEvidence|publishRawArtifacts|publishReport|listR2Objects|putR2Object|executeJob|runCommand|broadcastTransaction|setRpcUrl/, 'browser exposes internal fixture, R2, or execution methods');
+
   const wrangler = await read('apps/audit-api/wrangler.toml');
   if (!/AUDIT_EXECUTION_ENABLED\s*=\s*"false"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: deployment does not default execution to false');
+  if (/AUDIT_TRUSTED_FIXTURE_ENABLED/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: trusted fixture continuation must not be enabled by default');
   if (/curveyield-preflight|PREFLIGHTSIM_/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: Audit Worker reuses a Lite resource');
   if (!/binding\s*=\s*"AUDIT_NONCE_STORE"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: replay nonce binding is missing');
   if (!/binding\s*=\s*"AUDIT_CONTROL_STORE"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: Phase 2 control-store binding is missing');
