@@ -29,6 +29,13 @@ function cacheKey(method, params) {
   return JSON.stringify([method, params]);
 }
 
+function normalizeUpstreamEntry(entry) {
+  if (entry.method === 'eth_getBlockByNumber' && entry.params?.[0] === 'earliest') {
+    return { ...entry, params: ['0x0', ...entry.params.slice(1)] };
+  }
+  return entry;
+}
+
 function isTransientHttpStatus(status) {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
@@ -225,7 +232,8 @@ export async function startForkRpcProxy({
           outputs.push(local);
           continue;
         }
-        const cached = cache.get(cacheKey(entry.method, entry.params ?? []));
+        const upstreamEntry = normalizeUpstreamEntry(entry);
+        const cached = cache.get(cacheKey(upstreamEntry.method, upstreamEntry.params ?? []));
         if (cached) {
           diagnostics.cacheHits += 1;
           outputs.push(responseForId(cached, entry.id ?? null));
@@ -234,12 +242,12 @@ export async function startForkRpcProxy({
         diagnostics.forwardedRequests += 1;
         const forwarded = await requestRpc({
           upstreamUrl,
-          payload: entry,
+          payload: upstreamEntry,
           retryDelaysMs,
           requestTimeoutMs,
           fetchImpl
         });
-        outputs.push(forwarded.decoded);
+        outputs.push(responseForId(forwarded.decoded, entry.id ?? null));
       }
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify(Array.isArray(payload) ? outputs : outputs[0]));
