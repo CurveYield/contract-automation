@@ -72,7 +72,7 @@ test('creates a stateless upload grant bound to tenant, digest, size, type, expi
   assert.equal(grant.schemaVersion, 'upload-grant-v1');
 });
 
-test('seals one bundled upload using exactly three writes and one read', async () => {
+test('durably seals one bundled upload using exactly four writes and two reads', async () => {
   const digest = await sha256(sourceZip);
   const store = new InMemoryAuditStore();
   await store.put(ingressKey(tenantId, digest), sourceZip);
@@ -92,9 +92,10 @@ test('seals one bundled upload using exactly three writes and one read', async (
     tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] }
   });
   const after = store.usage();
-  assert.deepEqual(delta(after, before), { classA: 3, classB: 1, free: 0 });
+  assert.deepEqual(delta(after, before), { classA: 4, classB: 2, free: 0 });
   assert.equal(result.manifest.fileCount, 2);
-  assert.equal(writes.length, 3);
+  assert.equal(result.manifest.sourceObjectKey, workspaceSourceArchiveKey(workspaceId));
+  assert.equal(writes.length, 4);
   assert.equal(writes.some((key) => key.includes('contracts/')), false);
 });
 
