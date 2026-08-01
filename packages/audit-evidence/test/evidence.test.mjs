@@ -4,14 +4,17 @@ import { InMemoryAuditStore } from '../../audit-r2-store/src/index.mjs';
 import {
   evidenceAcceptedKey,
   evidenceAttestationKey,
+  evidenceIngressKey,
   evidenceManifestKey,
   evidenceQuarantineKey,
   jobStatusKey,
   logChunkKey,
   rawArtifactBundleKey,
+  rawArtifactIngressKey,
   rawArtifactManifestKey,
   reportBundleKey,
   reportIndexKey,
+  reportIngressKey,
   reportManifestKey
 } from '../../audit-campaign-protocol/src/index.mjs';
 import { EvidenceService } from '../src/index.mjs';
@@ -20,6 +23,7 @@ const jobId = `ajob_${'1'.repeat(32)}`;
 const campaignId = `cmp_${'2'.repeat(32)}`;
 const attemptId = `att_${'3'.repeat(32)}`;
 const artifactId = `art_${'4'.repeat(32)}`;
+const expiresAt = '2026-07-31T13:00:00.000Z';
 
 function delta(after, before) {
   return { classA: after.classA - before.classA, classB: after.classB - before.classB, free: after.free - before.free };
@@ -42,6 +46,12 @@ function runningStatus(overrides = {}) {
     attemptId,
     ...overrides
   };
+}
+function objectRef(objectKey, sha256, bytes, contentType) {
+  return { schemaVersion: 'audit-object-reference-v1', objectKey, sha256, bytes, contentType, expiresAt };
+}
+function signer() {
+  return async () => ({ algorithm: 'Ed25519', keyId: 'attestation-test-v1', signature: 'A'.repeat(86) });
 }
 
 test('writes one bound log chunk with two Class A and one Class B operations', async () => {
@@ -73,62 +83,79 @@ test('reads a typical eight-chunk log set with exactly nine Class B operations',
   assert.deepEqual(delta(store.usage(), before), { classA: 0, classB: 9, free: 0 });
 });
 
-test('publishes one bundled raw artifact and manifest with exactly two Class A operations', async () => {
+test('publishes a referenced raw artifact and manifest with two Class A and two Class B operations', async () => {
   const store = new InMemoryAuditStore();
-  const service = new EvidenceService(store);
   const bundleBytes = new TextEncoder().encode('trusted fixture raw artifact bundle');
   const sha256 = await digest(bundleBytes);
+  const ingressKey = rawArtifactIngressKey(jobId, attemptId, artifactId);
+  await store.put(jobStatusKey(jobId), JSON.stringify(runningStatus()));
+  await store.put(ingressKey, bundleBytes);
+  const service = new EvidenceService(store, { now: () => new Date('2026-07-31T12:20:00.000Z') });
   const manifest = { schemaVersion: 'raw-artifact-manifest-v1', jobId, artifactId, sha256, bytes: bundleBytes.length, contentType: 'application/zstd', createdAt: '2026-07-31T12:21:00.000Z' };
   const before = store.usage();
-  await service.publishRawArtifacts({ jobId, artifactId, bundleBytes, manifest });
-  assert.deepEqual(delta(store.usage(), before), { classA: 2, classB: 0, free: 0 });
+  await service.publishRawArtifacts({ jobId, attemptId, artifactId, objectRef: objectRef(ingressKey, sha256, bundleBytes.length, 'application/zstd'), manifest });
+  assert.deepEqual(delta(store.usage(), before), { classA: 2, classB: 2, free: 0 });
   assert.ok(await store.head(rawArtifactBundleKey(jobId, artifactId)));
   assert.ok(await store.head(rawArtifactManifestKey(jobId, artifactId)));
 });
 
-test('quarantines, verifies, accepts, and attests evidence using four Class A and one Class B operations', async () => {
+test('quarantines, verifies, accepts, and signs evidence using four Class A and two Class B operations', async () => {
   const store = new InMemoryAuditStore();
   const bundleBytes = new TextEncoder().encode('trusted fixture evidence bundle');
   const sha256 = await digest(bundleBytes);
+  const ingressKey = evidenceIngressKey(jobId, attemptId, artifactId);
+  await store.put(jobStatusKey(jobId), JSON.stringify(runningStatus({ state: 'collecting_evidence' })));
+  await store.put(ingressKey, bundleBytes);
   let validations = 0;
-  const service = new EvidenceService(store, { validateEvidence: async (input) => { validations += 1; assert.equal(input.sha256, sha256); return { accepted: true, validator: 'fixture-validator-v1' }; } });
+  const service = new EvidenceService(store, {
+    now: () => new Date('2026-07-31T12:22:00.000Z'),
+    validateEvidence: async (input) => { validations += 1; assert.equal(input.sha256, sha256); return { accepted: true, validator: 'fixture-validator-v1' }; },
+    signAttestation: signer()
+  });
   const manifest = { schemaVersion: 'evidence-manifest-v1', jobId, artifactId, sha256, bytes: bundleBytes.length, evidenceContract: 'evidence-v1', acceptedAt: '2026-07-31T12:22:00.000Z' };
-  const attestation = { schemaVersion: 'evidence-attestation-v1', jobId, artifactId, sha256, validator: 'fixture-validator-v1', attestedAt: '2026-07-31T12:22:00.000Z' };
   const before = store.usage();
-  await service.acceptEvidence({ jobId, artifactId, bundleBytes, manifest, attestation });
+  await service.acceptEvidence({ jobId, attemptId, artifactId, objectRef: objectRef(ingressKey, sha256, bundleBytes.length, 'application/zstd'), manifest });
   assert.equal(validations, 1);
-  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 1, free: 0 });
+  assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 2, free: 0 });
   assert.ok(await store.head(evidenceQuarantineKey(jobId, artifactId)));
   assert.ok(await store.head(evidenceAcceptedKey(jobId, artifactId)));
   assert.ok(await store.head(evidenceManifestKey(jobId, artifactId)));
-  assert.ok(await store.head(evidenceAttestationKey(jobId, artifactId)));
+  const attestationRecord = await store.get(evidenceAttestationKey(jobId, artifactId));
+  const attestation = JSON.parse(typeof attestationRecord.value === 'string' ? attestationRecord.value : new TextDecoder().decode(attestationRecord.value));
+  assert.equal(attestation.algorithm, 'Ed25519');
+  assert.equal(attestation.signature, 'A'.repeat(86));
 });
 
 test('rejects evidence when the injected validator declines it before accepted writes', async () => {
   const store = new InMemoryAuditStore();
   const bundleBytes = new TextEncoder().encode('invalid evidence bundle');
   const sha256 = await digest(bundleBytes);
-  const service = new EvidenceService(store, { validateEvidence: async () => ({ accepted: false, reason: 'schema_mismatch' }) });
+  const ingressKey = evidenceIngressKey(jobId, attemptId, artifactId);
+  await store.put(jobStatusKey(jobId), JSON.stringify(runningStatus({ state: 'collecting_evidence' })));
+  await store.put(ingressKey, bundleBytes);
+  const service = new EvidenceService(store, { now: () => new Date('2026-07-31T12:22:00.000Z'), validateEvidence: async () => ({ accepted: false, reason: 'schema_mismatch' }) });
   const manifest = { schemaVersion: 'evidence-manifest-v1', jobId, artifactId, sha256, bytes: bundleBytes.length, evidenceContract: 'evidence-v1', acceptedAt: '2026-07-31T12:22:00.000Z' };
-  const attestation = { schemaVersion: 'evidence-attestation-v1', jobId, artifactId, sha256, validator: 'fixture-validator-v1', attestedAt: '2026-07-31T12:22:00.000Z' };
-  await assert.rejects(() => service.acceptEvidence({ jobId, artifactId, bundleBytes, manifest, attestation }), /schema_mismatch/);
+  await assert.rejects(() => service.acceptEvidence({ jobId, attemptId, artifactId, objectRef: objectRef(ingressKey, sha256, bundleBytes.length, 'application/zstd'), manifest }), /schema_mismatch/);
   assert.equal(await store.get(evidenceAcceptedKey(jobId, artifactId)), null);
 });
 
-test('publishes a bundled report, manifest, and server-owned index using three Class A and one Class B operations', async () => {
+test('publishes a referenced report and server-owned index using three Class A and three Class B operations', async () => {
   const store = new InMemoryAuditStore();
-  const service = new EvidenceService(store);
   const reportBytes = new TextEncoder().encode('report bundle');
   const sha256 = await digest(reportBytes);
+  const ingressKey = reportIngressKey(jobId, attemptId, artifactId);
+  await store.put(jobStatusKey(jobId), JSON.stringify(runningStatus({ state: 'collecting_evidence' })));
+  await store.put(ingressKey, reportBytes);
+  const service = new EvidenceService(store, { now: () => new Date('2026-07-31T12:23:00.000Z') });
   const manifest = { schemaVersion: 'report-manifest-v1', jobId, artifactId, sha256, bytes: reportBytes.length, formats: ['html', 'pdf'], createdAt: '2026-07-31T12:23:00.000Z' };
-  const index = { schemaVersion: 'job-report-index-v1', jobId, reports: [artifactId], records: { [artifactId]: { sha256 } } };
   const before = store.usage();
-  await service.publishReport({ jobId, artifactId, reportBytes, manifest, index });
-  assert.deepEqual(delta(store.usage(), before), { classA: 3, classB: 1, free: 0 });
+  const input = { jobId, attemptId, artifactId, objectRef: objectRef(ingressKey, sha256, reportBytes.length, 'application/zip'), manifest };
+  await service.publishReport(input);
+  assert.deepEqual(delta(store.usage(), before), { classA: 3, classB: 3, free: 0 });
   assert.ok(await store.head(reportBundleKey(jobId, artifactId)));
   assert.ok(await store.head(reportManifestKey(jobId, artifactId)));
   assert.ok(await store.head(reportIndexKey(jobId)));
-  await assert.rejects(() => service.publishReport({ jobId, artifactId, reportBytes, manifest, index }), /exists|conflict|precondition/i);
+  await assert.rejects(() => service.publishReport(input), /exists|conflict|precondition/i);
 });
 
 test('reads the deterministic report index with one Class B operation and exposes no list API', async () => {
