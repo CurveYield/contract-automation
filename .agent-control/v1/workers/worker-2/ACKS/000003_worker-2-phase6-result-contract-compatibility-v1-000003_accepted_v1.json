@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-2",
+  "sequence": 3,
+  "messageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000003_worker-2-phase6-result-contract-compatibility-v1_v1.md",
+  "assignmentBlobSha": "3cddba86f8fd5a1e0159e64efbb025d695c96410",
+  "issueNumber": 77,
+  "branch": "audit-phase6/result-contract-compatibility-v1",
+  "startingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+  "acceptedAt": "2026-08-01T14:16:00Z"
+}
