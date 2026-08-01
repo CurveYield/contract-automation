@@ -19,7 +19,10 @@ const AUDIT_CODE_ROOTS = [
   'apps/audit-web/src',
   'apps/audit-web/public',
   'packages/audit-protocol/src',
-  'packages/audit-r2-store/src'
+  'packages/audit-r2-store/src',
+  'packages/audit-workspace-protocol/src',
+  'packages/audit-workspaces/src',
+  'packages/audit-profile-registry/src'
 ];
 const LITE_ROOTS = [
   'apps/api',
@@ -68,6 +71,10 @@ function addMatch(violations, relative, text, pattern, message) {
   if (pattern.test(text)) violations.push(`${relative}: ${message}`);
 }
 
+function requireMatch(violations, relative, text, pattern, message) {
+  if (!pattern.test(text)) violations.push(`${relative}: ${message}`);
+}
+
 export async function checkAuditBoundary() {
   const violations = [];
   const auditFiles = (await Promise.all(AUDIT_CODE_ROOTS.map(walk))).flat();
@@ -87,13 +94,7 @@ export async function checkAuditBoundary() {
     addMatch(violations, relative, text, /packages\/runner|from\s+['"][^'"]*\/runner(?:\/|['"])/i, 'Audit code imports or references the Lite runner');
     addMatch(violations, relative, text, /PREFLIGHTSIM_|RPC_(?:ETHEREUM|BASE|KATANA|FRAXTAL|ARBITRUM|POLYGON|OPTIMISM)|curveyield-preflight/i, 'Audit code references a Lite secret, RPC name, or resource');
     addMatch(violations, relative, text, /(?:^|[^-])\/api\/v1\/|\/internal\/v1\//, 'Audit production code references a Lite API namespace');
-  }
-
-  for (const relative of ['apps/audit-api/src', 'apps/audit-web/src', 'apps/audit-web/public']) {
-    for (const file of await walk(relative)) {
-      const text = await read(file);
-      addMatch(violations, file, text, /ListObjects|\.list\s*\(/, 'Audit hot-path code uses a billed bucket-list operation');
-    }
+    addMatch(violations, relative, text, /ListObjects|\.list\s*\(/, 'Audit hot-path code uses a billed bucket-list operation');
   }
 
   const protocol = await read('packages/audit-protocol/src/index.mjs');
@@ -104,19 +105,44 @@ export async function checkAuditBoundary() {
   ]) {
     if (!protocol.toLowerCase().includes(`'${key}'`)) violations.push(`packages/audit-protocol/src/index.mjs: forbidden key ${key} is not enforced`);
   }
+  if (!/executionEnabled:\s*false/.test(protocol)) violations.push('packages/audit-protocol/src/index.mjs: execution is not hard-disabled');
 
-  const capabilities = await read('packages/audit-protocol/src/index.mjs');
-  if (!/executionEnabled:\s*false/.test(capabilities)) violations.push('packages/audit-protocol/src/index.mjs: execution is not hard-disabled');
+  const workspaceProtocol = await read('packages/audit-workspace-protocol/src/index.mjs');
+  requireMatch(violations, 'packages/audit-workspace-protocol/src/index.mjs', workspaceProtocol, /MAX_SOURCE_BYTES\s*=\s*250\s*\*\s*1024\s*\*\s*1024/, '250 MiB source limit is not enforced');
+  requireMatch(violations, 'packages/audit-workspace-protocol/src/index.mjs', workspaceProtocol, /MAX_LAYER_BYTES\s*=\s*100_000_000/, '100 MB layer limit is not enforced');
+  requireMatch(violations, 'packages/audit-workspace-protocol/src/index.mjs', workspaceProtocol, /MAX_WORKSPACE_MANIFEST_BYTES\s*=\s*2_000_000/, '2 MB workspace-manifest limit is not enforced');
+  requireMatch(violations, 'packages/audit-workspace-protocol/src/index.mjs', workspaceProtocol, /\^\[0-9a-f\]\{40\}\$/, 'GitHub sources do not require exact commit SHAs');
+  addMatch(violations, 'packages/audit-workspace-protocol/src/index.mjs', workspaceProtocol, /https?:\/\//, 'workspace source schema accepts or embeds an arbitrary URL');
+
+  const workspaces = await read('packages/audit-workspaces/src/index.mjs');
+  requireMatch(violations, 'packages/audit-workspaces/src/index.mjs', workspaces, /inspectZipArchive/, 'bundled ZIP metadata inspection is missing');
+  addMatch(violations, 'packages/audit-workspaces/src/index.mjs', workspaces, /unzipper|extractTo|extractAll|writeFile|mkdir|node:fs|\bfetch\s*\(/i, 'workspace service extracts files, writes local files, or fetches arbitrary network content');
+  requireMatch(violations, 'packages/audit-workspaces/src/index.mjs', workspaces, /workspaceSourceArchiveKey/, 'workspace source is not retained as a bundled archive');
+  requireMatch(violations, 'packages/audit-workspaces/src/index.mjs', workspaces, /layerArchiveKey/, 'generated layers are not retained as bundled archives');
+
+  const profiles = await read('packages/audit-profile-registry/src/index.mjs');
+  requireMatch(violations, 'packages/audit-profile-registry/src/index.mjs', profiles, /MAX_PROFILE_METADATA_BYTES\s*=\s*5_000_000/, '5 MB profile metadata limit is not enforced');
+  requireMatch(violations, 'packages/audit-profile-registry/src/index.mjs', profiles, /\^sha256:\[0-9a-f\]\{64\}\$/, 'profile registry does not require immutable image digests');
+  addMatch(violations, 'packages/audit-profile-registry/src/index.mjs', profiles, /docker\s+pull|container\s+run|child_process|spawn\s*\(/i, 'profile registry attempts to pull or execute images');
+
+  const auditApi = await read('apps/audit-api/src/index.mjs');
+  requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /workspaces:\s*true/, 'Phase 2 workspace capability is missing');
+  requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /profileRegistry:\s*true/, 'Phase 2 profile-registry capability is missing');
+  requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /executionEnabled:\s*false/, 'Phase 2 API does not keep execution disabled');
+  requireMatch(violations, 'apps/audit-api/src/index.mjs', auditApi, /execution_plane_unavailable/, 'disabled job route is missing');
+
   const wrangler = await read('apps/audit-api/wrangler.toml');
   if (!/AUDIT_EXECUTION_ENABLED\s*=\s*"false"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: deployment does not default execution to false');
   if (/curveyield-preflight|PREFLIGHTSIM_/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: Audit Worker reuses a Lite resource');
+  if (!/binding\s*=\s*"AUDIT_NONCE_STORE"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: replay nonce binding is missing');
+  if (!/binding\s*=\s*"AUDIT_CONTROL_STORE"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: Phase 2 control-store binding is missing');
   if (!/bucket_name\s*=\s*"curveyield-audit-control"/.test(wrangler)) violations.push('apps/audit-api/wrangler.toml: separate Audit R2 bucket is not bound');
 
   const workflowGroups = new Set();
   for (const relative of AUDIT_WORKFLOWS) {
     const text = await read(relative);
     addMatch(violations, relative, text, /PREFLIGHTSIM_|RPC_|simulate\.yml|preflightsim-lite-runner|curveyield-preflight/i, 'Audit workflow references a Lite secret, workflow, group, or resource');
-    addMatch(violations, relative, text, /\$\{\{\s*secrets\./, 'Phase 1 Audit verification unexpectedly requires a repository secret');
+    addMatch(violations, relative, text, /\$\{\{\s*secrets\./, 'Audit verification unexpectedly requires a repository secret');
     if (!/npm run audit:boundary/.test(text)) violations.push(`${relative}: workflow does not run the boundary checker`);
     for (const line of text.split('\n')) {
       const match = line.match(/^\s*group:\s*(.+)$/);

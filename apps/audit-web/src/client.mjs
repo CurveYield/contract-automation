@@ -19,6 +19,18 @@ export function normalizeAuditApiUrl(value) {
   return url.origin;
 }
 
+function workspaceId(value) {
+  const result = String(value ?? '');
+  if (!/^ws_[0-9a-f]{32}$/.test(result)) throw new TypeError('Workspace ID must be a valid Audit workspace ID');
+  return result;
+}
+
+function profileId(value) {
+  const result = String(value ?? '');
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9][0-9]*$/.test(result)) throw new TypeError('Profile ID must be a lowercase versioned slug');
+  return result;
+}
+
 export function createAuditApiClient({ apiUrl, apiKey, fetcher = fetch }) {
   const baseUrl = normalizeAuditApiUrl(apiUrl);
   const credential = String(apiKey ?? '');
@@ -42,12 +54,40 @@ export function createAuditApiClient({ apiUrl, apiKey, fetcher = fetch }) {
     return response;
   }
 
+  async function sendJson(path, body) {
+    return (await request(path, { method: 'POST', body: JSON.stringify(body) })).json();
+  }
+
   return Object.freeze({
     async getCapabilities() {
       return (await request('/audit/v1/capabilities')).json();
     },
     async getReadiness() {
       return (await request('/audit/v1/readiness')).json();
+    },
+    async createWorkspaceUploadGrant(input) {
+      return sendJson('/audit/v1/workspace-upload-grants', input);
+    },
+    async sealWorkspace(input) {
+      return sendJson('/audit/v1/workspaces/seal', input);
+    },
+    async importGitHubWorkspace(input) {
+      return sendJson('/audit/v1/workspaces/import-github', input);
+    },
+    async getWorkspace(id) {
+      return (await request(`/audit/v1/workspaces/${workspaceId(id)}`)).json();
+    },
+    async getWorkspaceLayers(id) {
+      return (await request(`/audit/v1/workspaces/${workspaceId(id)}/layers`)).json();
+    },
+    async attachWorkspaceLayer(id, input) {
+      return sendJson(`/audit/v1/workspaces/${workspaceId(id)}/layers`, input);
+    },
+    async listProfiles() {
+      return (await request('/audit/v1/profiles')).json();
+    },
+    async getProfile(id) {
+      return (await request(`/audit/v1/profiles/${profileId(id)}`)).json();
     }
   });
 }
