@@ -13,8 +13,8 @@ export const ZIP_CONTENT_TYPE = 'application/zip';
 export const WORKSPACE_OPERATION_BUDGETS = Object.freeze({
   uploadSource: Object.freeze(createOperationBudget({ classA: 1, classB: 0, storageBytes: 10_000_000 })),
   sealWorkspace: Object.freeze(createOperationBudget({ classA: 4, classB: 2, storageBytes: 10_500_000 })),
-  importGitHub: Object.freeze(createOperationBudget({ classA: 4, classB: 0, storageBytes: 10_500_000 })),
-  attachLayer: Object.freeze(createOperationBudget({ classA: 4, classB: 1, storageBytes: 5_250_000 })),
+  importGitHub: Object.freeze(createOperationBudget({ classA: 4, classB: 1, storageBytes: 10_500_000 })),
+  attachLayer: Object.freeze(createOperationBudget({ classA: 4, classB: 2, storageBytes: 5_250_000 })),
   readLayerIndex: Object.freeze(createOperationBudget({ classA: 0, classB: 1, storageBytes: 0 }))
 });
 
