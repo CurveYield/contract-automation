@@ -1,0 +1,45 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-3-sequence2-hardening-published-20260801T135100Z",
+  "eventType": "assignment_published",
+  "actor": "orchestrator",
+  "occurredAt": "2026-08-01T13:51:00Z",
+  "workerId": "worker-3",
+  "sequence": 2,
+  "messageId": "worker-3-phase5-result-contract-hardening-v2-000002",
+  "issueNumber": 76,
+  "branch": "audit-phase5/result-contract-hardening-v2",
+  "startingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000002_worker-3-phase5-result-contract-hardening-v2_v1.md",
+  "assignmentBlobSha": "624599e7e43e9a5f832eac7539fa5a70e8746d57",
+  "supersedesMessageId": "worker-3-phase5-result-contract-compatibility-000001",
+  "priorIssueNumber": 71,
+  "priorPinnedHead": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+  "priorDisposition": "superseded-with-repair-required",
+  "reasons": [
+    "the prior branch lacked the required durable final report and completed status for issue 71",
+    "independent pinned-head review found lifecycle, summary/evidence congruence, fixture replay, and static-boundary gaps",
+    "stale prior-chat context caused report-destination ambiguity and required a stronger destination policy"
+  ],
+  "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
+  "overlapCheck": {
+    "worker0Issue": 70,
+    "worker0Overlap": false,
+    "worker0Reason": "Worker 0 is restricted to Phase 1-3 reconstruction and prohibited from Phase 4-6 changes.",
+    "worker2Issue": 74,
+    "worker2Overlap": false,
+    "worker2Reason": "Worker 2 owns Phase 4 result-contract paths and is prohibited from Phase 5 changes.",
+    "worker1Issue": 72,
+    "worker1Overlap": false,
+    "worker1Reason": "Worker 1 owns Phase 4 catalog/API paths only."
+  },
+  "publicationOrder": [
+    "issue 76 created",
+    "implementation branch created at pinned starting SHA",
+    "immutable assignment created",
+    "assignment blob SHA fetched",
+    "Worker 3 CURRENT pointer updated",
+    "this event recorded",
+    "global state updated last"
+  ]
+}
