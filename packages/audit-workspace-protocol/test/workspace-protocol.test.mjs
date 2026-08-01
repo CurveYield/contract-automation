@@ -39,7 +39,7 @@ test('publishes exact Phase 2 size limits and operation budgets', () => {
   assert.equal(MAX_LAYER_BYTES, 100_000_000);
   assert.equal(MAX_WORKSPACE_MANIFEST_BYTES, 2_000_000);
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.uploadSource, { classA: 1, classB: 0, storageBytes: 10_000_000 });
-  assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.sealWorkspace, { classA: 3, classB: 1, storageBytes: 500_000 });
+  assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.sealWorkspace, { classA: 4, classB: 2, storageBytes: 10_500_000 });
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.importGitHub, { classA: 4, classB: 0, storageBytes: 10_500_000 });
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.attachLayer, { classA: 4, classB: 1, storageBytes: 5_250_000 });
   assert.deepEqual(WORKSPACE_OPERATION_BUDGETS.readLayerIndex, { classA: 0, classB: 1, storageBytes: 0 });
