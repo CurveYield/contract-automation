@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "acknowledged",
+  "state": "working",
   "lastConsumedSequence": 2,
   "activeSequence": 2,
   "activeMessageId": "worker-0-phase7-control-storage-mock-v1-000002",
@@ -12,5 +12,5 @@
   "recommendation": null,
   "reportReference": "issue:80",
   "blockers": [],
-  "updatedAt": "2026-08-01T15:48:24Z"
+  "updatedAt": "2026-08-01T15:48:40Z"
 }
