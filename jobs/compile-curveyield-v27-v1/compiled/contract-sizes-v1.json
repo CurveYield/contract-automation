@@ -1,0 +1,30 @@
+[
+  {
+    "sourceName": "CurveYieldSdYBHybridVaultV27.sol",
+    "contractName": "CurveYieldSdYBHybridVaultV27",
+    "compilerVersion": "0.8.28",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "creationBytecodeBytes": 24468,
+    "deployedBytecodeBytes": 23018,
+    "eip170LimitBytes": 24576,
+    "eip170RemainingBytes": 1558
+  },
+  {
+    "sourceName": "CurveYieldSdYBTwoDestinationStrategyV27.sol",
+    "contractName": "CurveYieldSdYBTwoDestinationStrategyV27",
+    "compilerVersion": "0.8.28",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "creationBytecodeBytes": 25769,
+    "deployedBytecodeBytes": 22265,
+    "eip170LimitBytes": 24576,
+    "eip170RemainingBytes": 2311
+  }
+]
