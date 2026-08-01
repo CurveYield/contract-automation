@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-3",
+  "sequence": 5,
+  "messageId": "worker-3-phase9-github-direct-core-v1-000005",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000005_worker-3-phase9-github-direct-core-v1_v1.md",
+  "assignmentBlobSha": "ac89ef9e65b2a8999aeb0eeef354da024a7fad1e",
+  "issueNumber": 98,
+  "branch": "audit-phase9/github-direct-core-v1",
+  "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+  "acceptedAt": "2026-08-01T17:31:00Z"
+}
