@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Foundry unit-test execution cancellation represented without parsing partial output.",
+  "profileId": "foundry-test-v1",
+  "input": {
+    "resultJson": null,
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": null,
+    "durationMs": 15,
+    "terminationReason": "cancelled"
+  }
+}
