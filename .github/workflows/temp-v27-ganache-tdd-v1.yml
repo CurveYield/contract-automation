@@ -8,12 +8,17 @@ on:
       - 'packages/github-native-sim/src/local-state-journal.mjs'
       - 'packages/github-native-sim/test/local-state-journal.test.mjs'
       - '.github/workflows/temp-v27-ganache-tdd-v1.yml'
+  pull_request:
+    paths:
+      - 'packages/github-native-sim/src/local-state-journal.mjs'
+      - 'packages/github-native-sim/test/local-state-journal.test.mjs'
+      - '.github/workflows/temp-v27-ganache-tdd-v1.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: temp-v27-ganache-tdd-v1
+  group: temp-v27-ganache-tdd-v1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
