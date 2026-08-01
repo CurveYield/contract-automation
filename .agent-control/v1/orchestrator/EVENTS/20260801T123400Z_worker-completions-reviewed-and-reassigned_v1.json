@@ -1,0 +1,68 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-completions-reviewed-and-reassigned-20260801T123400Z",
+  "eventType": "orchestrator_decision_batch",
+  "occurredAt": "2026-08-01T12:34:00Z",
+  "decisions": [
+    {
+      "workerId": "worker-0",
+      "priorIssueNumber": 51,
+      "pinnedFinalSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
+      "decision": "accepted_with_integration_repairs_and_reassigned",
+      "newSequence": 1,
+      "newMessageId": "worker-0-phase1-3-pr-chain-000001",
+      "newIssueNumber": 70,
+      "newBranch": "audit-repair/phases-1-3-pr-chain-v1"
+    },
+    {
+      "workerId": "worker-1",
+      "priorIssueNumber": 53,
+      "pinnedFinalSha": "934d27dc950ffed9a334f7c9fbb60d68ac2689aa",
+      "decision": "source_review_accepted_with_repair_pending_worker_owned_status_sync",
+      "newSequence": null,
+      "wakeRequestId": "wake-worker-1-status-sync-000002"
+    },
+    {
+      "workerId": "worker-2",
+      "priorIssueNumber": 57,
+      "pinnedFinalSha": null,
+      "decision": "not_complete_resume_existing_assignment",
+      "activeSequence": 1,
+      "wakeRequestId": "wake-worker-2-resume-sequence-1-000003",
+      "observedBranchRelation": "identical_to_starting_sha"
+    },
+    {
+      "workerId": "worker-3",
+      "priorIssueNumber": 54,
+      "pinnedFinalSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
+      "decision": "accepted_and_reassigned",
+      "newSequence": 1,
+      "newMessageId": "worker-3-phase5-result-contract-compatibility-000001",
+      "newIssueNumber": 71,
+      "newBranch": "audit-phase5/result-contract-compatibility-v1"
+    },
+    {
+      "workerId": "worker-4",
+      "priorIssueNumber": 55,
+      "pinnedFinalSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+      "decision": "accepted_preserved_and_retired",
+      "futureAssignmentsAllowed": false
+    }
+  ],
+  "localWakeQueue": [
+    "wake-worker-0-sequence-1-000001",
+    "wake-worker-1-status-sync-000002",
+    "wake-worker-2-resume-sequence-1-000003",
+    "wake-worker-3-sequence-1-000004"
+  ],
+  "restrictionsPreserved": [
+    "no_dependency_installation",
+    "no_compilation",
+    "no_deployment",
+    "no_submitted_project_execution",
+    "no_external_audit_tool_execution",
+    "no_curveYield_lite_changes",
+    "execution_disabled",
+    "no_main_merge"
+  ]
+}
