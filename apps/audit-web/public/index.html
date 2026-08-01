@@ -12,7 +12,7 @@
     <header>
       <p class="eyebrow">CurveYield control plane</p>
       <h1>Full Audit</h1>
-      <p>Separate from PreflightSim Lite. Phase 2 manages inert workspace, generated-layer, and immutable profile metadata. Submitted execution remains disabled.</p>
+      <p>Separate from PreflightSim Lite. Phase 3 manages inert workspaces, campaigns, job state, logs, evidence, reports, and immutable profile metadata. Submitted execution remains disabled.</p>
     </header>
     <section class="panel" aria-labelledby="connection-title">
       <h2 id="connection-title">Audit API connection</h2>
@@ -27,7 +27,7 @@
       <article class="panel">
         <h2>Capability boundary</h2>
         <dl>
-          <div><dt>Phase</dt><dd id="phase">Phase 2</dd></div>
+          <div><dt>Phase</dt><dd id="phase">Phase 3</dd></div>
           <div><dt>Execution</dt><dd id="execution">Submitted execution disabled</dd></div>
           <div><dt>State</dt><dd id="execution-state">Awaiting separately approved hardened executor</dd></div>
         </dl>
@@ -53,6 +53,23 @@
         <h2>Immutable profiles</h2>
         <button id="load-profiles" type="button">Load profile registry</button>
         <pre id="profile-result" role="status">No profiles loaded.</pre>
+      </article>
+      <article class="panel">
+        <h2>Campaign metadata</h2>
+        <form id="campaign-form">
+          <label>Campaign ID <input id="campaign-id" type="text" pattern="cmp_[0-9a-f]{32}" placeholder="cmp_…" required></label>
+          <button type="submit">Load campaign</button>
+        </form>
+        <pre id="campaign-result" role="status">No campaign loaded.</pre>
+      </article>
+      <article class="panel">
+        <h2>Job status and outputs</h2>
+        <form id="job-form">
+          <label>Job ID <input id="job-id" type="text" pattern="ajob_[0-9a-f]{32}" placeholder="ajob_…" required></label>
+          <label>Attempt ID <input id="attempt-id" type="text" pattern="att_[0-9a-f]{32}" placeholder="att_…"></label>
+          <button type="submit">Load job</button>
+        </form>
+        <pre id="job-result" role="status">No job loaded.</pre>
       </article>
     </section>
   </main>
