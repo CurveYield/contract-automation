@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-2",
+  "state": "idle",
+  "lastConsumedSequence": 0,
+  "activeSequence": null,
+  "activeMessageId": null,
+  "issueNumber": null,
+  "branch": null,
+  "startingSha": null,
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": null,
+  "blockers": [],
+  "updatedAt": "2026-08-01T11:55:24Z"
+}
