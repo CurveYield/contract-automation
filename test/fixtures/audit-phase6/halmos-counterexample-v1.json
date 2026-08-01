@@ -1,0 +1,101 @@
+{
+  "assertions": [
+    {
+      "description": "Assets cover issued shares",
+      "expression": "totalAssets >= totalSupply",
+      "id": "assert_1",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "counterexamples": [
+    {
+      "failingAssertionIds": [
+        "assert_1"
+      ],
+      "id": "cex_1",
+      "modelIds": [
+        "model_1"
+      ],
+      "obligationId": "obl_1",
+      "summary": "Symbolic sender and amount reach the failing assertion",
+      "traceIds": [
+        "trace_1"
+      ]
+    }
+  ],
+  "diagnostics": [],
+  "fixtureOwner": "CurveYield",
+  "models": [
+    {
+      "entries": [
+        {
+          "name": "sender",
+          "type": "address",
+          "value": "0x0000000000000000000000000000000000000001"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "value": "2"
+        }
+      ],
+      "id": "model_1"
+    }
+  ],
+  "obligations": [
+    {
+      "assertionIds": [
+        "assert_1"
+      ],
+      "expression": "totalAssets >= totalSupply",
+      "id": "obl_1",
+      "kind": "assertion",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "outcome": "disproved",
+  "parserWarnings": [],
+  "profileId": "halmos-v1",
+  "schemaVersion": "halmos-capture-v1",
+  "sourceReferences": [
+    {
+      "endColumn": 31,
+      "endLine": 10,
+      "id": "src_1",
+      "sourceId": "contracts/InvariantHarness.sol",
+      "startColumn": 4,
+      "startLine": 10
+    }
+  ],
+  "toolVersion": "0.3.3",
+  "traces": [
+    {
+      "id": "trace_1",
+      "steps": [
+        {
+          "detail": "balance check failed",
+          "index": 1,
+          "kind": "assertion",
+          "operation": "assert",
+          "sourceReferenceIds": [
+            "src_1"
+          ]
+        },
+        {
+          "detail": "symbolic amount",
+          "index": 0,
+          "kind": "call",
+          "operation": "deposit(uint256)",
+          "sourceReferenceIds": [
+            "src_1"
+          ]
+        }
+      ]
+    }
+  ],
+  "truncated": false
+}

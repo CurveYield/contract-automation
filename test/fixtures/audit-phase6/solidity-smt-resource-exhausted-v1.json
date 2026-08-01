@@ -1,0 +1,55 @@
+{
+  "assertions": [
+    {
+      "description": "Assets cover issued shares",
+      "expression": "totalAssets >= totalSupply",
+      "id": "assert_1",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "counterexamples": [],
+  "diagnostics": [
+    {
+      "code": "smt_resource_exhausted",
+      "message": "Inert SMT fixture outcome: resource_exhausted",
+      "severity": "warning",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "fixtureOwner": "CurveYield",
+  "models": [],
+  "obligations": [
+    {
+      "assertionIds": [
+        "assert_1"
+      ],
+      "expression": "totalAssets >= totalSupply",
+      "id": "obl_1",
+      "kind": "assertion",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "outcome": "resource_exhausted",
+  "parserWarnings": [],
+  "profileId": "solidity-smt-v1",
+  "schemaVersion": "solidity-smt-capture-v1",
+  "sourceReferences": [
+    {
+      "endColumn": 31,
+      "endLine": 10,
+      "id": "src_1",
+      "sourceId": "contracts/InvariantHarness.sol",
+      "startColumn": 4,
+      "startLine": 10
+    }
+  ],
+  "toolVersion": "0.8.30",
+  "traces": [],
+  "truncated": false
+}

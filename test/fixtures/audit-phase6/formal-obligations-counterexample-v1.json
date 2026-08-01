@@ -1,0 +1,92 @@
+{
+  "assertions": [
+    {
+      "description": "Assets cover issued shares",
+      "expression": "totalAssets >= totalSupply",
+      "id": "assert_1",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "counterexamples": [
+    {
+      "failingAssertionIds": [
+        "assert_1"
+      ],
+      "id": "cex_1",
+      "modelIds": [
+        "model_1"
+      ],
+      "obligationId": "obl_1",
+      "summary": "Normalized obligation counterexample",
+      "traceIds": [
+        "trace_1"
+      ]
+    }
+  ],
+  "diagnostics": [],
+  "fixtureOwner": "CurveYield",
+  "models": [
+    {
+      "entries": [
+        {
+          "name": "totalAssets",
+          "type": "uint256",
+          "value": "0"
+        },
+        {
+          "name": "totalSupply",
+          "type": "uint256",
+          "value": "1"
+        }
+      ],
+      "id": "model_1"
+    }
+  ],
+  "obligations": [
+    {
+      "assertionIds": [
+        "assert_1"
+      ],
+      "expression": "totalAssets >= totalSupply",
+      "id": "obl_1",
+      "kind": "assertion",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "outcome": "disproved",
+  "parserWarnings": [],
+  "profileId": "formal-obligations-v1",
+  "schemaVersion": "formal-obligations-capture-v1",
+  "sourceReferences": [
+    {
+      "endColumn": 31,
+      "endLine": 10,
+      "id": "src_1",
+      "sourceId": "contracts/InvariantHarness.sol",
+      "startColumn": 4,
+      "startLine": 10
+    }
+  ],
+  "toolVersion": "1.0.0",
+  "traces": [
+    {
+      "id": "trace_1",
+      "steps": [
+        {
+          "detail": "obligation evaluates false",
+          "index": 0,
+          "kind": "assertion",
+          "operation": "evaluate",
+          "sourceReferenceIds": [
+            "src_1"
+          ]
+        }
+      ]
+    }
+  ],
+  "truncated": false
+}

@@ -1,0 +1,101 @@
+{
+  "assertions": [
+    {
+      "description": "Assets cover issued shares",
+      "expression": "totalAssets >= totalSupply",
+      "id": "assert_1",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "counterexamples": [
+    {
+      "failingAssertionIds": [
+        "assert_1"
+      ],
+      "id": "cex_1",
+      "modelIds": [
+        "model_1"
+      ],
+      "obligationId": "obl_1",
+      "summary": "totalAssets=1 and totalSupply=2 violates the assertion",
+      "traceIds": [
+        "trace_1"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "smt_counterexample",
+      "message": "Bounded inert counterexample found",
+      "severity": "error",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "fixtureOwner": "CurveYield",
+  "models": [
+    {
+      "entries": [
+        {
+          "name": "totalSupply",
+          "type": "uint256",
+          "value": "2"
+        },
+        {
+          "name": "totalAssets",
+          "type": "uint256",
+          "value": "1"
+        }
+      ],
+      "id": "model_1"
+    }
+  ],
+  "obligations": [
+    {
+      "assertionIds": [
+        "assert_1"
+      ],
+      "expression": "totalAssets >= totalSupply",
+      "id": "obl_1",
+      "kind": "assertion",
+      "sourceReferenceIds": [
+        "src_1"
+      ]
+    }
+  ],
+  "outcome": "disproved",
+  "parserWarnings": [],
+  "profileId": "solidity-smt-v1",
+  "schemaVersion": "solidity-smt-capture-v1",
+  "sourceReferences": [
+    {
+      "endColumn": 31,
+      "endLine": 10,
+      "id": "src_1",
+      "sourceId": "contracts/InvariantHarness.sol",
+      "startColumn": 4,
+      "startLine": 10
+    }
+  ],
+  "toolVersion": "0.8.30",
+  "traces": [
+    {
+      "id": "trace_1",
+      "steps": [
+        {
+          "detail": "totalAssets >= totalSupply is false",
+          "index": 0,
+          "kind": "assertion",
+          "operation": "assert",
+          "sourceReferenceIds": [
+            "src_1"
+          ]
+        }
+      ]
+    }
+  ],
+  "truncated": false
+}

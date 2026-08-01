@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    "formal-obligations-counterexample-v1.json",
+    "formal-obligations-proof-v1.json",
+    "formal-obligations-truncation-v1.json",
+    "halmos-cancelled-v1.json",
+    "halmos-counterexample-v1.json",
+    "halmos-malformed-v1.txt",
+    "halmos-proof-v1.json",
+    "halmos-resource-exhausted-v1.json",
+    "halmos-timeout-v1.json",
+    "halmos-unknown-v1.json",
+    "solidity-smt-cancelled-v1.json",
+    "solidity-smt-counterexample-v1.json",
+    "solidity-smt-proof-v1.json",
+    "solidity-smt-resource-exhausted-v1.json",
+    "solidity-smt-timeout-v1.json",
+    "solidity-smt-unknown-v1.json"
+  ],
+  "inert": true,
+  "owner": "CurveYield",
+  "schemaVersion": "phase6-fixture-inventory-v1"
+}
