@@ -42,7 +42,7 @@ test('validates immutable lowercase versioned profile manifests', () => {
 
 test('publishes deterministic profile keys and operation budgets', () => {
   assert.equal(MAX_PROFILE_METADATA_BYTES, 5_000_000);
-  assert.deepEqual(PROFILE_OPERATION_BUDGETS.publish, { classA: 4, classB: 0, storageBytes: 1_000_000 });
+  assert.deepEqual(PROFILE_OPERATION_BUDGETS.publish, { classA: 4, classB: 1, storageBytes: 1_000_000 });
   assert.deepEqual(PROFILE_OPERATION_BUDGETS.read, { classA: 0, classB: 1, storageBytes: 0 });
   assert.deepEqual(PROFILE_OPERATION_BUDGETS.revoke, { classA: 2, classB: 1, storageBytes: 64_000 });
   assert.equal(profileManifestKey('slither-solidity-v1'), 'profiles/slither-solidity-v1/profile-v1.json');
@@ -63,10 +63,10 @@ test('publishes once, reads through the deterministic index, and rejects duplica
   };
   const published = await registry.publish(bundle);
   assert.equal(published.profileId, 'slither-solidity-v1');
-  assert.deepEqual(store.usage(), { classA: 4, classB: 0, free: 0, storedBytes: store.usage().storedBytes });
+  assert.deepEqual(store.usage(), { classA: 4, classB: 1, free: 0, storedBytes: store.usage().storedBytes });
   const index = await registry.readIndex();
   assert.deepEqual(index.profiles, ['slither-solidity-v1']);
-  await assert.rejects(() => registry.publish(bundle), /precondition/i);
+  await assert.rejects(() => registry.publish(bundle), /profile already exists/i);
 });
 
 test('revokes append-only while retaining immutable profile metadata', async () => {
