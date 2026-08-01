@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "acknowledged",
+  "state": "working",
   "lastConsumedSequence": 3,
   "activeSequence": 3,
   "activeMessageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
@@ -12,5 +12,5 @@
   "recommendation": null,
   "reportReference": "issue:77",
   "blockers": [],
-  "updatedAt": "2026-08-01T14:16:20Z"
+  "updatedAt": "2026-08-01T14:16:40Z"
 }
