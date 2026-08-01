@@ -1,0 +1,19 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-2-assignment-000001-accepted-20260801T115654Z",
+  "eventType": "assignment_accepted",
+  "actor": "worker-2",
+  "occurredAt": "2026-08-01T11:56:54Z",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "details": {
+    "sequence": 1,
+    "messageId": "worker-2-phase4-result-contract-compatibility-000001",
+    "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000001_worker-2-phase4-result-contract-compatibility_v1.md",
+    "assignmentBlobSha": "91ab825bf4abf4d70b305ad9e85a77ba439566ec",
+    "issueNumber": 57,
+    "branch": "audit-phase4/result-contract-compatibility-v1",
+    "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+    "status": "working"
+  }
+}
