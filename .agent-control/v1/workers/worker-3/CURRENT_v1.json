@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "sequence": 2,
-  "messageId": "worker-3-phase5-result-contract-hardening-v2-000002",
-  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000002_worker-3-phase5-result-contract-hardening-v2_v1.md",
-  "assignmentBlobSha": "624599e7e43e9a5f832eac7539fa5a70e8746d57",
-  "issuedAt": "2026-08-01T13:51:00Z"
+  "sequence": 3,
+  "messageId": "worker-3-phase5-parser-lifecycle-repair-v1-000003",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000003_worker-3-phase5-parser-lifecycle-repair-v1_v1.md",
+  "assignmentBlobSha": "b1e3f7882ecbd5b8641b5ba9da8d318068771559",
+  "issuedAt": "2026-08-01T15:20:45Z"
 }
