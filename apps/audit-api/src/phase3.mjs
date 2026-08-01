@@ -47,6 +47,7 @@ function withCors(response, env) {
 function bytes(value) { return encoder.encode(value); }
 function hex(value) { return [...value].map((item) => item.toString(16).padStart(2, '0')).join(''); }
 async function sha256(value) { return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes(value))); }
+async function sha256Bytes(value) { return new Uint8Array(await crypto.subtle.digest('SHA-256', value)); }
 async function sha256Hex(value) { return hex(await sha256(value)); }
 async function hmacHex(key, value) {
   const imported = await crypto.subtle.importKey('raw', bytes(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -105,8 +106,8 @@ function strict(value, keys, requiredKeys = keys, path = '$') {
   for (const key of Object.keys(value)) if (!keys.has(key)) throw new ValidationError('unknown_field', `${path}.${key} is not allowed`, `${path}.${key}`);
   for (const key of requiredKeys) if (!(key in value)) throw new ValidationError('missing_field', `${path}.${key} is required`, `${path}.${key}`);
 }
-function decodeBase64(value, path) {
-  if (typeof value !== 'string' || value.length < 1 || value.length > 90_000_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) throw new ValidationError('invalid_base64', `${path} is invalid`, path);
+function decodeLogBase64(value, path) {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 1_400_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) throw new ValidationError('invalid_base64', `${path} is invalid`, path);
   try { return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)); }
   catch { throw new ValidationError('invalid_base64', `${path} is invalid`, path); }
 }
@@ -123,6 +124,35 @@ function r2Store(binding) {
     async delete(key) { return binding.delete(key); }
   });
 }
+function decodeBase64Bytes(value, path) {
+  if (typeof value !== 'string' || value.length < 1 || !/^[A-Za-z0-9+/=\r\n-]+$/.test(value)) throw new ValidationError('invalid_private_key', `${path} is invalid`, path);
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
+  try { return Uint8Array.from(atob(normalized), (character) => character.charCodeAt(0)); }
+  catch { throw new ValidationError('invalid_private_key', `${path} is invalid`, path); }
+}
+function pkcs8Bytes(value) {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 32_000) throw new ValidationError('invalid_private_key', 'AUDIT_ATTESTATION_PRIVATE_KEY is invalid', '$');
+  const trimmed = value.trim();
+  if (trimmed.startsWith('-----BEGIN PRIVATE KEY-----')) {
+    const encoded = trimmed.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, '');
+    return decodeBase64Bytes(encoded, '$');
+  }
+  return decodeBase64Bytes(trimmed, '$');
+}
+function base64Url(value) {
+  let binary = '';
+  for (const byte of value) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+async function signEd25519Attestation(privateKey, payload) {
+  const pkcs8 = pkcs8Bytes(privateKey);
+  let key;
+  try { key = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, false, ['sign']); }
+  catch { throw new ValidationError('invalid_private_key', 'AUDIT_ATTESTATION_PRIVATE_KEY is not a valid Ed25519 PKCS#8 key', '$'); }
+  const signature = new Uint8Array(await crypto.subtle.sign('Ed25519', key, encoder.encode(JSON.stringify(payload))));
+  const fingerprint = hex(await sha256Bytes(pkcs8)).slice(0, 16);
+  return Object.freeze({ algorithm: 'Ed25519', keyId: `ed25519-${fingerprint}-v1`, signature: base64Url(signature) });
+}
 function campaignService(env, trustedFixture = false) {
   if (env.AUDIT_CAMPAIGN_SERVICE) return env.AUDIT_CAMPAIGN_SERVICE;
   const store = r2Store(env.AUDIT_CONTROL_STORE);
@@ -133,7 +163,15 @@ function evidenceService(env) {
   if (env.AUDIT_EVIDENCE_SERVICE) return env.AUDIT_EVIDENCE_SERVICE;
   const store = r2Store(env.AUDIT_CONTROL_STORE);
   if (!store) throw new ServiceUnavailableError('evidence_store_unavailable', 'Evidence storage is unavailable');
-  return new EvidenceService(store, { validateEvidence: env.AUDIT_EVIDENCE_VALIDATOR });
+  const injectedSigner = typeof env.AUDIT_EVIDENCE_ATTESTATION_SIGNER === 'function' ? env.AUDIT_EVIDENCE_ATTESTATION_SIGNER : null;
+  const signAttestation = injectedSigner ?? (typeof env.AUDIT_ATTESTATION_PRIVATE_KEY === 'string' && env.AUDIT_ATTESTATION_PRIVATE_KEY.length > 0
+    ? (payload) => signEd25519Attestation(env.AUDIT_ATTESTATION_PRIVATE_KEY, payload)
+    : undefined);
+  return new EvidenceService(store, {
+    now: typeof env.AUDIT_NOW === 'function' ? env.AUDIT_NOW : undefined,
+    validateEvidence: env.AUDIT_EVIDENCE_VALIDATOR,
+    signAttestation
+  });
 }
 async function authenticateInternal(request, env, bodyText, path) {
   const timestamp = Number(request.headers.get('x-audit-timestamp') || '');
@@ -237,35 +275,33 @@ async function internalRoute(request, env, path) {
   }
   const heartbeat = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/heartbeat$/);
   if (heartbeat && request.method === 'POST') {
-    strict(body, new Set(['status', 'statusEtag']));
-    if (body.status?.jobId !== heartbeat[1]) throw new ValidationError('job_mismatch', '$.status.jobId must match the route', '$.status.jobId');
-    return json(await campaignService(env, true).heartbeat(body));
+    strict(body, new Set(['attemptId', 'state', 'statusEtag']), new Set(['attemptId', 'state']));
+    return json(await campaignService(env, true).heartbeat({ jobId: heartbeat[1], attemptId: body.attemptId, state: body.state, ...(body.statusEtag ? { statusEtag: body.statusEtag } : {}) }));
   }
   const logs = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/logs$/);
   if (logs && request.method === 'POST') {
     strict(body, new Set(['attemptId', 'sequence', 'chunkBase64']));
-    return json(await evidenceService(env).appendLogChunk({ jobId: logs[1], attemptId: body.attemptId, sequence: body.sequence, bytes: decodeBase64(body.chunkBase64, '$.chunkBase64') }), 201);
+    return json(await evidenceService(env).appendLogChunk({ jobId: logs[1], attemptId: body.attemptId, sequence: body.sequence, bytes: decodeLogBase64(body.chunkBase64, '$.chunkBase64') }), 201);
   }
   const artifacts = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/artifacts$/);
   if (artifacts && request.method === 'POST') {
-    strict(body, new Set(['artifactId', 'bundleBase64', 'manifest']));
-    return json(await evidenceService(env).publishRawArtifacts({ jobId: artifacts[1], artifactId: body.artifactId, bundleBytes: decodeBase64(body.bundleBase64, '$.bundleBase64'), manifest: body.manifest }), 201);
+    strict(body, new Set(['attemptId', 'artifactId', 'objectRef', 'manifest']));
+    return json(await evidenceService(env).publishRawArtifacts({ jobId: artifacts[1], attemptId: body.attemptId, artifactId: body.artifactId, objectRef: body.objectRef, manifest: body.manifest }), 201);
   }
   const evidence = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/evidence$/);
   if (evidence && request.method === 'POST') {
-    strict(body, new Set(['artifactId', 'bundleBase64', 'manifest', 'attestation']));
-    return json(await evidenceService(env).acceptEvidence({ jobId: evidence[1], artifactId: body.artifactId, bundleBytes: decodeBase64(body.bundleBase64, '$.bundleBase64'), manifest: body.manifest, attestation: body.attestation }), 201);
+    strict(body, new Set(['attemptId', 'artifactId', 'objectRef', 'manifest']));
+    return json(await evidenceService(env).acceptEvidence({ jobId: evidence[1], attemptId: body.attemptId, artifactId: body.artifactId, objectRef: body.objectRef, manifest: body.manifest }), 201);
   }
   const reports = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/reports$/);
   if (reports && request.method === 'POST') {
-    strict(body, new Set(['artifactId', 'reportBase64', 'manifest', 'index', 'indexEtag']), new Set(['artifactId', 'reportBase64', 'manifest', 'index']));
-    return json(await evidenceService(env).publishReport({ jobId: reports[1], artifactId: body.artifactId, reportBytes: decodeBase64(body.reportBase64, '$.reportBase64'), manifest: body.manifest, index: body.index, ...(body.indexEtag ? { indexEtag: body.indexEtag } : {}) }), 201);
+    strict(body, new Set(['attemptId', 'artifactId', 'objectRef', 'manifest', 'indexEtag']), new Set(['attemptId', 'artifactId', 'objectRef', 'manifest']));
+    return json(await evidenceService(env).publishReport({ jobId: reports[1], attemptId: body.attemptId, artifactId: body.artifactId, objectRef: body.objectRef, manifest: body.manifest, ...(body.indexEtag ? { indexEtag: body.indexEtag } : {}) }), 201);
   }
   const complete = path.match(/^\/audit-internal\/v1\/jobs\/(ajob_[0-9a-f]{32})\/complete$/);
   if (complete && request.method === 'POST') {
-    strict(body, new Set(['currentStatus', 'statusEtag', 'finalState', 'reason']), new Set(['currentStatus', 'statusEtag', 'finalState']));
-    if (body.currentStatus?.jobId !== complete[1]) throw new ValidationError('job_mismatch', '$.currentStatus.jobId must match the route', '$.currentStatus.jobId');
-    return json(await campaignService(env, true).completeJob(body));
+    strict(body, new Set(['attemptId', 'statusEtag', 'finalState', 'reason']), new Set(['attemptId', 'finalState']));
+    return json(await campaignService(env, true).completeJob({ jobId: complete[1], attemptId: body.attemptId, finalState: body.finalState, ...(body.statusEtag ? { statusEtag: body.statusEtag } : {}), ...(body.reason ? { reason: body.reason } : {}) }));
   }
   return failure('not_found', 'Route not found', 404);
 }
