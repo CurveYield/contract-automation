@@ -36,6 +36,21 @@ PREFLIGHTSIM_R2_SECRET_ACCESS_KEY
 
 GitHub supplies the workflow's read-only `GITHUB_TOKEN` automatically.
 
+## Fork RPC method policy
+
+All external fork traffic passes through the fail-closed policy documented in [`rpc-method-policy-v1.md`](rpc-method-policy-v1.md). Only the listed methods may reach the selected `RPC_*` secret.
+
+The proxy validates a complete request or batch before deterministic-account handling, cache lookup, retry, or upstream forwarding. When one method is unsupported:
+
+- the proxy returns JSON-RPC code `-32601` with application code `CALL_NOT_SUPPORTED`;
+- no rejected request or mixed-batch entry reaches the external provider;
+- in-flight external requests are aborted;
+- retries stop;
+- the complete simulation attempt terminates even when a workflow step used `continueOnFailure`; and
+- `result.json` records the rejected method and termination error.
+
+Local Ganache control methods remain local and are not restricted by the external-RPC allowlist. Repository RPC providers must support the subset of allowed calls actually used by Ganache and the job.
+
 ## Agent workflow
 
 A connected agent performs these steps:
