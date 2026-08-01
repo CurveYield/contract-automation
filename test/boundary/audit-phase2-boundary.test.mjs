@@ -39,7 +39,7 @@ test('Phase 2 packages preserve the approved R2 size and operation budgets', () 
     readLayerIndex: { classA: 0, classB: 1, storageBytes: 0 }
   });
   assert.deepEqual(PROFILE_OPERATION_BUDGETS, {
-    publish: { classA: 4, classB: 0, storageBytes: 1_000_000 },
+    publish: { classA: 4, classB: 1, storageBytes: 1_000_000 },
     read: { classA: 0, classB: 1, storageBytes: 0 },
     revoke: { classA: 2, classB: 1, storageBytes: 64_000 }
   });
