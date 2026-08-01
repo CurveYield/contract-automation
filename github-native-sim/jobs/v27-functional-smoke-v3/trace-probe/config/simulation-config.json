@@ -1,0 +1,17 @@
+{
+  "version": "v27",
+  "engine": "debug_traceCall-state-journal",
+  "network": "ethereum-mainnet-pinned-state",
+  "forkBlockPolicy": "latest-at-start-then-pin",
+  "chainId": 1,
+  "rpcMethodAllowlistFile": "config/rpc-method-allowlist.json",
+  "addresses": {
+    "sdYB": "0x0c057598dcE1891688829581f890DD2a3685a43f",
+    "YB": "0x01791F726B4103694969820be083196cC7c045fF",
+    "crvUSD": "0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E",
+    "curvePoolAndLP": "0x98b540fa89690969D111D045afCa575C91519B1A",
+    "yearnVault": "0xeC456f00E1f1a6A9097b723Ab979c27AB45C5906",
+    "boostHubStaking": "0xD63819Fef90981fAc8CD6240EA1f2559CD835CBa",
+    "ybCrvUsdPool": "0xec977F46467a3021785Cff88894886E617abd65b"
+  }
+}
