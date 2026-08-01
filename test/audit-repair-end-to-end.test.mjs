@@ -234,5 +234,5 @@ test('empty-store connected-stack workflow completes inertly with measured R2 us
   assert.equal(finalStatus.state, 'completed');
   assert.deepEqual(logs.chunks.map((chunk) => new TextDecoder().decode(chunk)), ['trusted fixture log']);
   assert.deepEqual(reports.reports, [reportArtifactId]);
-  assert.deepEqual(operationCounts(store.usage()), { classA: 43, classB: 29, free: 0 });
+  assert.deepEqual(operationCounts(store.usage()), { classA: 43, classB: 29, free: 1 });
 });

@@ -33,6 +33,8 @@ test('Audit Worker and R2 lifecycle remain separate and execution disabled', asy
   assert.equal(rules.get('workspaces/'), 30);
   assert.equal(rules.get('campaigns/'), 30);
   assert.equal(rules.get('jobs/'), 30);
+  assert.equal(rules.get('job-logs/'), 7);
+  assert.equal(rules.get('job-artifacts/'), 7);
   assert.equal(rules.get('indexes/workspace/'), 30);
   assert.equal(rules.get('indexes/campaign/'), 30);
   assert.equal(rules.get('indexes/job/'), 30);
