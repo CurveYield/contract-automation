@@ -1,117 +1,117 @@
 {
-  "package": "CurveYield Audit Current-Stack Specifications",
-  "version": 2,
-  "generated": "2026-07-31",
+  "schemaVersion": "curveyield-audit-specification-manifest-v2",
+  "generatedAtUtc": "2026-08-01T09:04:05Z",
   "files": [
     {
       "file": "00_README_AND_GOVERNING_SCOPE_v2.md",
-      "bytes": 2576,
-      "sha256": "58842e71b9a798e48dd9fdc2820488779fd1ccdc8c6bc56af1d177ecb7570626"
+      "sha256": "58842e71b9a798e48dd9fdc2820488779fd1ccdc8c6bc56af1d177ecb7570626",
+      "bytes": 2576
     },
     {
       "file": "01_CURRENT_STACK_AND_LITE_BOUNDARY_v2.md",
-      "bytes": 1881,
-      "sha256": "47686bd3a25ef4339b3afb365a10ee31d8ef392dcfa5152635bcefc885f73f5b"
+      "sha256": "47686bd3a25ef4339b3afb365a10ee31d8ef392dcfa5152635bcefc885f73f5b",
+      "bytes": 1881
     },
     {
       "file": "02_TARGET_ARCHITECTURE_CURRENT_STACK_v2.md",
-      "bytes": 2442,
-      "sha256": "e72c12b52ed7e6ceed295cfb1380df365f159d6add05c43257c3d3a144da476b"
+      "sha256": "e72c12b52ed7e6ceed295cfb1380df365f159d6add05c43257c3d3a144da476b",
+      "bytes": 2442
     },
     {
       "file": "03_PHASE_ROADMAP_v2.md",
-      "bytes": 1628,
-      "sha256": "b630acc6bbe4367a68a802a0ac02fdcb48f8445870702c9c3aae6d35a0f9e231"
+      "sha256": "b630acc6bbe4367a68a802a0ac02fdcb48f8445870702c9c3aae6d35a0f9e231",
+      "bytes": 1628
     },
     {
       "file": "04_PHASE_1_BOUNDARY_LOCK_AND_SCAFFOLD_v2.md",
-      "bytes": 1242,
-      "sha256": "2892af07926bae90be5c51091c66ed4f6c7898682214af7ef04aa1e599410939"
+      "sha256": "2892af07926bae90be5c51091c66ed4f6c7898682214af7ef04aa1e599410939",
+      "bytes": 1242
     },
     {
       "file": "05_PHASE_2_R2_WORKSPACES_AND_PROFILE_REGISTRY_v2.md",
-      "bytes": 1516,
-      "sha256": "a9981b04686f6098a201fc447a2e85efee51edd602b810a0263f8d9e8fffbb25"
+      "sha256": "61be5d0de8935a4d4cebdfbdae6e8d2726c4efd015a6abd341e0335e6b47fd7d",
+      "bytes": 2708
     },
     {
       "file": "06_PHASE_3_R2_CAMPAIGNS_JOBS_LOGS_EVIDENCE_v2.md",
-      "bytes": 1903,
-      "sha256": "f5e20525bf0e1243638c74b125920431b139415c646f8614afcd30eb837b8fc6"
+      "sha256": "bf665daafe8b0b41b119a76f7c72e4a209f6a2408f4177dfbf9c93900255a33d",
+      "bytes": 3423
     },
     {
       "file": "07_PHASES_4_TO_6_TOOL_PROFILE_INTEGRATIONS_v2.md",
-      "bytes": 1396,
-      "sha256": "f3a17016106169ef6f8388e1498e7b1a50e7f3b6a3d786199cbf6e57da4fe9f2"
+      "sha256": "f3a17016106169ef6f8388e1498e7b1a50e7f3b6a3d786199cbf6e57da4fe9f2",
+      "bytes": 1396
     },
     {
       "file": "08_PHASE_7_PERSISTENT_FORK_INTERFACE_v2.md",
-      "bytes": 1443,
-      "sha256": "925f58dacdca617b349ca7b490b778bad9ed64450441e5ba2fc174fb45611993"
+      "sha256": "925f58dacdca617b349ca7b490b778bad9ed64450441e5ba2fc174fb45611993",
+      "bytes": 1443
     },
     {
       "file": "09_PHASE_8_CLEAN_ROOM_CAMPAIGNS_v2.md",
-      "bytes": 904,
-      "sha256": "3884cd094a2d38456a9f02222e6648ad9a9a81a5903ee973b8ebf69d5e25b168"
+      "sha256": "3884cd094a2d38456a9f02222e6648ad9a9a81a5903ee973b8ebf69d5e25b168",
+      "bytes": 904
     },
     {
       "file": "10_PHASE_9_WEB_REPORTS_GITHUB_INTEGRATIONS_v2.md",
-      "bytes": 1072,
-      "sha256": "abaaf86b9e0f573e78729845162ce164eb3782cd7fb5a47b7cdfc38ed21f6d9c"
+      "sha256": "abaaf86b9e0f573e78729845162ce164eb3782cd7fb5a47b7cdfc38ed21f6d9c",
+      "bytes": 1072
     },
     {
       "file": "11_PHASE_10_CURRENT_STACK_PRODUCTION_HARDENING_v2.md",
-      "bytes": 1128,
-      "sha256": "6e37c17955d0509da8ab91af0d3ae33d568d0a08e92452d31b61cc811f982851"
+      "sha256": "6e37c17955d0509da8ab91af0d3ae33d568d0a08e92452d31b61cc811f982851",
+      "bytes": 1128
     },
     {
       "file": "12_R2_OBJECT_MODEL_AND_OPERATION_RULES_v2.md",
-      "bytes": 2217,
-      "sha256": "cfe5c73cf8300476daf1a2de25b00e595c0bff7df0cee5b54c43ef5f050e4342"
+      "sha256": "d3a76fed0efe7d87c2c21d378e5292ac88185aec69df7e545af3f5457571e846",
+      "bytes": 2939
     },
     {
       "file": "13_R2_FUNCTION_USAGE_AND_FREE_TIER_CAPACITY_v2.md",
-      "bytes": 4084,
-      "sha256": "cb8c3edb46eeddccdbfd9cb5f2103666c0606353d1fa0df56cd9d67d584ee9b3"
+      "sha256": "cb8c3edb46eeddccdbfd9cb5f2103666c0606353d1fa0df56cd9d67d584ee9b3",
+      "bytes": 4084
     },
     {
       "file": "14_SECRETS_AND_IDENTITIES_CURRENT_STACK_v2.md",
-      "bytes": 2133,
-      "sha256": "05a147ca208b15f37a0ef6ecdc7ab36de177a50674a7f3ebbfcc69b5a3a88eda"
+      "sha256": "05a147ca208b15f37a0ef6ecdc7ab36de177a50674a7f3ebbfcc69b5a3a88eda",
+      "bytes": 2133
     },
     {
       "file": "15_EXTERNAL_HARDENED_COMPUTE_DEFERRED_INTERFACE_v2.md",
-      "bytes": 1652,
-      "sha256": "7387a487248052a9860ae7c86ec49a88b16b5f5441f037e5a87c7f261af1d54e"
+      "sha256": "7387a487248052a9860ae7c86ec49a88b16b5f5441f037e5a87c7f261af1d54e",
+      "bytes": 1652
     },
     {
       "file": "16_TESTING_AND_ACCEPTANCE_v2.md",
-      "bytes": 1457,
-      "sha256": "0a41673a0378347a9fdb3b92f50da187608079d67742fe655d09cb0e03c4b3a7"
+      "sha256": "0a41673a0378347a9fdb3b92f50da187608079d67742fe655d09cb0e03c4b3a7",
+      "bytes": 1457
     },
     {
       "file": "17_CAPABILITY_TRACEABILITY_v2.md",
-      "bytes": 1671,
-      "sha256": "d64619bc42e943c7d1887fbfc442cd57fe2fe5e41f39580dfab81e35625a6bd5"
+      "sha256": "d64619bc42e943c7d1887fbfc442cd57fe2fe5e41f39580dfab81e35625a6bd5",
+      "bytes": 1671
     },
     {
       "file": "18_R2_FUNCTION_USAGE_TABLE_v2.csv",
-      "bytes": 4863,
-      "sha256": "65912f2347be0f0da0c83ae00eef8a42c184e0d8f9ba8cf79231983f4ed985d8"
+      "sha256": "65912f2347be0f0da0c83ae00eef8a42c184e0d8f9ba8cf79231983f4ed985d8",
+      "bytes": 4828
     },
     {
       "file": "19_R2_USAGE_ASSUMPTIONS_v2.json",
-      "bytes": 850,
-      "sha256": "ddd49f13b6805d3c1426124a243de05004be23ad0c39a19d96f55fe8426cfc23"
+      "sha256": "ddd49f13b6805d3c1426124a243de05004be23ad0c39a19d96f55fe8426cfc23",
+      "bytes": 850
     },
     {
       "file": "20_R2_AGGREGATE_SCENARIOS_v2.csv",
-      "bytes": 1159,
-      "sha256": "0b27686f0fb0a0d02c61f8c43479d85d7c3794a42b4dc125fdebcdf3d13169e9"
+      "sha256": "0b27686f0fb0a0d02c61f8c43479d85d7c3794a42b4dc125fdebcdf3d13169e9",
+      "bytes": 1159
     },
     {
       "file": "SOURCES_v2.md",
-      "bytes": 945,
-      "sha256": "784333b6933263d0c187c8202d27bbad9eea3de4ae9c373829ec3f6d38ef950c"
+      "sha256": "784333b6933263d0c187c8202d27bbad9eea3de4ae9c373829ec3f6d38ef950c",
+      "bytes": 945
     }
-  ]
+  ],
+  "fileCount": 22
 }
