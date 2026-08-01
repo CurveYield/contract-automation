@@ -12,7 +12,7 @@ The local wake agent may read all files on `agent-control-plane-v1` and relevant
 - `.agent-control/v1/local-wake-agent/ACKS/`;
 - `.agent-control/v1/local-wake-agent/EVENTS/`.
 
-It must never write or edit:
+It must never normally write or edit:
 
 - `GLOBAL_STATE_v1.json`;
 - orchestrator status/events;
@@ -20,6 +20,19 @@ It must never write or edit:
 - implementation branches, issue reports, or pull requests.
 
 Wake requests under `REQUESTS/` are immutable and orchestrator-owned.
+
+## Narrow delegated-write recovery exception
+
+Read `.agent-control/v1/DELEGATED_WRITE_RECOVERY_v1.md`.
+
+The local wake agent may perform the narrowly defined recovery writes in that policy only when:
+
+- a worker explicitly reports that every worker-side GitHub write method failed before reaching GitHub;
+- the worker confirms no implementation began;
+- the orchestrator has independently verified the pointer, assignment blob, issue, branch, starting SHA, absent acknowledgement, unconsumed status, and untouched implementation branch;
+- an orchestrator event or explicit durable recovery request authorizes the exact sequence.
+
+Outside those conditions, the normal ownership prohibition remains absolute. The local wake agent may never invent completion, final SHA, recommendation, tests, or issue reports, and may never alter implementation work.
 
 ## State-driven wake rules
 
@@ -30,12 +43,14 @@ Wake requests under `REQUESTS/` are immutable and orchestrator-owned.
    - a required final issue report appears;
    - a branch final SHA changes after the last orchestrator decision;
    - a mailbox/status mismatch is detected;
-   - a worker claims completion but GitHub evidence is absent.
+   - a worker claims completion but GitHub evidence is absent;
+   - a worker reports that mandatory mailbox writes cannot reach GitHub.
 4. Wake a worker only when:
-   - the orchestrator has published a new valid `CURRENT_v1.json` sequence greater than `lastConsumedSequence`; or
-   - an orchestrator-owned wake request explicitly directs resumption/status repair of the current assignment.
+   - the orchestrator has published a new valid `CURRENT_v1.json` sequence greater than `lastConsumedSequence`;
+   - an orchestrator-owned wake request explicitly directs resumption/status repair of the current assignment; or
+   - delegated recovery has already created and verified the exact acknowledgement and `working` transition.
 5. Never wake a worker into a stale, missing, malformed, cross-worker, or already-consumed assignment.
-6. Never execute or alter worker work itself. The wake agent only brings the correct chat to the foreground and supplies a short instruction to read its durable GitHub mailbox/current issue.
+6. Never execute or alter worker implementation work. The wake agent only brings the correct chat to the foreground and supplies a short instruction to read its durable GitHub mailbox/current issue.
 7. After a successful wake attempt, create one acknowledgement in `ACKS/` containing the request ID, target, timestamp, observed pointer/status, and wake result. Never edit the request.
 8. If waking fails, record the failure in `EVENTS/` and leave the request unacknowledged or explicitly acknowledged as failed so it can be retried safely.
 
@@ -50,3 +65,4 @@ This agent may check GitHub locally at a cadence faster than the ChatGPT hourly 
 - Re-read live state before every wake.
 - A repeated wake must not cause duplicate assignment acknowledgement or duplicate execution.
 - Any discrepancy wakes the orchestrator, not the worker.
+- Delegated recovery must verify an acknowledgement is absent before creating it and must never create a second copy.
