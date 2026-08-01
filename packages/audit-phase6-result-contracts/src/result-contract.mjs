@@ -34,7 +34,7 @@ export function validatePhase6ToolResult(value) {
   if (safe.schemaVersion !== PHASE6_RESULT_ENVELOPE_SCHEMA_VERSION) fail('invalid_schema_version', '$.schemaVersion');
   const identity = PHASE6_PROFILE_RESULT_IDENTITIES[safe.profileId];
   if (!identity) fail('invalid_profile_id', '$.profileId');
-  if (safe.result?.profileId !== safe.profileId) fail('identity_mismatch', '$.profileId');
+  if (safe.result && Object.hasOwn(safe.result, 'profileId') && safe.result.profileId !== safe.profileId) fail('identity_mismatch', '$.result.profileId');
   assertIdentity(safe, identity);
   let normalized;
   try { normalized = validateFormalResult(safe.result); } catch (error) { remapError(error, '$.result'); }
