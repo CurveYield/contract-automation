@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "eventType": "startup_report_posted",
+  "workerId": "worker-3",
+  "sequence": 2,
+  "messageId": "worker-3-phase5-result-contract-hardening-v2-000002",
+  "issueNumber": 76,
+  "branch": "audit-phase5/result-contract-hardening-v2",
+  "startingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+  "state": "working",
+  "occurredAt": "2026-08-01T14:02:00Z"
+}
