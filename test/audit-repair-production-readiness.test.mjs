@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import auditWorker from '../apps/audit-api/src/entry.mjs';
-import { CampaignService } from '../packages/audit-campaigns/src/index.mjs';
 import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
-import { workspaceSourceManifestKey } from '../packages/audit-workspace-protocol/src/index.mjs';
 
 const tenantId = `ten_${'1'.repeat(32)}`;
 const workspaceId = `ws_${'2'.repeat(32)}`;
@@ -115,17 +113,22 @@ test('explicit test mode may use injected adapters without making them productio
   assert.equal(calls, 1);
 });
 
-test('runtime rejects retention classes that current R2 keys cannot enforce', async () => {
+test('deployed route rejects retention classes that current R2 keys cannot enforce', async () => {
   for (const retentionPolicy of ['extended-90d', 'archive-365d']) {
-    const store = new InMemoryAuditStore();
-    await store.put(workspaceSourceManifestKey(workspaceId), JSON.stringify({ schemaVersion: 'workspace-manifest-v1', workspaceId, sourceKind: 'upload' }));
-    const service = new CampaignService(store);
-    await assert.rejects(() => service.createCampaign({
-      creation: {
-        schemaVersion: 'campaign-creation-v1', campaignId, workspaceId,
-        name: 'Unsupported retention campaign', createdAt: '2026-08-01T08:00:00.000Z', retentionPolicy
-      }
-    }), /retention|unsupported/i);
+    const env = baseEnv();
+    const response = await auditWorker.fetch(request('/audit/v1/campaigns', {
+      method: 'POST',
+      headers: { ...bearer('audit-submit-test-key'), 'content-type': 'application/json' },
+      body: JSON.stringify({
+        creation: {
+          schemaVersion: 'campaign-creation-v1', campaignId, workspaceId,
+          name: 'Unsupported retention campaign', createdAt: '2026-08-01T08:00:00.000Z', retentionPolicy
+        }
+      })
+    }), env);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'unsupported_retention_policy');
+    assert.deepEqual(env.AUDIT_CONTROL_STORE.usage(), { classA: 0, classB: 0, free: 0, storedBytes: 0 });
   }
 });
 
