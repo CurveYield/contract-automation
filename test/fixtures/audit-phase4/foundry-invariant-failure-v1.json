@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Foundry invariant failure with deterministic bounded evidence.",
+  "profileId": "foundry-invariant-v1",
+  "input": {
+    "resultJson": "{\"invariants\":[{\"contract\":\"SyntheticHandler\",\"name\":\"invariantSolvent\",\"status\":\"failed\",\"runs\":256,\"depth\":64,\"seed\":7,\"counterexample\":{\"sequence\":[\"deposit\",\"withdraw\"]},\"trace\":[{\"contract\":\"SyntheticHandler\",\"function\":\"withdraw\",\"arguments\":[\"1\"],\"result\":\"revert\"}]}]}",
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": 1,
+    "durationMs": 80,
+    "terminationReason": "completed"
+  }
+}
