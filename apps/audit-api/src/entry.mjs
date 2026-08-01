@@ -6,6 +6,10 @@ import {
   sanitizeAuditRuntimeEnv
 } from './runtime.mjs';
 import {
+  auditPhase4Capabilities,
+  handlePhase4CatalogRequest
+} from './phase4-catalog.mjs';
+import {
   deriveUploadGrantSigningKey,
   encodeUploadGrantSigningKey
 } from './upload-grants.mjs';
@@ -82,12 +86,16 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const runtimeEnv = await prepareAuditRuntimeEnv(env);
+
+    const phase4CatalogResponse = await handlePhase4CatalogRequest(request, runtimeEnv);
+    if (phase4CatalogResponse) return phase4CatalogResponse;
+
     const retentionDenied = await unsupportedRetentionResponse(request, runtimeEnv, url);
     if (retentionDenied) return retentionDenied;
 
     const response = await worker.fetch(request, runtimeEnv);
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
-      return jsonWithHeaders(auditPhase3Capabilities(env), response);
+      return jsonWithHeaders(auditPhase4Capabilities(auditPhase3Capabilities(env)), response);
     }
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/readiness') {
       return jsonWithHeaders(auditRuntimeReadiness(env), response);
