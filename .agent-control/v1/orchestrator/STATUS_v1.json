@@ -2,17 +2,19 @@
   "protocolVersion": 1,
   "agentId": "orchestrator",
   "state": "idle",
-  "lastPollAt": "2026-08-01T13:54:00Z",
-  "lastProcessedEvent": "work-package-and-report-policy-updated-20260801T135300Z",
+  "lastPollAt": "2026-08-01T14:08:00Z",
+  "lastProcessedEvent": "worker-2-sequence3-phase6-published-20260801T140700Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "pendingActions": [
     "Monitor Worker 0 sequence 1 issue #70 after its original chat resumed.",
     "Await Worker 1 sequence 1 issue #72 completion and pinned report.",
-    "Await Worker 2 sequence 2 issue #74 completion and pinned report.",
-    "Wake Worker 3 original chat to consume sequence 2 and issue #76; require report only on #76 with verified comment URL and ID.",
+    "Await Worker 2 GitHub mailbox consumption and exact-once acknowledgement of sequence 3 on issue #77.",
+    "Await Worker 3 sequence 2 transition from acknowledged to working and progress on issue #76.",
+    "Independently review Worker 2 sequence 2 final SHA 8beb17a3f4a9df0a32a07caf19fc17fb633d4d75 before any Phase 4 integration decision.",
     "Review draft PR #73 for mergeability into audit-phase4/integration-v3 after exact-head checks; do not merge to main.",
-    "Keep Phase 5 integration blocked until Phase 4 is independently accepted."
+    "Keep Phase 5 integration blocked until Phase 4 is independently accepted and Phase 6 integration blocked until Phase 5 is independently accepted.",
+    "Publish future worker assignments and wake markers only through GitHub mailboxes/issues; do not ask the user to paste inline relay messages."
   ],
-  "updatedAt": "2026-08-01T13:54:00Z"
+  "updatedAt": "2026-08-01T14:08:00Z"
 }
