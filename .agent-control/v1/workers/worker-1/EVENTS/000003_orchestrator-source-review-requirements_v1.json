@@ -1,0 +1,21 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-1-orchestrator-source-review-requirements-v1-000003",
+  "workerId": "worker-1",
+  "sequence": 1,
+  "issueNumber": 72,
+  "branch": "audit-phase4/catalog-api-integration-v2",
+  "state": "completion_gates_required",
+  "requirements": [
+    "exact profile/parser identity capability derivation",
+    "six-profile item-route and malformed-path matrix",
+    "real entry.mjs composition tests",
+    "OPTIONS and CORS contract tests",
+    "empty and malformed credential safety",
+    "hostile catalog boundary and frozen-output tests",
+    "truthful deferred result-contract integration condition",
+    "durable startup/progress and final evidence"
+  ],
+  "authoritativeCommentId": 5152432370,
+  "issuedAt": "2026-08-01T17:04:00Z"
+}
