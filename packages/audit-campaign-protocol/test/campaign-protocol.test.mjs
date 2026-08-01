@@ -96,13 +96,13 @@ test('generates deterministic keys for every Phase 3 object family', () => {
   assert.equal(campaignJobIndexKey(campaignId), `indexes/campaign/${campaignId}/jobs-v1.json`);
   assert.equal(attemptKey(jobId, attemptId), `jobs/${jobId}/attempts/${attemptId}-v1.json`);
   assert.equal(eventBatchKey(jobId, '00000001'), `jobs/${jobId}/events/00000001.jsonl`);
-  assert.equal(logChunkKey(jobId, attemptId, 7), `jobs/${jobId}/attempts/${attemptId}/logs/00000007.log`);
-  assert.equal(logIndexKey(jobId, attemptId), `jobs/${jobId}/attempts/${attemptId}/logs/index-v1.json`);
+  assert.equal(logChunkKey(jobId, attemptId, 7), `job-logs/${jobId}/attempts/${attemptId}/00000007.log`);
+  assert.equal(logIndexKey(jobId, attemptId), `job-logs/${jobId}/attempts/${attemptId}/index-v1.json`);
   assert.equal(rawArtifactIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/artifacts/${artifactId}.tar.zst`);
   assert.equal(evidenceIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/evidence/${artifactId}.tar.zst`);
   assert.equal(reportIngressKey(jobId, attemptId, artifactId), `ingress/jobs/${jobId}/attempts/${attemptId}/reports/${artifactId}.zip`);
-  assert.equal(rawArtifactBundleKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}.tar.zst`);
-  assert.equal(rawArtifactManifestKey(jobId, artifactId), `jobs/${jobId}/artifacts/${artifactId}-manifest-v1.json`);
+  assert.equal(rawArtifactBundleKey(jobId, artifactId), `job-artifacts/${jobId}/${artifactId}.tar.zst`);
+  assert.equal(rawArtifactManifestKey(jobId, artifactId), `job-artifacts/${jobId}/${artifactId}-manifest-v1.json`);
   assert.equal(evidenceQuarantineKey(jobId, artifactId), `jobs/${jobId}/evidence/quarantine/${artifactId}.tar.zst`);
   assert.equal(evidenceAcceptedKey(jobId, artifactId), `jobs/${jobId}/evidence/accepted/${artifactId}.tar.zst`);
   assert.equal(evidenceManifestKey(jobId, artifactId), `jobs/${jobId}/evidence/${artifactId}-manifest-v1.json`);

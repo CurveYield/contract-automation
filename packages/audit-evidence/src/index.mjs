@@ -287,7 +287,14 @@ export class EvidenceService {
     await this.store.put(evidenceAcceptedKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
     await this.store.put(evidenceManifestKey(input.jobId, input.artifactId), JSON.stringify(manifest), createOnly());
     await this.store.put(evidenceAttestationKey(input.jobId, input.artifactId), JSON.stringify(attestation), createOnly());
-    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true });
+    let quarantineCleanupPending = false;
+    if (typeof this.store.delete === 'function') {
+      try { await this.store.delete(evidenceQuarantineKey(input.jobId, input.artifactId)); }
+      catch { quarantineCleanupPending = true; }
+    } else {
+      quarantineCleanupPending = true;
+    }
+    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true, quarantineCleanupPending });
   }
 
   async publishReport(input) {

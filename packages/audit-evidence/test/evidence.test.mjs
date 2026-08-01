@@ -117,7 +117,7 @@ test('quarantines, verifies, accepts, and signs evidence using four Class A and 
   await service.acceptEvidence({ jobId, attemptId, artifactId, objectRef: objectRef(ingressKey, sha256, bundleBytes.length, 'application/zstd'), manifest });
   assert.equal(validations, 1);
   assert.deepEqual(delta(store.usage(), before), { classA: 4, classB: 2, free: 0 });
-  assert.ok(await store.head(evidenceQuarantineKey(jobId, artifactId)));
+  assert.equal(await store.get(evidenceQuarantineKey(jobId, artifactId)), null);
   assert.ok(await store.head(evidenceAcceptedKey(jobId, artifactId)));
   assert.ok(await store.head(evidenceManifestKey(jobId, artifactId)));
   const attestationRecord = await store.get(evidenceAttestationKey(jobId, artifactId));

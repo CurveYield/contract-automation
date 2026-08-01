@@ -85,13 +85,13 @@ export const jobPolicyKey = (jobId) => `jobs/${id(jobId,'job','$.jobId')}/policy
 export const campaignJobIndexKey = (campaignId) => `indexes/campaign/${id(campaignId,'campaign','$.campaignId')}/jobs-v1.json`;
 export const attemptKey = (jobId, attemptId) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}-v1.json`;
 export const eventBatchKey = (jobId, value) => `jobs/${id(jobId,'job','$.jobId')}/events/${batchId(value)}.jsonl`;
-export const logChunkKey = (jobId, attemptId, value) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/${sequence(value)}.log`;
-export const logIndexKey = (jobId, attemptId) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/index-v1.json`;
+export const logChunkKey = (jobId, attemptId, value) => `job-logs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/${sequence(value)}.log`;
+export const logIndexKey = (jobId, attemptId) => `job-logs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/index-v1.json`;
 export const rawArtifactIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
 export const evidenceIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/evidence/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
 export const reportIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/reports/${id(artifactId,'artifact','$.artifactId')}.zip`;
-export const rawArtifactBundleKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
-export const rawArtifactManifestKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;
+export const rawArtifactBundleKey = (jobId, artifactId) => `job-artifacts/${id(jobId,'job','$.jobId')}/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
+export const rawArtifactManifestKey = (jobId, artifactId) => `job-artifacts/${id(jobId,'job','$.jobId')}/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;
 export const evidenceQuarantineKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/evidence/quarantine/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
 export const evidenceAcceptedKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/evidence/accepted/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
 export const evidenceManifestKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/evidence/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;
