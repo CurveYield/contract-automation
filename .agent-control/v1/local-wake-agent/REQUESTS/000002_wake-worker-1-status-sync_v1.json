@@ -1,0 +1,17 @@
+{
+  "protocolVersion": 1,
+  "wakeRequestId": "wake-worker-1-status-sync-000002",
+  "requestSequence": 2,
+  "targetAgent": "worker-1",
+  "reason": "Issue #53 has a pinned final report and branch SHA, but Worker 1 has not created its required mailbox STATUS_v1.json.",
+  "expectedCurrentSequence": 0,
+  "expectedMessageId": null,
+  "expectedIssueNumber": 53,
+  "expectedBranch": "audit-phase4/catalog-api-boundary-v1",
+  "expectedStartingSha": "f55544ebb71a51f597e36b737de2d74e4e91d5ce",
+  "observedFinalSha": "934d27dc950ffed9a334f7c9fbb60d68ac2689aa",
+  "requiredAction": "Wake Worker 1 and instruct it to verify issue #53 and final SHA, create/update only its own STATUS_v1.json to completed with lastConsumedSequence 0, write a completion/bootstrap event, then return to polling. Do not start new implementation work until the orchestrator publishes a new assignment.",
+  "issuedAt": "2026-08-01T12:27:00Z",
+  "issuedBy": "orchestrator",
+  "requestState": "ready"
+}
