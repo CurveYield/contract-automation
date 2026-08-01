@@ -33,6 +33,14 @@ Use independent long random values for the four Preflight API keys. `PREFLIGHTSI
 
 The Cloudflare token must be scoped to the CurveYield account and zone with permission to manage Workers Scripts, Worker custom domains/routes, Pages, R2 buckets/configuration, and the DNS/custom-domain operations required by the deployment workflow.
 
+## Fork RPC method policy
+
+The Cloudflare-backed runner sends external fork traffic through a local fail-closed guard. Only methods listed in [`rpc-method-policy-v2.md`](rpc-method-policy-v2.md) may reach an `RPC_*` secret.
+
+An unsupported method receives JSON-RPC code `-32601` with application code `CALL_NOT_SUPPORTED`, after which the complete simulation attempt terminates. Mixed batches are rejected before any batch entry is forwarded. Local Ganache control methods remain local and are not restricted by the external-RPC allowlist.
+
+Repository RPC providers must support the subset of allowed methods actually requested by Ganache and the job. A provider-tier failure for an allowed method is reported as an upstream RPC failure rather than a policy violation.
+
 ## Optional repository variables
 
 ```text
