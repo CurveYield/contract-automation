@@ -7,7 +7,7 @@
   "pollingFrequency": "hourly",
   "activationState": "control-plane-active-local-wake-agent-awaiting-bootstrap",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorPollAt": "2026-08-01T12:42:00Z",
+  "lastOrchestratorPollAt": "2026-08-01T12:59:00Z",
   "scheduledAgents": [
     "orchestrator",
     "worker-0",
@@ -21,7 +21,7 @@
     "protocolPath": ".agent-control/v1/local-wake-agent/PROTOCOL_v1.md",
     "bootstrapPromptPath": ".agent-control/v1/local-wake-agent/BOOTSTRAP_PROMPT_v1.md",
     "requestDirectory": ".agent-control/v1/local-wake-agent/REQUESTS/",
-    "actionableRequestCount": 2,
+    "actionableRequestCount": 3,
     "orchestratorFirstOnDiscrepancy": true,
     "alreadySatisfiedOrSupersededRequests": [
       "wake-worker-1-status-sync-000002",
@@ -60,21 +60,20 @@
     },
     "worker-2": {
       "statusInitialization": "owner-initialized",
-      "currentSequence": 1,
-      "currentMessageId": "worker-2-phase4-result-contract-compatibility-000001",
-      "currentIssueNumber": 57,
-      "currentBranch": "audit-phase4/result-contract-compatibility-v1",
-      "currentStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "mailboxState": "working",
+      "currentSequence": 2,
+      "currentMessageId": "worker-2-phase4-result-contract-hardening-v2-000002",
+      "currentIssueNumber": 74,
+      "currentBranch": "audit-phase4/result-contract-hardening-v2",
+      "currentStartingSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
+      "mailboxState": "ready-awaiting-acknowledgement",
       "futureAssignmentsAllowed": true,
-      "observedBranchState": "17-commits-ahead-0-behind",
-      "observedChangedFiles": 13,
-      "observedFinalReport": false,
-      "wakeRequestId": "wake-worker-2-resume-sequence-1-000003",
-      "priorCompletedIssueNumber": 46,
-      "priorCompletedBranch": "audit-phase4/parsers-fixtures-v3",
-      "priorFinalSha": "353c1dc743b8657ea6f15f5a15954603beb78656",
-      "priorRecommendation": "ACCEPT"
+      "priorCompletedIssueNumber": 57,
+      "priorCompletedBranch": "audit-phase4/result-contract-compatibility-v1",
+      "priorFinalSha": "7702ec7913967c26e56b177d4c6198e2ca580716",
+      "priorRecommendation": "ACCEPT",
+      "integrationPullRequest": 73,
+      "integrationState": "draft-review-open-not-merged",
+      "wakeRequestId": "wake-worker-2-sequence-2-000006"
     },
     "worker-3": {
       "statusInitialization": "owner-initialized",
@@ -111,5 +110,5 @@
     "potentiallyStale": 3,
     "blockedPendingReview": 6
   },
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T124200Z_polling-resumed-workers-2-and-3_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T125900Z_worker-2-accepted-pr73-and-sequence2_v1.json"
 }
