@@ -20,6 +20,7 @@ import { profileIndexKey } from '../../audit-profile-registry/src/index.mjs';
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
+const ACTIVE_STATES = new Set(['provisioning', 'running', 'collecting_evidence']);
 
 function object(value, path = '$') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('invalid_type', `${path} must be an object`, path);
@@ -43,12 +44,10 @@ function match(etag) {
   if (typeof etag !== 'string' || etag.length < 1) throw new ValidationError('missing_etag', 'An ETag precondition is required', '$.etag');
   return { onlyIf: { etagMatches: etag } };
 }
-function indexWriteCondition(record) {
-  return record ? match(record.etag) : createOnly();
-}
-function assertOptionalExpectedEtag(expected, record, path) {
+function indexWriteCondition(record) { return record ? match(record.etag) : createOnly(); }
+function assertOptionalExpectedEtag(expected, record, path, code = 'stale_index') {
   if (expected === undefined) return;
-  if (!record || record.etag !== expected) throw new ValidationError('stale_index', `${path} is stale`, path);
+  if (!record || record.etag !== expected) throw new ValidationError(code, `${path} is stale`, path);
 }
 function instant(now) {
   const value = now();
@@ -65,40 +64,28 @@ function validateWorkspaceIndex(value, workspaceId) {
   object(value, '$.workspaceIndex'); scanAuditForbiddenFields(value, '$.workspaceIndex');
   const keys = new Set(['schemaVersion', 'workspaceId', 'campaigns', 'records']);
   allowed(value, keys, '$.workspaceIndex'); required(value, new Set(['schemaVersion', 'workspaceId', 'campaigns']), '$.workspaceIndex');
-  if (value.schemaVersion !== 'workspace-campaign-index-v1' || value.workspaceId !== workspaceId || !Array.isArray(value.campaigns)) {
-    throw new ValidationError('invalid_campaign_index', 'Workspace campaign index is invalid', '$.workspaceIndex');
-  }
+  if (value.schemaVersion !== 'workspace-campaign-index-v1' || value.workspaceId !== workspaceId || !Array.isArray(value.campaigns)) throw new ValidationError('invalid_campaign_index', 'Workspace campaign index is invalid', '$.workspaceIndex');
   value.campaigns.forEach((id, index) => assertAuditId(id, 'campaign', `$.workspaceIndex.campaigns[${index}]`));
   return structuredClone(value);
 }
-function emptyWorkspaceIndex(workspaceId) {
-  return { schemaVersion: 'workspace-campaign-index-v1', workspaceId, campaigns: [], records: {} };
-}
+function emptyWorkspaceIndex(workspaceId) { return { schemaVersion: 'workspace-campaign-index-v1', workspaceId, campaigns: [], records: {} }; }
 function validateJobIndex(value, campaignId) {
   object(value, '$.jobIndex'); scanAuditForbiddenFields(value, '$.jobIndex');
   const keys = new Set(['schemaVersion', 'campaignId', 'jobs', 'records']);
   allowed(value, keys, '$.jobIndex'); required(value, new Set(['schemaVersion', 'campaignId', 'jobs']), '$.jobIndex');
-  if (value.schemaVersion !== 'campaign-job-index-v1' || value.campaignId !== campaignId || !Array.isArray(value.jobs)) {
-    throw new ValidationError('invalid_job_index', 'Campaign job index is invalid', '$.jobIndex');
-  }
+  if (value.schemaVersion !== 'campaign-job-index-v1' || value.campaignId !== campaignId || !Array.isArray(value.jobs)) throw new ValidationError('invalid_job_index', 'Campaign job index is invalid', '$.jobIndex');
   value.jobs.forEach((id, index) => assertAuditId(id, 'job', `$.jobIndex.jobs[${index}]`));
   return structuredClone(value);
 }
-function emptyJobIndex(campaignId) {
-  return { schemaVersion: 'campaign-job-index-v1', campaignId, jobs: [], records: {} };
-}
+function emptyJobIndex(campaignId) { return { schemaVersion: 'campaign-job-index-v1', campaignId, jobs: [], records: {} }; }
 function validateCampaign(value, campaignId, workspaceId) {
   object(value, '$.campaign');
-  if (value.schemaVersion !== 'campaign-current-v1' || value.campaignId !== campaignId || value.workspaceId !== workspaceId || value.state !== 'active') {
-    throw new ValidationError('campaign_unavailable', 'Campaign is not active for the requested workspace', '$.campaignId');
-  }
+  if (value.schemaVersion !== 'campaign-current-v1' || value.campaignId !== campaignId || value.workspaceId !== workspaceId || value.state !== 'active') throw new ValidationError('campaign_unavailable', 'Campaign is not active for the requested workspace', '$.campaignId');
   return value;
 }
 function validateProfile(value, profileId) {
   object(value, '$.profiles');
-  if (value.schemaVersion !== 'profile-index-v1' || !Array.isArray(value.profiles) || !value.profiles.includes(profileId)) {
-    throw new ValidationError('profile_not_found', 'Audit profile is not published', '$.profileId');
-  }
+  if (value.schemaVersion !== 'profile-index-v1' || !Array.isArray(value.profiles) || !value.profiles.includes(profileId)) throw new ValidationError('profile_not_found', 'Audit profile is not published', '$.profileId');
   if (value.records?.[profileId]?.revoked === true) throw new ValidationError('profile_revoked', 'Audit profile is revoked', '$.profileId');
 }
 
@@ -144,13 +131,11 @@ export class CampaignService {
     assertOptionalExpectedEtag(input.jobIndexEtag, indexRecord, '$.jobIndexEtag');
     const index = indexRecord ? validateJobIndex(parse(indexRecord), request.campaignId) : emptyJobIndex(request.campaignId);
     if (index.jobs.includes(request.jobId)) throw new ValidationError('job_exists', 'Job already exists', '$.jobId');
+    if (Object.values(index.records ?? {}).some((entry) => entry?.idempotencyKey === request.idempotencyKey)) throw new ValidationError('idempotency_conflict', 'Idempotency key already exists in this campaign', '$.idempotencyKey');
     const at = instant(this.now);
     const status = validateJobStatus({ schemaVersion: 'audit-job-status-v1', jobId: request.jobId, campaignId: request.campaignId, state: 'awaiting_executor', revision: 5, highestLogSequence: 0, updatedAt: at, executionEnabled: false });
     const policy = { schemaVersion: 'audit-policy-decision-v1', jobId: request.jobId, campaignId: request.campaignId, decision: 'admitted_metadata_only', executionEnabled: false, decidedAt: at };
-    const events = makeBatch(request.jobId, 1, at, [
-      { type: 'job_submitted', at }, { type: 'job_validating', at }, { type: 'job_admitted', at },
-      { type: 'job_queued', at }, { type: 'job_awaiting_executor', at }
-    ]);
+    const events = makeBatch(request.jobId, 1, at, [{ type: 'job_submitted', at }, { type: 'job_validating', at }, { type: 'job_admitted', at }, { type: 'job_queued', at }, { type: 'job_awaiting_executor', at }]);
     const updatedIndex = { ...index, jobs: [...index.jobs, request.jobId].sort(), records: { ...(index.records ?? {}), [request.jobId]: { state: status.state, profileId: request.profileId, submittedAt: request.submittedAt, idempotencyKey: request.idempotencyKey } } };
     if (metadataSize(request) > 64_000 || metadataSize(policy) > 32_000 || metadataSize(status) > 32_000) throw new ValidationError('job_metadata_too_large', 'Job metadata exceeds Phase 3 limits', '$');
     await this.store.put(jobRequestKey(request.jobId), JSON.stringify(request), createOnly());
@@ -158,11 +143,7 @@ export class CampaignService {
     await this.store.put(jobStatusKey(request.jobId), JSON.stringify(status), createOnly());
     await this.store.put(campaignJobIndexKey(request.campaignId), JSON.stringify(updatedIndex), indexWriteCondition(indexRecord));
     await this.store.put(eventBatchKey(request.jobId, events.batchId), `${JSON.stringify(events)}\n`, createOnly());
-    return Object.freeze({
-      campaign,
-      status: Object.freeze(status),
-      error: Object.freeze({ code: 'execution_plane_unavailable', message: 'Submitted Audit execution is disabled until the hardened executor is approved' })
-    });
+    return Object.freeze({ campaign, status: Object.freeze(status), error: Object.freeze({ code: 'execution_plane_unavailable', message: 'Submitted Audit execution is disabled until the hardened executor is approved' }) });
   }
 
   async claimAttempt(input) {
@@ -171,10 +152,7 @@ export class CampaignService {
     assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
     const requestRecord = await this.store.get(jobRequestKey(input.jobId));
     const request = validateJobRequest(parse(requireRecord(requestRecord, 'job_request_not_found', 'Job request not found', '$.jobId')));
-    const [statusRecord, campaignRecord] = await Promise.all([
-      this.store.get(jobStatusKey(input.jobId)),
-      this.store.get(campaignCurrentKey(request.campaignId))
-    ]);
+    const [statusRecord, campaignRecord] = await Promise.all([this.store.get(jobStatusKey(input.jobId)), this.store.get(campaignCurrentKey(request.campaignId))]);
     const current = validateJobStatus(parse(requireRecord(statusRecord, 'job_not_found', 'Job not found', '$.jobId')));
     validateCampaign(parse(requireRecord(campaignRecord, 'campaign_not_found', 'Campaign not found', '$.campaignId')), request.campaignId, request.workspaceId);
     if (current.campaignId !== request.campaignId) throw new ValidationError('campaign_mismatch', 'Job status and request campaign differ', '$.campaignId');
@@ -190,11 +168,20 @@ export class CampaignService {
   }
 
   async heartbeat(input) {
-    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['status', 'statusEtag'])); required(input, new Set(['status', 'statusEtag']));
-    const status = validateJobStatus(input.status);
-    if (!['provisioning', 'running', 'collecting_evidence'].includes(status.state)) throw new ValidationError('invalid_heartbeat_state', 'Heartbeat state is not active', '$.status.state');
-    await this.store.put(jobStatusKey(status.jobId), JSON.stringify(status), match(input.statusEtag));
-    return Object.freeze(status);
+    object(input); scanAuditForbiddenFields(input);
+    allowed(input, new Set(['jobId', 'attemptId', 'state', 'statusEtag'])); required(input, new Set(['jobId', 'attemptId', 'state']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
+    if (!ACTIVE_STATES.has(input.state)) throw new ValidationError('invalid_heartbeat_state', '$.state must be an active job state', '$.state');
+    const statusRecord = requireRecord(await this.store.get(jobStatusKey(input.jobId)), 'job_not_found', 'Job not found', '$.jobId');
+    assertOptionalExpectedEtag(input.statusEtag, statusRecord, '$.statusEtag', 'stale_status');
+    const current = validateJobStatus(parse(statusRecord));
+    if (current.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Heartbeat attempt does not match current job attempt', '$.attemptId');
+    if (!ACTIVE_STATES.has(current.state)) throw new ValidationError('invalid_heartbeat_state', 'Current job state is not active', '$.state');
+    if (input.state !== current.state) assertJobTransition(current.state, input.state, { trustedFixture: this.trustedFixture });
+    const at = instant(this.now);
+    const next = validateJobStatus({ ...current, state: input.state, revision: current.revision + 1, updatedAt: at, executionEnabled: false });
+    await this.store.put(jobStatusKey(input.jobId), JSON.stringify(next), match(statusRecord.etag));
+    return Object.freeze(next);
   }
 
   async appendEventBatch(batch) {
@@ -212,8 +199,12 @@ export class CampaignService {
   async completeJob(input) {
     if (!this.trustedFixture) throw new ValidationError('trusted_fixture_required', 'Job completion requires explicit trusted fixture authorization', '$');
     object(input); scanAuditForbiddenFields(input);
-    allowed(input, new Set(['currentStatus', 'statusEtag', 'finalState', 'reason'])); required(input, new Set(['currentStatus', 'statusEtag', 'finalState']));
-    const current = validateJobStatus(input.currentStatus);
+    allowed(input, new Set(['jobId', 'attemptId', 'finalState', 'reason', 'statusEtag'])); required(input, new Set(['jobId', 'attemptId', 'finalState']));
+    assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
+    const statusRecord = requireRecord(await this.store.get(jobStatusKey(input.jobId)), 'job_not_found', 'Job not found', '$.jobId');
+    assertOptionalExpectedEtag(input.statusEtag, statusRecord, '$.statusEtag', 'stale_status');
+    const current = validateJobStatus(parse(statusRecord));
+    if (current.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Completion attempt does not match current job attempt', '$.attemptId');
     assertJobTransition(current.state, input.finalState, { trustedFixture: true });
     const indexRecord = await this.store.get(campaignJobIndexKey(current.campaignId));
     const index = validateJobIndex(parse(requireRecord(indexRecord, 'job_index_not_found', 'Campaign job index not found', '$.campaignId')), current.campaignId);
@@ -222,7 +213,7 @@ export class CampaignService {
     const next = validateJobStatus({ ...current, state: input.finalState, revision: current.revision + 1, updatedAt: at, executionEnabled: false, ...(input.reason ? { reason: input.reason } : {}) });
     const events = makeBatch(current.jobId, next.revision, at, [{ type: `job_${input.finalState}`, at, ...(input.reason ? { reason: input.reason } : {}) }]);
     const updatedIndex = { ...index, records: { ...(index.records ?? {}), [current.jobId]: { ...(index.records?.[current.jobId] ?? {}), state: input.finalState, completedAt: at } } };
-    await this.store.put(jobStatusKey(current.jobId), JSON.stringify(next), match(input.statusEtag));
+    await this.store.put(jobStatusKey(current.jobId), JSON.stringify(next), match(statusRecord.etag));
     await this.store.put(eventBatchKey(current.jobId, events.batchId), `${JSON.stringify(events)}\n`, createOnly());
     await this.store.put(campaignJobIndexKey(current.campaignId), JSON.stringify(updatedIndex), match(indexRecord.etag));
     return Object.freeze({ status: Object.freeze(next) });
