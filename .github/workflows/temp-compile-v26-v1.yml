@@ -35,7 +35,7 @@ jobs:
               'sources': sources,
               'settings': {
                   'optimizer': {'enabled': True, 'runs': 200},
-                  'viaIR': False,
+                  'viaIR': True,
                   'outputSelection': {'*': {'*': [
                       'abi', 'metadata', 'storageLayout', 'evm.bytecode.object',
                       'evm.deployedBytecode.object', 'evm.methodIdentifiers'
@@ -81,7 +81,7 @@ jobs:
                   'contractName': contract_name,
                   'compilerVersion': '0.8.28',
                   'optimizer': {'enabled': True, 'runs': 200},
-                  'viaIR': False,
+                  'viaIR': True,
                   'creationBytecodeBytes': len(creation) // 2,
                   'deployedBytecodeBytes': len(runtime) // 2,
                   'eip170LimitBytes': 24576,
@@ -97,7 +97,7 @@ jobs:
                   'methodIdentifiers': artifact.get('evm', {}).get('methodIdentifiers', {}),
                   'bytecode': '0x' + creation,
                   'deployedBytecode': '0x' + runtime,
-                  'compiler': {'version': '0.8.28', 'optimizer': {'enabled': True, 'runs': 200}, 'viaIR': False}
+                  'compiler': {'version': '0.8.28', 'optimizer': {'enabled': True, 'runs': 200}, 'viaIR': True}
               }
               (out_dir / f'{contract_name}.json').write_text(json.dumps(normalized, indent=2), encoding='utf-8')
               (out_dir / f'{contract_name}.abi.json').write_text(json.dumps(artifact.get('abi', []), indent=2), encoding='utf-8')
@@ -107,7 +107,7 @@ jobs:
           (out_dir / 'contract-sizes-v1.json').write_text(json.dumps(sizes, indent=2), encoding='utf-8')
           lines = [
               '# CurveYield V26 Contract Sizes v1', '',
-              'Compiler: Solidity 0.8.28; optimizer enabled, 200 runs; viaIR disabled.', '',
+              'Compiler: Solidity 0.8.28; optimizer enabled, 200 runs; viaIR enabled.', '',
               '| Contract | Creation bytecode | Deployed bytecode | EIP-170 remaining |',
               '|---|---:|---:|---:|'
           ]
