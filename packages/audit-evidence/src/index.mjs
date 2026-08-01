@@ -1,4 +1,5 @@
 import { ValidationError, assertAuditId, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
+import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 import {
   MAX_LOG_CHUNK_BYTES,
   MAX_LOG_CHUNKS_PER_ATTEMPT,
@@ -22,6 +23,7 @@ export const MAX_REPORT_BUNDLE_BYTES = 10_000_000;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const LOGGABLE_STATES = new Set(['provisioning', 'running', 'collecting_evidence']);
 
 function object(value, path = '$') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError('invalid_type', `${path} must be an object`, path);
@@ -42,6 +44,12 @@ function instant(value, path) {
   if (Number.isNaN(date.getTime()) || date.toISOString() !== value) throw new ValidationError('invalid_timestamp', `${path} must be a canonical ISO instant`, path);
   return value;
 }
+function currentInstant(now) {
+  const value = now();
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) throw new TypeError('now must produce a valid date');
+  return date.toISOString();
+}
 function sha256(value, path) {
   if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) throw new ValidationError('invalid_sha256', `${path} must be a lowercase SHA-256 digest`, path);
   return value;
@@ -57,6 +65,12 @@ function toBytes(value) {
   if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
   throw new TypeError('Evidence values must be strings or byte arrays');
 }
+function bytesEqual(left, right) {
+  const a = toBytes(left); const b = toBytes(right);
+  if (a.byteLength !== b.byteLength) return false;
+  for (let index = 0; index < a.byteLength; index += 1) if (a[index] !== b[index]) return false;
+  return true;
+}
 async function digestHex(bytes) {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -70,9 +84,9 @@ function match(etag) {
   if (typeof etag !== 'string' || etag.length < 1) throw new ValidationError('missing_etag', 'An ETag precondition is required', '$.etag');
   return { onlyIf: { etagMatches: etag } };
 }
-function record(record, code, message, path) {
-  if (!record) throw new ValidationError(code, message, path);
-  return record;
+function record(value, code, message, path) {
+  if (!value) throw new ValidationError(code, message, path);
+  return value;
 }
 function validateIdentity(value, jobId, artifactId, schemaVersion, path = '$.manifest') {
   object(value, path); scanAuditForbiddenFields(value, path);
@@ -80,7 +94,6 @@ function validateIdentity(value, jobId, artifactId, schemaVersion, path = '$.man
   if (value.jobId !== jobId || value.artifactId !== artifactId) throw new ValidationError('identity_mismatch', `${path} identity does not match`, path);
   return value;
 }
-
 function validateRawManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'raw-artifact-manifest-v1');
   const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'bytes', 'contentType', 'createdAt']);
@@ -123,17 +136,40 @@ export class EvidenceService {
   constructor(store, options = {}) {
     if (!store || typeof store.put !== 'function' || typeof store.get !== 'function') throw new TypeError('EvidenceService requires an Audit store');
     this.store = store;
+    this.now = options.now ?? (() => new Date());
     this.validateEvidence = options.validateEvidence ?? (async () => { throw new ValidationError('validator_unavailable', 'Evidence validator is unavailable', '$'); });
   }
 
   async appendLogChunk(input) {
-    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes'])); required(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes']));
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes', 'statusEtag'])); required(input, new Set(['jobId', 'attemptId', 'sequence', 'bytes']));
     assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
     if (!Number.isSafeInteger(input.sequence) || input.sequence < 1 || input.sequence > MAX_LOG_CHUNKS_PER_ATTEMPT) throw new ValidationError('invalid_log_sequence', `$.sequence must be from 1 to ${MAX_LOG_CHUNKS_PER_ATTEMPT}`, '$.sequence');
     const bytes = toBytes(input.bytes);
     if (bytes.byteLength < 1 || bytes.byteLength > MAX_LOG_CHUNK_BYTES) throw new ValidationError('invalid_log_size', `Log chunks must contain 1 to ${MAX_LOG_CHUNK_BYTES} bytes`, '$.bytes');
-    await this.store.put(logChunkKey(input.jobId, input.attemptId, input.sequence), bytes, createOnly());
-    return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength });
+    const statusRecord = record(await this.store.get(jobStatusKey(input.jobId)), 'job_not_found', 'Job status not found', '$.jobId');
+    if (input.statusEtag !== undefined && input.statusEtag !== statusRecord.etag) throw new ValidationError('stale_status', '$.statusEtag is stale', '$.statusEtag');
+    const status = validateJobStatus(parse(statusRecord));
+    if (status.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Log attempt does not match current job attempt', '$.attemptId');
+    if (!LOGGABLE_STATES.has(status.state)) throw new ValidationError('invalid_log_state', 'Logs may only be appended while the job is active', '$.jobId');
+    const chunkKey = logChunkKey(input.jobId, input.attemptId, input.sequence);
+    if (status.highestLogSequence === input.sequence) {
+      const existing = record(await this.store.get(chunkKey), 'log_chunk_missing', 'Committed log chunk is missing', '$.sequence');
+      if (!bytesEqual(existing.value, bytes)) throw new ValidationError('log_chunk_conflict', 'Existing log chunk bytes do not match the retry', '$.bytes');
+      return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite: true });
+    }
+    if (input.sequence !== status.highestLogSequence + 1) throw new ValidationError('invalid_log_sequence', `$.sequence must equal ${status.highestLogSequence + 1}`, '$.sequence');
+    let recoveredPartialWrite = false;
+    try {
+      await this.store.put(chunkKey, bytes, createOnly());
+    } catch (cause) {
+      if (!(cause instanceof ConditionalWriteError)) throw cause;
+      const existing = await this.store.get(chunkKey);
+      if (!existing || !bytesEqual(existing.value, bytes)) throw cause;
+      recoveredPartialWrite = true;
+    }
+    const next = validateJobStatus({ ...status, revision: status.revision + 1, highestLogSequence: input.sequence, updatedAt: currentInstant(this.now), executionEnabled: false });
+    await this.store.put(jobStatusKey(input.jobId), JSON.stringify(next), match(statusRecord.etag));
+    return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite });
   }
 
   async readLogs(input) {
