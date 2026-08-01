@@ -17,13 +17,15 @@ indexes/tenant/{tenantId}/workspaces-v1.json
 
 The uploaded source remains one bundled archive. Extracted files are never stored as individual R2 objects. Ingress expires after one day; the sealed workspace archive and metadata retain for 30 days under the supported `free-development` policy.
 
-Normal uploaded-workspace sealing costs **4 Class A and 2 Class B operations**.
+Normal uploaded-workspace sealing costs **4 Class A and 2 Class B operations**. Exact-commit GitHub import also reads and merges the server-owned tenant index and costs **4 Class A and 1 Class B operation**.
+
+Callers provide stable identifiers, source data, and an optional expected index ETag only. Full tenant-index snapshots are rejected. Empty indexes are initialized server-side, earlier entries are preserved, stale ETags fail before immutable writes, and exact partial publications are retryable.
 
 ## Layers
 
-Each generated layer is one archive plus one manifest. Attaching a layer updates one deterministic workspace-layer index and emits one event batch. Public layer listing reads the index object and never calls `ListObjects`.
+Each generated layer is one archive plus one manifest. Attaching a layer reads and merges one deterministic server-owned workspace-layer index and emits one event batch. Public layer listing reads the index object and never calls `ListObjects`.
 
-Normal generated-layer attachment costs **4 Class A and 1 Class B operation**.
+Normal generated-layer attachment costs **4 Class A and 2 Class B operations**: one authoritative index read and one archive-verification read. Full caller-authored layer-index snapshots are rejected; empty-store initialization, ETag conflicts, and exact partial retries follow the same server-owned-index rules as workspace imports.
 
 Production capability reporting must keep generated-layer attachment disabled until a deployable trusted bundle resolver is configured.
 
