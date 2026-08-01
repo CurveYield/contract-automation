@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
+import { InMemoryAuditStore } from './audit-phase7-in-memory-store-v1.mjs';
 import { tenantForkIndexKey } from '../packages/audit-fork-protocol/src/index.mjs';
 import { ForkService } from '../packages/audit-forks/src/index.mjs';
 const decoder=new TextDecoder();
 class FailOnceStore{
   constructor(predicate){this.inner=new InMemoryAuditStore();this.predicate=predicate;this.failed=false;}
   async put(key,value,options){if(!this.failed&&this.predicate(key)){this.failed=true;throw new Error('simulated-partial-write');}return this.inner.put(key,value,options);}
-  get(key){return this.inner.get(key);} head(key){return this.inner.head(key);} delete(key){return this.inner.delete(key);} usage(){return this.inner.usage();}
+  get(key){return this.inner.get(key);} head(key){return this.inner.head(key);} delete(key){return this.inner.delete(key);}
 }
 const ids={tenantId:'ten_'+'1'.repeat(32),workspaceId:'ws_'+'2'.repeat(32),campaignId:'cmp_'+'3'.repeat(32),forkId:'fork_'+'4'.repeat(32),attemptId:'att_'+'5'.repeat(32)};
 function request(){return {schemaVersion:'fork-request-v1',...ids,profileId:'free-development-v1',policyVersion:'fork-policy-v1',requesterId:'usr',scopes:['audit:read','audit:submit'],chainId:1,blockNumber:21000000,blockHash:'0x'+'a'.repeat(64),adapterKind:'mock',executionGate:'trusted_mock',createdAt:'2026-08-01T00:00:00.000Z',idempotencyKey:'create'};}
