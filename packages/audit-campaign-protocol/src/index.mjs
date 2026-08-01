@@ -14,9 +14,9 @@ export const CAMPAIGN_OPERATION_BUDGETS = Object.freeze({
   eventBatch: Object.freeze(createOperationBudget({ classA: 1, classB: 0, storageBytes: 256_000 })),
   logChunk: Object.freeze(createOperationBudget({ classA: 2, classB: 1, storageBytes: 1_000_000 })),
   readTypicalLogs: Object.freeze(createOperationBudget({ classA: 0, classB: 9, storageBytes: 0 })),
-  rawArtifacts: Object.freeze(createOperationBudget({ classA: 2, classB: 0, storageBytes: 15_000_000 })),
-  acceptEvidence: Object.freeze(createOperationBudget({ classA: 4, classB: 1, storageBytes: 10_000_000 })),
-  publishReport: Object.freeze(createOperationBudget({ classA: 3, classB: 1, storageBytes: 1_000_000 })),
+  rawArtifacts: Object.freeze(createOperationBudget({ classA: 2, classB: 2, storageBytes: 15_000_000 })),
+  acceptEvidence: Object.freeze(createOperationBudget({ classA: 4, classB: 2, storageBytes: 10_000_000 })),
+  publishReport: Object.freeze(createOperationBudget({ classA: 3, classB: 3, storageBytes: 1_000_000 })),
   completeJob: Object.freeze(createOperationBudget({ classA: 3, classB: 2, storageBytes: 32_000 })),
   pollJob: Object.freeze(createOperationBudget({ classA: 0, classB: 1, storageBytes: 0 }))
 });
@@ -87,6 +87,9 @@ export const attemptKey = (jobId, attemptId) => `jobs/${id(jobId,'job','$.jobId'
 export const eventBatchKey = (jobId, value) => `jobs/${id(jobId,'job','$.jobId')}/events/${batchId(value)}.jsonl`;
 export const logChunkKey = (jobId, attemptId, value) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/${sequence(value)}.log`;
 export const logIndexKey = (jobId, attemptId) => `jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/logs/index-v1.json`;
+export const rawArtifactIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
+export const evidenceIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/evidence/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
+export const reportIngressKey = (jobId, attemptId, artifactId) => `ingress/jobs/${id(jobId,'job','$.jobId')}/attempts/${id(attemptId,'attempt','$.attemptId')}/reports/${id(artifactId,'artifact','$.artifactId')}.zip`;
 export const rawArtifactBundleKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
 export const rawArtifactManifestKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/artifacts/${id(artifactId,'artifact','$.artifactId')}-manifest-v1.json`;
 export const evidenceQuarantineKey = (jobId, artifactId) => `jobs/${id(jobId,'job','$.jobId')}/evidence/quarantine/${id(artifactId,'artifact','$.artifactId')}.tar.zst`;
