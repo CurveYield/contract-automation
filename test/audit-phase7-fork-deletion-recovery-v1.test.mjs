@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { InMemoryAuditStore } from '../packages/audit-r2-store/src/index.mjs';
+import { InMemoryAuditStore } from './audit-phase7-in-memory-store-v1.mjs';
 import {
   checkpointManifestKey,
   checkpointObjectKey,
