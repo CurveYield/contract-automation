@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "sequence": 3,
+  "messageId": "worker-0-round1-phases7-8-reconstruction-v1-000003",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000003_worker-0-round1-phases7-8-reconstruction-v1_v1.md",
+  "assignmentBlobSha": "470ad9570cb9ea59d65406095884de5fd7549ab6",
+  "issueNumber": 97,
+  "branch": "audit-round1/phases7-8-reconstruction-v1",
+  "startingSha": "c1f624cee5de9644736d6ab8f967661e6ae348fd",
+  "acceptedAt": "2026-08-01T17:31:42Z"
+}
