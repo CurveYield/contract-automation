@@ -1,0 +1,14 @@
+{
+  "fixtureSchemaVersion": "audit-phase4-inert-fixture-v1",
+  "owner": "CurveYield",
+  "description": "Slither resource exhaustion represented without parsing partial output.",
+  "profileId": "slither-v1",
+  "input": {
+    "resultJson": null,
+    "stdout": "CurveYield-owned synthetic inert fixture output",
+    "stderr": "",
+    "exitCode": null,
+    "durationMs": 86400000,
+    "terminationReason": "resource_exhaustion"
+  }
+}
