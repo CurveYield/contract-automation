@@ -1,0 +1,31 @@
+name: Temporary V27 Ganache TDD v1
+
+on:
+  push:
+    branches:
+      - automation/v27-ganache-full-v1
+    paths:
+      - 'packages/github-native-sim/src/local-state-journal.mjs'
+      - 'packages/github-native-sim/test/local-state-journal.test.mjs'
+      - '.github/workflows/temp-v27-ganache-tdd-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-v27-ganache-tdd-v1
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run focused local journal tests
+        run: node --test packages/github-native-sim/test/local-state-journal.test.mjs
