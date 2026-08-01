@@ -1,0 +1,9 @@
+exit_status=1
+925:not ok 154 - production upload-grant route rejects function-valued signer before calling it
+929:  location: '/home/runner/work/contract-automation/contract-automation/test/audit-repair-production-readiness.test.mjs:73:1'
+930:  failureType: 'testCodeFailure'
+931:  error: |-
+936:  code: 'ERR_ASSERTION'
+937:  name: 'AssertionError'
+938:  expected: 503
+939:  actual: 400
