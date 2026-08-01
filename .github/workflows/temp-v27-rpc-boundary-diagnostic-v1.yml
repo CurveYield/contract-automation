@@ -1,0 +1,131 @@
+name: Temporary V27 RPC Boundary Diagnostic v1
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-v27-rpc-boundary-diagnostic-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare direct and proxied eth_getCode behavior
+        run: |
+          mkdir -p "$RUNNER_TEMP/v27-rpc-diagnostic"
+          node --input-type=module > "$RUNNER_TEMP/v27-rpc-diagnostic/report.json" <<'NODE'
+          import { startForkRpcProxy } from './packages/github-native-sim/src/fork-rpc-proxy.mjs';
+
+          const upstreamUrl = process.env.RPC_ETHEREUM;
+          const block = 25660886;
+          const pinned = `0x${block.toString(16)}`;
+          const addresses = [
+            '0x0c057598dcE1891688829581f890DD2a3685a43f',
+            '0x01791F726B4103694969820be083196cC7c045fF',
+            '0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E',
+            '0x98b540fa89690969D111D045afCa575C91519B1A',
+            '0xeC456f00E1f1a6A9097b723Ab979c27AB45C5906',
+            '0xD63819Fef90981fAc8CD6240EA1f2559CD835CBa',
+            '0xec977F46467a3021785Cff88894886E617abd65b'
+          ];
+          let id = 1;
+
+          function serializeError(error) {
+            const causes = [];
+            let current = error;
+            const seen = new Set();
+            while (current && typeof current === 'object' && !seen.has(current)) {
+              seen.add(current);
+              causes.push({ name: current.name, message: current.message, code: current.code });
+              current = current.cause;
+            }
+            return causes;
+          }
+
+          async function rpc(url, address, tag, headerMode) {
+            const headers = { 'content-type': 'application/json' };
+            if (headerMode === 'proxy') {
+              headers.accept = 'application/json';
+              headers['accept-encoding'] = 'gzip, deflate, br';
+            }
+            if (headerMode === 'close') headers.connection = 'close';
+            const started = Date.now();
+            try {
+              const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ jsonrpc: '2.0', id: id++, method: 'eth_getCode', params: [address, tag] })
+              });
+              const text = await response.text();
+              let body = null;
+              try { body = JSON.parse(text); } catch {}
+              return {
+                ok: response.ok && Boolean(body) && !body.error,
+                httpStatus: response.status,
+                durationMs: Date.now() - started,
+                resultBytes: typeof body?.result === 'string' ? Math.max(0, (body.result.length - 2) / 2) : null,
+                rpcError: body?.error ?? null,
+                invalidBody: body ? null : text.slice(0, 300)
+              };
+            } catch (error) {
+              return { ok: false, durationMs: Date.now() - started, networkError: serializeError(error) };
+            }
+          }
+
+          const report = {
+            version: 'v27-rpc-boundary-diagnostic/v1',
+            node: process.version,
+            block,
+            pinned,
+            direct: [],
+            proxy: [],
+            startedAt: new Date().toISOString()
+          };
+
+          for (const headerMode of ['simple', 'proxy', 'close']) {
+            for (const tag of [pinned, 'latest']) {
+              for (const address of addresses) {
+                report.direct.push({ headerMode, tag, address, ...(await rpc(upstreamUrl, address, tag, headerMode)) });
+              }
+            }
+          }
+
+          let proxy;
+          try {
+            proxy = await startForkRpcProxy({ upstreamUrl, block, retryDelaysMs: [0, 250, 1000, 2500] });
+            for (const tag of [pinned, 'latest']) {
+              for (const address of addresses) {
+                report.proxy.push({ tag, address, ...(await rpc(proxy.url, address, tag, 'simple')) });
+              }
+            }
+            report.proxyDiagnostics = { ...proxy.diagnostics };
+          } catch (error) {
+            report.proxyStartupError = serializeError(error);
+          } finally {
+            await proxy?.close().catch(() => {});
+          }
+
+          report.finishedAt = new Date().toISOString();
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+          jq '{directTotal:(.direct|length), directFailures:[.direct[]|select(.ok!=true)], proxyTotal:(.proxy|length), proxyFailures:[.proxy[]|select(.ok!=true)], proxyDiagnostics}' "$RUNNER_TEMP/v27-rpc-diagnostic/report.json"
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V27-RPC-Boundary-Diagnostic-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-rpc-diagnostic
+          if-no-files-found: error
+          retention-days: 30
