@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "agentId": "orchestrator",
+  "state": "initializing",
+  "lastPollAt": null,
+  "lastProcessedEvent": null,
+  "activeReviewWorkerId": null,
+  "activeReviewSequence": null,
+  "updatedAt": "2026-08-01T11:27:00Z"
+}
