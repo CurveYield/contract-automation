@@ -1,0 +1,44 @@
+[
+  {
+    "sourceName": "CurveYieldSdYBHybridVaultV26.sol",
+    "contractName": "CurveYieldSdYBHybridVaultV26",
+    "compilerVersion": "0.8.28",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "creationBytecodeBytes": 17144,
+    "deployedBytecodeBytes": 15715,
+    "eip170LimitBytes": 24576,
+    "eip170RemainingBytes": 8861
+  },
+  {
+    "sourceName": "CurveYieldSdYBRewardConverterV26.sol",
+    "contractName": "CurveYieldSdYBRewardConverterV26",
+    "compilerVersion": "0.8.28",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "creationBytecodeBytes": 4847,
+    "deployedBytecodeBytes": 3951,
+    "eip170LimitBytes": 24576,
+    "eip170RemainingBytes": 20625
+  },
+  {
+    "sourceName": "CurveYieldSdYBTwoDestinationStrategyV26.sol",
+    "contractName": "CurveYieldSdYBTwoDestinationStrategyV26",
+    "compilerVersion": "0.8.28",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "creationBytecodeBytes": 30611,
+    "deployedBytecodeBytes": 27050,
+    "eip170LimitBytes": 24576,
+    "eip170RemainingBytes": -2474
+  }
+]
