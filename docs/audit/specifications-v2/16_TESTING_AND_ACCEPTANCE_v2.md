@@ -22,7 +22,7 @@
 - expired prefixes are deleted under lifecycle tests;
 - status overwrites do not accumulate object versions in application indexes;
 - ETag conflicts do not lose transitions;
-- one conservative audit-job fixture stays within 75 Class A, 46 Class B, and 0.0342 GB-month under free-development assumptions;
+- one conservative audit-job fixture stays within 75 Class A, 47 Class B, and 0.0342 GB-month under free-development assumptions;
 - admin usage report matches synthetic operation traces;
 - same-account mode subtracts configured Lite reserve.
 
