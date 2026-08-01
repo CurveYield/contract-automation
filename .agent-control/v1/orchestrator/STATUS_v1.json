@@ -2,15 +2,16 @@
   "protocolVersion": 1,
   "agentId": "orchestrator",
   "state": "idle",
-  "lastPollAt": "2026-08-01T12:34:00Z",
-  "lastProcessedEvent": "worker-completions-reviewed-and-reassigned-20260801T123400Z",
+  "lastPollAt": "2026-08-01T12:43:00Z",
+  "lastProcessedEvent": "polling-resumed-workers-2-and-3-20260801T124200Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "pendingActions": [
     "Await Worker 0 acknowledgement of sequence 1 and issue #70 progress.",
-    "Await Worker 1 owner-written completed status for issue #53.",
-    "Await Worker 2 actual issue #57 commits and final report.",
-    "Await Worker 3 acknowledgement of sequence 1 and issue #71 progress."
+    "Await Worker 1 acknowledgement of sequence 1 and issue #72 progress.",
+    "Await Worker 2 completed status and pinned issue #57 final report.",
+    "Await Worker 3 completed status and pinned issue #71 final report.",
+    "Bootstrap the local wake agent from its GitHub prompt; only Worker 0 and Worker 1 currently require immediate wake."
   ],
-  "updatedAt": "2026-08-01T12:34:00Z"
+  "updatedAt": "2026-08-01T12:43:00Z"
 }
