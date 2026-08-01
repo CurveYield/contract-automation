@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-3",
+  "sequence": 2,
+  "messageId": "worker-3-phase5-result-contract-hardening-v2-000002",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000002_worker-3-phase5-result-contract-hardening-v2_v1.md",
+  "assignmentBlobSha": "624599e7e43e9a5f832eac7539fa5a70e8746d57",
+  "issueNumber": 76,
+  "branch": "audit-phase5/result-contract-hardening-v2",
+  "startingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
+  "acceptedAt": "2026-08-01T14:01:00Z"
+}
