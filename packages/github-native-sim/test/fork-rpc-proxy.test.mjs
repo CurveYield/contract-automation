@@ -133,3 +133,44 @@ test('proxy retries an upstream connection reset during a forwarded fork read', 
     await close(upstream);
   }
 });
+
+test('proxy serves deterministic local account state without querying the fork RPC', async () => {
+  const localAccount = '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1';
+  const seen = [];
+  const upstream = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const payload = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    seen.push(payload.method);
+    const result = payload.method === 'eth_getBlockByNumber'
+      ? { number: '0x7b', transactions: [] }
+      : '0x999';
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ jsonrpc: '2.0', id: payload.id, result }));
+  });
+
+  const upstreamUrl = await listen(upstream);
+  let proxy;
+  try {
+    proxy = await startForkRpcProxy({
+      upstreamUrl,
+      block: 123,
+      localAccounts: [localAccount],
+      retryDelaysMs: [0]
+    });
+    const nonce = await rpc(proxy.url, 21, 'eth_getTransactionCount', [localAccount, '0x7b']);
+    const code = await rpc(proxy.url, 22, 'eth_getCode', [localAccount, '0x7b']);
+    const storage = await rpc(proxy.url, 23, 'eth_getStorageAt', [localAccount, '0x0', '0x7b']);
+
+    assert.deepEqual(nonce, { jsonrpc: '2.0', id: 21, result: '0x0' });
+    assert.deepEqual(code, { jsonrpc: '2.0', id: 22, result: '0x' });
+    assert.deepEqual(storage, { jsonrpc: '2.0', id: 23, result: `0x${'00'.repeat(32)}` });
+    assert.equal(seen.includes('eth_getTransactionCount'), false);
+    assert.equal(seen.includes('eth_getCode'), false);
+    assert.equal(seen.includes('eth_getStorageAt'), false);
+    assert.equal(proxy.diagnostics.localAccountHits, 3);
+  } finally {
+    await proxy?.close();
+    await close(upstream);
+  }
+});

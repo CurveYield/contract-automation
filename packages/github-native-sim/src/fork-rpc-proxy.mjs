@@ -13,6 +13,7 @@ const TRANSIENT_NETWORK_CODES = new Set([
   'UND_ERR_HEADERS_TIMEOUT',
   'UND_ERR_SOCKET'
 ]);
+const ZERO_STORAGE = `0x${'00'.repeat(32)}`;
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -52,6 +53,22 @@ function isTransientNetworkError(error) {
 function responseForId(response, id) {
   if (response.error) return { jsonrpc: '2.0', id, error: response.error };
   return { jsonrpc: '2.0', id, result: response.result };
+}
+
+function localAccountResponse(entry, localAccounts) {
+  const account = typeof entry.params?.[0] === 'string' ? entry.params[0].toLowerCase() : null;
+  if (!account || !localAccounts.has(account)) return null;
+  switch (entry.method) {
+    case 'eth_getTransactionCount':
+    case 'eth_getBalance':
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: '0x0' };
+    case 'eth_getCode':
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: '0x' };
+    case 'eth_getStorageAt':
+      return { jsonrpc: '2.0', id: entry.id ?? null, result: ZERO_STORAGE };
+    default:
+      return null;
+  }
 }
 
 async function requestRpc({
@@ -129,13 +146,16 @@ async function closeServer(server) {
 export async function startForkRpcProxy({
   upstreamUrl,
   block = 'latest',
+  localAccounts = [],
   retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
   requestTimeoutMs = 30_000,
   fetchImpl = globalThis.fetch
 }) {
   if (typeof upstreamUrl !== 'string' || upstreamUrl.length === 0) throw new Error('upstreamUrl is required');
+  if (!Array.isArray(localAccounts)) throw new Error('localAccounts must be an array');
   if (!Array.isArray(retryDelaysMs) || retryDelaysMs.length === 0) throw new Error('retryDelaysMs is required');
   if (typeof fetchImpl !== 'function') throw new Error('fetchImpl must be a function');
+  const localAccountSet = new Set(localAccounts.map((account) => String(account).toLowerCase()));
 
   let resolvedTag = blockTag(block);
   let blockNumberAttempts = 0;
@@ -178,6 +198,7 @@ export async function startForkRpcProxy({
     resolvedBlock: Number.parseInt(resolvedTag.slice(2), 16),
     blockNumberAttempts,
     prefetchAttempts: prefetched.attempts,
+    localAccountHits: 0,
     cacheHits: 0,
     forwardedRequests: 0
   };
@@ -198,6 +219,12 @@ export async function startForkRpcProxy({
       const requests = Array.isArray(payload) ? payload : [payload];
       const outputs = [];
       for (const entry of requests) {
+        const local = localAccountResponse(entry, localAccountSet);
+        if (local) {
+          diagnostics.localAccountHits += 1;
+          outputs.push(local);
+          continue;
+        }
         const cached = cache.get(cacheKey(entry.method, entry.params ?? []));
         if (cached) {
           diagnostics.cacheHits += 1;

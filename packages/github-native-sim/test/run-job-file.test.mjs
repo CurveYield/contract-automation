@@ -81,6 +81,10 @@ test('simulation routes Ganache through the retrying fork proxy and closes both 
   const temporary = await temporaryOutput('github-native-proxy-routing-');
   let proxyClosed = false;
   let engineClosed = false;
+  const deterministicAccounts = [
+    '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1',
+    '0xffcf8fdee72ac11b5c542428b35eef5769c409f0'
+  ];
   try {
     const jobFile = path.join(testDirectory, 'fixtures', 'missing-rpc', 'job.json');
     const result = await runGitHubNativeJob({
@@ -88,9 +92,14 @@ test('simulation routes Ganache through the retrying fork proxy and closes both 
       outputDir: temporary.output,
       environment: { RPC_ETHEREUM: 'http://127.0.0.1:1/private-rpc' },
       services: {
-        startForkRpcProxy: async ({ upstreamUrl, block }) => {
+        getDeterministicGanacheAccounts: async (totalAccounts) => {
+          assert.equal(totalAccounts, 20);
+          return deterministicAccounts;
+        },
+        startForkRpcProxy: async ({ upstreamUrl, block, localAccounts }) => {
           assert.equal(upstreamUrl, 'http://127.0.0.1:1/private-rpc');
           assert.equal(block, 'latest');
+          assert.deepEqual(localAccounts, deterministicAccounts);
           return {
             url: 'http://127.0.0.1:8547',
             blockNumber: 123,
@@ -98,6 +107,7 @@ test('simulation routes Ganache through the retrying fork proxy and closes both 
               resolvedBlock: 123,
               blockNumberAttempts: 1,
               prefetchAttempts: 2,
+              localAccountHits: 4,
               cacheHits: 0,
               forwardedRequests: 0
             },
@@ -124,6 +134,7 @@ test('simulation routes Ganache through the retrying fork proxy and closes both 
     assert.equal(result.status, 'completed');
     assert.equal(result.resolvedBlock, 123);
     assert.equal(result.forkTransport.prefetchAttempts, 2);
+    assert.equal(result.forkTransport.localAccountHits, 4);
     assert.equal(result.steps.length, 1);
     assert.equal(proxyClosed, true);
     assert.equal(engineClosed, true);
