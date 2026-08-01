@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'github-native-sim/jobs/v27-functional-smoke-v2/**'
+      - 'scripts/temp-v27-vault-deploy-diagnostic.mjs'
       - '.github/workflows/temp-v27-functional-smoke-v2.yml'
 
 permissions:
@@ -41,45 +42,42 @@ jobs:
           echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-functional-smoke-v2/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
           echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-functional-smoke-v2/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
 
-      - name: Execute merged GitHub-native functional smoke with bounded retries
+      - name: Execute merged GitHub-native functional smoke
         id: execute
         run: |
           set -u
           result_root="$RUNNER_TEMP/v27-functional-smoke-v2"
           rm -rf "$result_root"
           mkdir -p "$result_root"
-          success=0
-          selected=''
 
-          for attempt in $(seq 1 8); do
-            output="$result_root/attempt-$attempt"
-            echo "Starting isolated live-fork attempt $attempt"
+          set +e
+          node packages/github-native-sim/src/cli.mjs \
+            --job github-native-sim/jobs/v27-functional-smoke-v2/job.json \
+            --output "$result_root/attempt-1"
+          status=$?
+          set -e
 
-            set +e
-            node packages/github-native-sim/src/cli.mjs \
-              --job github-native-sim/jobs/v27-functional-smoke-v2/job.json \
-              --output "$output"
-            status=$?
-            set -e
+          if test -f "$result_root/attempt-1/result.json"; then
+            jq '{status, stepCount: (.steps | length), error}' "$result_root/attempt-1/result.json" || true
+          fi
 
-            if test -f "$output/result.json"; then
-              jq '{status, stepCount: (.steps | length), error}' "$output/result.json" || true
-            fi
-
-            if test "$status" -eq 0; then
-              success=1
-              selected="$attempt"
-              cp -a "$output" "$result_root/selected"
-              break
-            fi
-
-            sleep $((attempt * 2))
-          done
-
-          printf '%s\n' "$selected" > "$result_root/selected-attempt.txt"
-          printf 'success=%s\n' "$success" >> "$GITHUB_OUTPUT"
-          printf 'selected_attempt=%s\n' "$selected" >> "$GITHUB_OUTPUT"
+          if test "$status" -eq 0; then
+            cp -a "$result_root/attempt-1" "$result_root/selected"
+            printf '1\n' > "$result_root/selected-attempt.txt"
+            printf 'success=1\n' >> "$GITHUB_OUTPUT"
+          else
+            printf '\n' > "$result_root/selected-attempt.txt"
+            printf 'success=0\n' >> "$GITHUB_OUTPUT"
+          fi
           exit 0
+
+      - name: Diagnose V27 vault constructor directly
+        if: always()
+        continue-on-error: true
+        run: >-
+          node scripts/temp-v27-vault-deploy-diagnostic.mjs
+          "$RUNNER_TEMP/v27-functional-smoke-v2/attempt-1"
+          "$RUNNER_TEMP/v27-functional-smoke-v2/v27-vault-deploy-diagnostic.json"
 
       - name: Upload functional smoke result
         if: always()
