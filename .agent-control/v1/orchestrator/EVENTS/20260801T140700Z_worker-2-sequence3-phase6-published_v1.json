@@ -1,0 +1,37 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-2-sequence3-phase6-published-20260801T140700Z",
+  "eventType": "assignment_published",
+  "createdAt": "2026-08-01T14:07:00Z",
+  "createdBy": "orchestrator",
+  "deliveryMode": "github-mailbox-only-no-inline-relay",
+  "userDirective": "Publish worker instructions and updates to GitHub rather than returning relay text for the user to paste into worker chats.",
+  "workerId": "worker-2",
+  "sequence": 3,
+  "messageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
+  "issueNumber": 77,
+  "branch": "audit-phase6/result-contract-compatibility-v1",
+  "startingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000003_worker-2-phase6-result-contract-compatibility-v1_v1.md",
+  "assignmentBlobSha": "3cddba86f8fd5a1e0159e64efbb025d695c96410",
+  "currentPointerPath": ".agent-control/v1/workers/worker-2/CURRENT_v1.json",
+  "issueCommentUrl": "https://github.com/CurveYield/contract-automation/issues/77#issuecomment-5151768063",
+  "issueCommentId": 5151768063,
+  "previousCompletion": {
+    "sequence": 2,
+    "issueNumber": 74,
+    "branch": "audit-phase4/result-contract-hardening-v2",
+    "finalSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+    "reportReference": "issue:74#issuecomment-5151718894",
+    "recommendation": "ACCEPT"
+  },
+  "overlapCheck": {
+    "worker0": "Phase 1-3 only; Phase 4-6 prohibited",
+    "worker1": "Phase 4 catalog/API only; Phase 6 prohibited",
+    "worker3": "Phase 5 result-contract/catalog only; Phase 6 prohibited",
+    "worker4": "retired; accepted Phase 6 source branch is read-only input",
+    "result": "no writable overlap"
+  },
+  "phaseGate": "Phase 6 integration remains blocked until Phase 5 is independently accepted",
+  "nextExpectedWorkerAction": "Re-fetch CURRENT_v1.json, validate and acknowledge sequence 3 exactly once, then post startup and all later reports only to issue #77."
+}
