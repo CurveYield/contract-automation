@@ -1,0 +1,57 @@
+{
+  "protocolVersion": 1,
+  "gateId": "audit-round1-phases4-8-integration-v1",
+  "state": "waiting_for_worker_completion",
+  "canonicalPhase3Base": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+  "observedAt": "2026-08-01T16:40:00Z",
+  "lineageFindings": {
+    "phase4IntegrationBase": {
+      "sha": "d90099c201d3012c090b6f73dda604bd5b143c95",
+      "relationshipToCanonicalPhase3": "diverged",
+      "aheadBy": 125,
+      "behindBy": 18,
+      "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
+    },
+    "phase4ResultHardening": {
+      "sha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+      "relationshipToCanonicalPhase3": "diverged",
+      "aheadBy": 156,
+      "behindBy": 18,
+      "mergeBase": "eea324abc11cce640005cdd83ef1822698e0b9d1"
+    },
+    "phase7Active": {
+      "branch": "audit-phase7/control-storage-mock-v1",
+      "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+      "checkpointSha": "cb4b8708b59f55349fb5e4252f2aef452ee85e82",
+      "relationshipToCanonicalPhase3": "direct_descendant"
+    },
+    "phase8Active": {
+      "branch": "audit-phase8/clean-room-control-merge-v1",
+      "startingSha": "2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c",
+      "relationshipToCanonicalPhase3": "direct_descendant"
+    }
+  },
+  "acceptedOrPendingInputs": {
+    "phase4CatalogApi": "pending issue 72 final SHA",
+    "phase4ResultContracts": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+    "phase5LifecycleRepair": "2982614879f1f6d252a7630eb5331031d5934b4e",
+    "phase6ResultContracts": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
+    "phase7": "pending issue 80 final SHA",
+    "phase8": "pending issue 91 final SHA"
+  },
+  "requiredReconstructionOrder": [
+    "Create the Round 1 integration branch from canonical Phase 3 SHA 2a6b9ced81f7729b48cf8b82e82dc3e6ccbcf35c.",
+    "Reconstruct accepted Phase 4 profile contracts, adapters, parsers, fixtures, result contracts, catalog and API changes without merging stale Phase 4 PR topology.",
+    "Apply accepted Phase 5 packages and lifecycle repair onto the reconstructed Phase 4 head.",
+    "Apply accepted Phase 6 packages onto the reconstructed Phase 5 head.",
+    "Integrate the accepted Phase 7 final head, preserving its direct Phase 3 ancestry and resolving only explicit shared-interface differences.",
+    "Integrate the accepted Phase 8 final head after Phase 7 acceptance.",
+    "Run combined cross-phase protocol, identity, result, storage, non-interference and static capability gates before any Phase 9 implementation begins."
+  ],
+  "prohibited": [
+    "Do not merge PR 43.",
+    "Do not merge PR 73.",
+    "Do not treat isolated worker acceptance as combined integration acceptance.",
+    "Do not merge to main or enable submitted-project execution."
+  ]
+}
