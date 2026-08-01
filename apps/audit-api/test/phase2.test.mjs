@@ -7,6 +7,7 @@ const tenantId = `ten_${'1'.repeat(32)}`;
 const workspaceId = `ws_${'2'.repeat(32)}`;
 const layerId = `lyr_${'3'.repeat(32)}`;
 const digest = 'a'.repeat(64);
+const grantExpiry = '2026-07-31T13:00:00.000Z';
 
 function request(path, init = {}) {
   return new Request(`https://api.audit.preflight.curveyield.online${path}`, init);
@@ -61,7 +62,7 @@ test('Phase 2 health and capabilities expose metadata features while execution s
 test('creates a signed upload grant with submit scope and never exposes signing material', async () => {
   const env = state();
   const response = await auditApi.fetch(jsonPost('/audit/v1/workspace-upload-grants', 'audit-submit-test-key', {
-    tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z'
+    tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: grantExpiry
   }), env);
   assert.equal(response.status, 201);
   const text = await response.text();
@@ -76,7 +77,7 @@ test('Lite or read-only credentials fail before upload signer and workspace serv
   for (const key of ['lite-client-key', 'audit-read-test-key']) {
     const env = state();
     const response = await auditApi.fetch(jsonPost('/audit/v1/workspace-upload-grants', key, {
-      tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z'
+      tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: grantExpiry
     }), env);
     assert.equal(response.status, key.startsWith('lite') ? 401 : 403);
     assert.deepEqual(env.calls, []);
@@ -87,7 +88,7 @@ test('seals workspaces and reads workspace/layer indexes through reviewed servic
   const env = state();
   const sealed = await auditApi.fetch(jsonPost('/audit/v1/workspaces/seal', 'audit-submit-test-key', {
     workspaceId,
-    grant: { schemaVersion: 'upload-grant-v1', tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: '2026-08-01T12:00:00.000Z', destinationKey: `ingress/${tenantId}/${digest}.zip`, issuedAt: '2026-07-31T12:00:00.000Z', signature: 'sig' },
+    grant: { schemaVersion: 'upload-grant-v1', tenantId, sha256: digest, bytes: 1_000_000, contentType: 'application/zip', expiresAt: grantExpiry, destinationKey: `ingress/${tenantId}/${digest}.zip`, issuedAt: '2026-07-31T12:00:00.000Z', signature: 'sig' },
     tenantIndex: { schemaVersion: 'tenant-workspaces-v1', tenantId, workspaces: [workspaceId] }
   }), env);
   assert.equal(sealed.status, 201);
