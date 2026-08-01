@@ -1,0 +1,9 @@
+export const DIRECT_MODE_ID='github-direct-audit-v1';
+export const CONTROL_BRANCH='audit-direct/control-v1';
+export const AUTOMATIC_FALLBACK=false;
+export const LIMITS=Object.freeze({string:512,id:96,array:10_000,depth:32,bytes:2_000_000});
+export const SCHEMAS=Object.freeze({request:'github-direct-request-v1',state:'github-direct-state-v1',event:'github-direct-event-v1',capability:'github-direct-capability-v1',result:'github-direct-result-manifest-v1',report:'github-direct-report-index-v1'});
+export const DIRECT_STATES=Object.freeze(['requested','validating','admitted','awaiting_executor','fixture_running','publishing','completed','failed','cancelled','policy_rejected','execution_plane_unavailable']);
+export const CAPABILITIES=Object.freeze(['read-source','write-control-ledger','publish-check','publish-comment','publish-status','read-artifact-metadata']);
+export const OUTCOMES=Object.freeze(['modeled_fixture','success','findings','failed','cancelled','resource_exhaustion','execution_unavailable']);
+export const EXECUTION_STATES=Object.freeze(['fixture_modeled','not_executed','execution_plane_unavailable']);
