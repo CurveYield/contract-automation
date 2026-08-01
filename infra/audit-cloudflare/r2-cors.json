@@ -3,7 +3,7 @@
     {
       "allowed": {
         "origins": ["https://audit.preflight.curveyield.online"],
-        "methods": ["GET", "HEAD"],
+        "methods": ["GET", "HEAD", "PUT"],
         "headers": ["content-type", "if-match", "if-none-match"]
       },
       "exposeHeaders": ["etag"],
