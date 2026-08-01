@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "working",
+  "state": "blocked",
   "lastConsumedSequence": 1,
   "activeSequence": 1,
   "activeMessageId": "worker-0-phase1-3-pr-chain-000001",
@@ -10,8 +10,15 @@
   "startingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:70",
-  "blockers": [],
-  "updatedAt": "2026-08-01T13:07:45Z",
-  "recoveryNote": "Sequence 1 acknowledgement and working transition were written by orchestrator-delegated recovery after Worker 0 reported that both worker-side GitHub write methods failed before reaching GitHub."
+  "reportReference": "issue:70#issuecomment-5151918716",
+  "blockers": [
+    "External Cloudflare Workers Git integration is deploying PR #13, #24, and #35 branch heads to production; branch publication is prohibited until production auto-deploy is restricted to the approved release branch or disconnected."
+  ],
+  "updatedAt": "2026-08-01T14:46:56Z",
+  "preparedArtifacts": {
+    "phase1Commit": "67a898da0b1c222481253abcc70fdf3bc3d428ce",
+    "phase2Commit": "d95319c027995d4ba53afb88e6d17fe262a2e585",
+    "phase3Commit": "680a667f8f3e76f1aa78014d55cecbc8b3e64266",
+    "ledgerCommit": "16c5fbe1dc6fe002dc034c43884660f2ef4eb14f"
+  }
 }
