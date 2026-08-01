@@ -16,6 +16,9 @@ import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const encoder = new TextEncoder();
+export const MAX_UPLOAD_GRANT_LIFETIME_MS = 60 * 60 * 1000;
+export const MAX_ARCHIVE_COMPRESSION_RATIO = 10_000;
+const SUPPORTED_ZIP_COMPRESSION_METHODS = new Set([0, 8]);
 
 function toBytes(value) {
   if (value instanceof Uint8Array) return new Uint8Array(value);
@@ -62,6 +65,17 @@ function safeArchivePath(path) {
   }
   return { path, directory };
 }
+function decodeArchiveName(bytes, start, length) {
+  try { return decoder.decode(bytes.subarray(start, start + length)); }
+  catch { throw new ValidationError('invalid_zip_name', 'ZIP entry names must be valid UTF-8', '$.archive'); }
+}
+function assertUploadGrantLifetime(issuedAt, expiresAt, path = '$.expiresAt') {
+  const issued = new Date(issuedAt).getTime();
+  const expires = new Date(expiresAt).getTime();
+  if (!Number.isFinite(issued) || !Number.isFinite(expires) || expires <= issued || expires - issued > MAX_UPLOAD_GRANT_LIFETIME_MS) {
+    throw new ValidationError('invalid_grant_lifetime', `${path} must be no more than one hour after issuance`, path);
+  }
+}
 
 export async function inspectZipArchive(value) {
   const bytes = toBytes(value);
@@ -82,27 +96,60 @@ export async function inspectZipArchive(value) {
   if (diskEntries !== totalEntries || totalEntries > 20_000 || centralOffset + centralSize > eocd) throw new ValidationError('invalid_zip', 'ZIP central directory is invalid', '$.archive');
   const files = [];
   const seen = new Set();
+  let totalUncompressedBytes = 0;
   let cursor = centralOffset;
   for (let index = 0; index < totalEntries; index += 1) {
     if (cursor + 46 > eocd || u32(view, cursor) !== 0x02014b50) throw new ValidationError('invalid_zip', 'ZIP central directory entry is invalid', '$.archive');
+    const versionMadeBy = u16(view, cursor + 4);
     const flags = u16(view, cursor + 8);
     if ((flags & 0x0001) !== 0) throw new ValidationError('unsupported_zip', 'Encrypted ZIP entries are not supported', '$.archive');
     const compressionMethod = u16(view, cursor + 10);
+    if (!SUPPORTED_ZIP_COMPRESSION_METHODS.has(compressionMethod)) throw new ValidationError('unsupported_zip', `ZIP compression method ${compressionMethod} is not supported`, '$.archive');
     const crc32 = u32(view, cursor + 16);
     const compressedBytes = u32(view, cursor + 20);
     const uncompressedBytes = u32(view, cursor + 24);
     const nameLength = u16(view, cursor + 28);
     const extraLength = u16(view, cursor + 30);
     const commentLength = u16(view, cursor + 32);
+    const externalAttributes = u32(view, cursor + 38);
     const localHeaderOffset = u32(view, cursor + 42);
     const next = cursor + 46 + nameLength + extraLength + commentLength;
-    if (nameLength < 1 || next > eocd || localHeaderOffset >= centralOffset) throw new ValidationError('invalid_zip', 'ZIP entry bounds are invalid', '$.archive');
-    let name;
-    try { name = decoder.decode(bytes.subarray(cursor + 46, cursor + 46 + nameLength)); }
-    catch { throw new ValidationError('invalid_zip_name', 'ZIP entry names must be valid UTF-8', '$.archive'); }
+    if (nameLength < 1 || next > eocd || localHeaderOffset + 30 > centralOffset) throw new ValidationError('invalid_zip', 'ZIP entry bounds are invalid', '$.archive');
+    const name = decodeArchiveName(bytes, cursor + 46, nameLength);
     const safe = safeArchivePath(name);
     if (seen.has(name)) throw new ValidationError('duplicate_archive_path', `Duplicate archive path: ${name}`, '$.archive');
     seen.add(name);
+
+    const platform = versionMadeBy >>> 8;
+    const unixMode = externalAttributes >>> 16;
+    if (platform === 3 && (unixMode & 0xf000) === 0xa000) throw new ValidationError('unsupported_zip', `Symbolic links are not supported: ${name}`, '$.archive');
+    totalUncompressedBytes += uncompressedBytes;
+    if (!Number.isSafeInteger(totalUncompressedBytes) || totalUncompressedBytes > MAX_SOURCE_BYTES) throw new ValidationError('archive_too_large', 'ZIP total uncompressed size exceeds the source limit', '$.archive');
+    if (uncompressedBytes > 0 && uncompressedBytes / Math.max(compressedBytes, 1) > MAX_ARCHIVE_COMPRESSION_RATIO) {
+      throw new ValidationError('compression_ratio_exceeded', `ZIP entry compression ratio is too large: ${name}`, '$.archive');
+    }
+
+    if (u32(view, localHeaderOffset) !== 0x04034b50) throw new ValidationError('invalid_zip', `ZIP local header is missing: ${name}`, '$.archive');
+    const localFlags = u16(view, localHeaderOffset + 6);
+    const localMethod = u16(view, localHeaderOffset + 8);
+    const localCrc32 = u32(view, localHeaderOffset + 14);
+    const localCompressedBytes = u32(view, localHeaderOffset + 18);
+    const localUncompressedBytes = u32(view, localHeaderOffset + 22);
+    const localNameLength = u16(view, localHeaderOffset + 26);
+    const localExtraLength = u16(view, localHeaderOffset + 28);
+    const localNameStart = localHeaderOffset + 30;
+    const localDataStart = localNameStart + localNameLength + localExtraLength;
+    const localDataEnd = localDataStart + compressedBytes;
+    if (localNameLength < 1 || localDataStart > centralOffset || localDataEnd > centralOffset) throw new ValidationError('invalid_zip', `ZIP local entry bounds are invalid: ${name}`, '$.archive');
+    const localName = decodeArchiveName(bytes, localNameStart, localNameLength);
+    if (localName !== name) throw new ValidationError('invalid_zip', `ZIP local and central entry paths do not match: ${name}`, '$.archive');
+    if (localFlags !== flags) throw new ValidationError('invalid_zip', `ZIP local and central flags do not match: ${name}`, '$.archive');
+    if ((localFlags & 0x0001) !== 0) throw new ValidationError('unsupported_zip', 'Encrypted ZIP entries are not supported', '$.archive');
+    if (localMethod !== compressionMethod) throw new ValidationError('invalid_zip', `ZIP local and central compression methods do not match: ${name}`, '$.archive');
+    if ((flags & 0x0008) === 0 && (localCrc32 !== crc32 || localCompressedBytes !== compressedBytes || localUncompressedBytes !== uncompressedBytes)) {
+      throw new ValidationError('invalid_zip', `ZIP local and central entry metadata do not match: ${name}`, '$.archive');
+    }
+
     files.push({ path: safe.path, directory: safe.directory, compressionMethod, crc32, compressedBytes, uncompressedBytes });
     cursor = next;
   }
@@ -113,7 +160,7 @@ export async function inspectZipArchive(value) {
     schemaVersion: 'zip-manifest-v1',
     files: Object.freeze(files.map((item) => Object.freeze(item))),
     fileCount: files.filter((item) => !item.directory).length,
-    totalUncompressedBytes: files.reduce((sum, item) => sum + item.uncompressedBytes, 0),
+    totalUncompressedBytes,
     canonicalArchiveSha256: await digestHex(canonicalBytes)
   });
 }
@@ -145,6 +192,7 @@ export async function createUploadGrant(request, options = {}) {
   const nowDate = now instanceof Date ? now : new Date(now);
   if (Number.isNaN(nowDate.getTime())) throw new TypeError('now must produce a valid date');
   if (new Date(validated.expiresAt).getTime() <= nowDate.getTime()) throw new ValidationError('expired_grant', '$.expiresAt must be in the future', '$.expiresAt');
+  assertUploadGrantLifetime(nowDate.toISOString(), validated.expiresAt);
   if (typeof options.sign !== 'function') throw new TypeError('createUploadGrant requires a signing callback');
   const grant = {
     schemaVersion: 'upload-grant-v1',
@@ -162,6 +210,7 @@ function validateGrant(grant) {
   const request = validateUploadGrantRequest({ tenantId: grant.tenantId, sha256: grant.sha256, bytes: grant.bytes, contentType: grant.contentType, expiresAt: grant.expiresAt });
   if (grant.destinationKey !== ingressKey(request.tenantId, request.sha256)) throw new ValidationError('invalid_destination', '$.grant.destinationKey is invalid', '$.grant.destinationKey');
   iso(grant.issuedAt, '$.grant.issuedAt');
+  assertUploadGrantLifetime(grant.issuedAt, grant.expiresAt, '$.grant.expiresAt');
   if (typeof grant.signature !== 'string' || grant.signature.length < 1 || grant.signature.length > 512) throw new ValidationError('invalid_signature', '$.grant.signature is invalid', '$.grant.signature');
   return structuredClone(grant);
 }
