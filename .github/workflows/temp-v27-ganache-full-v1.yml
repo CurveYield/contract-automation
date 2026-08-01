@@ -36,15 +36,33 @@ jobs:
       - name: Install trusted repository dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Prepare partial-report directory
+        run: mkdir -p "$RUNNER_TEMP/v27-ganache-full-v1"
+
       - name: Reconstruct and verify Ganache lifecycle runner
         run: |
           set -euo pipefail
           job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          result_root="$RUNNER_TEMP/v27-ganache-full-v1"
           mkdir -p "$job_root/scripts"
-          cat "$job_root"/runner-payload/run-v27-ganache-lifecycle.mjs.b64.part-* > /tmp/v27-ganache-runner.b64
-          base64 -d /tmp/v27-ganache-runner.b64 > "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          cat "$job_root"/runner-payload-hex/run-v27-ganache-lifecycle.mjs.gz.hex.part-* > /tmp/v27-ganache-runner.hex
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('/tmp/v27-ganache-runner.hex').read_text(encoding='utf-8')
+          compact = ''.join(source.split())
+          Path('/tmp/v27-ganache-runner.mjs.gz').write_bytes(bytes.fromhex(compact))
+          PY
+          echo 'f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba  /tmp/v27-ganache-runner.mjs.gz' | sha256sum -c -
+          gzip -dc /tmp/v27-ganache-runner.mjs.gz > "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
           echo 'fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe  github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
           node --check "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          cat > "$result_root/runner-verification.json" <<JSON
+          {
+            "gzipSha256": "f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba",
+            "sourceSha256": "fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe",
+            "syntax": "passed"
+          }
+          JSON
 
       - name: Run focused journal tests and syntax verification
         run: |
@@ -59,6 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          result_root="$RUNNER_TEMP/v27-ganache-full-v1"
           source_ref='origin/automation/v27-functional-smoke-v2'
           source_root='github-native-sim/jobs/v27-functional-smoke-v2'
           git fetch --no-tags origin 'automation/v27-functional-smoke-v2:refs/remotes/origin/automation/v27-functional-smoke-v2'
@@ -74,6 +93,14 @@ jobs:
           echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
           echo 'e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBRewardConverterV27.sol' | sha256sum -c -
           echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
+          cat > "$result_root/source-verification.json" <<JSON
+          {
+            "archiveSha256": "4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59",
+            "vaultSha256": "c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2",
+            "converterSha256": "e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e",
+            "strategySha256": "8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04"
+          }
+          JSON
 
       - name: Execute one-shot V27 Ganache full simulation
         id: execute
@@ -81,8 +108,6 @@ jobs:
           set -u
           job_root='github-native-sim/jobs/v27-ganache-full-v1'
           result_root="$RUNNER_TEMP/v27-ganache-full-v1"
-          rm -rf "$result_root"
-          mkdir -p "$result_root"
           set +e
           RESULT_ROOT="$result_root" node "$job_root/scripts/run-v27-ganache-lifecycle.mjs" \
             > "$result_root/workflow-stdout.log" \
