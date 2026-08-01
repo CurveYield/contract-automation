@@ -1,5 +1,10 @@
 import worker from './phase3.mjs';
 import {
+  auditPhase4Capabilities,
+  auditPhase4Health,
+  handlePhase4CatalogRequest
+} from './phase4-catalog.mjs';
+import {
   auditPhase3Capabilities,
   auditRuntimeReadiness,
   isUnsupportedRetentionPolicy,
@@ -82,12 +87,17 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const runtimeEnv = await prepareAuditRuntimeEnv(env);
+    const phase4Response = await handlePhase4CatalogRequest(request, runtimeEnv);
+    if (phase4Response) return phase4Response;
     const retentionDenied = await unsupportedRetentionResponse(request, runtimeEnv, url);
     if (retentionDenied) return retentionDenied;
 
     const response = await worker.fetch(request, runtimeEnv);
+    if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/health') {
+      return jsonWithHeaders(auditPhase4Health(), response);
+    }
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
-      return jsonWithHeaders(auditPhase3Capabilities(env), response);
+      return jsonWithHeaders(auditPhase4Capabilities(auditPhase3Capabilities(env)), response);
     }
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/readiness') {
       return jsonWithHeaders(auditRuntimeReadiness(env), response);
