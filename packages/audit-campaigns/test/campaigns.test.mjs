@@ -92,14 +92,17 @@ test('refuses attempt claims without explicit trusted-fixture authorization and 
   assert.deepEqual(store.usage(), { classA: 0, classB: 0, free: 0, storedBytes: 0 });
 });
 
-test('heartbeat overwrites status with one Class A and an ETag precondition', async () => {
+test('heartbeat reads status and writes one authoritative update', async () => {
   const store = new InMemoryAuditStore();
   const initial = await store.put(jobStatusKey(jobId), JSON.stringify(jobStatus({ state: 'running', revision: 7, highestLogSequence: 2, attemptId })));
   const before = store.usage();
-  const next = jobStatus({ state: 'running', revision: 8, highestLogSequence: 3, updatedAt: '2026-07-31T12:08:00.000Z', attemptId });
-  await new CampaignService(store).heartbeat({ status: next, statusEtag: initial.etag });
-  assert.deepEqual(operationDelta(store.usage(), before), { classA: 1, classB: 0, free: 0 });
-  await assert.rejects(() => new CampaignService(store).heartbeat({ status: { ...next, revision: 9 }, statusEtag: initial.etag }), /precondition/i);
+  const service = new CampaignService(store, { now: () => new Date('2026-07-31T12:08:00.000Z') });
+  const next = await service.heartbeat({ jobId, attemptId, state: 'running', statusEtag: initial.etag });
+  assert.equal(next.revision, 8);
+  assert.equal(next.highestLogSequence, 2);
+  assert.equal(next.updatedAt, '2026-07-31T12:08:00.000Z');
+  assert.deepEqual(operationDelta(store.usage(), before), { classA: 1, classB: 1, free: 0 });
+  await assert.rejects(() => service.heartbeat({ jobId, attemptId, state: 'running', statusEtag: initial.etag }), /stale|status/i);
 });
 
 test('appends one immutable event batch with one Class A operation', async () => {
@@ -121,15 +124,15 @@ test('polls a job with one Class B operation', async () => {
   assert.deepEqual(operationDelta(store.usage(), before), { classA: 0, classB: 1, free: 0 });
 });
 
-test('completes a fixture job using three Class A and one Class B operations', async () => {
+test('completes a fixture job using three Class A and two Class B operations', async () => {
   const store = new InMemoryAuditStore();
   const current = jobStatus({ state: 'collecting_evidence', revision: 12, highestLogSequence: 8, updatedAt: '2026-07-31T12:20:00.000Z', attemptId });
   const statusRecord = await store.put(jobStatusKey(jobId), JSON.stringify(current));
   await store.put(campaignJobIndexKey(campaignId), JSON.stringify({ schemaVersion: 'campaign-job-index-v1', campaignId, jobs: [jobId], records: { [jobId]: { state: 'collecting_evidence' } } }));
   const before = store.usage();
-  const result = await new CampaignService(store, { now: () => new Date('2026-07-31T12:21:00.000Z'), trustedFixture: true }).completeJob({ currentStatus: current, statusEtag: statusRecord.etag, finalState: 'completed' });
+  const result = await new CampaignService(store, { now: () => new Date('2026-07-31T12:21:00.000Z'), trustedFixture: true }).completeJob({ jobId, attemptId, statusEtag: statusRecord.etag, finalState: 'completed' });
   assert.equal(result.status.state, 'completed');
-  assert.deepEqual(operationDelta(store.usage(), before), { classA: 3, classB: 1, free: 0 });
+  assert.deepEqual(operationDelta(store.usage(), before), { classA: 3, classB: 2, free: 0 });
 });
 
 test('cancellation is durable and terminal jobs cannot re-enter the lifecycle', async () => {
