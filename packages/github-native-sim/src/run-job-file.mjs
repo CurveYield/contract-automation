@@ -12,6 +12,7 @@ import {
 import { startGanacheEngine } from '../../runner/src/engine.mjs';
 import { materializeOpenZeppelin } from '../../runner/src/project.mjs';
 import { renderHtmlReport } from '../../runner/src/report.mjs';
+import { raceWithRpcPolicyTermination } from '../../runner/src/rpc-method-policy.mjs';
 import { executeWorkflow } from '../../runner/src/workflow.mjs';
 import { getGenesisBlockFixture } from './chain-fixtures.mjs';
 import { startForkRpcProxy } from './fork-rpc-proxy.mjs';
@@ -85,6 +86,8 @@ function serializeError(cause, environment) {
     name: cause?.name ?? 'Error',
     message: redactText(cause?.message ?? String(cause), environment),
     code: cause?.code,
+    rpcCode: cause?.rpcCode,
+    method: cause?.method,
     shortMessage: redactText(cause?.shortMessage, environment),
     data: cause?.data
   };
@@ -170,14 +173,25 @@ export async function runGitHubNativeJob({
       });
       resolvedBlock = forkProxy.blockNumber;
       forkTransport = forkProxy.diagnostics;
-      engine = await startEngine({
-        artifacts: compilation.artifacts,
-        workflow: job.workflow,
-        chainId: chain.chainId,
-        forkUrl: forkProxy.url,
-        block: resolvedBlock
-      });
-      const execution = await executeWorkflow(job.workflow, engine.runtime, { aliases: engine.aliases });
+      engine = await raceWithRpcPolicyTermination(
+        startEngine({
+          artifacts: compilation.artifacts,
+          workflow: job.workflow,
+          chainId: chain.chainId,
+          forkUrl: forkProxy.url,
+          block: resolvedBlock
+        }),
+        forkProxy.termination,
+        {
+          async onLateValue(lateEngine) {
+            await Promise.resolve(lateEngine?.close?.()).catch(() => {});
+          }
+        }
+      );
+      const execution = await raceWithRpcPolicyTermination(
+        executeWorkflow(job.workflow, engine.runtime, { aliases: engine.aliases }),
+        forkProxy.termination
+      );
       steps = execution.steps;
       deployments = execution.context.deployments;
     }
