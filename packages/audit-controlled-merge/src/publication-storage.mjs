@@ -36,9 +36,10 @@ export function planMergeStorageTransaction(input){
   if(retentionDays>integer(quota.maxRetentionDays,'$.quota.maxRetentionDays',1,90))fail('quota_exceeded','$.retentionDays');
   const existing=stringArray(v.existingImmutableDigests,'$.existingImmutableDigests',{maximum:10,item:digest});
   const base=`tenants/${tenantId}/workspaces/${workspaceId}/merges/${mergeId}`;safePath(base,'$.base');
-  const terminalReads=ids.map((id)=>({class:'B',method:'GetObject',key:`tenants/${tenantId}/workspaces/${workspaceId}/campaigns/${id}/terminal-manifest-v1.json`}));
-  const operations=[...terminalReads,{class:'B',method:'GetObject',key:`${base}/current-v1.json`},{class:'B',method:'GetObject',key:`tenants/${tenantId}/workspaces/${workspaceId}/indexes/merges-v1.json`},{class:'A',method:'PutObject',key:`${base}/request-events-v1.json`,immutable:true},{class:'A',method:'PutObject',key:`${base}/relations-provenance-v1.json`,immutable:true},{class:'A',method:'PutObject',key:`${base}/manifest-v1.json`,immutable:true},{class:'A',method:'PutObject',key:`${base}/current-index-v1.json`,ifMatch:v.currentEtag}];
-  const classA=operations.filter((op)=>op.class==='A').length,classB=operations.filter((op)=>op.class==='B').length;
+  const terminalReads=ids.map((id)=>({class:'class-b',method:'GetObject',key:`tenants/${tenantId}/workspaces/${workspaceId}/campaigns/${id}/terminal-manifest-v1.json`}));
+  const operations=[...terminalReads,{class:'class-b',method:'GetObject',key:`${base}/current-v1.json`},{class:'class-b',method:'GetObject',key:`tenants/${tenantId}/workspaces/${workspaceId}/indexes/merges-v1.json`},
+    {class:'class-a',method:'PutObject',key:`${base}/request-events-v1.json`,immutable:true},{class:'class-a',method:'PutObject',key:`${base}/relations-provenance-v1.json`,immutable:true},{class:'class-a',method:'PutObject',key:`${base}/manifest-v1.json`,immutable:true},{class:'class-a',method:'PutObject',key:`${base}/current-index-v1.json`,ifMatch:v.currentEtag}];
+  const classA=operations.filter((op)=>op.class==='class-a').length,classB=operations.filter((op)=>op.class==='class-b').length;
   const variant=ids.length===2&&retainedBytes===2_000_000&&retentionDays===90&&existing.length===0?'typical-4a-4b-2mb-90d':existing.length?'idempotent-retry':'bounded-variant';
   return frozenClone({schemaVersion:'phase8-merge-storage-transaction-v1',tenantId,workspaceId,mergeId,operations,summary:{classA,classB,retainedBytes,retentionDays,variant},usesPrefixListing:false,conditionalWrites:true,serverOwnedIndexes:true,recovery:{existingImmutableDigests:existing,retrySafe:true}});
 }
