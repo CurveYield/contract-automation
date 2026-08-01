@@ -1,0 +1,17 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-4",
+  "state": "ready",
+  "lastConsumedSequence": 0,
+  "activeSequence": 1,
+  "activeMessageId": "worker-4-phase9-web-reports-operator-ui-v1-000001",
+  "issueNumber": 105,
+  "branch": "audit-phase9/web-reports-operator-ui-v1",
+  "startingSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+  "finalSha": null,
+  "recommendation": null,
+  "reportReference": "issue:105",
+  "blockers": [],
+  "replacementRuntimeRequired": true,
+  "updatedAt": "2026-08-01T23:39:00Z"
+}
