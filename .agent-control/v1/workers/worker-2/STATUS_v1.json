@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "ready",
-  "lastConsumedSequence": 5,
+  "state": "working",
+  "lastConsumedSequence": 6,
   "activeSequence": 6,
   "activeMessageId": "worker-2-round2-phases1-8-integration-v1-000006",
   "issueNumber": 103,
@@ -12,5 +12,5 @@
   "recommendation": null,
   "reportReference": "issue:103",
   "blockers": [],
-  "updatedAt": "2026-08-01T23:34:00Z"
+  "updatedAt": "2026-08-01T23:36:21Z"
 }
