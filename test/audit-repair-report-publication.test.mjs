@@ -88,5 +88,6 @@ test('completed report publication rejects conflicting duplicate bytes', async (
   const store = new InMemoryAuditStore();
   const service = new EvidenceService(store);
   await service.publishReport(await reportInput(firstArtifactId, 'original report', '2026-08-01T07:30:00.000Z'));
-  await assert.rejects(() => service.publishReport(await reportInput(firstArtifactId, 'different report', '2026-08-01T07:30:00.000Z')), /exists|conflict|precondition/i);
+  const conflicting = await reportInput(firstArtifactId, 'different report', '2026-08-01T07:30:00.000Z');
+  await assert.rejects(() => service.publishReport(conflicting), /exists|conflict|precondition/i);
 });
