@@ -22,16 +22,7 @@ function normalizeChangedPath(value) {
   return value.replace(/^\.\//, '');
 }
 
-export function selectChangedJob({ changedPaths = [], manualJobPath } = {}) {
-  if (manualJobPath !== undefined && manualJobPath !== '') {
-    const normalized = normalizeChangedPath(manualJobPath);
-    const match = normalized.match(MANUAL_PATH_PATTERN);
-    if (!match) {
-      throw new Error('manual job path must match github-native-sim/jobs/<job-id>/job.json');
-    }
-    return selectionFor(match[1]);
-  }
-
+function selectFromChangedPaths(changedPaths) {
   if (!Array.isArray(changedPaths) || changedPaths.length === 0) {
     throw new Error('No changed job paths were provided');
   }
@@ -52,6 +43,32 @@ export function selectChangedJob({ changedPaths = [], manualJobPath } = {}) {
     throw new Error(`Atomic job commits must include ${selection.jobPath}`);
   }
   return selection;
+}
+
+function selectManualJob(manualJobPath) {
+  const normalized = normalizeChangedPath(manualJobPath);
+  const match = normalized.match(MANUAL_PATH_PATTERN);
+  if (!match) {
+    throw new Error('manual job path must match github-native-sim/jobs/<job-id>/job.json');
+  }
+  return selectionFor(match[1]);
+}
+
+export function selectChangedJob({ changedPaths = [], manualJobPath } = {}) {
+  const hasManualPath = manualJobPath !== undefined && manualJobPath !== '';
+  const hasChangedPaths = Array.isArray(changedPaths) && changedPaths.length > 0;
+  const manualSelection = hasManualPath ? selectManualJob(manualJobPath) : null;
+
+  if (!hasChangedPaths) {
+    if (manualSelection) return manualSelection;
+    throw new Error('No changed job paths were provided');
+  }
+
+  const changedSelection = selectFromChangedPaths(changedPaths);
+  if (manualSelection && manualSelection.jobId !== changedSelection.jobId) {
+    throw new Error('manual job path does not match the changed job directory');
+  }
+  return manualSelection ?? changedSelection;
 }
 
 export function selectJobFromEnvironment(environment = process.env) {
