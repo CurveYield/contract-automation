@@ -1,0 +1,21 @@
+{
+  "protocolVersion": 1,
+  "eventType": "replacement_handoff_created",
+  "issuedBy": "orchestrator",
+  "recordedAt": "2026-08-01T12:12:00Z",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "continuityIssue": 63,
+  "entrypoint": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+  "rootPointer": ".agent-control/v1/ORCHESTRATOR_REPLACEMENT_READ_FIRST_v1.md",
+  "files": [
+    ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+    ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_v1.json",
+    ".agent-control/v1/orchestrator/HANDOFF/RESTART_RUNBOOK_v1.md",
+    ".agent-control/v1/orchestrator/HANDOFF/AUTOMATION_RECOVERY_v1.md",
+    ".agent-control/v1/orchestrator/HANDOFF/CONTEXT_EXHAUSTION_CHECKLIST_v1.md",
+    ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md"
+  ],
+  "worker4Policy": "finish-issue-55-then-retire-no-future-assignment",
+  "standingRestrictionsPreserved": true
+}
