@@ -86,6 +86,19 @@ reverse_min_new = """        await branchRecorder.contractCall({ label: 'migrate
 """
 source = replace_once_or_already(source, reverse_min_old, reverse_min_new, 'reverse migration minimum')
 
+chain_id_old = """  assertRecord('chain id is Ethereum mainnet', BigInt(chainId) === 1n, { chainId });
+"""
+chain_id_new = """  const expectedRpcChainId = BigInt(process.env.V27_REMOTE_ANVIL_CHAIN_ID ?? chainId);
+  const sourceChainId = BigInt(process.env.V27_SOURCE_CHAIN_ID ?? '1');
+  assertRecord('remote fork RPC chain id matches configured ethui stack',
+    BigInt(chainId) === expectedRpcChainId,
+    { chainId, expectedRpcChainId: expectedRpcChainId.toString() });
+  assertRecord('fork source chain is Ethereum mainnet',
+    sourceChainId === 1n,
+    { sourceChainId: sourceChainId.toString() });
+"""
+source = replace_once_or_already(source, chain_id_old, chain_id_new, 'remote/source chain assertions')
+
 path.write_text(source, encoding='utf-8')
 
 engine_path = path.with_name('hardhat-engine.mjs')
