@@ -1,0 +1,1 @@
+Trigger the completed standard-JSON YB Shanghai compatibility run in a fresh workflow execution. No simulation code, V27 source, configuration, or report schema changes.
