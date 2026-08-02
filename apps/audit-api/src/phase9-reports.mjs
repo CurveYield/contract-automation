@@ -46,11 +46,27 @@ function exactQuery(url, allowed) {
 }
 
 function provider(env) {
-  const value = env?.AUDIT_REPORT_DISCOVERY;
+  let value;
+  try { value = env?.AUDIT_REPORT_DISCOVERY; }
+  catch {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
   if (!value || typeof value !== 'object') {
     throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
   }
   return value;
+}
+
+function providerMethod(service, name) {
+  let descriptor;
+  try { descriptor = Object.getOwnPropertyDescriptor(service, name); }
+  catch {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
+  if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value !== 'function') {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
+  return descriptor.value.bind(service);
 }
 
 function providerFailure() {
@@ -93,10 +109,8 @@ function canonicalVisibleReports(rawItems, scope) {
 }
 
 async function listReports(service, scope, { limit, cursor }) {
-  if (typeof service.listReports !== 'function') {
-    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
-  }
-  const raw = await service.listReports({ tenantId: scope.tenantId, workspaceId: scope.workspaceId });
+  const method = providerMethod(service, 'listReports');
+  const raw = await method({ tenantId: scope.tenantId, workspaceId: scope.workspaceId });
   const reports = canonicalVisibleReports(providerItems(raw), scope);
   let start = 0;
   if (cursor) {
@@ -123,10 +137,8 @@ async function listReports(service, scope, { limit, cursor }) {
 }
 
 async function getReport(service, scope, reportId) {
-  if (typeof service.getReport !== 'function') {
-    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
-  }
-  const raw = await service.getReport({
+  const method = providerMethod(service, 'getReport');
+  const raw = await method({
     tenantId: scope.tenantId,
     workspaceId: scope.workspaceId,
     reportId
