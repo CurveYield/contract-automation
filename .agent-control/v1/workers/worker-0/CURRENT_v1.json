@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "sequence": 5,
-  "messageId": "worker-0-round3-phase78-release-v1-000005",
-  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000005_worker-0-round3-phase78-release-v1.md",
-  "assignmentBlobSha": "183f78fdc8102999b154c37482479b229bd92edc",
-  "issuedAt": "2026-08-02T02:25:00Z"
+  "sequence": 6,
+  "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000006_worker-0-round4-integration-spine-review-v1.md",
+  "assignmentBlobSha": "d445f8e93ac6fdb364bfe195b6ebe701dec9caa0",
+  "issuedAt": "2026-08-02T09:21:00Z"
 }
