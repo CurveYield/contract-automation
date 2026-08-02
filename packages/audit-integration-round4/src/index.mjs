@@ -7,6 +7,18 @@ const SAFE_TEXT = /^[^\u0000-\u001f\u007f]+$/u;
 const SAFE_PATH = /^[A-Za-z0-9_.@+*/\/-]+$/u;
 const ISO_UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const TRUSTED_ATTESTATION_BLOB_SHA = '2a0c85ca831bf30b042b057adb643c0d2d001435';
+const TRUSTED_RECORDED_AT = '2026-08-02T12:47:46Z';
+const TRUSTED_PURPOSE = 'Provide deterministic completed Stage A evidence when the assigned worker runtime is retired or never starts and the orchestrator completes the work on an isolated branch.';
+const TRUSTED_VALIDATION_RULES = Object.freeze([
+  'The original assignment pointer, issue, sequence and starting SHA must match the takeover entry.',
+  'The orchestrator must prove the original worker branch was untouched at takeover or freeze the newest inherited head before creating the isolated takeover branch.',
+  'The takeover branch head must equal evidenceHeadSha and reviewed code/test blobs must match the exact manifest.',
+  'Only ACCEPT or ACCEPT WITH REPAIR recommendations are intake-eligible.',
+  'The final issue comment must bind the reviewed code snapshot, evidence head, recommendation and exact manifest paths.',
+  'A retired worker-owned STATUS_v1.json is not completion authority and must not be required or modified by the orchestrator.',
+  'Worker 2 must validate this attestation as an alternative evidence form rather than fabricating a completed worker status.',
+  'Traditional branch merges remain forbidden; intake is exact path/blob transplant only.'
+]);
 const ACCEPT = new Set(['ACCEPT', 'ACCEPT WITH REPAIR']);
 const WORKER_EVIDENCE_KEYS = Object.freeze(['manifests', 'report', 'resolvedBranchHead', 'status']);
 const TAKEOVER_EVIDENCE_KEYS = Object.freeze([
@@ -323,12 +335,16 @@ function validateTakeover(slotInput, evidenceInput) {
     || root.integrationIssue !== 122) {
     fail('attestation_header_mismatch', '$.evidence.attestation');
   }
-  timestamp(root.recordedAt, '$.evidence.attestation.recordedAt');
-  text(root.purpose, '$.evidence.attestation.purpose', 1000);
+  const recordedAt = timestamp(root.recordedAt, '$.evidence.attestation.recordedAt');
+  const purpose = text(root.purpose, '$.evidence.attestation.purpose', 1000);
   const rules = list(root.validationRules, '$.evidence.attestation.validationRules', 64);
-  if (rules.length < 1) fail('missing_validation_rules', '$.evidence.attestation.validationRules');
   for (let index = 0; index < rules.length; index += 1) {
     text(rules[index], `$.evidence.attestation.validationRules[${index}]`, 1000);
+  }
+  if (recordedAt !== TRUSTED_RECORDED_AT
+    || purpose !== TRUSTED_PURPOSE
+    || JSON.stringify(rules) !== JSON.stringify(TRUSTED_VALIDATION_RULES)) {
+    fail('attestation_content_mismatch', '$.evidence.attestation');
   }
   const safety = record(root.safety, '$.evidence.attestation.safety', SAFETY_KEYS);
   for (const key of SAFETY_KEYS) {
@@ -338,9 +354,12 @@ function validateTakeover(slotInput, evidenceInput) {
   const takeovers = list(root.takeovers, '$.evidence.attestation.takeovers', 16).map((entry, index) => (
     canonicalTakeover(entry, `$.evidence.attestation.takeovers[${index}]`)
   ));
-  if (new Set(takeovers.map((entry) => entry.workerId)).size !== takeovers.length) {
-    fail('duplicate_takeover_worker', '$.evidence.attestation.takeovers');
+  const trustedTakeovers = [TRUSTED_TAKEOVERS['worker-1'], TRUSTED_TAKEOVERS['worker-3']];
+  if (takeovers.length !== trustedTakeovers.length
+    || !takeovers.every((entry, index) => equalTakeover(entry, trustedTakeovers[index]))) {
+    fail('attestation_content_mismatch', '$.evidence.attestation.takeovers');
   }
+
   const takeover = takeovers.find((entry) => entry.workerId === slot.workerId && entry.issueNumber === slot.issueNumber);
   const trusted = TRUSTED_TAKEOVERS[slot.workerId];
   if (!takeover || !trusted || !equalTakeover(takeover, trusted)) {
