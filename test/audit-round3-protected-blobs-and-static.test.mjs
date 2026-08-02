@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const protectedBlobs = Object.freeze({
-  '.github/workflows/github-native-simulate.yml': '54e446d4a715ca9678ed4d7434f7ba90b2c67c96',
+  '.github/workflows/github-native-simulate.yml': 'c6312e071401acdd6554bacfe753f3791b6d1502',
   'packages/runner/src/rpc-method-policy.mjs': '59dfa72f41a697d533720a4d8f939a81aeba6736',
   'packages/runner/src/fork-rpc-guard.mjs': '73690f16b506baa50ca471ce5b5566ccb601e765',
   'packages/runner/src/run-job.mjs': 'e6489c756d43a2f294120ac3c84687030fb919db',
@@ -51,7 +52,7 @@ test('Audit production modules remain transport-free and execution-disabled',asy
   ];
   let checked=0;
   for(const root of auditRoots){
-    const directory=new URL(`../packages/${root}/src/`,import.meta.url);
+    const directory=fileURLToPath(new URL(`../packages/${root}/src/`,import.meta.url));
     let paths=[];
     try{paths=await files(directory);}catch(error){if(error.code==='ENOENT')continue;throw error;}
     for(const path of paths){
