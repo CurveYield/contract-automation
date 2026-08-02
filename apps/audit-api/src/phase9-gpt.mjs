@@ -156,7 +156,40 @@ function providerMethod(env, name) {
 function rewrittenReportRequest(request) {
   const url = new URL(request.url);
   url.pathname = url.pathname.replace('/audit/v1/gpt/reports', '/audit/v1/reports');
-  return new Request(url, { method: request.method, headers: request.headers });
+  return new Request(url, {
+    method: request.method,
+    headers: request.headers,
+    signal: request.signal
+  });
+}
+
+function providerContractFailure() {
+  throw new ApiContractError(
+    'provider_contract_error',
+    'Status provider returned an invalid result',
+    '$',
+    500
+  );
+}
+
+function validateProviderSummary(raw, route, scope) {
+  try {
+    return route.kind === 'evidence-summary'
+      ? validateEvidenceSummary(raw, {
+        jobId: route.resourceId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId
+      })
+      : validateStatusSummary(raw, {
+        resourceType: route.resourceType,
+        resourceId: route.resourceId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId
+      });
+  } catch (cause) {
+    if (cause instanceof ApiContractError && cause.code === 'not_found') throw cause;
+    providerContractFailure();
+  }
 }
 
 async function authorizationForRoute(request, env, route) {
@@ -261,19 +294,7 @@ export async function handlePhase9GptRequest(request, env) {
     if (raw === null || raw === undefined) {
       throw new ApiContractError('not_found', 'Resource not found', '$.resourceId', 404);
     }
-    const value = route.kind === 'evidence-summary'
-      ? validateEvidenceSummary(raw, {
-        jobId: route.resourceId,
-        tenantId: scope.tenantId,
-        workspaceId: scope.workspaceId
-      })
-      : validateStatusSummary(raw, {
-        resourceType: route.resourceType,
-        resourceId: route.resourceId,
-        tenantId: scope.tenantId,
-        workspaceId: scope.workspaceId
-      });
-    return createJsonResponse(value, { env, cache });
+    return createJsonResponse(validateProviderSummary(raw, route, scope), { env, cache });
   } catch (cause) {
     return errorResponse(cause, env);
   }
