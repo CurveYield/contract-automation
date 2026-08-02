@@ -5,12 +5,28 @@ function requireInteger(value, name, { min = 0, max = Number.MAX_SAFE_INTEGER } 
   return value;
 }
 
+function parseQuantity(value, name) {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value)) {
+    const parsed = Number.parseInt(value.slice(2), 16);
+    if (Number.isSafeInteger(parsed) && parsed >= 0) return parsed;
+  }
+  throw new Error(`Local fork returned invalid ${name}`);
+}
+
 export async function latestBlock(provider) {
-  const block = await provider.getBlock('latest');
-  if (!block || !Number.isSafeInteger(Number(block.number)) || !Number.isSafeInteger(Number(block.timestamp))) {
+  const block = await provider.send('eth_getBlockByNumber', ['latest', false]);
+  if (!block || typeof block !== 'object') {
     throw new Error('Local fork returned invalid latest block metadata');
   }
-  return { number: Number(block.number), timestamp: Number(block.timestamp) };
+  return {
+    number: parseQuantity(block.number, 'latest block number'),
+    timestamp: parseQuantity(block.timestamp, 'latest block timestamp')
+  };
+}
+
+export async function latestBlockNumber(provider) {
+  return parseQuantity(await provider.send('eth_blockNumber', []), 'block number');
 }
 
 export async function setNextTimestamp(provider, timestamp) {
@@ -62,8 +78,7 @@ export async function mineUntilTimestamp(provider, { timestamp: target, interval
 
 export async function advanceToBlock(provider, { blockNumber: target, intervalSeconds }) {
   requireInteger(target, 'blockNumber');
-  const current = Number(await provider.getBlockNumber());
-  if (!Number.isSafeInteger(current)) throw new Error('Local fork returned an invalid block number');
+  const current = await latestBlockNumber(provider);
   if (target < current) throw new Error(`Target block ${target} is behind local block ${current}; use refork`);
   const blocks = target - current;
   if (blocks > 10_000) throw new Error('advanceToBlock exceeds 10000 blocks');
