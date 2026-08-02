@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "round4-stage0-unions-and-waves-v1",
+  "productionIntakeAuthorized": false,
+  "sharedFileUnionSchema": {
+    "schemaVersion": "round4-shared-file-union-v1",
+    "requiredFields": ["path", "baseBlobSha", "inputs", "outputBlobSha", "requiredTests"],
+    "inputRequiredFields": ["candidateId", "blobSha", "fields"],
+    "rules": [
+      "inputs are sorted by candidateId",
+      "at least two unique candidates are required",
+      "fields are unique and non-overlapping",
+      "every candidate blob must match its accepted component manifest",
+      "the output blob is predetermined before application",
+      "every listed required test must pass after the union",
+      "whole-side selection and undocumented manual conflict resolution are forbidden"
+    ],
+    "placeholder": {
+      "path": "package.json",
+      "baseBlobSha": null,
+      "inputs": [],
+      "outputBlobSha": null,
+      "requiredTests": []
+    }
+  },
+  "intakeWaves": [
+    {
+      "schemaVersion": "round4-intake-wave-template-v1",
+      "waveId": "phase1-8-core",
+      "state": "waiting-for-stage-a",
+      "requiredCandidateIds": ["phase1-6-reviewed", "phase7-8-reviewed"],
+      "allowedDomains": ["phase1-6-integration", "phase7-8"],
+      "requiredTests": ["test/audit-round4-integration-core.test.mjs"],
+      "checkpointTitle": "Checkpoint 2 — Phase 1–8 core intake"
+    },
+    {
+      "schemaVersion": "round4-intake-wave-template-v1",
+      "waveId": "api-auth",
+      "state": "waiting-for-stage-a",
+      "requiredCandidateIds": ["api-auth-reviewed"],
+      "allowedDomains": ["api"],
+      "requiredTests": ["test/audit-round4-integration-api-auth.test.mjs"],
+      "checkpointTitle": "Checkpoint 3A — API/auth intake"
+    },
+    {
+      "schemaVersion": "round4-intake-wave-template-v1",
+      "waveId": "github-direct-web",
+      "state": "waiting-for-stage-a",
+      "requiredCandidateIds": ["web-direct-reviewed"],
+      "allowedDomains": ["github-direct", "web"],
+      "requiredTests": ["test/audit-round4-integration-direct-web.test.mjs"],
+      "checkpointTitle": "Checkpoint 3B — GitHub Direct/web intake"
+    },
+    {
+      "schemaVersion": "round4-intake-wave-template-v1",
+      "waveId": "protected-addon-final",
+      "state": "waiting-for-stage-a",
+      "requiredCandidateIds": ["phase1-6-reviewed", "phase7-8-reviewed", "api-auth-reviewed", "web-direct-reviewed"],
+      "allowedDomains": [],
+      "requiredTests": [
+        "test/audit-round4-integration-protected-addon.test.mjs",
+        "test/audit-round4-integration-full.test.mjs"
+      ],
+      "checkpointTitle": "Checkpoint 4 — frozen assembled candidate"
+    }
+  ],
+  "waveReleaseConditions": [
+    "every required candidate is independently validated",
+    "all candidate status/report/manifest evidence agrees",
+    "the path ownership registry is regenerated and overlap-free",
+    "all declared shared unions are complete and validated",
+    "the prior wave checkpoint is durable",
+    "no protected blob changed"
+  ]
+}
