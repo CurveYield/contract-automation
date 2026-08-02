@@ -1,32 +1,39 @@
 # GitHub Direct Round 4 Handoff v1
 
-## Release inputs
+## Verified release inputs
 
 - Repository: `CurveYield/contract-automation`
 - Round 3 issue: `#115`
 - Round 3 branch: `audit-round3/github-direct-audit-release-v1`
 - Starting SHA: `66c3060da74ba79a780847eb86307d0b5641b20a`
 - Approved repaired core SHA: `22c22dd9de0e21b066ac29c9e0d9422a73724a31`
-- Round 3 code/test candidate SHA: `f6e3ce63b18aed898d6458685026d313feb47440`
+- Verified Round 3 candidate SHA: `46873f805199e2212af3902c8525c0f3e4501721`
 - Control branch: `audit-direct/control-v1`
 - Ledger root: `.audit-direct/v1`
 
-The final documentation commit SHA is intentionally not embedded here because doing so would make this document self-referential. Use the final issue #115 report and mailbox completion record as the authoritative final branch SHA.
+The final documentation commit is intentionally recorded in issue #115 and the Worker 3 mailbox rather than embedded self-referentially in this document.
 
 ## Deterministic manifests
 
-- `ROUND3_COMPATIBILITY_MANIFEST_v1.json`
-  - ID: `direct-compatibility-6d2105b95a084de2c0111311`
-  - digest: `sha256:6d2105b95a084de2c011131172f14621a4212b196d527c96cd8816f017ff31cf`
-- `ROUND3_RELEASE_MANIFEST_v1.json`
-  - ID: `direct-round3-release-acd2105c6842079f26e7092b`
-  - digest: `sha256:acd2105c6842079f26e7092b3814a56fbe2ce151a89e89a1431906d9bcc97ea6`
-- Protected simulation/RPC manifest digest:
-  - `sha256:a0c0e54c48bda474c480d795f470de52bc5195f5eacc02cdf3f216ef744e8e16`
+### Compatibility
+
+- File: `ROUND3_COMPATIBILITY_MANIFEST_v1.json`
+- ID: `direct-compatibility-2a7b937fd31fac897e936414`
+- Digest: `sha256:2a7b937fd31fac897e93641457d79f15e367dffa5c1bd685398b92c2dcfca708`
+
+### Release
+
+- File: `ROUND3_RELEASE_MANIFEST_v1.json`
+- ID: `direct-round3-release-418edd6cf9b65dbd77032a08`
+- Digest: `sha256:418edd6cf9b65dbd77032a08f3cb8236374771835a550935ec99cddca1bf82db`
+
+### Protected simulation/RPC boundary
+
+- Digest: `sha256:a0c0e54c48bda474c480d795f470de52bc5195f5eacc02cdf3f216ef744e8e16`
 
 Validate both JSON manifests through the public service exports before integration.
 
-## Public contracts for Worker 1 API intake
+## Worker 1 API intake
 
 Import only from:
 
@@ -34,28 +41,17 @@ Import only from:
 packages/audit-github-direct-service/src/index.mjs
 ```
 
-Supported public schemas:
+Public schemas:
 
-| Record | Schema |
-|---|---|
-| service command | `github-direct-service-command-v1` |
-| service result | `github-direct-service-result-v2` |
-| service error | `github-direct-service-error-v1` |
-| compatibility manifest | `github-direct-compatibility-manifest-v1` |
-| release manifest | `github-direct-round3-release-manifest-v1` |
+- command: `github-direct-service-command-v1`
+- result: `github-direct-service-result-v2`
+- error: `github-direct-service-error-v1`
+- compatibility manifest: `github-direct-compatibility-manifest-v1`
+- release manifest: `github-direct-round3-release-manifest-v1`
 
-Required API boundary behavior:
+Validate every command before authorization/transport use and every result/error before serialization. Reject private v1 service results at external boundaries; only the trusted CLI may perform its command-bound migration to v2.
 
-1. Validate every command before authorization or transport use.
-2. Validate every result/error before serialization.
-3. Treat `resultId` and `resultDigest` as mandatory for v2 results.
-4. Reject v1 service results at the external API boundary. The trusted CLI alone contains a command-bound v1-to-v2 migration adapter for compatibility with the internal legacy implementation.
-5. Never accept caller-authored command paths, URLs, shell commands, runner labels, images, credentials, workflow scope, or execution-enable flags.
-6. Never expose GitHub tokens, authorization headers, provider objects, or transport internals in results or logs.
-
-## Integration order for Worker 2
-
-Integrate and test in this order:
+## Worker 2 integration order
 
 1. protocol
 2. ledger
@@ -67,35 +63,30 @@ Integrate and test in this order:
 8. CLI
 9. trusted workflow
 
-Do not bypass package public indexes. In particular, use the v2 service facade from `packages/audit-github-direct-service/src/index.mjs`; do not import the private legacy `service.mjs` implementation directly.
+Do not bypass package public indexes or import private legacy service internals.
 
 ## State and publication invariants
 
-- Non-fixture `submit` stops at `awaiting_executor` and remains cancellable.
-- Only an allowlisted repository-owned fixture may produce a modeled completed result.
-- Submitted project source is never imported or executed.
+- Non-fixture submission stops at `awaiting_executor` and remains cancellable.
+- Only an allowlisted repository-owned inert fixture may produce a modeled completed result.
+- Submitted source is never imported or executed.
 - `report` truthfully terminalizes unavailable execution.
-- `cancel` creates immutable `not_executed` result/report records before final cancellation publication.
-- Request, current-state, event, jobs-index, result, report, manifest, and publication paths are server-derived.
-- Publication reconciliation searches up to ten 100-record pages before creating a Check, status, or comment after a missing journal.
-- Publication journals use `.audit-direct/v1/publications/<job>/<publication>.json` only.
-- Artifact metadata is queried by the exact name `audit-direct-result-<repositoryId>-<targetCommitSha>` and filtered again locally.
+- `cancel` creates immutable not-executed result/report records before cancellation publication.
+- All request/current/event/index/result/report/manifest/publication paths are server-derived.
+- Missing-journal recovery searches at most ten pages of 100 records before creating a Check, status or comment.
+- Publication journals use `.audit-direct/v1/publications/<job>/<publication>.json`.
+- Artifact metadata is queried and filtered for `audit-direct-result-<repositoryId>-<targetCommitSha>`.
 
-## Trusted workflow configuration
+## Trusted workflow prerequisites
 
-Repository-owned variables required before a real workflow run:
+Repository-owned variables:
 
 - `GITHUB_DIRECT_INSTALLATION_ID`
 - `GITHUB_DIRECT_REPORT_ISSUE`
 
-The workflow accepts only:
+Caller inputs are limited to one declared operation and one exact 40-character target SHA. Trusted implementation is checked out at `github.workflow_sha`; submitted target source is checked out separately with persisted credentials disabled and remains inert data.
 
-- one fixed operation from the declared choice list;
-- one exact 40-character target SHA.
-
-Trusted implementation is checked out at `github.workflow_sha`. Target source is checked out separately with persisted credentials disabled and remains inert data. Do not add submitted execution, Cloudflare fallback, untrusted workflow triggers, mutable action tags, caller-selected runners, or broad top-level permissions.
-
-## Permission subsets
+Permission subsets:
 
 | Operation | Permissions |
 |---|---|
@@ -104,26 +95,33 @@ Trusted implementation is checked out at `github.workflow_sha`. Target source is
 | cancel | `contents: write`, `statuses: write`, `issues: write` |
 | report | `contents: write`, `statuses: write`, `issues: write`, `actions: read` |
 
-## Round 4 acceptance commands
+## Minimal Round 4 acceptance
 
-Run from an isolated exact candidate checkout without installing dependencies:
+From an isolated checkout of the verified candidate:
 
 ```text
 node --test test/*.test.mjs
 find packages/audit-github-direct-* apps/audit-github-direct-cli/src -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
 ```
 
-Also parse `.github/workflows/audit-direct-v1.yml`, parse all Round 3 JSON manifests, run whitespace checks, compare all changed paths to issue #115 ownership, and verify each protected simulation/RPC blob against `ROUND3_PROTECTED_BLOBS_v1.json`.
+Also parse `.github/workflows/audit-direct-v1.yml`, validate both Round 3 manifests, run whitespace checks, enforce issue #115’s changed-path allowlist and verify every protected simulation/RPC blob.
 
-Round 3 observed local result before documentation publication: **100 tests passed, 0 failed, 0 skipped, 0 cancelled**.
+Round 3 reconstructed result:
 
-## Explicitly unperformed operations
+```text
+100 tests passed
+0 failed
+0 skipped
+0 cancelled
+```
 
-Round 3 did not install dependencies, run submitted code, perform live GitHub/RPC calls from tests, approve or execute the workflow, deploy, sign, transact, open a PR, merge, or modify main.
+## Explicit exclusions
+
+Round 3 did not install dependencies, run submitted code, perform live GitHub/RPC calls from tests, approve or execute the workflow, deploy, sign, transact, open a PR, merge, or modify `main`.
 
 ## Residual operational risks
 
-- Real workflow behavior still requires an authorized run after repository variables are configured; Round 3 was intentionally static/inert.
-- Publication recovery is bounded to 1,000 records per side-effect type. A repository exceeding that window before journal repair requires operator reconciliation rather than blind recreation.
-- GitHub artifact bytes remain outside this package. Only bounded metadata and target binding are handled.
-- Repository administrators must preserve branch protection and prevent modification of trusted workflow source outside the normal reviewed release process.
+- A real workflow run remains an authorized Round 4 task after repository variables and branch protection are reviewed.
+- Publication recovery is bounded to 1,000 records per side-effect type; older unmatched records require operator reconciliation.
+- GitHub artifact bytes and submitted execution remain outside this package.
+- Repository administrators must preserve trusted workflow source and branch protection.
