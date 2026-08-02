@@ -1,4 +1,4 @@
-name: Remote Anvil Pool Capability Probe
+name: V27 Contract Stack Remote Anvil Simulation
 
 on:
   pull_request:
@@ -9,116 +9,74 @@ permissions:
   issues: write
   pull-requests: write
 
+concurrency:
+  group: v27-remote-anvil-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  remote-anvil-capability:
-    name: remote-anvil-${{ matrix.slot }}
+  simulate-v27-contract-stack:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      max-parallel: 5
-      matrix:
-        slot: [1, 2, 3, 4, 5]
-    concurrency:
-      group: remote-anvil-fork-${{ matrix.slot }}
-      cancel-in-progress: false
+    timeout-minutes: 70
     env:
-      ANVIL_FORK_SLOT: ${{ matrix.slot }}
-      ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
       RPC_ANVIL_ETHEREUM1: ${{ secrets.RPC_ANVIL_ETHEREUM1 }}
-      RPC_ANVIL_ETHEREUM2: ${{ secrets.RPC_ANVIL_ETHEREUM2 }}
-      RPC_ANVIL_ETHEREUM3: ${{ secrets.RPC_ANVIL_ETHEREUM3 }}
-      RPC_ANVIL_ETHEREUM4: ${{ secrets.RPC_ANVIL_ETHEREUM4 }}
-      RPC_ANVIL_ETHEREUM5: ${{ secrets.RPC_ANVIL_ETHEREUM5 }}
-      PROOF_PATH: /tmp/remote-anvil-proof-${{ matrix.slot }}.json
+      ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
+      RESULT_ROOT: /tmp/v27-remote-anvil-result
     steps:
-      - name: Check out source
+      - name: Check out source and reviewed harness history
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install trusted dependencies
+      - name: Install trusted runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Select the assigned persistent fork
-        shell: bash
-        run: |
-          set -euo pipefail
-          case "$ANVIL_FORK_SLOT" in
-            1) selected="$RPC_ANVIL_ETHEREUM1" ;;
-            2) selected="$RPC_ANVIL_ETHEREUM2" ;;
-            3) selected="$RPC_ANVIL_ETHEREUM3" ;;
-            4) selected="$RPC_ANVIL_ETHEREUM4" ;;
-            5) selected="$RPC_ANVIL_ETHEREUM5" ;;
-            *) echo "Unsupported fork slot: $ANVIL_FORK_SLOT" >&2; exit 1 ;;
-          esac
-          if test -z "$selected"; then
-            echo "RPC_ANVIL_ETHEREUM${ANVIL_FORK_SLOT} is not configured" >&2
-            exit 1
-          fi
-          printf 'REMOTE_RPC_URL=%s\n' "$selected" >> "$GITHUB_ENV"
-
-      - name: Probe fork state, mutations, signer accounts, and cleanup
-        id: probe
+      - name: Execute complete V27 deposit, harvest, withdrawal, and migration lifecycle
+        id: simulation
         continue-on-error: true
-        run: node scripts/probe-remote-anvil.mjs
+        run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
 
-      - name: Publish redacted slot result to PR 136
+      - name: Publish compact simulation result to PR 136
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          if test -f "$PROOF_PATH"; then
+          if test -f "$RESULT_ROOT/final-validation.json"; then
             body=$(jq -r '
-              "### Remote Anvil slot " + (.slot | tostring) + ": **" + (.status | ascii_upcase) + "**\n\n" +
-              (if .chainId then "- Chain ID: `" + (.chainId | tostring) + "`\n" else "" end) +
-              (if .clientVersion then "- Client: `" + .clientVersion + "`\n" else "" end) +
-              (if .baseline then "- Fork block: `" + (.baseline.blockNumber | tostring) + "`\n" else "" end) +
-              (if .mnemonicAccounts then
-                "- Mnemonic accounts matched: `" + (.mnemonicAccounts.matchedLoadedAccounts | tostring) + "/" + (.mnemonicAccounts.expected | tostring) + "`\n" +
-                "- Mnemonic signer funded: `" + (.mnemonicAccounts.signerFunded | tostring) + "`\n"
-              else "" end) +
-              (if .capabilities then
-                "- Snapshot/revert: `" + (.capabilities.snapshot | tostring) + "`\n" +
-                "- Account impersonation: `" + (.capabilities.impersonation | tostring) + "`\n" +
-                "- Remote deployment/mutation: `" + ((.capabilities.contractDeployment and .capabilities.contractMutation) | tostring) + "`\n" +
-                "- Same-RPC state readback: `" + ((.capabilities.sameRpcCallReadBack and .capabilities.sameRpcStorageReadBack) | tostring) + "`\n" +
-                "- Raw mnemonic-signed transaction: `" + (.capabilities.rawSignedTransaction | tostring) + "`\n" +
-                "- Time advancement: `" + (.capabilities.timeAdvance | tostring) + "`\n" +
-                "- debug_traceTransaction: `" + (.capabilities.debugTraceTransaction.supported | tostring) + "`\n"
-              else "" end) +
-              (if .revertProof then
-                "- Baseline fully restored: `" + ((
-                  .revertProof.reverted and
-                  .revertProof.actorBalanceMatchesBaseline and
-                  .revertProof.impersonatedRecipientMatchesBaseline and
-                  .revertProof.signedRecipientMatchesBaseline and
-                  .revertProof.signerBalanceMatchesBaseline and
-                  .revertProof.signerNonceMatchesBaseline and
-                  .revertProof.deployedCodeRemoved
-                ) | tostring) + "`\n"
-              else "" end) +
-              (if .error then "\nError: `" + .error.message + "`" else "" end)
-            ' "$PROOF_PATH")
+              "### V27 remote-Anvil contract-stack simulation: **" +
+              (if .validatedSuccess then "PASSED" else "FAILED" end) + "**\n\n" +
+              "- Assurance: `" + (.assurance // "unknown") + "`\n" +
+              "- RPC chain ID: `" + ((.rpcChainId // 0) | tostring) + "`\n" +
+              "- Calls: `" + ((.callCount // 0) | tostring) + "`\n" +
+              "- Successful transactions: `" + ((.successfulTransactionCount // 0) | tostring) + "`\n" +
+              "- Assertions passed: `" + ((.passedAssertionCount // 0) | tostring) + "/" + ((.assertionCount // 0) | tostring) + "`\n" +
+              "- Harvest cycles: `" + ((.cycleCount // 0) | tostring) + "`\n" +
+              "- Post-migration cycles: `" + ((.postMigrationCycleCount // 0) | tostring) + "`\n" +
+              "- Fork baseline restored: `" + ((.cleanup.baselineFullyRestored // false) | tostring) + "`\n" +
+              (if .reportError then "\nError: `" + (.reportError.message // (.reportError | tostring)) + "`" else "" end)
+            ' "$RESULT_ROOT/final-validation.json")
             gh pr comment 136 --repo CurveYield/contract-automation --body "$body"
           else
-            gh pr comment 136 --repo CurveYield/contract-automation --body "### Remote Anvil slot ${ANVIL_FORK_SLOT}: **FAILED**\n\nThe probe exited before producing a redacted proof file."
+            tail_text=$(tail -n 30 "$RESULT_ROOT/wrapper-stderr.log" 2>/dev/null | sed 's/`/\\`/g' || true)
+            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\nNo final validation file was produced.\n\n\`\`\`\n${tail_text}\n\`\`\`"
           fi
 
-      - name: Upload redacted slot proof
+      - name: Upload complete simulation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: remote-anvil-capability-slot-${{ matrix.slot }}-${{ github.run_id }}
-          path: ${{ env.PROOF_PATH }}
-          if-no-files-found: warn
+          name: v27-remote-anvil-contract-stack-${{ github.run_id }}
+          path: ${{ env.RESULT_ROOT }}
+          if-no-files-found: error
           retention-days: 30
+          compression-level: 6
 
-      - name: Propagate probe failure
-        if: steps.probe.outcome == 'failure'
+      - name: Propagate simulation failure
+        if: steps.simulation.outcome == 'failure'
         run: exit 1
