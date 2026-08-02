@@ -32,8 +32,8 @@ export function createEvidenceViewModel(input) { return deepFreeze(evidenceModel
 
 export function createReportViewModel(input) {
   const data = readUiEntityData('report', input);
-  const evidence = denseDataValues(data.evidence).map(evidenceModel).filter((item) => item.id && item.visible).sort((a, b) => a.id.localeCompare(b.id));
-  const references = denseDataValues(data.references).map(referenceModel).filter((item) => item.id).sort((a, b) => a.id.localeCompare(b.id));
+  const evidence = denseDataValues(data.evidence, 50).map(evidenceModel).filter((item) => item.id && item.visible).sort((a, b) => a.id.localeCompare(b.id));
+  const references = denseDataValues(data.references, 50).map(referenceModel).filter((item) => item.id).sort((a, b) => a.id.localeCompare(b.id));
   const base = {
     id: toSafeIdentifier(data.id), title: toSafeText(data.title), status: statusText(data.status),
     createdAt: dateText(data.createdAt), sourceUrl: toSafeUrl(data.sourceUrl)
@@ -89,7 +89,7 @@ export function createReportListViewModel(reports, options = {}) {
   if (status !== 'all') items = items.filter((item) => item.status === status);
   items.sort((a, b) => {
     if (sort === 'title-asc') return a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
-    if (sort === 'title-desc') return b.title.localeCompare(a.title) || a.id.localeCompare(b.id);
+    if (sort === 'title-desc') return b.title.localeCompare(a.title) || b.id.localeCompare(a.id);
     const direction = sort === 'created-asc' ? 1 : -1;
     return direction * String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || a.id.localeCompare(b.id);
   });
