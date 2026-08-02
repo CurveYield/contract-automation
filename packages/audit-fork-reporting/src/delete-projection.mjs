@@ -1,2 +1,19 @@
-import {finalize,identifier,digest,integer,timestamp,boolean,fail} from './common.mjs';
-export function createDeleteReportProjection({state,tombstone,reportedAt}){if(!state||!tombstone)fail('invalid_deletion','$.state');if(state.state!=='deleted'||state.tombstone!==true)fail('invalid_deletion','$.state.state');return finalize('fork-delete',{forkId:identifier(state.forkId,'$.state.forkId'),tenantId:identifier(state.tenantId,'$.state.tenantId'),attemptId:identifier(state.attemptId,'$.state.attemptId'),requestDigest:digest(state.requestDigest,'$.state.requestDigest'),status:'deleted',version:integer(state.version,'$.state.version',1),deletedAt:timestamp(state.deletedAt,'$.state.deletedAt'),reason:identifier(tombstone.reason,'$.tombstone.reason'),tombstone:boolean(state.tombstone,'$.state.tombstone'),terminal:true,reportedAt:timestamp(reportedAt,'$.reportedAt')});}
+import {validateForkState,validateForkTombstone} from '../../audit-fork-protocol/src/index.mjs';
+import {finalize,stripTransportFields,serviceDigestFromRaw,timestamp,fail} from './common.mjs';
+
+export function createDeleteReportProjection({state,tombstone,reportedAt}){
+ const normalizedState=validateForkState(stripTransportFields(state,'$.state'));
+ const normalizedTombstone=validateForkTombstone(tombstone);
+ if(normalizedState.state!=='deleted'||normalizedState.tombstone!==true)fail('invalid_deletion','$.state.state');
+ for(const field of ['forkId','tenantId','attemptId','requestDigest']){
+  if(normalizedState[field]!==normalizedTombstone[field])fail('deletion_identity_mismatch',`$.tombstone.${field}`);
+ }
+ if(normalizedState.deletedAt!==normalizedTombstone.deletedAt)fail('deletion_identity_mismatch','$.tombstone.deletedAt');
+ return finalize('fork-delete',{
+  forkId:normalizedState.forkId,tenantId:normalizedState.tenantId,attemptId:normalizedState.attemptId,
+  requestDigest:serviceDigestFromRaw(normalizedState.requestDigest,'$.state.requestDigest'),
+  status:'deleted',version:normalizedState.version,deletedAt:normalizedState.deletedAt,
+  reason:normalizedTombstone.reason,tombstone:true,terminal:true,
+  reportedAt:timestamp(reportedAt,'$.reportedAt')
+ });
+}
