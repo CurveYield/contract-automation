@@ -1,4 +1,5 @@
 import { startGanacheEngine } from './engine.mjs';
+import { LiveForkWorkflowRuntime } from './live-fork-runtime.mjs';
 
 const ENGINE_VERSION = Object.freeze({
   ganache: '7.9.2',
@@ -7,7 +8,14 @@ const ENGINE_VERSION = Object.freeze({
 
 async function startNamedEngine(name, options) {
   if (name === 'ganache') {
+    const ethers = await import('ethers');
     const engine = await startGanacheEngine(options);
+    engine.runtime = new LiveForkWorkflowRuntime({
+      provider: engine.provider,
+      artifacts: options.artifacts,
+      ethers,
+      engineName: 'ganache'
+    });
     return { name, version: ENGINE_VERSION[name], ...engine };
   }
   if (name === 'hardhat-edr') {
