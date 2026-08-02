@@ -8,6 +8,15 @@ if len(sys.argv) != 2:
 path = Path(sys.argv[1])
 source = path.read_text(encoding='utf-8')
 
+
+def replace_once_or_already(text: str, old: str, new: str, label: str) -> str:
+    if new in text:
+        return text
+    if old not in text:
+        raise SystemExit(f'expected {label} was not found')
+    return text.replace(old, new, 1)
+
+
 mcopy_old = """    assertRecord('Hardhat EDR trace executes MCOPY instead of INVALID', mcopySteps.length > 0, {
       transactionHash: probeTx.hash,
       mcopyCount: mcopySteps.length,
@@ -23,9 +32,7 @@ mcopy_new = """    assertRecord('Hardhat EDR executes unchanged live YB Cancun b
         programCounters: mcopySteps.map((step) => step.pc)
       });
 """
-if mcopy_old not in source:
-    raise SystemExit('expected MCOPY preflight assertion was not found')
-source = source.replace(mcopy_old, mcopy_new, 1)
+source = replace_once_or_already(source, mcopy_old, mcopy_new, 'MCOPY preflight assertion')
 
 retained_old = """      const postFee = gross - fee;
       assertRecord(`cycle ${cycle} retained harvest share is exactly 4 percent post-fee`, postFee === 0n || retained === postFee * BigInt(config.feesBps.retainedPostFeeHarvest) / 10_000n, { postFee, retained });
@@ -51,9 +58,7 @@ retained_new = """      const postFee = gross - fee;
         retained <= postFee * BigInt(config.feesBps.retainedPostFeeHarvest) / 10_000n,
         { postFee, retained });
 """
-if retained_old not in source:
-    raise SystemExit('expected retained-harvest assertion was not found')
-source = source.replace(retained_old, retained_new, 1)
+source = replace_once_or_already(source, retained_old, retained_new, 'retained-harvest assertion')
 
 migration_old = """    await branchRecorder.contractCall({ label: 'branch deposit 2,000 sdYB', contract: contracts.vault, signer: operatorSigner, sender: actors.operator, signature: 'deposit(uint256)', args: [amount('2000')], gasLimit: GAS_LIMIT });
     const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
@@ -71,16 +76,12 @@ migration_new = """    await branchRecorder.contractCall({ label: 'branch deposi
     if (migrationSpendable === 0n) throw new Error('explicit migration reserve was not credited');
     const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
 """
-if migration_old not in source:
-    raise SystemExit('expected explicit-migration branch seed was not found')
-source = source.replace(migration_old, migration_new, 1)
+source = replace_once_or_already(source, migration_old, migration_new, 'explicit-migration branch seed')
 
 reverse_min_old = """        await branchRecorder.contractCall({ label: 'migrate full Yearn position back to BoostHub', contract: contracts.strategy2, signer: operatorSigner, sender: actors.operator, signature: 'migrateYearnToBoostHub(uint256,uint256,uint256)', args: [yearnShares, lpQuote * 99n / 100n, deadline], gasLimit: GAS_LIMIT });
 """
 reverse_min_new = """        await branchRecorder.contractCall({ label: 'migrate full Yearn position back to BoostHub', contract: contracts.strategy2, signer: operatorSigner, sender: actors.operator, signature: 'migrateYearnToBoostHub(uint256,uint256,uint256)', args: [yearnShares, lpQuote * 995n / 1000n, deadline], gasLimit: GAS_LIMIT });
 """
-if reverse_min_old not in source:
-    raise SystemExit('expected reverse migration minimum was not found')
-source = source.replace(reverse_min_old, reverse_min_new, 1)
+source = replace_once_or_already(source, reverse_min_old, reverse_min_new, 'reverse migration minimum')
 
 path.write_text(source, encoding='utf-8')
