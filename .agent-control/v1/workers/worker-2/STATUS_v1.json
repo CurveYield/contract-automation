@@ -1,16 +1,18 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "working",
+  "state": "ready",
   "lastConsumedSequence": 6,
-  "activeSequence": 6,
-  "activeMessageId": "worker-2-round2-phases1-8-integration-v1-000006",
-  "issueNumber": 103,
-  "branch": "audit-round2/phases1-8-integration-v1",
-  "startingSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+  "activeSequence": 7,
+  "activeMessageId": "worker-2-round3-phases1-6-integration-spine-v1-000007",
+  "issueNumber": 114,
+  "branch": "audit-round3/phases1-8-release-integration-v1",
+  "startingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:103",
+  "reportReference": "issue:114",
   "blockers": [],
-  "updatedAt": "2026-08-01T23:36:21Z"
+  "round": 3,
+  "roundType": "penultimate-release-candidate",
+  "updatedAt": "2026-08-02T02:28:00Z"
 }
