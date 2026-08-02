@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "round4-assembled-candidate-checkpoint-v1",
+  "recordedAt": "2026-08-02T18:40:00Z",
+  "repository": "CurveYield/contract-automation",
+  "branch": "orchestrator/round4-final-integration-takeover-v1",
+  "approvedBaseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "preCheckpointHeadSha": "37f585eb415358be1a0e8f183df43acf5c2becbf",
+  "state": "assembled-pending-combined-ci",
+  "ciPullRequest": 139,
+  "ciBaseBranch": "orchestrator/round4-ci-base-v1",
+  "intake": {
+    "stage0ReconstructionPaths": 27,
+    "simulationSecurityPaths": 48,
+    "subsystemPaths": 55,
+    "metadataCorrectionPaths": 2,
+    "checkpointPaths": 1
+  },
+  "worker1ManifestCorrection": {
+    "receiptPath": "docs/audit/round4/integration/2026-08-02-worker1-manifest-blob-correction-v1.json",
+    "affectedPath": "packages/audit-phase78-service/src/index.mjs",
+    "incorrectRecordedBlobSha": "b25f5168e0e4b331ba87e354a65df952b76740c3",
+    "correctSourceBlobSha": "b25e209029be6a5852f49e2670e57f433277b6f3"
+  },
+  "securityAcceptance": {
+    "sourceHeadSha": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
+    "manifestPath": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-pr126-security-repair-acceptance-v1.json",
+    "controlPlaneCommit": "af56487c1d4073b471271201d183c90b01bf9b7e"
+  },
+  "restrictions": {
+    "mergeAuthorized": false,
+    "deploymentAuthorized": false,
+    "liveSimulationAuthorized": false,
+    "mainMutationAuthorized": false
+  },
+  "acceptanceRule": "Freeze a final Round 4 candidate only after the exact checkpoint descendant passes fresh combined secretless pull-request CI and independent path/blob verification."
+}
