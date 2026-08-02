@@ -1,0 +1,51 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "stage_a_completed",
+  "timestamp": "2026-08-02T10:31:00Z",
+  "sequence": 6,
+  "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+  "issueNumber": 120,
+  "branch": "audit-round4/review-integration-spine-v1",
+  "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "stageACandidateSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "stageADocumentationSha": "2ca9e70fb1e34cb1fb1b163844169cae510a7f52",
+  "stageARecommendation": "ACCEPT WITH REPAIR",
+  "checkpointCommentIds": [5157150412, 5157197592, 5157224221],
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/120#issuecomment-5157224221",
+  "reportCommentId": 5157224221,
+  "verification": {
+    "observedRed": 9,
+    "tests": 40,
+    "passed": 40,
+    "failed": 0,
+    "javascriptSyntaxFailures": 0,
+    "jsonFailures": 0,
+    "hostileGetterInvocations": 0,
+    "changedFiles": 15,
+    "unownedChangedFiles": 0,
+    "protectedBlobsChecked": 6,
+    "protectedBlobsChanged": 0,
+    "dependenciesInstalled": false,
+    "compiled": false
+  },
+  "publishedArtifacts": {
+    "reviewPlan": "docs/audit/round4/worker0/2026-08-02-stage-a-review-plan-v1.md",
+    "dependencyMap": "docs/audit/round4/worker0/2026-08-02-phase78-dependency-map-v1.json",
+    "acceptanceReview": "docs/audit/round4/worker0/2026-08-02-stage-a-integration-spine-review-v1.md",
+    "stageBIntakeContract": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json"
+  },
+  "nextState": "waiting_for_stage_b",
+  "stageB": {
+    "assembledSha": null,
+    "masterGateIssue": 119,
+    "integrationIssue": 122,
+    "externalQuarantinePr": 126
+  },
+  "blockers": [
+    "worker1_phase78_api_stage_a_head_not_published",
+    "worker3_api_auth_stage_a_head_not_published",
+    "worker2_frozen_assembled_sha_not_published",
+    "pr126_quarantine_pending_authorized_reconciliation"
+  ]
+}
