@@ -1,54 +1,83 @@
 # GitHub Direct Authorization and Reporting v1
 
-## Injected authorization
+## Authorization boundary
 
-The authorization broker accepts only an injected provider function. The provider receives token-free identity and requested capabilities. It returns:
+`createInjectedAuthorizationBroker()` receives only canonical repository/install/full-name/requester/target-SHA identity and a closed capability list. The provider returns:
 
-- authorization kind (`github-token` or `app-installation-token`);
-- exact repository, installation, full-name and target-SHA attestation;
-- issued and expiry timestamps;
-- the exact requested capability set;
-- an opaque transport implementing the closed adapter method set.
+- a token-free authorization attestation;
+- an opaque transport implementing the fixed adapter methods.
 
-Transport objects are inspected through property descriptors. Accessors, revoked proxies, custom prototypes, extra methods and missing methods reject without invoking attacker-controlled getters.
+Tokens and authorization headers remain inside the trusted provider/transport closure. They are not command fields, result fields, reporting records, ledger content, logs or artifacts.
 
-Tokens are not request fields, manifest fields, result fields, report fields, log fields or persisted ledger data.
+## Capability-to-permission mapping
 
-## Operation capabilities
+| Capability | GitHub resource/access |
+|---|---|
+| `read-source` | contents: read |
+| `write-control-ledger` | contents: write |
+| `publish-check` | checks: write |
+| `publish-comment` | issues/comments: write |
+| `publish-status` | statuses: write |
+| `read-artifact-metadata` | actions artifact metadata: read |
+
+`validatePermissionManifest()` enforces exact fields, canonical ordering, duplicate absence, allowed pairs, identity, digest and derived ID.
+
+## Operation capability subsets
 
 | Operation | Capabilities |
 |---|---|
-| submit | read source, write ledger, Check, status/comment for fixture completion, artifact metadata |
-| status | read source/control contents |
-| cancel | read source, write ledger, status and comment |
-| report | read source, write ledger, status/comment and artifact metadata |
+| submit | read source, write ledger, Check/comment/status publication, artifact metadata read |
+| status | read source |
+| cancel | read source, write ledger, comment/status publication |
+| report | read source, write ledger, comment/status publication, artifact metadata read |
 | capabilities | read source |
 | verify-fixture | read source |
 
-## Publication phases
+## Reporting contracts
 
-Normal non-fixture submission publishes one neutral Check and remains at `awaiting_executor`. Terminal reporting later publishes status and comment without replacing the Check.
+Public validators cover:
 
-Fixture completion publishes Check, status and comment together. Cancellation publishes a `not_executed` result/report plus status and comment.
+- submission bundle;
+- terminal/fixture bundle;
+- cancellation bundle;
+- artifact metadata index.
 
-Publication records use deterministic kind/job idempotency slots:
+They bind:
 
-- absent record: create;
-- byte-identical record: no-op;
-- conflicting record: reject.
+- job ID and target SHA;
+- result/report identities and timestamps;
+- immutable ledger operation order, path classes and exact content;
+- publication order, kind, identity, timestamp and expected truth;
+- duplicate-free artifact identities.
 
-Terminal replays use the stored outcome timestamp, so a later report invocation with identical content reconciles rather than duplicating.
+The service-result v2 validator also cross-correlates nested reporting, permission, state, transition, outcome, artifact and publication records with the outer command/job/SHA.
 
-## Artifact boundary
+## Publication reconciliation
 
-Artifact ingestion accepts at most 100 metadata entries. Each entry is limited to ID, bounded name, byte size, digest, expiry flag and timestamps. Artifact bytes, download URLs, signed URLs, archives and executable content are never fetched by this package.
+Publication journals live only at:
 
-## Exact transport response contracts
+```text
+.audit-direct/v1/publications/<jobId>/<publicationId>.json
+```
 
-Every injected transport response is validated before it is returned to service code. Repository and commit responses must repeat the exact repository ID/full name or target SHA. Blob and contents responses must repeat the requested blob/path and, when supplied, the exact source or control ref. Ledger mutation responses are limited to an applied flag, a valid Git blob SHA, and an optional commit SHA. Publication responses must repeat the validated publication ID. Hostile getters, revoked proxies, unknown fields, malformed identities, and under-specified responses reject with bounded errors.
+Before creating a side effect after a missing journal, the trusted transport searches up to ten pages of 100 records:
 
-The planner's deterministic `nextContentBlobSha` is a content fingerprint used for retry modeling; it is not asserted equal to GitHub's repository blob SHA. The transport validates both domains independently.
+- comments by hidden `publicationId` marker;
+- Checks by external idempotency key and conclusion;
+- statuses by context, state and description.
 
-## Approved repaired-core lineage
+If found, the transport fills the missing journal without creating a duplicate. If the search bound is exceeded, operator reconciliation is required.
 
-The production adapter and runner contracts are the exact accepted versions from consolidated repaired-core SHA `22c22dd9de0e21b066ac29c9e0d9422a73724a31`. Mutation responses expose the planner's deterministic content fingerprint. GitHub's native blob SHA is retained only inside the trusted transport for Contents API writes and is never substituted into planner records.
+## Artifact metadata
+
+The transport requests the exact target artifact name:
+
+```text
+audit-direct-result-<repositoryId>-<targetCommitSha>
+```
+
+It filters the response again locally and returns bounded metadata only. Artifact bytes, submitted execution and arbitrary repository artifacts remain outside this package.
+
+## Error handling
+
+Transport errors normalize to stable redacted service errors. Raw GitHub messages, URLs, authorization headers, tokens and response bodies are never surfaced through public output contracts.
