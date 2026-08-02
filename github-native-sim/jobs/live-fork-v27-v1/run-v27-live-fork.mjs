@@ -14,6 +14,7 @@ const jobRoot = path.resolve(process.env.V27_JOB_ROOT ?? 'github-native-sim/jobs
 const resultRoot = path.resolve(process.env.RESULT_ROOT ?? path.join(jobRoot, 'result'));
 const lifecycle = path.join(jobRoot, 'scripts/run-v27-hardhat-lifecycle.mjs');
 const reviewedHarnessPatch = path.join(jobRoot, 'patch-reviewed-v27-harness.py');
+const fixtureSeed = path.join(jobRoot, 'seed-sdyb-fixture.mjs');
 const startedAt = new Date().toISOString();
 await fs.mkdir(resultRoot, { recursive: true });
 
@@ -89,9 +90,9 @@ function startProgressReporter(reportPath) {
   const timer = setInterval(check, 10_000);
   void check();
   return async () => {
+    await check();
     stopped = true;
     clearInterval(timer);
-    await check();
   };
 }
 
@@ -174,6 +175,18 @@ try {
 
   snapshotId = await rpc('evm_snapshot');
   if (snapshotId == null) throw new Error('Remote Anvil did not create the outer simulation snapshot');
+
+  const fixtureResult = await execFileAsync(process.execPath, [fixtureSeed], {
+    cwd: process.cwd(),
+    env: { ...process.env, [SLOT_SECRET]: rpcUrl },
+    maxBuffer: 1_000_000
+  });
+  wrapperReport.fixtureFunding = JSON.parse(fixtureResult.stdout);
+  process.stdout.write(`[v27-progress] ${JSON.stringify({
+    status: 'fixture-seeded',
+    balanceSlot: wrapperReport.fixtureFunding.balanceSlot,
+    accounts: wrapperReport.fixtureFunding.seeded.length
+  })}\n`);
 
   const stdoutFile = path.join(resultRoot, 'workflow-stdout.log');
   const stderrFile = path.join(resultRoot, 'workflow-stderr.log');
