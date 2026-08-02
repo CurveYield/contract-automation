@@ -1,4 +1,4 @@
-import { ValidationError, assertAuditId, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
+import { ValidationError, assertAuditId, deepFreezeAuditValue, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
 import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 import {
   MAX_LOG_CHUNK_BYTES,
@@ -86,13 +86,14 @@ function parse(recordValue) {
 }
 function createOnly() { return { onlyIf: { etagDoesNotMatch: '*' } }; }
 function match(etag) {
-  if (typeof etag !== 'string' || etag.length < 1) throw new ValidationError('missing_etag', 'An ETag precondition is required', '$.etag');
+  if (typeof etag !== 'string' || !/^[0-9a-f]{64}$/.test(etag)) throw new ValidationError('missing_etag', 'A canonical ETag precondition is required', '$.etag');
   return { onlyIf: { etagMatches: etag } };
 }
 function record(value, code, message, path) {
   if (!value) throw new ValidationError(code, message, path);
   return value;
 }
+function frozen(value) { return deepFreezeAuditValue(structuredClone(value)); }
 function validateIdentity(value, jobId, artifactId, schemaVersion, path = '$.manifest') {
   object(value, path); scanAuditForbiddenFields(value, path);
   if (value.schemaVersion !== schemaVersion) throw new ValidationError('invalid_schema_version', `${path}.schemaVersion must be ${schemaVersion}`, `${path}.schemaVersion`);
@@ -105,7 +106,7 @@ function validateRawManifest(value, jobId, artifactId) {
   allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
   sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_RAW_ARTIFACT_BYTES);
   if (value.contentType !== 'application/zstd') throw new ValidationError('invalid_content_type', '$.manifest.contentType must be application/zstd', '$.manifest.contentType');
-  instant(value.createdAt, '$.manifest.createdAt'); return structuredClone(value);
+  instant(value.createdAt, '$.manifest.createdAt'); return frozen(value);
 }
 function validateEvidenceManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'evidence-manifest-v1');
@@ -113,15 +114,15 @@ function validateEvidenceManifest(value, jobId, artifactId) {
   allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
   sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_EVIDENCE_BUNDLE_BYTES);
   string(value.evidenceContract, '$.manifest.evidenceContract', 80); instant(value.acceptedAt, '$.manifest.acceptedAt');
-  return structuredClone(value);
+  return frozen(value);
 }
 function validateReportManifest(value, jobId, artifactId) {
   validateIdentity(value, jobId, artifactId, 'report-manifest-v1');
   const keys = new Set(['schemaVersion', 'jobId', 'artifactId', 'sha256', 'bytes', 'formats', 'createdAt']);
   allowed(value, keys, '$.manifest'); required(value, keys, '$.manifest');
   sha256(value.sha256, '$.manifest.sha256'); positiveBytes(value.bytes, '$.manifest.bytes', MAX_REPORT_BUNDLE_BYTES);
-  if (!Array.isArray(value.formats) || value.formats.length < 1 || value.formats.length > 8 || value.formats.some((item) => !['html', 'pdf', 'json'].includes(item))) throw new ValidationError('invalid_formats', '$.manifest.formats is invalid', '$.manifest.formats');
-  instant(value.createdAt, '$.manifest.createdAt'); return structuredClone(value);
+  if (!Array.isArray(value.formats) || value.formats.length < 1 || value.formats.length > 8 || value.formats.some((item) => !['html', 'pdf', 'json'].includes(item)) || new Set(value.formats).size !== value.formats.length) throw new ValidationError('invalid_formats', '$.manifest.formats is invalid', '$.manifest.formats');
+  instant(value.createdAt, '$.manifest.createdAt'); return frozen(value);
 }
 function validateReportIndex(value, jobId, artifactId) {
   object(value, '$.index'); scanAuditForbiddenFields(value, '$.index');
@@ -129,11 +130,24 @@ function validateReportIndex(value, jobId, artifactId) {
   if (value.schemaVersion !== 'job-report-index-v1' || value.jobId !== jobId) throw new ValidationError('invalid_report_index', '$.index identity is invalid', '$.index');
   if (!Array.isArray(value.reports)) throw new ValidationError('invalid_report_index', '$.index.reports must be an array', '$.index.reports');
   value.reports.forEach((id, index) => assertAuditId(id, 'artifact', `$.index.reports[${index}]`));
-  if (value.records !== undefined) object(value.records, '$.index.records');
+  if (new Set(value.reports).size !== value.reports.length || JSON.stringify(value.reports) !== JSON.stringify([...value.reports].sort())) throw new ValidationError('noncanonical_report_index', '$.index.reports must be unique and sorted', '$.index.reports');
+  const records = value.records ?? {};
+  object(records, '$.index.records');
+  if (JSON.stringify(Object.keys(records).sort()) !== JSON.stringify(value.reports)) throw new ValidationError('report_index_mismatch', '$.index.records must exactly match reports', '$.index.records');
+  for (const reportId of value.reports) {
+    const entry = records[reportId];
+    object(entry, `$.index.records.${reportId}`);
+    const entryKeys = new Set(['sha256', 'bytes', 'formats', 'createdAt']);
+    allowed(entry, entryKeys, `$.index.records.${reportId}`); required(entry, entryKeys, `$.index.records.${reportId}`);
+    sha256(entry.sha256, `$.index.records.${reportId}.sha256`);
+    positiveBytes(entry.bytes, `$.index.records.${reportId}.bytes`, MAX_REPORT_BUNDLE_BYTES);
+    if (!Array.isArray(entry.formats) || entry.formats.length < 1 || entry.formats.length > 8 || entry.formats.some((item) => !['html', 'pdf', 'json'].includes(item)) || new Set(entry.formats).size !== entry.formats.length) throw new ValidationError('invalid_formats', `$.index.records.${reportId}.formats is invalid`, `$.index.records.${reportId}.formats`);
+    instant(entry.createdAt, `$.index.records.${reportId}.createdAt`);
+  }
   if (artifactId !== undefined && !value.reports.includes(artifactId)) throw new ValidationError('invalid_report_index', '$.index.reports must include the report artifact', '$.index.reports');
-  return { ...structuredClone(value), records: structuredClone(value.records ?? {}) };
+  return frozen({ schemaVersion: value.schemaVersion, jobId, reports: value.reports, records });
 }
-function emptyReportIndex(jobId) { return { schemaVersion: 'job-report-index-v1', jobId, reports: [], records: {} }; }
+function emptyReportIndex(jobId) { return frozen({ schemaVersion: 'job-report-index-v1', jobId, reports: [], records: {} }); }
 function validateObjectReference(value, expected, now, maximumBytes) {
   object(value, '$.objectRef'); scanAuditForbiddenFields(value, '$.objectRef');
   const keys = new Set(['schemaVersion', 'objectKey', 'sha256', 'bytes', 'contentType', 'expiresAt']);
@@ -145,7 +159,7 @@ function validateObjectReference(value, expected, now, maximumBytes) {
   instant(value.expiresAt, '$.objectRef.expiresAt');
   const expires = new Date(value.expiresAt).getTime(); const issued = now.getTime();
   if (expires <= issued || expires - issued > MAX_OBJECT_REFERENCE_LIFETIME_MS) throw new ValidationError('invalid_object_reference_lifetime', '$.objectRef.expiresAt must be within one hour', '$.objectRef.expiresAt');
-  return structuredClone(value);
+  return frozen(value);
 }
 function validateActiveAttempt(status, attemptId) {
   if (status.attemptId !== attemptId) throw new ValidationError('attempt_mismatch', 'Object reference attempt does not match current job attempt', '$.attemptId');
@@ -166,34 +180,28 @@ async function loadReferencedObject(store, input, expected, maximumBytes, now) {
   return { bytes, objectRef, status };
 }
 function validateSignedAttestation(value, payload) {
-  object(value, '$.signature');
+  object(value, '$.signature'); scanAuditForbiddenFields(value, '$.signature');
   const keys = new Set(['algorithm', 'keyId', 'signature']); allowed(value, keys, '$.signature'); required(value, keys, '$.signature');
   if (value.algorithm !== 'Ed25519') throw new ValidationError('invalid_attestation_algorithm', '$.signature.algorithm must be Ed25519', '$.signature.algorithm');
   if (typeof value.keyId !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,127}$/.test(value.keyId)) throw new ValidationError('invalid_attestation_key_id', '$.signature.keyId is invalid', '$.signature.keyId');
   if (typeof value.signature !== 'string' || !/^[A-Za-z0-9_-]{86}$/.test(value.signature)) throw new ValidationError('invalid_attestation_signature', '$.signature.signature must be an Ed25519 base64url signature', '$.signature.signature');
-  return {
-    schemaVersion: 'evidence-attestation-v1',
-    ...payload,
-    algorithm: value.algorithm,
-    keyId: value.keyId,
-    signature: value.signature
-  };
+  return frozen({ schemaVersion: 'evidence-attestation-v1', ...payload, algorithm: value.algorithm, keyId: value.keyId, signature: value.signature });
 }
-async function putImmutableBytes(store, key, bytes) {
+async function putImmutableBytes(store, key, bytes, conflictCode = 'artifact_conflict') {
   try { await store.put(key, bytes, createOnly()); return false; }
   catch (error) {
     if (!(error instanceof ConditionalWriteError)) throw error;
     const existing = await store.get(key);
-    if (!existing || !bytesEqual(existing.value, bytes)) throw new ValidationError('report_conflict', 'Existing report bundle differs from the retry', '$.objectRef');
+    if (!existing || !bytesEqual(existing.value, bytes)) throw new ValidationError(conflictCode, `Existing immutable bytes at ${key} differ from the retry`, '$.objectRef');
     return true;
   }
 }
-async function putImmutableJson(store, key, value) {
+async function putImmutableJson(store, key, value, conflictCode = 'artifact_conflict') {
   try { await store.put(key, JSON.stringify(value), createOnly()); return false; }
   catch (error) {
     if (!(error instanceof ConditionalWriteError)) throw error;
     const existing = await store.get(key);
-    if (!existing || JSON.stringify(parse(existing)) !== JSON.stringify(value)) throw new ValidationError('report_conflict', 'Existing report manifest differs from the retry', '$.manifest');
+    if (!existing || JSON.stringify(parse(existing)) !== JSON.stringify(value)) throw new ValidationError(conflictCode, `Existing immutable manifest at ${key} differs from the retry`, '$.manifest');
     return true;
   }
 }
@@ -222,7 +230,7 @@ export class EvidenceService {
     if (status.highestLogSequence === input.sequence) {
       const existing = record(await this.store.get(chunkKey), 'log_chunk_missing', 'Committed log chunk is missing', '$.sequence');
       if (!bytesEqual(existing.value, bytes)) throw new ValidationError('log_chunk_conflict', 'Existing log chunk bytes do not match the retry', '$.bytes');
-      return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite: true });
+      return frozen({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite: true });
     }
     if (input.sequence !== status.highestLogSequence + 1) throw new ValidationError('invalid_log_sequence', `$.sequence must equal ${status.highestLogSequence + 1}`, '$.sequence');
     let recoveredPartialWrite = false;
@@ -235,18 +243,18 @@ export class EvidenceService {
     }
     const next = validateJobStatus({ ...status, revision: status.revision + 1, highestLogSequence: input.sequence, updatedAt: currentInstant(this.now), executionEnabled: false });
     await this.store.put(jobStatusKey(input.jobId), JSON.stringify(next), match(statusRecord.etag));
-    return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite });
+    return frozen({ jobId: input.jobId, attemptId: input.attemptId, sequence: input.sequence, bytes: bytes.byteLength, highestLogSequence: input.sequence, recoveredPartialWrite });
   }
 
   async readLogs(input) {
-    object(input); allowed(input, new Set(['jobId', 'attemptId'])); required(input, new Set(['jobId', 'attemptId']));
+    object(input); scanAuditForbiddenFields(input); allowed(input, new Set(['jobId', 'attemptId'])); required(input, new Set(['jobId', 'attemptId']));
     assertAuditId(input.jobId, 'job', '$.jobId'); assertAuditId(input.attemptId, 'attempt', '$.attemptId');
     const status = validateJobStatus(parse(record(await this.store.get(jobStatusKey(input.jobId)), 'job_not_found', 'Job status not found', '$.jobId')));
     if (status.attemptId !== input.attemptId) throw new ValidationError('attempt_mismatch', 'Requested attempt is not current for the job', '$.attemptId');
     const chunks = [];
     for (let sequence = 1; sequence <= status.highestLogSequence; sequence += 1) {
       const chunk = await this.store.get(logChunkKey(input.jobId, input.attemptId, sequence));
-      chunks.push(record(chunk, 'log_chunk_missing', `Log chunk ${sequence} is missing`, '$.sequence').value);
+      chunks.push(toBytes(record(chunk, 'log_chunk_missing', `Log chunk ${sequence} is missing`, '$.sequence').value));
     }
     return Object.freeze({ jobId: input.jobId, attemptId: input.attemptId, highestSequence: status.highestLogSequence, chunks: Object.freeze(chunks) });
   }
@@ -257,9 +265,9 @@ export class EvidenceService {
     const manifest = validateRawManifest(input.manifest, input.jobId, input.artifactId);
     const loaded = await loadReferencedObject(this.store, input, { objectKey: rawArtifactIngressKey(input.jobId, input.attemptId, input.artifactId), contentType: 'application/zstd' }, MAX_RAW_ARTIFACT_BYTES, currentDate(this.now));
     if (manifest.bytes !== loaded.objectRef.bytes || manifest.sha256 !== loaded.objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Raw artifact manifest does not match the object reference', '$.manifest');
-    await this.store.put(rawArtifactBundleKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
-    await this.store.put(rawArtifactManifestKey(input.jobId, input.artifactId), JSON.stringify(manifest), createOnly());
-    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId });
+    const recoveredBundle = await putImmutableBytes(this.store, rawArtifactBundleKey(input.jobId, input.artifactId), loaded.bytes, 'raw_artifact_conflict');
+    const recoveredManifest = await putImmutableJson(this.store, rawArtifactManifestKey(input.jobId, input.artifactId), manifest, 'raw_artifact_conflict');
+    return frozen({ jobId: input.jobId, artifactId: input.artifactId, recoveredPartialPublication: recoveredBundle || recoveredManifest });
   }
 
   async acceptEvidence(input) {
@@ -269,11 +277,11 @@ export class EvidenceService {
     const now = currentDate(this.now);
     const loaded = await loadReferencedObject(this.store, input, { objectKey: evidenceIngressKey(input.jobId, input.attemptId, input.artifactId), contentType: 'application/zstd' }, MAX_EVIDENCE_BUNDLE_BYTES, now);
     if (manifest.bytes !== loaded.objectRef.bytes || manifest.sha256 !== loaded.objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Evidence manifest does not match the object reference', '$.manifest');
-    await this.store.put(evidenceQuarantineKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
+    const recoveredQuarantine = await putImmutableBytes(this.store, evidenceQuarantineKey(input.jobId, input.artifactId), loaded.bytes, 'evidence_conflict');
     const verdict = await this.validateEvidence({ jobId: input.jobId, attemptId: input.attemptId, artifactId: input.artifactId, bytes: loaded.bytes, sha256: manifest.sha256, manifest });
     if (!verdict || verdict.accepted !== true) throw new ValidationError('evidence_rejected', verdict?.reason ?? 'Evidence validation failed', '$.artifactId');
     const validator = string(verdict.validator, '$.validator', 160);
-    const payload = {
+    const payload = frozen({
       schemaVersion: 'evidence-attestation-payload-v1',
       jobId: input.jobId,
       attemptId: input.attemptId,
@@ -282,11 +290,11 @@ export class EvidenceService {
       validator,
       evidenceContract: manifest.evidenceContract,
       attestedAt: now.toISOString()
-    };
-    const attestation = validateSignedAttestation(await this.signAttestation(Object.freeze({ ...payload })), payload);
-    await this.store.put(evidenceAcceptedKey(input.jobId, input.artifactId), loaded.bytes, createOnly());
-    await this.store.put(evidenceManifestKey(input.jobId, input.artifactId), JSON.stringify(manifest), createOnly());
-    await this.store.put(evidenceAttestationKey(input.jobId, input.artifactId), JSON.stringify(attestation), createOnly());
+    });
+    const attestation = validateSignedAttestation(await this.signAttestation(payload), payload);
+    const recoveredAccepted = await putImmutableBytes(this.store, evidenceAcceptedKey(input.jobId, input.artifactId), loaded.bytes, 'evidence_conflict');
+    const recoveredManifest = await putImmutableJson(this.store, evidenceManifestKey(input.jobId, input.artifactId), manifest, 'evidence_conflict');
+    const recoveredAttestation = await putImmutableJson(this.store, evidenceAttestationKey(input.jobId, input.artifactId), attestation, 'evidence_conflict');
     let quarantineCleanupPending = false;
     if (typeof this.store.delete === 'function') {
       try { await this.store.delete(evidenceQuarantineKey(input.jobId, input.artifactId)); }
@@ -294,7 +302,7 @@ export class EvidenceService {
     } else {
       quarantineCleanupPending = true;
     }
-    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, accepted: true, quarantineCleanupPending });
+    return frozen({ jobId: input.jobId, artifactId: input.artifactId, accepted: true, quarantineCleanupPending, recoveredPartialPublication: recoveredQuarantine || recoveredAccepted || recoveredManifest || recoveredAttestation });
   }
 
   async publishReport(input) {
@@ -317,21 +325,27 @@ export class EvidenceService {
     if (manifest.bytes !== objectRef.bytes || manifest.sha256 !== objectRef.sha256) throw new ValidationError('manifest_mismatch', 'Report manifest does not match the object reference', '$.manifest');
     if (input.indexEtag !== undefined && (!indexRecord || input.indexEtag !== indexRecord.etag)) throw new ValidationError('stale_index', '$.indexEtag is stale', '$.indexEtag');
     const index = indexRecord ? validateReportIndex(parse(indexRecord), input.jobId) : emptyReportIndex(input.jobId);
-    if (index.reports.includes(input.artifactId) || index.records[input.artifactId]) throw new ValidationError('report_exists', 'Report already exists', '$.artifactId');
-    const recoveredBundle = await putImmutableBytes(this.store, reportBundleKey(input.jobId, input.artifactId), bytes);
-    const recoveredManifest = await putImmutableJson(this.store, reportManifestKey(input.jobId, input.artifactId), manifest);
-    const updatedIndex = {
+    const existing = index.records[input.artifactId];
+    if (existing) {
+      if (existing.sha256 !== manifest.sha256 || existing.bytes !== manifest.bytes || JSON.stringify(existing.formats) !== JSON.stringify(manifest.formats) || existing.createdAt !== manifest.createdAt) throw new ValidationError('report_conflict', 'Existing report index entry differs from the retry', '$.artifactId');
+      const recoveredBundle = await putImmutableBytes(this.store, reportBundleKey(input.jobId, input.artifactId), bytes, 'report_conflict');
+      const recoveredManifest = await putImmutableJson(this.store, reportManifestKey(input.jobId, input.artifactId), manifest, 'report_conflict');
+      return frozen({ jobId: input.jobId, artifactId: input.artifactId, recoveredPartialPublication: recoveredBundle || recoveredManifest, idempotent: true });
+    }
+    const recoveredBundle = await putImmutableBytes(this.store, reportBundleKey(input.jobId, input.artifactId), bytes, 'report_conflict');
+    const recoveredManifest = await putImmutableJson(this.store, reportManifestKey(input.jobId, input.artifactId), manifest, 'report_conflict');
+    const updatedIndex = validateReportIndex({
       schemaVersion: 'job-report-index-v1', jobId: input.jobId,
       reports: [...index.reports, input.artifactId].sort(),
       records: { ...index.records, [input.artifactId]: { sha256: manifest.sha256, bytes: manifest.bytes, formats: [...manifest.formats], createdAt: manifest.createdAt } }
-    };
+    }, input.jobId, input.artifactId);
     await this.store.put(reportIndexKey(input.jobId), JSON.stringify(updatedIndex), indexRecord ? match(indexRecord.etag) : createOnly());
-    return Object.freeze({ jobId: input.jobId, artifactId: input.artifactId, recoveredPartialPublication: recoveredBundle || recoveredManifest });
+    return frozen({ jobId: input.jobId, artifactId: input.artifactId, recoveredPartialPublication: recoveredBundle || recoveredManifest, idempotent: false });
   }
 
   async readReports(jobId) {
     assertAuditId(jobId, 'job', '$.jobId');
     const report = await this.store.get(reportIndexKey(jobId));
-    return Object.freeze(parse(record(report, 'report_index_not_found', 'Report index not found', '$.jobId')));
+    return validateReportIndex(parse(record(report, 'report_index_not_found', 'Report index not found', '$.jobId')), jobId);
   }
 }
