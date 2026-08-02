@@ -10,6 +10,11 @@ import { startLiveForkProxy } from './live-fork-proxy.mjs';
 import { materializeOpenZeppelin, materializeProject } from './project.mjs';
 import { renderHtmlReport } from './report.mjs';
 import { raceWithRpcPolicyTermination } from './rpc-method-policy.mjs';
+import {
+  closeRpcHealthSession,
+  filterDisabledRpcSlots,
+  openRpcHealthSession
+} from './rpc-health-session.mjs';
 import { executeWorkflow } from './workflow.mjs';
 
 function isRpcSecretName(key) {
@@ -66,6 +71,20 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
   let resolvedBlockHash;
   let resolvedBlockTimestamp;
   let runtimeEvidence;
+  let rpcHealthSession;
+  let rpcHealthPersist;
+
+  async function persistRpcHealth() {
+    if (rpcHealthPersist || !rpcHealthSession) return rpcHealthPersist;
+    rpcHealthPersist = await closeRpcHealthSession({
+      session: rpcHealthSession,
+      environment,
+      diagnostics: forkTransport?.rpc,
+      runId: jobId
+    });
+    return rpcHealthPersist;
+  }
+
   try {
     await api.updateStatus(jobId, { status: 'running', stage: 'fetching_project' });
     const rawJob = await api.getJob(jobId);
@@ -114,13 +133,22 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     }
 
     const chain = CHAINS[request.chain];
-    const slots = loadArchiveRpcSlots({
+    rpcHealthSession = await openRpcHealthSession({
+      environment,
+      chain: request.chain,
+      crossSessionFailureThreshold: request.simulation.rpc.health.crossSessionFailureThreshold,
+      store: services.rpcHealthStore
+    });
+    const configuredSlots = loadArchiveRpcSlots({
       chainName: request.chain,
       legacyEnv: chain.rpcEnv,
       environment,
       allowLegacyFallback: request.simulation.rpc.allowLegacyRpcFallback
     });
-    if (slots.length === 0) throw new Error(`No archive RPC slots are configured for ${request.chain}`);
+    const slots = filterDisabledRpcSlots(configuredSlots, rpcHealthSession.disabledSlotIds);
+    if (slots.length === 0) {
+      throw new Error(`No healthy archive RPC slots are configured for ${request.chain}`);
+    }
 
     await api.updateStatus(jobId, { status: 'running', stage: 'starting_fork' });
     forkProxy = await startProxy({
@@ -171,6 +199,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     steps = execution.steps;
     deployments = execution.context.deployments;
     runtimeEvidence = typeof engine.getEvidence === 'function' ? await engine.getEvidence() : undefined;
+    await persistRpcHealth();
 
     const result = {
       jobId,
@@ -185,6 +214,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       resolvedBlockTimestamp,
       engine: normalizedEngineEvidence(engine, request.simulation.engine.mode, runtimeEvidence),
       forkTransport,
+      rpcHealth: { load: rpcHealthSession.load, persist: rpcHealthPersist },
       compilerVersion: request.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -199,6 +229,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     if (cause.compilerDiagnostics) compilerDiagnostics = cause.compilerDiagnostics;
     if (cause.workflowSteps) steps = cause.workflowSteps;
     if (cause.workflowContext?.deployments) deployments = cause.workflowContext.deployments;
+    try { await persistRpcHealth(); } catch (healthError) { cause.rpcHealthError = healthError; }
     const result = {
       jobId,
       status: 'failed',
@@ -211,6 +242,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       resolvedBlockTimestamp,
       engine: normalizedEngineEvidence(engine, request?.simulation?.engine?.mode, runtimeEvidence),
       forkTransport,
+      rpcHealth: rpcHealthSession ? { load: rpcHealthSession.load, persist: rpcHealthPersist } : undefined,
       compilerVersion: request?.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -224,9 +256,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       await api.publishResult(jobId, result, renderHtmlReport(result));
     } catch (publishError) {
       console.error('Failed to publish failure report', publishError);
-      try {
-        await api.updateStatus(jobId, { status: 'failed', stage: 'runner', error: result.error });
-      } catch {}
+      try { await api.updateStatus(jobId, { status: 'failed', stage: 'runner', error: result.error }); } catch {}
     }
     throw cause;
   } finally {
