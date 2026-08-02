@@ -1,0 +1,18 @@
+name = "curveyield-audit-api"
+main = "src/entry.mjs"
+compatibility_date = "2026-07-31"
+workers_dev = false
+
+[vars]
+AUDIT_EXECUTION_ENABLED = "false"
+CORS_ORIGIN = "https://audit.preflight.curveyield.online"
+
+[[r2_buckets]]
+binding = "AUDIT_NONCE_STORE"
+bucket_name = "curveyield-audit-control"
+preview_bucket_name = "curveyield-audit-control-preview"
+
+[[r2_buckets]]
+binding = "AUDIT_CONTROL_STORE"
+bucket_name = "curveyield-audit-control"
+preview_bucket_name = "curveyield-audit-control-preview"
