@@ -1,127 +1,157 @@
 {
   "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "manual-original-chat-coordination",
-  "activationState": "manual-active",
+  "activationState": "round4-active",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-01T14:07:00Z",
+  "lastOrchestratorReviewAt": "2026-08-02T09:36:00Z",
   "scheduledPolling": {
     "enabled": false,
-    "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats.",
-    "disabledTasks": [
-      "CurveYield Orchestrator Poll",
-      "CurveYield Worker 0 Poll",
-      "CurveYield Worker 1 Poll",
-      "CurveYield Worker 2 Poll",
-      "CurveYield Worker 3 Poll"
-    ]
-  },
-  "localWakeAgent": {
-    "enabled": false,
-    "reason": "User chose coordination through durable GitHub mailboxes consumed by the original worker chats."
+    "reason": "Scheduled Tasks created separate task conversations instead of resuming the original worker chats. All five original browser worker chats use durable GitHub mailboxes and may be manually woken by the user."
   },
   "manualWorkflow": {
-    "wakeTarget": "GitHub mailbox watched by the original worker chat",
-    "completionSignal": "durable worker issue report and worker status file; user forwarding is optional",
-    "durableSourceOfTruth": "GitHub issues, pinned SHAs, mailbox assignments, and worker status files",
-    "orchestratorResponsibility": "review completed work, integrate or request repair, and publish the next assignment plus its durable wake marker entirely in GitHub without asking the user to paste relay text"
+    "wakeTarget": "original Worker 0-4 browser chats",
+    "completionSignal": "worker-owned completed status plus exact branch head, durable issue report and committed manifests",
+    "durableSourceOfTruth": "GitHub issues, exact SHAs, mailbox assignments, worker statuses and committed path/blob manifests",
+    "orchestratorResponsibility": "independently review exact completed heads, publish non-overlapping follow-up work, control deterministic integration and refresh the handoff"
   },
   "activePolicies": {
     "reportDestination": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
     "workPackage": ".agent-control/v1/WORK_PACKAGE_POLICY_v2.md",
-    "workPackageTarget": "largest coherent non-overlapping package normally completable in 60-120 minutes",
+    "workPackageTarget": "large coherent non-overlapping release-sized package",
     "overlapGateRequired": true,
-    "verifiedReportCommentReferenceRequired": true
+    "verifiedReportCommentReferenceRequired": true,
+    "exactPathBlobIntakeRequired": true,
+    "broadBranchMergesForbidden": true
+  },
+  "round": {
+    "number": 4,
+    "name": "final-static-integration-and-acceptance",
+    "masterIssue": 119,
+    "integrationIssue": 122,
+    "productionAcceptanceIssue": 125,
+    "stage": "stage-a-cross-review-and-stage-0-integration-preparation",
+    "worker2ProductionIntakeBlockedUntil": [120, 121, 123, 124]
   },
   "workers": {
     "worker-0": {
-      "currentSequence": 1,
-      "currentMessageId": "worker-0-phase1-3-pr-chain-000001",
-      "currentIssueNumber": 70,
-      "currentBranch": "audit-repair/phases-1-3-pr-chain-v1",
-      "currentStartingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
-      "mailboxState": "working",
-      "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "leave-working-resumed",
+      "currentSequence": 6,
+      "currentMessageId": "worker-0-round4-integration-spine-review-v1-000006",
+      "assignmentBlobSha": "d445f8e93ac6fdb364bfe195b6ebe701dec9caa0",
+      "currentIssueNumber": 120,
+      "currentBranch": "audit-round4/review-integration-spine-v1",
+      "currentStartingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "mailboxState": "working-published-await-worker-owned-ack-status",
       "futureAssignmentsAllowed": true,
-      "acknowledgementPath": ".agent-control/v1/workers/worker-0/ACKS/000001_worker-0-phase1-3-pr-chain-000001_accepted_v1.json",
-      "delegatedWriteRecovery": true
+      "previousRound": {
+        "issue": 112,
+        "finalDocumentationSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+        "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+        "recommendation": "ACCEPT WITH REPAIR",
+        "reportCommentId": 5156777973
+      }
     },
     "worker-1": {
-      "currentSequence": 1,
-      "currentMessageId": "worker-1-phase4-catalog-api-integration-v2-000001",
-      "currentIssueNumber": 72,
-      "currentBranch": "audit-phase4/catalog-api-integration-v2",
-      "currentStartingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "mailboxState": "working",
-      "observedBranchState": "5-commits-ahead-0-behind",
-      "manualAction": "leave-working-unless-chat-is-visibly-idle",
-      "futureAssignmentsAllowed": true
+      "currentSequence": 5,
+      "currentMessageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
+      "assignmentBlobSha": "a584ab7e0f1839badc586b73dc58ab7ebca08e72",
+      "currentIssueNumber": 121,
+      "currentBranch": "audit-round4/review-phase78-api-compat-v1",
+      "currentStartingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "mailboxState": "working-published-await-worker-owned-ack-status",
+      "futureAssignmentsAllowed": true,
+      "mandatoryRepair": "close Worker 0 service/report/publication compatibility gaps",
+      "previousRound": {
+        "issue": 113,
+        "finalSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+        "implementationSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+        "recommendation": "ACCEPT",
+        "reportCommentId": 5154958425
+      }
     },
     "worker-2": {
-      "currentSequence": 3,
-      "currentMessageId": "worker-2-phase6-result-contract-compatibility-v1-000003",
-      "currentIssueNumber": 77,
-      "currentBranch": "audit-phase6/result-contract-compatibility-v1",
-      "currentStartingSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-      "mailboxState": "ready",
-      "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "await-github-mailbox-consumption",
+      "currentSequence": 8,
+      "currentMessageId": "worker-2-round4-full-platform-integration-v1-000008",
+      "assignmentBlobSha": "ed428c965386b980a8e652d32fcfb17a58474364",
+      "currentIssueNumber": 122,
+      "currentBranch": "audit-round4/full-platform-integration-v1",
+      "currentStartingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "mailboxState": "stage-0-preparation-published-await-worker-owned-ack-status",
       "futureAssignmentsAllowed": true,
-      "priorCompletedSequence": 2,
-      "priorCompletedIssueNumber": 74,
-      "priorCompletedBranch": "audit-phase4/result-contract-hardening-v2",
-      "priorFinalSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
-      "priorReportReference": "issue:74#issuecomment-5151718894",
-      "priorRecommendation": "ACCEPT",
-      "acceptedPhase6SourceIssue": 55,
-      "acceptedPhase6SourceBranch": "audit-phase6/contracts-parsers-fixtures-v2",
-      "acceptedPhase6SourceSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-      "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md"
+      "productionIntakeBlockedUntil": [120, 121, 123, 124],
+      "previousRound": {
+        "issue": 114,
+        "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+        "recommendation": "ACCEPT WITH DOCUMENTED REPAIR",
+        "reportCommentId": 5156779012,
+        "stalePhase78ImportForbidden": true
+      }
     },
     "worker-3": {
-      "currentSequence": 2,
-      "currentMessageId": "worker-3-phase5-result-contract-hardening-v2-000002",
-      "currentIssueNumber": 76,
-      "currentBranch": "audit-phase5/result-contract-hardening-v2",
-      "currentStartingSha": "613e829bc16384307d4b30e87a0cd3e7377b4386",
-      "mailboxState": "acknowledged",
-      "observedBranchState": "identical-to-starting-sha",
-      "manualAction": "await-working-transition-and-progress-on-issue-76",
+      "currentSequence": 8,
+      "currentMessageId": "worker-3-round4-api-auth-security-review-v1-000008",
+      "assignmentBlobSha": "1f918de5b1ebe887fade4f99974a9d167e72f4ef",
+      "currentIssueNumber": 123,
+      "currentBranch": "audit-round4/review-api-auth-security-v1",
+      "currentStartingSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "mailboxState": "working-published-await-worker-owned-ack-status",
       "futureAssignmentsAllowed": true,
-      "supersededIssueNumber": 71,
-      "supersededMessageId": "worker-3-phase5-result-contract-compatibility-000001",
-      "supersededPinnedHead": "613e829bc16384307d4b30e87a0cd3e7377b4386",
-      "supersededDisposition": "repair-required",
-      "reportDestinationPolicy": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md"
+      "previousRound": {
+        "issue": 115,
+        "finalDocumentationSha": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+        "codeWorkflowCandidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+        "recommendation": "ACCEPT",
+        "reportCommentId": 5156758072,
+        "compatibilityManifestId": "direct-compatibility-2a7b937fd31fac897e936414",
+        "releaseManifestId": "direct-round3-release-418edd6cf9b65dbd77032a08"
+      }
     },
     "worker-4": {
-      "mailboxState": "retired",
-      "futureAssignmentsAllowed": false,
-      "retired": true,
-      "priorCompletedIssueNumber": 55,
-      "priorCompletedBranch": "audit-phase6/contracts-parsers-fixtures-v2",
-      "priorFinalSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-      "priorRecommendation": "ACCEPT"
+      "currentSequence": 3,
+      "currentMessageId": "worker-4-round4-web-direct-e2e-review-v1-000003",
+      "assignmentBlobSha": "496f26cdcd61bb6fae9e577133bc1e903c7627a0",
+      "currentIssueNumber": 124,
+      "currentBranch": "audit-round4/review-web-direct-e2e-v1",
+      "currentStartingSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "mailboxState": "working-published-await-worker-owned-ack-status",
+      "futureAssignmentsAllowed": true,
+      "retired": false,
+      "previousRound": {
+        "issue": 116,
+        "finalSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+        "implementationSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+        "recommendation": "ACCEPT",
+        "reportCommentId": 5154997216
+      }
     }
   },
-  "phaseGates": {
-    "phase4IntegrationBranch": "audit-phase4/integration-v3",
-    "phase4CurrentAcceptedHead": "d90099c201d3012c090b6f73dda604bd5b143c95",
-    "phase5Integration": "blocked-until-phase4-accepted",
-    "phase6Integration": "blocked-until-phase5-accepted"
+  "round4Gates": {
+    "stageAReviewIssues": [120, 121, 123, 124],
+    "integrationOwner": "worker-2",
+    "assemblyBranch": "audit-round4/full-platform-integration-v1",
+    "assemblyMasterIssue": 119,
+    "stageBReviewers": ["worker-0", "worker-1", "worker-3", "worker-4"],
+    "singleFrozenShaRequired": true,
+    "newShaInvalidatesPriorAcceptances": true
+  },
+  "frozenSimulationAddon": {
+    "approvedMainSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "round4Rule": "byte-for-byte-only",
+    "separateRepair": "paused-until-explicit-user-resumption"
   },
   "standingRestrictions": [
-    "no dependency installation or download",
-    "no compilation",
-    "no deployment",
-    "no submitted-project or external audit-tool execution",
-    "no production secrets",
-    "no AWS",
+    "no production secret values",
+    "no submitted-project execution",
+    "no wallet keys, signing or transaction broadcasting",
+    "no live production deployment in Round 4",
+    "no unreviewed broad branch merge",
     "no CurveYield Lite modification",
-    "AUDIT_EXECUTION_ENABLED remains false",
-    "no merge to main"
+    "no AWS",
+    "no direct main merge before exact-SHA specialist acceptance and orchestrator verification"
   ],
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260801T140700Z_worker-2-sequence3-phase6-published_v1.json"
+  "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+  "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260802T093500Z_round4-activated-handoff-refreshed_v1.json"
 }
