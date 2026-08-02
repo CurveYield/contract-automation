@@ -48,3 +48,7 @@ Artifact ingestion accepts at most 100 metadata entries. Each entry is limited t
 Every injected transport response is validated before it is returned to service code. Repository and commit responses must repeat the exact repository ID/full name or target SHA. Blob and contents responses must repeat the requested blob/path and, when supplied, the exact source or control ref. Ledger mutation responses are limited to an applied flag, a valid Git blob SHA, and an optional commit SHA. Publication responses must repeat the validated publication ID. Hostile getters, revoked proxies, unknown fields, malformed identities, and under-specified responses reject with bounded errors.
 
 The planner's deterministic `nextContentBlobSha` is a content fingerprint used for retry modeling; it is not asserted equal to GitHub's repository blob SHA. The transport validates both domains independently.
+
+## Approved repaired-core lineage
+
+The production adapter and runner contracts are the exact accepted versions from consolidated repaired-core SHA `22c22dd9de0e21b066ac29c9e0d9422a73724a31`. Mutation responses expose the planner's deterministic content fingerprint. GitHub's native blob SHA is retained only inside the trusted transport for Contents API writes and is never substituted into planner records.
