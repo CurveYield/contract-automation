@@ -44,6 +44,50 @@ test('mines arbitrary blocks with configurable timestamp intervals', async () =>
   assert.deepEqual(state(), { currentBlock: 103, currentTimestamp: 1036 });
 });
 
+test('uses raw JSON-RPC block metadata instead of a stale ethers latest-block cache', async () => {
+  let currentBlock = 101;
+  let currentTimestamp = 4_600;
+  const calls = [];
+  const provider = {
+    async getBlock() {
+      return { number: 100, timestamp: 1_000 };
+    },
+    async getBlockNumber() {
+      return 100;
+    },
+    async send(method, params) {
+      calls.push({ method, params });
+      if (method === 'eth_getBlockByNumber') {
+        return {
+          number: `0x${currentBlock.toString(16)}`,
+          timestamp: `0x${currentTimestamp.toString(16)}`
+        };
+      }
+      if (method === 'evm_setNextBlockTimestamp') {
+        const next = Number(params[0]);
+        if (next <= currentTimestamp) throw new Error(`Timestamp ${next} is not newer than ${currentTimestamp}`);
+        currentTimestamp = next;
+        return true;
+      }
+      if (method === 'evm_mine') {
+        currentBlock += 1;
+        return true;
+      }
+      return true;
+    }
+  };
+  const runtime = new LiveForkWorkflowRuntime({
+    provider,
+    artifacts: { get() { throw new Error('artifact lookup not expected'); } },
+    ethers: {}
+  });
+
+  const result = await runtime.execute({ action: 'mine', blocks: 1, intervalSeconds: 12 }, context);
+  assert.deepEqual(result, { blocks: 1, intervalSeconds: 12 });
+  assert.ok(calls.some((call) => call.method === 'eth_getBlockByNumber'));
+  assert.ok(calls.some((call) => call.method === 'evm_setNextBlockTimestamp' && call.params[0] === 4_612));
+});
+
 test('supports explicit timestamp, target timestamp, target block, and mining modes', async () => {
   const { runtime, calls } = runtimeWithProvider();
   await runtime.execute({ action: 'setNextBlockTimestamp', timestamp: 2_000 }, context);
