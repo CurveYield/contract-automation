@@ -1,19 +1,10 @@
 name: Live Fork Engine Smoke
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - agent/live-fork-rpc-routing-design
-    paths:
-      - 'packages/runner/src/archive-rpc-pool.mjs'
-      - 'packages/runner/src/live-fork-proxy.mjs'
-      - 'packages/runner/src/fork-engine.mjs'
-      - 'packages/runner/src/hardhat-edr-engine.mjs'
-      - 'packages/runner/src/live-fork-runtime.mjs'
-      - 'packages/runner/src/live-fork-time.mjs'
-      - 'scripts/live-fork-engine-smoke.mjs'
-      - '.github/workflows/live-fork-engine-smoke.yml'
-  pull_request:
+      - main
     paths:
       - 'packages/runner/src/archive-rpc-pool.mjs'
       - 'packages/runner/src/live-fork-proxy.mjs'
@@ -50,13 +41,13 @@ jobs:
       LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
     steps:
       - name: Check out trusted branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           fetch-depth: 1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
 
@@ -72,7 +63,7 @@ jobs:
 
       - name: Upload live fork evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: live-fork-engine-smoke-${{ github.run_id }}
           path: ${{ runner.temp }}/live-fork-engine-smoke
