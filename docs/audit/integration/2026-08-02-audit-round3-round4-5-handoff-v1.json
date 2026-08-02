@@ -1,0 +1,229 @@
+{
+  "schemaVersion": "audit-round3-master-intake-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "branch": "audit-round3/phases1-8-release-integration-v1",
+  "startingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+  "contentHeadBeforeFinalHandoffDocs": "3156183698b4c39f32c70f3ae7dcaaea93c85c1d",
+  "finalBinding": {
+    "mode": "control-plane-completion-v1",
+    "reason": "A committed manifest cannot contain the SHA of the commit that contains itself or a later issue-comment ID.",
+    "requiredRecords": [
+      ".agent-control/v1/workers/worker-2/STATUS_v1.json",
+      "worker-2 sequence-7 completion event",
+      "issue #114 final report"
+    ],
+    "requiredAgreement": ["finalSha", "reportCommentId", "reportUrl", "branch", "startingSha", "recommendation"]
+  },
+  "issueNumber": 114,
+  "workerId": "worker-2",
+  "recommendation": "ACCEPT WITH REPAIR",
+  "releaseState": "round4-stage-a-ready",
+  "executionBoundary": {
+    "executionEnabled": false,
+    "executorState": "unavailable",
+    "networkEnabled": false,
+    "signingEnabled": false,
+    "transactionEnabled": false,
+    "deploymentEnabled": false
+  },
+  "sourceHeads": {
+    "round3StartingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+    "phase4AcceptedSha": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
+    "phase5AcceptedSha": "dd78a76f9546c85e79357a617b219067704c1616",
+    "phase6AcceptedSha": "1b20f634b6d3c5f1261d490e545415c81d7488f2",
+    "stalePhase78Sha": "4c875bb9291d3e714af9cd0013ee5d460f576a2b"
+  },
+  "protectedBlobs": [
+    {"path": ".github/workflows/github-native-simulate.yml", "blobSha": "54e446d4a715ca9678ed4d7434f7ba90b2c67c96"},
+    {"path": "packages/runner/src/rpc-method-policy.mjs", "blobSha": "59dfa72f41a697d533720a4d8f939a81aeba6736"},
+    {"path": "packages/runner/src/fork-rpc-guard.mjs", "blobSha": "73690f16b506baa50ca471ce5b5566ccb601e765"},
+    {"path": "packages/runner/src/run-job.mjs", "blobSha": "e6489c756d43a2f294120ac3c84687030fb919db"},
+    {"path": "packages/github-native-sim/src/fork-rpc-proxy.mjs", "blobSha": "4d7e2bd1114f5a37914b26447c9c79a1e40a58e6"},
+    {"path": "packages/github-native-sim/src/run-job-file.mjs", "blobSha": "8c4c82d76e249b74efc630c8cbf0d7707d25b5f2"}
+  ],
+  "publicInterfaceLocks": {
+    "phase1To3": {
+      "entrypoints": [
+        "packages/audit-protocol/src/index.mjs",
+        "packages/audit-r2-store/src/index.mjs",
+        "packages/audit-profile-registry/src/index.mjs",
+        "packages/audit-workspace-protocol/src/index.mjs",
+        "packages/audit-campaign-protocol/src/index.mjs",
+        "packages/audit-campaigns/src/index.mjs",
+        "packages/audit-evidence/src/index.mjs"
+      ],
+      "storagePrefixes": ["profiles/", "workspaces/", "campaigns/", "jobs/", "job-logs/", "job-artifacts/", "indexes/", "ingress/"],
+      "lifecycleOutcomes": ["awaiting_executor", "provisioning", "running", "collecting_evidence", "completed", "failed", "cancelled", "timed_out", "policy_rejected"]
+    },
+    "phase4": {
+      "profiles": ["solidity-compile-v1", "foundry-test-v1", "foundry-fuzz-v1", "foundry-invariant-v1", "slither-v1", "coverage-forge-v1"],
+      "resultSchema": "tool-result-v1"
+    },
+    "phase5": {
+      "profiles": ["hardhat-test-v1", "echidna-v1", "mutation-v1", "dependency-scan-v1"],
+      "resultSchema": "phase5-tool-result-v1",
+      "repairId": "phase5-terminal-exit-null-v1"
+    },
+    "phase6": {"profiles": ["formal-obligations-v1", "halmos-v1", "solidity-smt-v1"]},
+    "releaseIntegration": {
+      "schemas": [
+        "audit-public-interface-lock-v1",
+        "audit-release-component-manifest-v1",
+        "audit-shared-file-union-v1",
+        "audit-release-intake-plan-v1",
+        "audit-release-integration-manifest-v1"
+      ]
+    }
+  },
+  "verification": {
+    "currentFocused": {
+      "tests": 38,
+      "passed": 38,
+      "failed": 0,
+      "method": "23 unchanged exact-blob scenarios from the prior exact-tree run plus 15 exact-blob modular integration scenarios rerun after the final production repair"
+    },
+    "currentIntegrationSpine": {
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "hostileAndMutationVariants": 32,
+      "digestCongruence": "independent Node crypto SHA-256"
+    },
+    "acceptedSource": {"tests": 124, "passed": 124, "failed": 0, "fixturePayloads": 103, "minimumExplicitMutations": 114},
+    "minimumExplicitMutationsIncludingRound3Intake": 146,
+    "transport": "normal Git transport unavailable; verification used GitHub content-addressed blob readback and identical local Node execution"
+  },
+  "round4": {
+    "masterIssue": 119,
+    "stageAReviewIssues": [120, 121, 123, 124],
+    "stageBAssemblyIssue": 122,
+    "intakeOrder": [
+      "worker-2-phase1-6-integration-base",
+      "worker-0-phase7-8-reviewed",
+      "worker-1-api-reviewed",
+      "worker-3-github-direct-reviewed",
+      "worker-4-web-reviewed",
+      "declared-field-owned-unions",
+      "approved-main-simulation-addon"
+    ],
+    "candidateRequirements": [
+      "completed status",
+      "exact finalSha",
+      "exact report comment ID and URL",
+      "complete path/blob manifest",
+      "public interface lock",
+      "ACCEPT or ACCEPT WITH REPAIR",
+      "branch head equals finalSha"
+    ],
+    "hardRejections": [
+      "stale SHA",
+      "missing blob",
+      "unregistered path",
+      "undeclared overlap",
+      "protected-path mutation",
+      "whole-side shared-file resolution",
+      "public-interface drift",
+      "capability broadening",
+      "report/status mismatch"
+    ],
+    "transplantProcedure": [
+      "create Round 4 branch from completed Worker 2 finalSha",
+      "verify each source status/report/manifest",
+      "apply exact owned paths only",
+      "construct shared files field by field",
+      "run prescribed gates after each wave",
+      "freeze one assembled SHA for all specialist acceptances"
+    ]
+  },
+  "round5": {
+    "issueNumber": 125,
+    "secretNames": [
+      "CLOUDFLARE_API_TOKEN",
+      "CLOUDFLARE_ACCOUNT_ID",
+      "PREFLIGHTSIM_CLIENT_API_KEY",
+      "PREFLIGHTSIM_GPT_API_KEY",
+      "PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY",
+      "PREFLIGHTSIM_RUNNER_API_KEY",
+      "PREFLIGHTSIM_GITHUB_TOKEN",
+      "PREFLIGHTSIM_R2_ACCESS_KEY_ID",
+      "PREFLIGHTSIM_R2_SECRET_ACCESS_KEY",
+      "RPC_ETHEREUM",
+      "RPC_BASE",
+      "RPC_KATANA",
+      "RPC_FRAXTAL",
+      "RPC_ARBITRUM",
+      "RPC_POLYGON",
+      "RPC_OPTIMISM"
+    ],
+    "variableNames": ["PREFLIGHTSIM_API_URL", "PAGES_PROJECT_NAME", "PREFLIGHTSIM_ALLOWED_GITHUB_USERS"],
+    "resourceNames": {
+      "zone": "curveyield.online",
+      "apiDomain": "api.preflight.curveyield.online",
+      "pagesProject": "curveyield-preflight",
+      "pagesDomain": "preflight.curveyield.online",
+      "r2Bucket": "curveyield-preflight",
+      "browserCorsOrigin": "https://preflight.curveyield.online"
+    },
+    "networkPolicy": {
+      "rpcPurpose": "read-only fork sources",
+      "networks": ["Ethereum", "Base", "Katana", "Fraxtal", "Arbitrum", "Polygon", "Optimism"],
+      "forbidden": ["eth_sendRawTransaction", "wallet keys", "signing", "transaction broadcast"]
+    },
+    "deploymentPreconditions": [
+      "exact accepted release SHA",
+      "trusted workflow source",
+      "full-SHA action pins",
+      "minimum permissions",
+      "bounded test data",
+      "rate/spend caps",
+      "short retention",
+      "reversible changes",
+      "secret presence by name only"
+    ],
+    "observability": [
+      "structured correlation IDs",
+      "recursive redaction",
+      "bounded logs and artifacts",
+      "deployment run/job/artifact IDs",
+      "provider request/rate/quota counters",
+      "no secret values or RPC URLs"
+    ],
+    "rollback": [
+      "retain previous accepted Worker/Pages artifacts and configuration",
+      "rollback on critical identity/isolation/credential/transaction/workflow-trust failure",
+      "verify domains/TLS/bindings after rollback",
+      "record rollback SHA/configuration"
+    ],
+    "recovery": [
+      "idempotent redeploy",
+      "test-key rotation with old-key rejection",
+      "R2 partial-publication reconciliation",
+      "GitHub duplicate publication reconciliation",
+      "stale-CAS and cancellation retry drills"
+    ]
+  },
+  "residualRisks": [
+    "Phase 7-8 source on this branch is stale and must be replaced from Worker 0 accepted/repaired output.",
+    "API, GitHub Direct and web candidates are external Round 4 inputs.",
+    "Live Cloudflare, R2, GitHub, RPC, DNS, TLS, quotas, costs and rollback remain untested until Round 5.",
+    "No production secrets, workflow runs, deployment or live execution occurred in Round 3."
+  ],
+  "nonProductionChangedPaths": [
+    "docs/audit/integration/2026-08-01-audit-round3-phases1-6-source-registry-v1.json",
+    "docs/audit/integration/2026-08-01-audit-round3-phases1-8-release-manifest-v1.json",
+    "docs/audit/integration/2026-08-01-audit-round3-release-integration-architecture-v1.md",
+    "docs/audit/reviews/2026-08-01-audit-round3-phases1-8-release-integration-v1.md",
+    "test/audit-round3-digest-congruence.test.mjs",
+    "test/audit-round3-integration-spine-hardening-red.test.mjs",
+    "test/audit-round3-phases1-3-boundary-red.test.mjs",
+    "test/audit-round3-phases1-3-evidence-recovery-red.test.mjs",
+    "test/audit-round3-phases1-3-lifecycle-recovery.test.mjs",
+    "test/audit-round3-phases1-3-public-interface-lock.test.mjs",
+    "test/audit-round3-phases1-6-adaptation-red.test.mjs",
+    "test/audit-round3-phases1-8-public-contracts.test.mjs",
+    "test/audit-round3-phases4-6-compatibility.test.mjs",
+    "test/audit-round3-protected-blobs-and-static.test.mjs",
+    "test/audit-round3-release-intake-adversarial.test.mjs",
+    "test/audit-round3-release-integration-v1.test.mjs"
+  ]
+}
