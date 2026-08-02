@@ -14,13 +14,12 @@ test('accepted timeout and cancellation parser envelopes validate exactly', () =
   }
 });
 
-test('resource exhaustion requires null exit code and exposes the accepted parser mismatch', () => {
+test('resource exhaustion normalizes exit code and validates exactly', () => {
   const parsed=parseLifecycle('resource-exhaustion-v1.json');
   assert.equal(parsed.classification,'resource_exhaustion');
-  assert.equal(parsed.exitCode,137, 'accepted parser currently preserves raw process exit code');
-  assertCodePath(assert,()=>validatePhase5ToolResult(parsed),'lifecycle_mismatch','$.exitCode');
-  const repairedEnvelope={...parsed,exitCode:null};
-  assert.deepEqual(validatePhase5ToolResult(repairedEnvelope),repairedEnvelope);
+  assert.equal(parsed.exitCode,null);
+  assert.deepEqual(validatePhase5ToolResult(parsed),parsed);
+  assertCodePath(assert,()=>validatePhase5ToolResult({...parsed,exitCode:137}),'lifecycle_mismatch','$.exitCode');
 });
 
 test('accepted malformed and parser-error envelopes validate', () => {
