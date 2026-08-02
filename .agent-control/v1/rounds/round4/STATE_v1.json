@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "stage_a_active_with_integration_blockers",
+  "state": "stage_a_complete_with_integration_blockers",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -14,7 +14,7 @@
   "activeRound3Issues": [112, 113, 114, 115, 116],
   "completedRound3Workers": ["worker-0", "worker-1", "worker-2", "worker-3", "worker-4"],
   "stageAActivatedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
-  "stageACompletedWorkers": ["worker-0", "worker-4"],
+  "stageACompletedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
   "stageAOutputs": {
     "worker-0": {
       "issueNumber": 120,
@@ -26,6 +26,28 @@
       "intakeManifestPath": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json",
       "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105",
       "acceptedAt": "2026-08-02T11:36:57Z"
+    },
+    "worker-1": {
+      "issueNumber": 121,
+      "branch": "orchestrator/worker1-round4-takeover-v1",
+      "candidateSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+      "documentationSha": "df983ab905266ddd2dad39866f0e0341aaa0f100",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "reportCommentId": 5157596912,
+      "intakeManifestPath": "docs/audit/round4/worker1/2026-08-02-phase78-stage-a-path-blob-manifest-v1.json",
+      "intakeManifestBlobSha": "3ddd153e315459bfb9f1e2673a297e6f8552e8b7",
+      "acceptedAt": "2026-08-02T13:34:02Z"
+    },
+    "worker-3": {
+      "issueNumber": 123,
+      "branch": "orchestrator/worker3-round4-takeover-v1",
+      "candidateSha": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
+      "documentationSha": "8bb81ace67855e0a4bc214059b5ce3ad6c9c7ba1",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "reportCommentId": 5157962261,
+      "intakeManifestPath": "docs/audit/round4/worker3/2026-08-02-worker3-stage-a-path-blob-manifest-v1.json",
+      "intakeManifestBlobSha": "246ae11f0c1b377773f941394cfcee9defac5301",
+      "acceptedAt": "2026-08-02T13:34:03Z"
     },
     "worker-4": {
       "issueNumber": 124,
@@ -49,29 +71,30 @@
       "workstreamId": "live-fork-rpc-routing-pr126-v1",
       "pullRequestNumber": 126,
       "branch": "agent/live-fork-rpc-routing-design",
-      "state": "active-mutable-external-owner",
-      "observedHeadSha": "701ab96661cad9904e17df0d8559e79bc234335a",
+      "state": "merged-awaiting-independent-round4-reconciliation",
+      "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
+      "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
       "quarantineEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T095457Z_external-live-fork-workstream-quarantine_v1.json",
       "round4InterferenceAuthorized": false,
       "finalCandidateFreezeBlocked": true,
-      "requiredResolution": "Wait for James to declare PR 126 complete. Then pin one exact head, independently review and repair it if required, reconcile exact reviewed paths, and rerun every affected acceptance gate."
+      "requiredResolution": "Independently review the exact merged PR 126 head and changed paths, publish an authorized immutable reconciliation manifest, regenerate affected protected baselines and intake manifests, and rerun affected gates before final candidate freeze."
     }
   ],
   "blockers": [
     {
-      "blockerId": "round4-worker2-premature-activation-v1",
+      "blockerId": "worker2-existing-sequence8-wrong-base-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
-      "description": "Worker 2 sequence 8 and its integration branch were activated before Stage A verdicts from issues 120, 121, 123, and 124, contrary to ACTIVATION_RUNBOOK_v1 Gate 4 and Gate 5. Worker 2 must remain limited to stage-0 preparation and must not intake subsystem production paths until all four Stage A outputs are complete and valid.",
-      "requiredResolution": "Do not publish another Worker 2 assignment or authorize production intake. Issues 120 and 124 are now accepted. Continue holding production intake until issues 121 and 123 are also complete and valid, then reconcile whether sequence 8 may continue under its existing immutable staged assignment or must be superseded according to the runbook.",
-      "detectedAt": "2026-08-02T09:34:47Z"
+      "description": "All four Stage A outputs are now valid, but Worker 2 sequence 8 is already active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759. Creating a second active assignment is forbidden and the immutable sequence 8 assignment cannot be rewritten.",
+      "requiredResolution": "Preserve the existing Stage 0 branch and assignment. Do not authorize production intake until a control-plane-approved supersession/reconstruction procedure establishes one exact Gate 5 branch/assignment without overlapping active ownership or losing accepted Stage 0 artifacts.",
+      "detectedAt": "2026-08-02T13:34:04Z"
     },
     {
-      "blockerId": "round4-external-live-fork-pr126-v1",
+      "blockerId": "pr126-merged-awaiting-independent-reconciliation-v1",
       "pullRequestNumber": 126,
-      "description": "A separate active agent owns the mutable BlockPI/live-fork simulation redesign. Its 17 changed paths are quarantined from all Round 4 workers and orchestrator integration activity.",
-      "requiredResolution": "Do not modify, restore, merge, intake, union, review, or repair PR 126 paths until James declares the separate work complete and authorizes independent review. No final assembled candidate may be frozen before reconciliation.",
-      "detectedAt": "2026-08-02T09:54:57Z"
+      "description": "PR #126 is merged at exact head df2e51824d257669dac204de5bf869c80ed6e844 and merge commit 500de7b8752e926f7478feafb81b92586d6364ea, but its quarantined live-fork/simulation paths have not yet been independently reviewed and converted into an authorized immutable Round 4 completion manifest.",
+      "requiredResolution": "Pin and independently review the exact merged PR #126 head and changed paths, publish an authorized reconciliation manifest, regenerate affected protected baselines and intake manifests, then rerun affected gates before any final assembled-candidate freeze.",
+      "detectedAt": "2026-08-02T13:34:04Z"
     }
   ],
   "productionTestTarget": {
@@ -80,5 +103,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T11:36:57Z"
+  "updatedAt": "2026-08-02T13:34:04Z"
 }
