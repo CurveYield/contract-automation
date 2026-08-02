@@ -5,7 +5,7 @@ import { ForkStateError } from './storage.mjs';
 function safeInput(input, allowed, required = allowed) {
   const value = JSON.parse(canonicalJson(input));
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new ForkStateError('invalid_read_request', 'Read request must be an object');
+    throw new ForkStateError('invalid_type', 'Read request must be an object');
   }
   for (const key of Object.keys(value)) {
     if (!allowed.includes(key)) throw new ForkStateError('invalid_read_request', `Unknown read field ${key}`);
