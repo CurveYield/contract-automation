@@ -1,3 +1,5 @@
+import { isProxy } from 'node:util/types';
+
 export const R2_BILLING_CLASS = Object.freeze({
   CLASS_A: 'class-a',
   CLASS_B: 'class-b',
@@ -10,6 +12,8 @@ const CLASS_A = new Set([
 ]);
 const CLASS_B = new Set(['get', 'head', 'usageSummary']);
 const FREE = new Set(['delete', 'abortMultipartUpload']);
+const CONTROL = /[\u0000-\u001f\u007f]/;
+const ETAG = /^[0-9a-f]{64}$/;
 
 export function classifyR2Operation(method) {
   if (CLASS_A.has(method)) return R2_BILLING_CLASS.CLASS_A;
@@ -20,10 +24,80 @@ export function classifyR2Operation(method) {
 
 export class ConditionalWriteError extends Error {
   constructor(message = 'R2 write precondition failed') {
-    super(message);
+    super(String(message).slice(0, 240));
     this.name = 'ConditionalWriteError';
     this.code = 'precondition_failed';
   }
+}
+
+export class AuditStoreValidationError extends TypeError {
+  constructor(code, message) {
+    super(String(message).slice(0, 240));
+    this.name = 'AuditStoreValidationError';
+    this.code = code;
+  }
+}
+
+function fail(code, message) {
+  throw new AuditStoreValidationError(code, message);
+}
+
+function ordinaryObject(value, path) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) || isProxy(value)) {
+    fail('invalid_options', `${path} must be a plain object`);
+  }
+  let prototype;
+  let keys;
+  let descriptors;
+  try {
+    prototype = Object.getPrototypeOf(value);
+    keys = Reflect.ownKeys(value);
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    fail('hostile_reflection', `${path} could not be inspected`);
+  }
+  if (prototype !== Object.prototype && prototype !== null) fail('invalid_options', `${path} must be a plain object`);
+  for (const key of keys) {
+    if (typeof key === 'symbol') fail('symbol_property', `${path} cannot contain symbol properties`);
+    const descriptor = descriptors[key];
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) fail('accessor_property', `${path}.${key} must be a data property`);
+    if (!descriptor.enumerable) fail('hidden_property', `${path}.${key} must be enumerable`);
+  }
+  return { keys, descriptors };
+}
+
+function safeKey(value) {
+  if (
+    typeof value !== 'string' || value.length < 1 || value.length > 1024 || CONTROL.test(value) ||
+    value.startsWith('/') || value.includes('\\') || value.includes('//') || value.split('/').includes('..')
+  ) fail('invalid_key', 'R2 key must be a safe bounded relative key');
+  return value;
+}
+
+function validateEtag(value, field, allowStar = false) {
+  if (allowStar && value === '*') return value;
+  if (typeof value !== 'string' || !ETAG.test(value)) fail('invalid_precondition', `${field} must be a lowercase SHA-256 ETag${allowStar ? ' or *' : ''}`);
+  return value;
+}
+
+function validateOptions(value) {
+  if (value === undefined) return {};
+  const inspected = ordinaryObject(value, '$.options');
+  for (const key of inspected.keys) if (key !== 'onlyIf') fail('unknown_option', `$.options.${key} is not allowed`);
+  if (!inspected.descriptors.onlyIf) return {};
+  const onlyIf = inspected.descriptors.onlyIf.value;
+  const conditionInspection = ordinaryObject(onlyIf, '$.options.onlyIf');
+  const condition = {};
+  for (const key of conditionInspection.keys) {
+    if (!['etagMatches', 'etagDoesNotMatch'].includes(key)) fail('unknown_option', `$.options.onlyIf.${key} is not allowed`);
+    condition[key] = conditionInspection.descriptors[key].value;
+  }
+  if (condition.etagMatches !== undefined && condition.etagDoesNotMatch !== undefined) {
+    fail('invalid_precondition', 'etagMatches and etagDoesNotMatch are mutually exclusive');
+  }
+  if (condition.etagMatches !== undefined) validateEtag(condition.etagMatches, 'etagMatches');
+  if (condition.etagDoesNotMatch !== undefined) validateEtag(condition.etagDoesNotMatch, 'etagDoesNotMatch', true);
+  return Object.freeze({ onlyIf: Object.freeze(condition) });
 }
 
 function toBytes(value) {
@@ -53,11 +127,12 @@ export class InMemoryAuditStore {
   #objects = new Map();
   #usage = { classA: 0, classB: 0, free: 0 };
 
-  async put(key, value, options = {}) {
+  async put(key, value, options = undefined) {
     this.#usage.classA += 1;
-    if (typeof key !== 'string' || key.length < 1) throw new TypeError('R2 key is required');
-    const previous = this.#objects.get(key);
-    const condition = options.onlyIf ?? {};
+    const checkedKey = safeKey(key);
+    const checkedOptions = validateOptions(options);
+    const previous = this.#objects.get(checkedKey);
+    const condition = checkedOptions.onlyIf ?? {};
     if (condition.etagMatches !== undefined && previous?.etag !== condition.etagMatches) {
       throw new ConditionalWriteError();
     }
@@ -73,23 +148,25 @@ export class InMemoryAuditStore {
       text: typeof value === 'string' ? value : undefined,
       etag: await etagFor(bytes)
     };
-    this.#objects.set(key, record);
-    return publicObject(key, record);
+    this.#objects.set(checkedKey, record);
+    return publicObject(checkedKey, record);
   }
 
   async get(key) {
     this.#usage.classB += 1;
-    return publicObject(key, this.#objects.get(key), true);
+    const checkedKey = safeKey(key);
+    return publicObject(checkedKey, this.#objects.get(checkedKey), true);
   }
 
   async head(key) {
     this.#usage.classB += 1;
-    return publicObject(key, this.#objects.get(key));
+    const checkedKey = safeKey(key);
+    return publicObject(checkedKey, this.#objects.get(checkedKey));
   }
 
   async delete(key) {
     this.#usage.free += 1;
-    this.#objects.delete(key);
+    this.#objects.delete(safeKey(key));
   }
 
   usage() {
