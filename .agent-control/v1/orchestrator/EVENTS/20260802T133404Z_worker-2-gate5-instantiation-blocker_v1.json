@@ -1,0 +1,32 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker-2-gate5-instantiation-blocker-20260802T133404Z",
+  "eventType": "integration_activation_blocked",
+  "createdAt": "2026-08-02T13:34:04Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "runbookGate": 5,
+  "stageAVerdictsComplete": true,
+  "acceptedInputs": {
+    "worker0Phase1To6": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "worker1Phase7To8": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+    "worker3ApiAuth": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
+    "worker4WebDirect": "11823bb8150debcf65b87aec27a20325546f864e"
+  },
+  "blockers": [
+    {
+      "blockerId": "worker2-existing-sequence8-wrong-base-v1",
+      "description": "Worker 2 sequence 8 is already active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from the accepted/repaired issue #120 Phase 1-6 base bbb4cac794865f84b65ee78a2fc78d391421c759. Creating another active assignment is forbidden and the existing immutable assignment cannot be rewritten.",
+      "requiredResolution": "Preserve the existing Stage 0 branch and assignment. Do not authorize production intake until a control-plane-approved supersession/reconstruction procedure establishes one exact Gate 5 branch/assignment without overlapping active ownership or losing accepted Stage 0 artifacts."
+    },
+    {
+      "blockerId": "pr126-merged-awaiting-independent-reconciliation-v1",
+      "description": "PR #126 is now merged at exact head df2e51824d257669dac204de5bf869c80ed6e844 with merge commit 500de7b8752e926f7478feafb81b92586d6364ea, but the quarantined live-fork/simulation paths have not yet been independently reviewed and converted into an authorized immutable Round 4 completion manifest.",
+      "requiredResolution": "Pin and independently review the exact merged PR #126 head and changed paths, publish an authorized reconciliation manifest, regenerate affected protected baselines and intake manifests, then rerun affected gates before any final assembled-candidate freeze."
+    }
+  ],
+  "productionIntakeAuthorized": false,
+  "finalCandidateFreezeAuthorized": false
+}
