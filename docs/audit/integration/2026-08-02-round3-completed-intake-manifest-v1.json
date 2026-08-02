@@ -54,8 +54,9 @@
       "codeCandidateSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
       "reportCommentId": 5154958425,
       "recommendation": "ACCEPT",
-      "intakeState": "eligible-for-exact-path-transplant",
+      "intakeState": "exact-blobs-pinned",
       "changedPathCount": 26,
+      "exactPathBlobManifest": "docs/audit/integration/2026-08-02-worker1-api-exact-path-blobs-v1.json",
       "ownedPrefixes": [
         "apps/audit-api/",
         "packages/audit-api-contracts/",
@@ -75,8 +76,9 @@
       "compatibilityManifestId": "direct-compatibility-2a7b937fd31fac897e936414",
       "releaseManifestId": "direct-round3-release-418edd6cf9b65dbd77032a08",
       "recommendation": "ACCEPT",
-      "intakeState": "eligible-for-exact-path-transplant",
+      "intakeState": "exact-blobs-pinned",
       "changedPathCount": 33,
+      "exactPathBlobManifest": "docs/audit/integration/2026-08-02-worker3-github-direct-exact-path-blobs-v1.json",
       "ownedPrefixes": [
         ".github/workflows/audit-direct-v1.yml",
         "apps/audit-github-direct-cli/",
@@ -97,14 +99,16 @@
       "codeCandidateSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
       "reportCommentId": 5154997216,
       "recommendation": "ACCEPT",
-      "intakeState": "eligible-for-exact-path-transplant",
-      "changedPathCount": 37,
+      "intakeState": "exact-blobs-pinned",
+      "changedPathCount": 39,
+      "exactPathBlobManifest": "docs/audit/integration/2026-08-02-worker4-web-exact-path-blobs-v1.json",
       "ownedPrefixes": [
         "apps/audit-web/",
         "packages/audit-report-view-model/",
         "packages/audit-ui-contracts/",
         "packages/audit-web-compat/",
         "docs/audit/web/",
+        "docs/audit/reviews/2026-08-01-audit-round3-web-operator-",
         "test/audit-round3-web-",
         "test/fixtures/audit-round3-web/"
       ]
@@ -114,13 +118,14 @@
     "candidateOwnedPathOverlap": false,
     "rootPackageJsonUnionRequiredByTheseCodeCandidates": false,
     "pr126Overlap": false,
+    "totalPinnedPaths": 98,
     "result": "PASS"
   },
   "assembly": {
-    "state": "metadata-registered-code-transplants-pending",
+    "state": "exact-path-blob-manifests-complete-code-transplants-pending",
     "assembledCodeSha": null,
     "eligibleNow": ["api-gpt-auth", "github-direct-audit", "web-operator-ui"],
     "blocked": ["phase7-8-core-repair", "external-live-fork-rpc-routing"],
-    "nextRequiredAction": "Create exact path/blob manifests for eligible candidates, transplant only those blobs onto this branch, then run static and inert cross-component verification without touching active Round 4 branches."
+    "nextRequiredAction": "Transplant only the 98 registered exact blobs onto this isolated branch, then perform static and inert cross-component verification without touching active Round 4 branches."
   }
 }
