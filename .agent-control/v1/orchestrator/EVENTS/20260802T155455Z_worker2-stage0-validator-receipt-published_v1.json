@@ -1,0 +1,48 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker2-stage0-validator-receipt-published-20260802T155455Z",
+  "eventType": "round4_integration_blocker_progress",
+  "createdAt": "2026-08-02T15:54:55Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "repairBranch": "orchestrator/worker2-stage0-validator-repair-v1",
+  "validatedCodeHeadSha": "9bea7dd735541149e88b3773b31ffe03cd051838",
+  "evidenceReceiptHeadSha": "353f662336b647c554df8ac1dc0ff435fa0e946c",
+  "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
+  "receiptBlobSha": "b2fdde334f8f0c5381121175ec456d7d4bdf7580",
+  "issueCommentId": 5159019450,
+  "exactIntakePaths": [
+    {
+      "path": "packages/audit-integration-round4/src/index-legacy.mjs",
+      "blobSha": "8fd316be7ce2073c7b4290443a7fe5ceee292721"
+    },
+    {
+      "path": "packages/audit-integration-round4/src/index.mjs",
+      "blobSha": "b788d6a37015a1245ac680279b0cb9eb30eef79a"
+    },
+    {
+      "path": "test/audit-round4-integration-stage0-takeover-red.test.mjs",
+      "blobSha": "f6408462d32f97e7e8eb312a30cdfebc378d0a55"
+    }
+  ],
+  "verification": {
+    "legacyValidatorPreservedByteForByte": true,
+    "priorCombinedTestsPassed": 14,
+    "priorCombinedTestsFailed": 0,
+    "finalTimestampRegressionGreen": true,
+    "finalCombinedSuiteStatus": "await-worker2-exact-intake-and-rerun",
+    "requiredCommand": "node --test test/audit-round4-integration-stage0-red.test.mjs test/audit-round4-integration-stage0-takeover-red.test.mjs"
+  },
+  "resolvedFinding": "The exact repair receipt, code head, evidence head and three path/blob pairs are now durable on issue 122.",
+  "remainingRequirement": "Worker 2 must acknowledge sequence 8, exact-transplant the three listed blobs, run the required two-file test command, publish exact results and verify remote blob readback before the validator repair is accepted for integration.",
+  "containment": {
+    "workerOwnedStateModified": false,
+    "worker2BranchModified": false,
+    "productionPathIntakeAuthorized": false,
+    "assembledCandidateFreezeAuthorized": false,
+    "pr126IntakeAuthorized": false,
+    "workflowOrSimulationActionAuthorized": false
+  }
+}
