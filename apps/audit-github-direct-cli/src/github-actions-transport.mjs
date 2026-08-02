@@ -8,7 +8,7 @@ export function createGitHubActionsLedgerSnapshotReader(input){const v=exactKeys
 function commentMarker(plan){return `<!-- audit-direct:${plan.publicationId} -->`;}
 async function findSideEffect(api,plan,issueNumber){
   if(plan.kind==='comment'){
-    const comments=await api.request('GET',`${api.repoPath(plan)}/issues/${issueNumber}/comments`)??[];
+    const comments=await api.request('GET',`${api.repoPath(plan)}/issues/${issueNumber}/comments?per_page=100`)??[];
     return comments.some((item)=>typeof item?.body==='string'&&item.body.includes(commentMarker(plan)));
   }
   if(plan.kind==='check'){
