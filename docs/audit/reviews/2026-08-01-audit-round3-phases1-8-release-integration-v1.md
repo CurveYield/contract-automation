@@ -82,10 +82,10 @@ The master pointer binds three production registries by Git blob SHA:
 | Registry | Operations | Blob SHA |
 |---|---:|---|
 | Phase 1–3 | 8 | `3789f541564812ba2680231c373cb75c7d149b31` |
-| Phase 4–6 | 29 | `149874168b0a9ac4409a9feab15eda21dd4537d7` |
+| Phase 4–6 | 30 | `149874168b0a9ac4409a9feab15eda21dd4537d7` |
 | Release integration | 10 | `e0c9e3954ff1eca871c8a1288ddec10fa6a9580f` |
 
-Total production path operations: **47**. Each operation records exact source head, source blob, destination blob, adaptation kind and repair ID where applicable.
+Total production path operations: **48**. Total changed files: **68**. Each production operation records exact source head, source blob, destination blob, adaptation kind and repair ID where applicable.
 
 ## Release-integration spine
 
@@ -190,4 +190,4 @@ No production secret value was retrieved, printed or committed. No deployment, w
 
 ## Final assessment
 
-The Phase 1–6 implementation and release-integration spine are suitable for independent Round 4 review. The branch preserves an execution-disabled validation/storage boundary, provides complete exact source/blob provenance for 47 production path operations, and supplies deterministic intake, overlap, shared-file, interface and capability gates for the remaining release candidates.
+The Phase 1–6 implementation and release-integration spine are suitable for independent Round 4 review. The branch preserves an execution-disabled validation/storage boundary, provides complete exact source/blob provenance for **48 production path operations across 68 changed files**, and supplies deterministic intake, overlap, shared-file, interface and capability gates for the remaining release candidates.
