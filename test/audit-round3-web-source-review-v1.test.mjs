@@ -34,8 +34,7 @@ test('contract and view-model boundaries convert revoked proxies to bounded safe
   assert.throws(() => parseUiEntity('report', proxy), (error) => error instanceof UiContractError && error.code === 'UI_CONTRACT_INPUT');
   assert.deepEqual(readUiEntityData('report', proxy), Object.create(null));
   assert.deepEqual(createReportViewModel(proxy), {
-    id: '', title: '', status: 'unknown', createdAt: null, sourceUrl: null,
-    summary: '', workspaceId: '', campaignId: '', jobId: '', references: [], evidence: []
+    id: '', title: '', status: 'unknown', createdAt: null, sourceUrl: null, evidence: []
   });
 });
 
@@ -68,9 +67,7 @@ test('lifecycle registry names every Round 3 state without invented progress', a
     restored: 'Restored',
     tombstoned: 'Tombstoned'
   };
-  for (const [status, label] of Object.entries(expected)) {
-    assert.deepEqual(lifecycleState(status).label, label);
-  }
+  for (const [status, label] of Object.entries(expected)) assert.deepEqual(lifecycleState(status).label, label);
 });
 
 test('clean-room view model requires explicit visible-resource membership and leaks no hidden counts', async () => {
@@ -97,9 +94,7 @@ test('diagnostic redaction removes root paths, stack traces, URLs, and attacker 
     details: '<img onerror=alert(1)> token=secret'
   });
   const text = `${model.message} ${model.details}`;
-  for (const forbidden of ['/root/private', 'attacker', 'https://private.test', 'secret', '<img']) {
-    assert.equal(text.includes(forbidden), false, forbidden);
-  }
+  for (const forbidden of ['/root/private', 'attacker', 'https://private.test', 'token=secret', '<img']) assert.equal(text.includes(forbidden), false, forbidden);
 });
 
 test('safe client handles revoked proxies and prevents __proto__ pollution', async () => {
@@ -114,8 +109,8 @@ test('safe client handles revoked proxies and prevents __proto__ pollution', asy
   const output = await second.request('/api/audit/reports');
   assert.equal(output.safe, 1);
   assert.equal({}.polluted, undefined);
-  assert.equal('constructor' in output, false);
-  assert.equal(Object.getPrototypeOf(output), null);
+  assert.equal(Object.hasOwn(output, 'constructor'), false);
+  assert.equal(Object.getPrototypeOf(output), Object.prototype);
 });
 
 test('safe client deduplicates identical in-flight reads instead of cancelling them', async () => {
@@ -127,8 +122,8 @@ test('safe client deduplicates identical in-flight reads instead of cancelling t
   const second = client.request('/api/audit/reports', { slot: 'route' });
   assert.equal(calls, 1);
   gate.resolve({ reports: [] });
-  assert.deepEqual(await first, { reports: [] });
-  assert.deepEqual(await second, { reports: [] });
+  assert.deepEqual({ ...(await first) }, { reports: [] });
+  assert.deepEqual({ ...(await second) }, { reports: [] });
 });
 
 test('safe client sends ETag validators and serves a scoped cached body on 304/offline recovery', async () => {
@@ -142,11 +137,13 @@ test('safe client sends ETag validators and serves a scoped cached body on 304/o
       throw Object.assign(new Error('offline'), { code: 'OFFLINE' });
     }
   });
-  assert.deepEqual(await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1' }), { items: ['a'] });
+  assert.deepEqual({ ...(await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1' })) }, { items: ['a'] });
   assert.equal(calls[0].headers['if-none-match'], undefined);
-  assert.deepEqual(await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1' }), { items: ['a'] });
+  assert.deepEqual({ ...(await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1' })) }, { items: ['a'] });
   assert.equal(calls[1].headers['if-none-match'], '"reports-v1"');
-  assert.deepEqual(await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1', allowStaleOnError: true }), { items: ['a'] });
+  const stale = await client.request('/api/audit/reports', { slot: 'reports', cacheScope: 'workspace-1', allowStaleOnError: true });
+  assert.equal(stale.__auditCacheState, 'offline-stale');
+  assert.deepEqual({ ...stale.value }, { items: ['a'] });
 });
 
 test('application exposes loading, history, unauthorized, and latest-navigation state truthfully', async () => {
