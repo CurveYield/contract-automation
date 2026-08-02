@@ -1,0 +1,42 @@
+name: Temporary Phase 7-8 Semantic Repair Verification
+
+on:
+  push:
+    branches:
+      - audit-repair/phases7-8-semantic-boundaries-v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-phases7-8-semantic-repair-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Phase 7-8 tests
+        run: >-
+          node --test
+          test/audit-phase7-*.test.mjs
+          test/audit-phase8-*.test.mjs
+          test/audit-round1-phases7-8-cross-phase-v1.test.mjs
+          test/audit-phases7-8-semantic-boundaries-repair-v1.test.mjs
+      - name: Syntax check repair surfaces
+        run: |
+          node --check packages/audit-fork-protocol/src/internals.mjs
+          node --check packages/audit-forks/src/service.mjs
+          node --check packages/audit-forks/src/checkpoint-operations.mjs
+          node --check packages/audit-controlled-merge/src/request-state.mjs
+          node --check packages/audit-controlled-merge/src/relations.mjs
+          node --check packages/audit-controlled-merge/src/publication-storage.mjs
+          node --check packages/audit-provenance/src/index.mjs
+          node --check test/audit-phases7-8-semantic-boundaries-repair-v1.test.mjs
