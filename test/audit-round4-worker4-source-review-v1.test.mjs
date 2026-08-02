@@ -11,6 +11,7 @@ const requiredStates = new Map([
   ['requested', 'Requested'],
   ['validating', 'Validating'],
   ['admitted', 'Admitted'],
+  ['accepted', 'Accepted — awaiting executor'],
   ['awaiting_executor', 'Awaiting executor'],
   ['fixture_running', 'Trusted fixture running'],
   ['publishing', 'Publishing'],
@@ -35,9 +36,7 @@ const requiredStates = new Map([
 
 test('every Round 4 external lifecycle state has an explicit truthful label', async () => {
   const { lifecycleState } = await load('packages/audit-report-view-model/src/lifecycle-v1.mjs');
-  for (const [state, label] of requiredStates) {
-    assert.equal(lifecycleState(state).label, label, state);
-  }
+  for (const [state, label] of requiredStates) assert.equal(lifecycleState(state).label, label, state);
 });
 
 test('identical report references deduplicate and conflicting duplicates fail closed', async () => {
@@ -50,7 +49,6 @@ test('identical report references deduplicate and conflicting duplicates fail cl
     ]
   });
   assert.equal(identical.references.length, 1);
-
   const conflicting = createReportViewModel({
     id: 'report-2', title: 'Report', status: 'published',
     references: [
