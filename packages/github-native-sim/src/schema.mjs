@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { CHAINS, validateWorkflow } from '../../protocol/src/index.mjs';
+import { CHAINS, validateSimulationConfig, validateWorkflow } from '../../protocol/src/index.mjs';
 
 const FORBIDDEN_KEYS = new Set([
   'privateKey',
@@ -10,7 +10,6 @@ const FORBIDDEN_KEYS = new Set([
   'secret',
   'signer',
   'rpcUrl',
-  'rpc',
   'rawTransaction',
   'signedTransaction',
   'shell',
@@ -33,7 +32,8 @@ const TOP_LEVEL_KEYS = new Set([
   'workflow',
   'optimizer',
   'evmVersion',
-  'viaIR'
+  'viaIR',
+  'simulation'
 ]);
 
 export class GitHubNativeValidationError extends Error {
@@ -199,6 +199,7 @@ export function validateGitHubNativeJob(input) {
     throw new GitHubNativeValidationError('invalid_via_ir', 'viaIR must be boolean', 'viaIR');
   }
 
+  const block = validateBlock(input.block);
   return {
     version,
     id,
@@ -207,7 +208,8 @@ export function validateGitHubNativeJob(input) {
     compilerVersion: exactVersion(input.compilerVersion, 'compilerVersion'),
     openZeppelinVersion: exactVersion(input.openZeppelinVersion, 'openZeppelinVersion', { optional: true }),
     chain,
-    block: validateBlock(input.block),
+    block,
+    simulation: validateSimulationConfig(input.simulation ?? {}, { legacyBlock: block }),
     timeoutMinutes,
     workflow: validateWorkflow(input.workflow ?? { steps: [] }, { allowEmpty: mode === 'compile' }),
     optimizer: validateOptimizer(input.optimizer),
