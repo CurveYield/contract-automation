@@ -1,23 +1,26 @@
 import {
   ApiContractError,
-  authenticateAuditRead,
+  canonicalJson,
   corsHeaders,
   createJsonResponse,
   decodePageCursor,
   encodePageCursor,
   errorResponse,
-  parsePageLimit
+  parsePageLimit,
+  validateExternalValue
 } from '../../../packages/audit-api-contracts/src/index.mjs';
 import {
-  resolveAuditReadScope,
-  validateReportReference
-} from '../../../packages/audit-api-contracts/src/discovery.mjs';
+  AUDIT_ROUTE_SCOPES,
+  authorizeAuditReadRequest
+} from '../../../packages/audit-api-contracts/src/authorization.mjs';
+import { validateReportReference } from '../../../packages/audit-api-contracts/src/discovery.mjs';
 
-export const AUDIT_REPORT_LIST_PATH = '/audit/v1/reports';
-const ITEM_PREFIX = `${AUDIT_REPORT_LIST_PATH}/`;
+const LIST_PATH = '/audit/v1/reports';
+const ITEM_PREFIX = '/audit/v1/reports/';
+const MAX_PROVIDER_RECORDS = 1_000;
 
 function route(pathname) {
-  if (pathname === AUDIT_REPORT_LIST_PATH) return { kind: 'list' };
+  if (pathname === LIST_PATH) return { kind: 'list' };
   if (!pathname.startsWith(ITEM_PREFIX)) return null;
   const encoded = pathname.slice(ITEM_PREFIX.length);
   if (!encoded || encoded.includes('/')) {
@@ -26,136 +29,170 @@ function route(pathname) {
   let reportId;
   try { reportId = decodeURIComponent(encoded); }
   catch { throw new ApiContractError('invalid_report_id', 'Report ID is invalid', '$.reportId'); }
-  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(reportId)) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(reportId)) {
     throw new ApiContractError('invalid_report_id', 'Report ID is invalid', '$.reportId');
   }
   return { kind: 'item', reportId };
 }
 
-function providerMethod(env, name) {
-  const provider = env?.AUDIT_REPORT_DISCOVERY;
-  const descriptor = provider && typeof provider === 'object'
-    ? Object.getOwnPropertyDescriptor(provider, name)
-    : null;
-  if (!descriptor || typeof descriptor.value !== 'function') {
-    throw new ApiContractError(
-      'capability_unavailable',
-      'Report discovery is unavailable',
-      '$',
-      503
-    );
-  }
-  return descriptor.value.bind(provider);
-}
-
 function exactQuery(url, allowed) {
-  for (const key of url.searchParams.keys()) {
-    if (!allowed.has(key)) {
+  const seen = new Set();
+  for (const [key] of url.searchParams) {
+    if (!allowed.has(key) || seen.has(key)) {
       throw new ApiContractError('invalid_query', 'Query parameter is not allowed', '$.query');
     }
+    seen.add(key);
   }
-  for (const key of allowed) {
-    if (url.searchParams.getAll(key).length > 1) {
-      throw new ApiContractError('invalid_query', 'Duplicate query parameter', '$.query');
+}
+
+function provider(env) {
+  const value = env?.AUDIT_REPORT_DISCOVERY;
+  if (!value || typeof value !== 'object') {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
+  return value;
+}
+
+function providerFailure() {
+  throw new ApiContractError('provider_contract_error', 'Report provider returned an invalid result', '$', 500);
+}
+
+function codeUnitCompare(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function providerItems(value) {
+  let safe;
+  try { safe = validateExternalValue(value, '$.providerResult'); }
+  catch { providerFailure(); }
+  if (Array.isArray(safe)) return safe;
+  const keys = Object.keys(safe).sort().join('\0');
+  if (keys !== 'items\0schemaVersion\0snapshotVersion') providerFailure();
+  if (
+    safe.schemaVersion !== 'audit-report-provider-page-v1' ||
+    !Array.isArray(safe.items) ||
+    typeof safe.snapshotVersion !== 'string' ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(safe.snapshotVersion)
+  ) providerFailure();
+  return safe.items;
+}
+
+function canonicalVisibleReports(rawItems, scope) {
+  if (rawItems.length > MAX_PROVIDER_RECORDS) providerFailure();
+  const byId = new Map();
+  for (let index = 0; index < rawItems.length; index += 1) {
+    let report;
+    try { report = validateReportReference(rawItems[index], `$.reports[${index}]`); }
+    catch { providerFailure(); }
+    if (report.tenantId !== scope.tenantId || report.workspaceId !== scope.workspaceId) continue;
+    const existing = byId.get(report.reportId);
+    if (existing && canonicalJson(existing) !== canonicalJson(report)) providerFailure();
+    if (!existing) byId.set(report.reportId, report);
+  }
+  return [...byId.values()].sort((left, right) => codeUnitCompare(left.reportId, right.reportId));
+}
+
+async function listReports(service, scope, { limit, cursor }) {
+  if (typeof service.listReports !== 'function') {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
+  const raw = await service.listReports({ tenantId: scope.tenantId, workspaceId: scope.workspaceId });
+  const reports = canonicalVisibleReports(providerItems(raw), scope);
+  let start = 0;
+  if (cursor) {
+    const decoded = await decodePageCursor(cursor, {
+      scope: `${scope.tenantId}/${scope.workspaceId}`,
+      kind: 'reports'
+    });
+    const anchor = reports.findIndex((report) => report.reportId === decoded.after);
+    if (anchor < 0) {
+      throw new ApiContractError('stale_cursor', 'Cursor anchor is no longer available', '$.cursor');
     }
+    start = anchor + 1;
   }
+  const page = reports.slice(start, start + limit);
+  const hasMore = start + page.length < reports.length;
+  const nextCursor = hasMore && page.length > 0
+    ? await encodePageCursor({
+      scope: `${scope.tenantId}/${scope.workspaceId}`,
+      kind: 'reports',
+      after: page.at(-1).reportId
+    })
+    : null;
+  return { reports: page, nextCursor };
+}
+
+async function getReport(service, scope, reportId) {
+  if (typeof service.getReport !== 'function') {
+    throw new ApiContractError('service_unavailable', 'Report discovery is unavailable', '$', 503);
+  }
+  const raw = await service.getReport({
+    tenantId: scope.tenantId,
+    workspaceId: scope.workspaceId,
+    reportId
+  });
+  if (raw === null || raw === undefined) {
+    throw new ApiContractError('not_found', 'Report not found', '$.reportId', 404);
+  }
+  let report;
+  try { report = validateReportReference(raw); }
+  catch { providerFailure(); }
+  if (
+    report.reportId !== reportId ||
+    report.tenantId !== scope.tenantId ||
+    report.workspaceId !== scope.workspaceId
+  ) throw new ApiContractError('not_found', 'Report not found', '$.reportId', 404);
+  return report;
 }
 
 export async function handlePhase9ReportRequest(request, env) {
-  const url = new URL(request.url);
   let matched;
-  try { matched = route(url.pathname); }
-  catch (cause) { return errorResponse(cause, env); }
-  if (!matched) return null;
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders(env) });
-  }
+  let url;
   try {
-    const identity = await authenticateAuditRead(request, env);
-    const scope = resolveAuditReadScope(identity, env);
+    url = new URL(request.url);
+    matched = route(url.pathname);
+  } catch (cause) { return errorResponse(cause, env); }
+  if (!matched) return null;
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
+  try {
     if (request.method !== 'GET') {
       throw new ApiContractError('method_not_allowed', 'Report discovery is read-only', '$', 405);
     }
-    const cache = {
-      tenantId: scope.tenantId,
-      workspaceId: scope.workspaceId,
-      route: url.pathname,
-      query: url.search
-    };
-    if (matched.kind === 'item') {
-      exactQuery(url, new Set());
-      const raw = await providerMethod(env, 'getReport')({
-        ...scope,
-        reportId: matched.reportId
-      });
-      if (raw === null || raw === undefined) {
-        throw new ApiContractError('not_found', 'Report not found', '$.reportId', 404);
-      }
-      const report = validateReportReference(raw);
-      if (
-        report.tenantId !== scope.tenantId ||
-        report.workspaceId !== scope.workspaceId ||
-        report.reportId !== matched.reportId
-      ) {
-        throw new ApiContractError('not_found', 'Report not found', '$.reportId', 404);
-      }
-      return createJsonResponse(report, { env, cache });
-    }
-    exactQuery(url, new Set(['limit', 'cursor']));
-    const limit = parsePageLimit(url.searchParams.get('limit'));
-    const cursorValue = url.searchParams.get('cursor');
-    const cursorScope = `${scope.tenantId}/${scope.workspaceId}`;
-    const decoded = cursorValue
-      ? await decodePageCursor(cursorValue, { scope: cursorScope, kind: 'reports' })
-      : null;
-    const raw = await providerMethod(env, 'listReports')({
-      ...scope,
-      limit: limit + 1,
-      after: decoded?.after ?? null
+    exactQuery(url, matched.kind === 'list' ? new Set(['limit', 'cursor']) : new Set());
+    const scope = await authorizeAuditReadRequest(request, env, {
+      routeScope: matched.kind === 'list'
+        ? AUDIT_ROUTE_SCOPES.reportsList
+        : AUDIT_ROUTE_SCOPES.reportRead,
+      ...(matched.kind === 'item' ? { resourceType: 'report', resourceId: matched.reportId } : {})
     });
-    if (!Array.isArray(raw)) {
-      throw new ApiContractError(
-        'provider_contract_error',
-        'Report provider returned an invalid collection',
-        '$',
-        500
-      );
+    const service = provider(env);
+    if (matched.kind === 'item') {
+      return createJsonResponse(await getReport(service, scope, matched.reportId), {
+        env,
+        cache: {
+          tenantId: scope.tenantId,
+          workspaceId: scope.workspaceId,
+          route: `${ITEM_PREFIX}${matched.reportId}`,
+          query: ''
+        }
+      });
     }
-    const reports = raw.map((value, index) => (
-      validateReportReference(value, `$.reports[${index}]`)
-    ));
-    if (reports.some((report) => (
-      report.tenantId !== scope.tenantId ||
-      report.workspaceId !== scope.workspaceId
-    ))) {
-      throw new ApiContractError(
-        'provider_contract_error',
-        'Report provider scope mismatch',
-        '$',
-        500
-      );
-    }
-    reports.sort((left, right) => (
-      left.createdAt.localeCompare(right.createdAt) ||
-      left.reportId.localeCompare(right.reportId)
-    ));
-    const afterIndex = decoded
-      ? reports.findIndex((report) => report.reportId === decoded.after)
-      : -1;
-    const selected = reports.slice(afterIndex + 1, afterIndex + 1 + limit);
-    const hasMore = reports.length > afterIndex + 1 + limit;
-    const nextCursor = hasMore && selected.length
-      ? await encodePageCursor({
-        scope: cursorScope,
-        kind: 'reports',
-        after: selected.at(-1).reportId
-      })
-      : null;
+    const limit = parsePageLimit(url.searchParams.get('limit'));
+    const cursor = url.searchParams.get('cursor');
+    const result = await listReports(service, scope, { limit, cursor });
     return createJsonResponse({
-      schemaVersion: 'audit-report-list-v1',
-      reports: selected,
-      nextCursor
-    }, { env, cache });
+      schemaVersion: 'audit-report-list-v2',
+      reports: result.reports,
+      nextCursor: result.nextCursor
+    }, {
+      env,
+      cache: {
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId,
+        route: LIST_PATH,
+        query: canonicalJson({ limit, cursor: cursor ?? null })
+      }
+    });
   } catch (cause) {
     return errorResponse(cause, env);
   }
