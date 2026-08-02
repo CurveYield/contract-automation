@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: github-native-sim-ci-${{ github.ref }}
@@ -109,5 +110,58 @@ jobs:
           retention-days: 30
 
       - name: Propagate smoke failure
+        if: steps.execute.outcome == 'failure'
+        run: exit 1
+
+  v27-full-live-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_03 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_04 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_05 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_06 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_07 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
+      SIM_RPC_HEALTH_GITHUB_TOKEN: ${{ github.token }}
+      RESULT_ROOT: ${{ runner.temp }}/v27-full-live-fork
+    steps:
+      - name: Check out trusted source and migration job
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted dependencies and EDR
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
+
+      - name: Execute full V27 shared live-fork lifecycle
+        id: execute
+        continue-on-error: true
+        run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
+
+      - name: Upload complete or partial V27 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v27-full-live-fork-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-full-live-fork
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Propagate V27 validation failure
         if: steps.execute.outcome == 'failure'
         run: exit 1
