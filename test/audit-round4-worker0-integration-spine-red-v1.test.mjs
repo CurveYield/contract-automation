@@ -4,6 +4,7 @@ import {
   SAFE_CAPABILITIES,
   SHARED_FILE_UNION_SCHEMA,
   createPublicInterfaceLock,
+  validatePublicInterfaceLock,
   createComponentManifest,
   validateSharedFileUnion,
   createReleaseIntakePlan
@@ -24,9 +25,18 @@ function component(overrides={}){
     componentId:'component-a',issueNumber:114,branch:'audit-round4/component-a-v1',finalSha:sha('a'),
     status:'completed',recommendation:'ACCEPT',report,
     paths:[{path:'packages/component-a/src/index.mjs',sourceBlobSha:sha('b'),destinationBlobSha:sha('b'),adaptationKind:'exact',repairId:null}],
-    publicInterface:lock(),...overrides
+    publicInterface:createPublicInterfaceLock(lock()),...overrides
   };
 }
+
+test('created public interface locks round-trip through their validator',()=>{
+  const created=createPublicInterfaceLock(lock());
+  assert.deepEqual(validatePublicInterfaceLock(created),created);
+});
+
+test('a valid component manifest accepts a builder-produced interface lock',()=>{
+  assert.equal(createComponentManifest(component()).componentId,'component-a');
+});
 
 test('public interface locks require at least one entrypoint',()=>{
   assert.throws(()=>createPublicInterfaceLock(lock({entrypoints:[]})),{code:'missing_interface_entrypoint'});
@@ -37,10 +47,11 @@ test('public interface locks require at least one export',()=>{
 });
 
 test('component manifests reject public entrypoints outside owned destination paths',()=>{
-  assert.throws(()=>createComponentManifest(component({publicInterface:lock({entrypoints:['packages/unowned/src/index.mjs']})})),{code:'interface_entrypoint_unowned'});
+  const publicInterface=createPublicInterfaceLock(lock({entrypoints:['packages/unowned/src/index.mjs']}));
+  assert.throws(()=>createComponentManifest(component({publicInterface})),{code:'interface_entrypoint_unowned'});
 });
 
-test('component manifests bind ACCEPT WITH REPAIR to non-exact adaptations',()=>{
+test('component manifests bind ACCEPT WITH REPAIR to repaired or deleted adaptations',()=>{
   const repaired={path:'packages/component-a/src/index.mjs',sourceBlobSha:sha('b'),destinationBlobSha:sha('c'),adaptationKind:'repaired',repairId:'repair-a'};
   assert.throws(()=>createComponentManifest(component({paths:[repaired],recommendation:'ACCEPT'})),{code:'recommendation_mismatch'});
 });
