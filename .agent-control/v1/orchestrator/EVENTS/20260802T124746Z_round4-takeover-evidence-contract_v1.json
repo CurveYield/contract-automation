@@ -1,0 +1,20 @@
+{
+  "protocolVersion": 2,
+  "schemaVersion": "orchestrator-event-v1",
+  "eventId": "20260802T124746Z-round4-takeover-evidence-contract-v1",
+  "recordedAt": "2026-08-02T12:47:46Z",
+  "repository": "CurveYield/contract-automation",
+  "eventType": "round4-direct-takeover-evidence-contract-published",
+  "masterIssue": 119,
+  "integrationIssue": 122,
+  "controlCommit": "5651d292d819794f0704ba871959bd6b67e191d9",
+  "attestationPath": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-round4-direct-takeover-evidence-v1.json",
+  "affectedWorkers": ["worker-1", "worker-3"],
+  "requiredIntegrationChange": "Worker 2 must accept validated orchestrator takeover evidence as an alternative to retired worker-owned completed status records.",
+  "safety": {
+    "workerOwnedStatusesModified": false,
+    "workerBranchesModified": false,
+    "mainModified": false,
+    "pr126Modified": false
+  }
+}
