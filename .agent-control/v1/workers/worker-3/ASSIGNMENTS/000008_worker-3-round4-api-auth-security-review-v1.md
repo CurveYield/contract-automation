@@ -17,9 +17,9 @@
 - Worker 1 reviewed implementation candidate: `f02840ee3fc0c59759c5034dc5c40e0c154bdab5`.
 - API contract: `audit-api-contracts-v2`.
 - Catalog composition: `audit-catalog-composition-v2`.
-- Worker 3 Round 3 GitHub Direct actual head: `e70307b6c59d09b0d3094ca2513033e08be6b668`.
+- Worker 3 Round 3 GitHub Direct final documentation head: `1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d`.
 - Worker 3 verified GitHub Direct code/workflow candidate: `46873f805199e2212af3902c8525c0f3e4501721`.
-- Worker 3 durable orchestrator report: issue #115 comment `5156780211`.
+- Worker 3 authoritative Round 3 final report: issue #115 comment `5156758072`.
 - Round 4 master gate: issue #119.
 
 Re-fetch all inputs and reject any mismatch before editing.
