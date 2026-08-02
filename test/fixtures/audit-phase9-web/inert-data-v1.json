@@ -1,0 +1,148 @@
+{
+  "version": "audit-phase9-web-inert/v1",
+  "routes": {
+    "/api/audit/catalog": {
+      "capabilities": [
+        {
+          "id": "cap-report-read",
+          "name": "Read audit reports",
+          "available": true,
+          "summary": "Read-only access to inert audit report metadata.",
+          "category": "reporting"
+        },
+        {
+          "id": "cap-execution",
+          "name": "Project execution",
+          "available": false,
+          "reason": "Execution is unavailable in the Audit web surface.",
+          "category": "execution"
+        }
+      ],
+      "tools": [
+        {
+          "id": "tool-report-browser",
+          "name": "Report browser",
+          "available": true,
+          "summary": "Browse published inert reports and evidence.",
+          "capabilityIds": ["cap-report-read"],
+          "tags": ["read-only", "reporting"]
+        }
+      ]
+    },
+    "/api/audit/campaigns/campaign-1": {
+      "id": "campaign-1",
+      "name": "Audit campaign one",
+      "status": "completed",
+      "workspaceId": "workspace-1",
+      "updatedAt": "2026-08-01T20:00:00Z",
+      "summary": "Inert completed campaign fixture.",
+      "jobs": [
+        {
+          "id": "job-1",
+          "title": "Audit job one",
+          "status": "completed",
+          "campaignId": "campaign-1",
+          "reportId": "report-1",
+          "updatedAt": "2026-08-01T20:00:00Z"
+        }
+      ]
+    },
+    "/api/audit/jobs/job-1": {
+      "id": "job-1",
+      "title": "Audit job one",
+      "status": "completed",
+      "campaignId": "campaign-1",
+      "reportId": "report-1",
+      "updatedAt": "2026-08-01T20:00:00Z"
+    },
+    "/api/audit/reports/report-1": {
+      "id": "report-1",
+      "title": "Audit report one",
+      "status": "published",
+      "createdAt": "2026-08-01T20:00:00Z",
+      "sourceUrl": "/reports/report-1/source",
+      "evidence": [
+        {
+          "id": "evidence-1",
+          "title": "Invariant finding",
+          "severity": "high",
+          "summary": "Inert evidence summary.",
+          "url": "/evidence/evidence-1",
+          "kind": "finding"
+        }
+      ]
+    },
+    "/api/audit/forks/fork-1": {
+      "id": "fork-1",
+      "name": "Persistent fork one",
+      "status": "ready",
+      "exportStatus": "exported",
+      "deleteStatus": "not-requested",
+      "retentionExpiresAt": "2026-08-15T20:00:00Z",
+      "checkpoints": [
+        {
+          "id": "checkpoint-1",
+          "label": "Checkpoint one",
+          "status": "ready",
+          "createdAt": "2026-08-01T19:00:00Z",
+          "exportUrl": "/forks/fork-1/exports/checkpoint-1"
+        }
+      ]
+    },
+    "/api/audit/clean-room/clean-1": {
+      "id": "clean-1",
+      "name": "Clean room one",
+      "status": "review",
+      "merges": ["merge-1"],
+      "visibleResourceIds": ["source-visible"],
+      "provenance": [
+        {
+          "id": "provenance-visible",
+          "sourceType": "commit",
+          "label": "Visible source",
+          "sourceId": "source-visible",
+          "commitSha": "abc123",
+          "visible": true
+        },
+        {
+          "id": "provenance-hidden",
+          "sourceType": "commit",
+          "label": "HIDDEN-SOURCE-MARKER",
+          "sourceId": "source-hidden",
+          "commitSha": "def456",
+          "visible": false
+        },
+        {
+          "id": "provenance-not-allowlisted",
+          "sourceType": "commit",
+          "label": "NOT-ALLOWLISTED-MARKER",
+          "sourceId": "source-other",
+          "commitSha": "ghi789",
+          "visible": true
+        }
+      ]
+    },
+    "/api/audit/diagnostics": [
+      {
+        "code": "PARTIAL_PUBLICATION",
+        "message": "A report was only partially published.",
+        "correlationId": "correlation-1",
+        "retryAfterSeconds": 60,
+        "quotaRemaining": 9,
+        "retentionDays": 14,
+        "publicationStatus": "partial",
+        "staleState": false,
+        "details": "The inert fixture contains no credentials or external paths."
+      }
+    ],
+    "/api/audit/reports": [
+      {
+        "id": "report-1",
+        "title": "Audit report one",
+        "status": "published",
+        "createdAt": "2026-08-01T20:00:00Z",
+        "evidence": []
+      }
+    ]
+  }
+}
