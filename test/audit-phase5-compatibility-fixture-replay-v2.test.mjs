@@ -29,6 +29,6 @@ test('redaction and conflicting duplicates remain stable under replay and revers
  for(const [name,profile] of [['mutation-conflicting-duplicates-v2.json','mutation-v1'],['dependency-conflicting-duplicates-v2.json','dependency-scan-v1']]){const a=parseFixture(name,profile,1);const b=parsePhase5ToolResult(profile,{resultBytes:reverseRawFixture(name),exitCode:1,durationMs:7,termination:'completed'});assert.equal(a.classification,'parser_error');assert.equal(a.parserErrors[0].code,'conflicting_duplicate');assert.equal(JSON.stringify(a),JSON.stringify(b));assert.deepEqual(validatePhase5ToolResult(a),a);}
 });
 
-test('resource exhaustion fixture remains stable but is rejected until upstream parser nulls exit code',()=>{
- const a=parseLifecycle('resource-exhaustion-v1.json'),b=parseLifecycle('resource-exhaustion-v1.json');assert.equal(JSON.stringify(a),JSON.stringify(b));assert.equal(a.exitCode,137);assert.throws(()=>validatePhase5ToolResult(a),e=>e.code==='lifecycle_mismatch'&&e.path==='$.exitCode');
+test('resource exhaustion fixture replays with normalized null exit code and validates',()=>{
+ const a=parseLifecycle('resource-exhaustion-v1.json'),b=parseLifecycle('resource-exhaustion-v1.json');assert.equal(JSON.stringify(a),JSON.stringify(b));assert.equal(a.exitCode,null);assert.deepEqual(validatePhase5ToolResult(a),a);
 });
