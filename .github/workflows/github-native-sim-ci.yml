@@ -1,6 +1,13 @@
 name: Remote Anvil Capability Probe
 
 on:
+  push:
+    branches:
+      - fix/remote-mutable-fork-simulation-v1
+    paths:
+      - '.github/workflows/github-native-sim-ci.yml'
+      - 'packages/runner/**'
+      - 'packages/protocol/**'
   pull_request:
     paths:
       - '.github/workflows/github-native-sim-ci.yml'
