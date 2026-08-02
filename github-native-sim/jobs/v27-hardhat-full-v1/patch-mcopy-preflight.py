@@ -55,4 +55,24 @@ if retained_old not in source:
     raise SystemExit('expected retained-harvest assertion was not found')
 source = source.replace(retained_old, retained_new, 1)
 
+migration_old = """    await branchRecorder.contractCall({ label: 'branch deposit 2,000 sdYB', contract: contracts.vault, signer: operatorSigner, sender: actors.operator, signature: 'deposit(uint256)', args: [amount('2000')], gasLimit: GAS_LIMIT });
+    const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
+"""
+migration_new = """    await branchRecorder.contractCall({ label: 'branch deposit 2,000 sdYB', contract: contracts.vault, signer: operatorSigner, sender: actors.operator, signature: 'deposit(uint256)', args: [amount('2000')], gasLimit: GAS_LIMIT });
+    await branchRecorder.contractCall({ label: 'seed 500 sdYB retained migration reserve', contract: sdYB.connect(operatorSigner), signer: operatorSigner, sender: actors.operator, signature: 'transfer(address,uint256)', args: [vaultDeployment.address, amount('500')], gasLimit: GAS_LIMIT });
+    await branchRecorder.contractCall({ label: 'sync retained migration reserve', contract: contracts.vault, signer: operatorSigner, sender: actors.operator, signature: 'syncDonations()', args: [], gasLimit: GAS_LIMIT });
+    const migrationReserve = await staticCall(contracts.strategy2, 'retainedTokenState()');
+    const migrationSpendable = resultValue(migrationReserve, 4);
+    branch.assertions.push({
+      name: 'explicit migration branch has spendable retained reserve',
+      passed: migrationSpendable > 0n,
+      detail: { retainedTokenState: plain(migrationReserve) }
+    });
+    if (migrationSpendable === 0n) throw new Error('explicit migration reserve was not credited');
+    const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
+"""
+if migration_old not in source:
+    raise SystemExit('expected explicit-migration branch seed was not found')
+source = source.replace(migration_old, migration_new, 1)
+
 path.write_text(source, encoding='utf-8')
