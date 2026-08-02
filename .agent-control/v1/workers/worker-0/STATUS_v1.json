@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "state": "ready",
-  "lastConsumedSequence": 4,
+  "state": "working",
+  "lastConsumedSequence": 5,
   "activeSequence": 5,
   "activeMessageId": "worker-0-round3-phase78-release-v1-000005",
   "issueNumber": 112,
@@ -14,5 +14,5 @@
   "blockers": [],
   "round": 3,
   "roundType": "penultimate-release-candidate",
-  "updatedAt": "2026-08-02T02:26:00Z"
+  "updatedAt": "2026-08-02T02:36:00Z"
 }
