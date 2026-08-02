@@ -1,4 +1,24 @@
-import {finalize,identifier,digest,integer,timestamp,nullable,enumValue,fail} from './common.mjs';
-const STATES=['requested','awaiting_executor','ready','checkpointing','restoring','exporting','deleting','deleted','failed','cancelled'];
-export function createForkReportProjection({state,requestedBy,reportedAt}){if(!state||typeof state!=='object')fail('invalid_state','$.state');const status=enumValue(state.state,STATES,'$.state.state');const body={forkId:identifier(state.forkId,'$.state.forkId'),tenantId:identifier(state.tenantId,'$.state.tenantId'),attemptId:identifier(state.attemptId,'$.state.attemptId'),requestDigest:digest(state.requestDigest,'$.state.requestDigest'),status,version:integer(state.version,'$.state.version',1),executionGate:identifier(state.executionGate,'$.state.executionGate'),adapterKind:identifier(state.adapterKind,'$.state.adapterKind'),chainId:integer(state.chainId,'$.state.chainId',1),blockNumber:integer(state.blockNumber,'$.state.blockNumber',0),blockHash:nullable(state.blockHash,(x,p)=>{if(typeof x!=='string'||!/^0x[0-9a-f]{64}$/.test(x))fail('invalid_block_hash',p);return x;},'$.state.blockHash'),requestedBy:identifier(requestedBy,'$.requestedBy'),reportedAt:timestamp(reportedAt,'$.reportedAt'),ready:status==='ready',executionEnabled:false,terminal:['deleted','failed','cancelled'].includes(status)};return finalize('fork',body);}
-export function createAwaitingExecutorProjection({forkId,tenantId,reportedAt}){return finalize('fork-awaiting-executor',{forkId:identifier(forkId,'$.forkId'),tenantId:identifier(tenantId,'$.tenantId'),status:'awaiting_executor',ready:false,executionEnabled:false,reportedAt:timestamp(reportedAt,'$.reportedAt'),message:'External executor not connected'});}
+import {validateForkState} from '../../audit-fork-protocol/src/index.mjs';
+import {finalize,stripTransportFields,serviceDigestFromRaw,identifier,timestamp} from './common.mjs';
+
+export function createForkReportProjection({state,requestedBy,reportedAt}){
+ const normalized=validateForkState(stripTransportFields(state,'$.state'));
+ const status=normalized.state;
+ const body={
+  forkId:normalized.forkId,tenantId:normalized.tenantId,attemptId:normalized.attemptId,
+  requestDigest:serviceDigestFromRaw(normalized.requestDigest,'$.state.requestDigest'),
+  status,version:normalized.version,executionGate:normalized.executionGate,adapterKind:normalized.adapterKind,
+  chainId:normalized.chainId,blockNumber:normalized.blockNumber,blockHash:normalized.blockHash,
+  requestedBy:identifier(requestedBy,'$.requestedBy'),reportedAt:timestamp(reportedAt,'$.reportedAt'),
+  ready:status==='ready',executionEnabled:false,terminal:['deleted','failed','cancelled'].includes(status)
+ };
+ return finalize('fork',body);
+}
+export function createAwaitingExecutorProjection({forkId,tenantId,attemptId=null,reportedAt}){
+ return finalize('fork-awaiting-executor',{
+  forkId:identifier(forkId,'$.forkId'),tenantId:identifier(tenantId,'$.tenantId'),
+  attemptId:attemptId===null?null:identifier(attemptId,'$.attemptId'),status:'awaiting_executor',
+  ready:false,executionEnabled:false,reportedAt:timestamp(reportedAt,'$.reportedAt'),
+  message:'External executor not connected'
+ });
+}
