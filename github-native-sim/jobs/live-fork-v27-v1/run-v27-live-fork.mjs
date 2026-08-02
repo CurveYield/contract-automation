@@ -1,6 +1,8 @@
-import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import { loadArchiveRpcSlots } from '../../../packages/runner/src/archive-rpc-pool.mjs';
 import { startForkEngine } from '../../../packages/runner/src/fork-engine.mjs';
@@ -11,9 +13,12 @@ import {
   openRpcHealthSession
 } from '../../../packages/runner/src/rpc-health-session.mjs';
 
+const execFileAsync = promisify(execFile);
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const jobRoot = path.resolve(process.env.V27_JOB_ROOT ?? 'github-native-sim/jobs/live-fork-v27-v1');
 const resultRoot = path.resolve(process.env.RESULT_ROOT ?? path.join(jobRoot, 'result'));
 const lifecycle = path.join(jobRoot, 'scripts/run-v27-hardhat-lifecycle.mjs');
+const reviewedHarnessPatch = path.join(jobRoot, 'patch-reviewed-v27-harness.py');
 const startedAt = new Date().toISOString();
 await fs.mkdir(resultRoot, { recursive: true });
 
@@ -28,12 +33,93 @@ function childResult(child, stdout, stderr) {
   });
 }
 
+async function rpc(url, method, params) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: `${method}-${Date.now()}`, method, params })
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.error) {
+    throw new Error(`${method} failed: ${payload.error?.message ?? response.statusText}`);
+  }
+  return payload.result;
+}
+
+async function waitForReceipt(provider, transactionHash) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const receipt = await provider.send('eth_getTransactionReceipt', [transactionHash]);
+    if (receipt) return receipt;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for local receipt ${transactionHash}`);
+}
+
+async function proveArchiveBackedLocalOverlay({ proxy, engine }) {
+  const recipient = engine.aliases.account0;
+  if (!recipient) throw new Error('Hardhat EDR did not expose a local recipient account');
+  const snapshot = await engine.provider.send('evm_snapshot', []);
+  try {
+    const upstreamBeforeHex = await rpc(proxy.url, 'eth_getBalance', [WETH, 'latest']);
+    const localBefore = await engine.provider.getBalance(WETH);
+    const recipientBefore = await engine.provider.getBalance(recipient);
+    if (localBefore !== BigInt(upstreamBeforeHex)) {
+      throw new Error('Local fork did not begin from the pinned upstream WETH balance');
+    }
+
+    await engine.provider.send('hardhat_impersonateAccount', [WETH]);
+    const transactionHash = await engine.provider.send('eth_sendTransaction', [{
+      from: WETH,
+      to: recipient,
+      value: '0x1',
+      gas: '0x5208'
+    }]);
+    const receipt = await waitForReceipt(engine.provider, transactionHash);
+    const localAfter = await engine.provider.getBalance(WETH);
+    const recipientAfter = await engine.provider.getBalance(recipient);
+    const upstreamAfterHex = await rpc(proxy.url, 'eth_getBalance', [WETH, 'latest']);
+
+    const proof = {
+      source: WETH,
+      recipient,
+      transactionHash,
+      receiptStatus: receipt.status,
+      upstreamBefore: upstreamBeforeHex,
+      upstreamAfter: upstreamAfterHex,
+      localBefore: localBefore.toString(),
+      localAfter: localAfter.toString(),
+      recipientBefore: recipientBefore.toString(),
+      recipientAfter: recipientAfter.toString(),
+      upstreamStayedCanonical: upstreamBeforeHex === upstreamAfterHex,
+      localOverlayChanged: localAfter < localBefore && recipientAfter === recipientBefore + 1n
+    };
+    if (receipt.status !== '0x1' || !proof.upstreamStayedCanonical || !proof.localOverlayChanged) {
+      throw new Error(`Archive-backed local overlay proof failed: ${JSON.stringify(proof)}`);
+    }
+    return proof;
+  } finally {
+    await engine.provider.send('hardhat_stopImpersonatingAccount', [WETH]).catch(() => {});
+    await engine.provider.send('evm_revert', [snapshot]).catch(() => {});
+  }
+}
+
 let proxy;
 let engine;
 let healthSession;
 let healthPersist;
 let childExit;
+let localOverlayProof;
 try {
+  await execFileAsync('python', [reviewedHarnessPatch, lifecycle], {
+    cwd: process.cwd(),
+    maxBuffer: 1_000_000
+  });
+  const effectiveLifecycle = await fs.readFile(lifecycle);
+  await fs.writeFile(
+    path.join(resultRoot, 'effective-lifecycle-sha256.txt'),
+    `${crypto.createHash('sha256').update(effectiveLifecycle).digest('hex')}  ${lifecycle}\n`
+  );
+
   healthSession = await openRpcHealthSession({
     environment: process.env,
     chain: 'ethereum',
@@ -95,6 +181,9 @@ try {
     options: { startupTimeoutMs: 60_000 }
   });
 
+  localOverlayProof = await proveArchiveBackedLocalOverlay({ proxy, engine });
+  await fs.writeFile(path.join(resultRoot, 'archive-backed-local-overlay-proof.json'), json(localOverlayProof));
+
   const stdoutFile = path.join(resultRoot, 'workflow-stdout.log');
   const stderrFile = path.join(resultRoot, 'workflow-stderr.log');
   const stdoutHandle = await fs.open(stdoutFile, 'w');
@@ -144,6 +233,7 @@ try {
     childExit,
     assurance: proxy.diagnostics.assurance,
     forkIdentity: equality,
+    localOverlayProof,
     engine: { name: engine.name, version: engine.version, evidence: engineEvidence },
     transport: proxy.diagnostics,
     rpcHealth: { load: healthSession.load, persist: healthPersist },
@@ -175,6 +265,7 @@ try {
       hardhatLogTail: error?.hardhatLogTail
     },
     childExit,
+    localOverlayProof,
     transport: proxy?.diagnostics,
     rpcHealth: healthSession ? { load: healthSession.load, persist: healthPersist } : undefined
   };
