@@ -1,0 +1,46 @@
+{
+  "protocolVersion": 1,
+  "eventType": "round4-integration-conflict-continued-mutation-blocker",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "masterIssueNumber": 119,
+  "observedAt": "2026-08-02T21:35:12Z",
+  "prescribedIntegration": {
+    "sequence": 9,
+    "branch": "audit-round4/full-platform-integration-v2",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "relationToStart": {
+      "ahead": 0,
+      "behind": 0,
+      "status": "identical"
+    }
+  },
+  "conflictingTakeover": {
+    "branch": "orchestrator/round4-final-integration-takeover-v1",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "relationToStart": {
+      "ahead": 45,
+      "behind": 0,
+      "status": "ahead"
+    },
+    "previousObservedAhead": 39,
+    "continuedMutationCommits": 6,
+    "protectedOrQuarantinedPathsStillObserved": [
+      ".github/workflows/github-native-simulate.yml",
+      "packages/github-native-sim/**",
+      "packages/runner/src/run-job.mjs"
+    ]
+  },
+  "blocker": {
+    "id": "integration-ownership-conflict-continued-mutation-v3",
+    "description": "The conflicting direct-takeover branch continued mutating while Worker 2 sequence 9 remains the published immutable integration assignment.",
+    "requiredResolution": "Durably retain exactly one integration owner, reconcile CURRENT/STATUS/STATE and issue #122 ownership, then independently validate the surviving tree against every accepted Stage A manifest and PR #126 security control before authorizing production intake or candidate freeze."
+  },
+  "authorization": {
+    "productionIntake": false,
+    "assembledCandidateFreeze": false,
+    "stageBAcceptance": false
+  },
+  "secretsExposed": false
+}
