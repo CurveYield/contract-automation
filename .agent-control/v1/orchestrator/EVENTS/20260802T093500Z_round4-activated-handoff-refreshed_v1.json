@@ -1,0 +1,122 @@
+{
+  "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
+  "eventId": "round4-activated-handoff-refreshed-20260802T093500Z",
+  "eventType": "round_activated_and_handoff_refreshed",
+  "createdAt": "2026-08-02T09:35:00Z",
+  "createdBy": "orchestrator",
+  "userDirective": "Reconcile the completed worker round, activate the final integration round with substantial workloads for all workers, ensure Worker 4 is not idle, and update the durable handoff for a fresh orchestrator.",
+  "round3Reconciliation": {
+    "worker0": {
+      "finalDocumentationSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "reportCommentId": 5156777973,
+      "remainingRepairOwner": "worker-1-round4"
+    },
+    "worker1": {
+      "finalSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "implementationSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5154958425
+    },
+    "worker2": {
+      "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "recommendation": "ACCEPT WITH DOCUMENTED REPAIR",
+      "reportCommentId": 5156779012,
+      "stalePhase78ImportForbidden": true
+    },
+    "worker3": {
+      "finalDocumentationSha": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "codeWorkflowCandidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5156758072
+    },
+    "worker4": {
+      "finalSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "implementationSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5154997216
+    }
+  },
+  "assignments": [
+    {
+      "workerId": "worker-0",
+      "sequence": 6,
+      "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+      "issueNumber": 120,
+      "branch": "audit-round4/review-integration-spine-v1",
+      "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "assignmentBlobSha": "d445f8e93ac6fdb364bfe195b6ebe701dec9caa0",
+      "issueCommentId": 5156830238
+    },
+    {
+      "workerId": "worker-1",
+      "sequence": 5,
+      "messageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
+      "issueNumber": 121,
+      "branch": "audit-round4/review-phase78-api-compat-v1",
+      "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "assignmentBlobSha": "a584ab7e0f1839badc586b73dc58ab7ebca08e72",
+      "issueCommentId": 5156831121
+    },
+    {
+      "workerId": "worker-2",
+      "sequence": 8,
+      "messageId": "worker-2-round4-full-platform-integration-v1-000008",
+      "issueNumber": 122,
+      "branch": "audit-round4/full-platform-integration-v1",
+      "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "assignmentBlobSha": "ed428c965386b980a8e652d32fcfb17a58474364",
+      "issueCommentId": 5156832146,
+      "stage": "stage-0-preparation",
+      "productionIntakeBlockedUntil": [120, 121, 123, 124]
+    },
+    {
+      "workerId": "worker-3",
+      "sequence": 8,
+      "messageId": "worker-3-round4-api-auth-security-review-v1-000008",
+      "issueNumber": 123,
+      "branch": "audit-round4/review-api-auth-security-v1",
+      "startingSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "assignmentBlobSha": "1f918de5b1ebe887fade4f99974a9d167e72f4ef",
+      "issueCommentId": 5156832892
+    },
+    {
+      "workerId": "worker-4",
+      "sequence": 3,
+      "messageId": "worker-4-round4-web-direct-e2e-review-v1-000003",
+      "issueNumber": 124,
+      "branch": "audit-round4/review-web-direct-e2e-v1",
+      "startingSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "assignmentBlobSha": "496f26cdcd61bb6fae9e577133bc1e903c7627a0",
+      "issueCommentId": 5156829391
+    }
+  ],
+  "masterGateCommentId": 5156834964,
+  "controlPlaneUpdates": {
+    "protocol": ".agent-control/v1/PROTOCOL_v2.md",
+    "readFirst": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+    "snapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_v1.json",
+    "bootstrapPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md"
+  },
+  "oneTimeStatusReconciliation": {
+    "performed": true,
+    "reason": "Worker 0, 2 and 3 Round 3 status records were stale while durable branch/report evidence had advanced; all five Round 4 pointers needed immediate activation.",
+    "futureRule": "Workers own all subsequent status transitions. Future orchestrators must not edit worker STATUS files."
+  },
+  "frozenSimulationAddon": {
+    "approvedMainSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "round4State": "frozen-byte-for-byte",
+    "separateRepair": "paused-until-explicit-user-resumption"
+  },
+  "nextActions": [
+    "verify acknowledgement/startup for all five assignments",
+    "review every Stage A checkpoint and exact final head",
+    "keep Worker 2 production intake blocked until all four Stage A packages are accepted",
+    "freeze one assembled SHA on issue 119",
+    "collect four specialist acceptances against that same SHA",
+    "independently verify combined evidence before merge decisions",
+    "prepare Round 5 production test package and refresh handoff before next context exhaustion"
+  ]
+}
