@@ -29,7 +29,7 @@
       "kind": "phase4-6-production-paths",
       "path": "docs/audit/integration/2026-08-02-audit-round3-phase4-6-path-registry-v1.json",
       "blobSha": "149874168b0a9ac4409a9feab15eda21dd4537d7",
-      "pathOperations": 29
+      "pathOperations": 30
     },
     {
       "kind": "release-integration-production-paths",
@@ -43,7 +43,8 @@
       "blobSha": "40911113f3e851ecc7bb5fbde000fceb27bfd407"
     }
   ],
-  "productionPathOperationCount": 47,
+  "productionPathOperationCount": 48,
+  "changedFileCount": 68,
   "sourceHeads": {
     "phase4": "8beb17a3f4a9df0a32a07caf19fc17fb633d4d75",
     "phase5": "dd78a76f9546c85e79357a617b219067704c1616",
@@ -51,11 +52,7 @@
     "stalePhase7To8": "4c875bb9291d3e714af9cd0013ee5d460f576a2b"
   },
   "verification": {
-    "currentFocused": {
-      "tests": 38,
-      "passed": 38,
-      "failed": 0
-    },
+    "currentFocused": {"tests": 38, "passed": 38, "failed": 0},
     "currentIntegrationSpine": {
       "tests": 15,
       "passed": 15,
