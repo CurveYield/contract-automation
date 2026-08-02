@@ -3,16 +3,23 @@
   "workerId": "worker-0",
   "state": "working",
   "lastConsumedSequence": 5,
-  "activeSequence": 5,
-  "activeMessageId": "worker-0-round3-phase78-release-v1-000005",
-  "issueNumber": 112,
-  "branch": "audit-round3/phase78-service-release-v1",
-  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+  "activeSequence": 6,
+  "activeMessageId": "worker-0-round4-integration-spine-review-v1-000006",
+  "issueNumber": 120,
+  "branch": "audit-round4/review-integration-spine-v1",
+  "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:112",
+  "reportReference": "issue:120",
   "blockers": [],
-  "round": 3,
-  "roundType": "penultimate-release-candidate",
-  "updatedAt": "2026-08-02T02:36:00Z"
+  "round": 4,
+  "roundType": "final-static-integration-and-acceptance",
+  "previousRound": {
+    "issueNumber": 112,
+    "finalSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+    "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+    "recommendation": "ACCEPT WITH REPAIR",
+    "reportCommentId": 5156777973
+  },
+  "updatedAt": "2026-08-02T09:21:00Z"
 }
