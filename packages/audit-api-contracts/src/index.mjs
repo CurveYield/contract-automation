@@ -23,16 +23,28 @@ export class ApiContractError extends Error {
   }
 }
 
-function descriptors(value, path) {
-  let result;
-  try { result = Object.getOwnPropertyDescriptors(value); }
-  catch { throw new ApiContractError('hostile_object', 'Object reflection failed', path); }
-  for (const descriptor of Object.values(result)) {
+function reflectContainer(value, path) {
+  let descriptorMap;
+  let isArray;
+  let prototype;
+  try {
+    descriptorMap = Object.getOwnPropertyDescriptors(value);
+    isArray = Array.isArray(value);
+    prototype = Object.getPrototypeOf(value);
+  } catch {
+    throw new ApiContractError('hostile_object', 'Object reflection failed', path);
+  }
+  const keys = Reflect.ownKeys(descriptorMap);
+  for (const key of keys) {
+    if (typeof key === 'symbol') {
+      throw new ApiContractError('symbol_key', 'Symbol keys are not allowed', path);
+    }
+    const descriptor = descriptorMap[key];
     if ('get' in descriptor || 'set' in descriptor) {
       throw new ApiContractError('hostile_object', 'Accessors are not allowed', path);
     }
   }
-  return result;
+  return { descriptorMap, keys, isArray, prototype };
 }
 
 function validateNode(value, path, seen, depth) {
@@ -51,31 +63,39 @@ function validateNode(value, path, seen, depth) {
   if (typeof value !== 'object') throw new ApiContractError('invalid_type', 'Unsupported value type', path);
   if (seen.has(value)) throw new ApiContractError('cyclic_value', 'Cycles are not allowed', path);
   seen.add(value);
-  const objectDescriptors = descriptors(value, path);
-  const symbols = Object.getOwnPropertySymbols(value);
-  if (symbols.length) throw new ApiContractError('symbol_key', 'Symbol keys are not allowed', path);
+  const { descriptorMap, keys, isArray, prototype } = reflectContainer(value, path);
   let output;
-  if (Array.isArray(value)) {
-    if (Object.getPrototypeOf(value) !== Array.prototype) throw new ApiContractError('invalid_array', 'Array prototype is invalid', path);
-    if (value.length > MAX_COLLECTION) throw new ApiContractError('collection_too_large', 'Array exceeds the limit', path);
-    for (let index = 0; index < value.length; index += 1) {
-      if (!Object.hasOwn(value, index)) throw new ApiContractError('sparse_array', 'Sparse arrays are not allowed', path);
+  if (isArray) {
+    if (prototype !== Array.prototype) throw new ApiContractError('invalid_array', 'Array prototype is invalid', path);
+    const length = descriptorMap.length?.value;
+    if (!Number.isSafeInteger(length) || length < 0) {
+      throw new ApiContractError('invalid_array', 'Array length is invalid', path);
     }
-    const allowedKeys = new Set([...Array.from({ length: value.length }, (_, i) => String(i)), 'length']);
-    for (const key of Object.keys(objectDescriptors)) if (!allowedKeys.has(key)) throw new ApiContractError('unknown_array_property', 'Array properties are not allowed', path);
-    output = value.map((entry, index) => validateNode(entry, `${path}[${index}]`, seen, depth + 1));
+    if (length > MAX_COLLECTION) throw new ApiContractError('collection_too_large', 'Array exceeds the limit', path);
+    const allowedKeys = new Set([...Array.from({ length }, (_, index) => String(index)), 'length']);
+    for (const key of keys) {
+      if (!allowedKeys.has(key)) throw new ApiContractError('unknown_array_property', 'Array properties are not allowed', path);
+    }
+    output = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptorMap[String(index)];
+      if (!descriptor || descriptor.enumerable !== true) {
+        throw new ApiContractError('sparse_array', 'Sparse arrays are not allowed', path);
+      }
+      output.push(validateNode(descriptor.value, `${path}[${index}]`, seen, depth + 1));
+    }
   } else {
-    const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) throw new ApiContractError('invalid_plain_object', 'Plain object required', path);
-    const keys = Object.keys(objectDescriptors);
     if (keys.length > MAX_COLLECTION) throw new ApiContractError('collection_too_large', 'Object exceeds the key limit', path);
     output = {};
-    for (const key of keys.sort()) {
+    for (const key of [...keys].sort()) {
       if (key.length < 1 || key.length > 80 || /[\u0000-\u001f\u007f]/.test(key)) {
         throw new ApiContractError('invalid_key', 'Object key is invalid', '$.[rejected-field]');
       }
-      const descriptor = objectDescriptors[key];
-      if (!descriptor.enumerable) continue;
+      const descriptor = descriptorMap[key];
+      if (descriptor.enumerable !== true) {
+        throw new ApiContractError('hostile_object', 'Non-enumerable properties are not allowed', path);
+      }
       output[key] = validateNode(descriptor.value, `${path}.${key}`, seen, depth + 1);
     }
   }
