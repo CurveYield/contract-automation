@@ -17,6 +17,10 @@ import {
   handlePhase9GptRequest
 } from './phase9-gpt.mjs';
 import {
+  ApiContractError,
+  errorResponse
+} from '../../../packages/audit-api-contracts/src/index.mjs';
+import {
   deriveUploadGrantSigningKey,
   encodeUploadGrantSigningKey
 } from './upload-grants.mjs';
@@ -60,6 +64,14 @@ function jsonWithHeaders(value, response, status = response.status) {
   headers.set('content-type', 'application/json; charset=utf-8');
   return new Response(JSON.stringify(value), { status, statusText: response.statusText, headers });
 }
+function cancellationResponse(env) {
+  return errorResponse(new ApiContractError(
+    'request_cancelled',
+    'Request cancelled',
+    '$',
+    499
+  ), env);
+}
 async function prepareAuditRuntimeEnv(env) {
   const sanitized = sanitizeAuditRuntimeEnv(env);
   let uploadGrantSigningKey;
@@ -99,17 +111,22 @@ async function unsupportedRetentionResponse(request, runtimeEnv, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (request.signal?.aborted) return cancellationResponse(env);
     const runtimeEnv = await prepareAuditRuntimeEnv(env);
+    if (request.signal?.aborted) return cancellationResponse(runtimeEnv);
 
     for (const handler of READ_ONLY_HANDLERS) {
       const handled = await handler(request, runtimeEnv);
+      if (request.signal?.aborted) return cancellationResponse(runtimeEnv);
       if (handled) return handled;
     }
 
     const retentionDenied = await unsupportedRetentionResponse(request, runtimeEnv, url);
+    if (request.signal?.aborted) return cancellationResponse(runtimeEnv);
     if (retentionDenied) return retentionDenied;
 
     const response = await worker.fetch(request, runtimeEnv);
+    if (request.signal?.aborted) return cancellationResponse(runtimeEnv);
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
       const legacy = auditPhase4Capabilities(auditPhase3Capabilities(env));
       return jsonWithHeaders(auditPhase9Capabilities(legacy), response);
