@@ -40,6 +40,17 @@ function bounded(value, maximum) {
   return text.slice(0, end);
 }
 
+function redactText(value) {
+  let text = typeof value === 'string' ? value : '';
+  text = text.replace(/\b(?:authorization|proxy-authorization)\s*:\s*[^\r\n]+/giu, '[redacted-header]');
+  text = text.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{3,}/giu, 'Bearer [redacted]');
+  text = text.replace(/\b(?:api[_-]?key|access[_-]?key|token|secret|private[_-]?key|mnemonic|seed)\s*[=:]\s*[^\s,;]+/giu, '[redacted]');
+  text = text.replace(/https?:\/\/[^\s)\]}>,]+/giu, '[url]');
+  text = text.replace(/\b[A-Za-z]:\\(?:[^\s\\]+\\)*[^\s\\]*/gu, '[path]');
+  text = text.replace(/(?:^|\s)\/(?:home|Users|etc|var|tmp|private|root)(?:\/[^\s/]+)+/gu, ' [path]');
+  return bounded(text.replace(/[\u0000-\u001f\u007f]/gu, ' '), 160);
+}
+
 export class ApiContractError extends Error {
   constructor(code, message, path = '$', status = 400) {
     const safeCode = CODE.test(code) ? code : 'invalid_request';
@@ -343,23 +354,31 @@ export async function createJsonResponse(value, { status = 200, env = {}, header
   });
 }
 
-function redactText(value) {
-  let text = typeof value === 'string' ? value : '';
-  text = text.replace(/\b(?:authorization|proxy-authorization)\s*:\s*[^\r\n]+/giu, '[redacted-header]');
-  text = text.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{3,}/giu, 'Bearer [redacted]');
-  text = text.replace(/\b(?:api[_-]?key|access[_-]?key|token|secret|private[_-]?key|mnemonic|seed)\s*[=:]\s*[^\s,;]+/giu, '[redacted]');
-  text = text.replace(/https?:\/\/[^\s)\]}>,]+/giu, '[url]');
-  text = text.replace(/\b[A-Za-z]:\\(?:[^\s\\]+\\)*[^\s\\]*/gu, '[path]');
-  text = text.replace(/(?:^|\s)\/(?:home|Users|etc|var|tmp|private|root)(?:\/[^\s/]+)+/gu, ' [path]');
-  return bounded(text.replace(/[\u0000-\u001f\u007f]/gu, ' '), 160);
-}
-
 export function normalizeApiError(cause, { fallbackCode = 'internal_error', fallbackStatus = 500 } = {}) {
-  const known = cause instanceof ApiContractError;
-  const code = known ? cause.code : fallbackCode;
-  const status = known ? cause.status : fallbackStatus;
-  const message = known ? redactText(cause.message) : 'The request could not be completed';
-  const path = known ? cause.path : undefined;
+  let known = false;
+  let code = fallbackCode;
+  let status = fallbackStatus;
+  let path;
+  try {
+    known = cause instanceof ApiContractError;
+    if (known) {
+      code = CODE.test(cause.code) ? cause.code : 'invalid_request';
+      status = Number.isInteger(cause.status) && cause.status >= 400 && cause.status <= 599
+        ? cause.status
+        : 400;
+      path = SAFE_PATH.test(cause.path) && utf8Length(cause.path) <= 120
+        ? cause.path
+        : '$.[rejected-field]';
+    }
+  } catch {
+    known = false;
+    code = fallbackCode;
+    status = fallbackStatus;
+    path = undefined;
+  }
+  const message = known
+    ? (status >= 500 ? 'The request could not be completed' : 'Request rejected')
+    : 'The request could not be completed';
   return freeze({
     status,
     body: {
