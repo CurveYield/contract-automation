@@ -1,4 +1,34 @@
-import {identifier,digest,integer,denseArray,timestamp,boolean,canonicalClone,sha256,frozenClone,fail} from '../../audit-phase78-service/src/index.mjs';
-function finalize(kind,body){const core={schemaVersion:`audit-phase9-${kind}-report-v1`,...body};const reportDigest=sha256(core);return frozenClone({...core,reportId:`${kind}-report-${reportDigest.slice(7,31)}`,reportDigest});}
-export function createCampaignReportProjection({manifest,reportedAt}){if(!manifest||typeof manifest!=='object')fail('invalid_manifest','$.manifest');const summary=canonicalClone(manifest.inventorySummary);const complete=manifest.terminalState==='completed'&&!manifest.partialEvidence&&!manifest.truncated&&['success','findings'].includes(manifest.completionKind);return finalize('campaign',{manifestId:identifier(manifest.manifestId,'$.manifest.manifestId'),manifestDigest:digest(manifest.manifestDigest,'$.manifest.manifestDigest'),tenantId:identifier(manifest.tenantId,'$.manifest.tenantId'),workspaceId:identifier(manifest.workspaceId,'$.manifest.workspaceId'),campaignId:identifier(manifest.campaignId,'$.manifest.campaignId'),terminalState:identifier(manifest.terminalState,'$.manifest.terminalState'),completionKind:identifier(manifest.completionKind,'$.manifest.completionKind'),partialEvidence:boolean(manifest.partialEvidence,'$.manifest.partialEvidence'),truncated:boolean(manifest.truncated,'$.manifest.truncated'),mergeEligible:boolean(manifest.mergeEligible,'$.manifest.mergeEligible'),complete,inventorySummary:summary,completedAt:timestamp(manifest.completedAt,'$.manifest.completedAt'),reportedAt:timestamp(reportedAt,'$.reportedAt')});}
-export function createMergeReportProjection({manifest,reportedAt}){if(!manifest||typeof manifest!=='object')fail('invalid_manifest','$.manifest');const digests=denseArray(manifest.terminalManifestDigests,'$.manifest.terminalManifestDigests',64).map((x,i)=>digest(x,`$.manifest.terminalManifestDigests[${i}]`)).sort();return finalize('merge',{manifestId:identifier(manifest.manifestId,'$.manifest.manifestId'),manifestDigest:digest(manifest.manifestDigest,'$.manifest.manifestDigest'),mergeId:identifier(manifest.mergeId,'$.manifest.mergeId'),requestDigest:digest(manifest.requestDigest,'$.manifest.requestDigest'),finalState:identifier(manifest.finalState,'$.manifest.finalState'),terminalManifestDigests:digests,sourceCampaignCount:digests.length,duplicateMapDigest:digest(manifest.duplicateMapDigest,'$.manifest.duplicateMapDigest'),conflictMapDigest:digest(manifest.conflictMapDigest,'$.manifest.conflictMapDigest'),provenanceIndexDigest:digest(manifest.provenanceIndexDigest,'$.manifest.provenanceIndexDigest'),policyId:identifier(manifest.policyId,'$.manifest.policyId'),operationSummary:canonicalClone(manifest.operationSummary),publishedAt:timestamp(manifest.publishedAt,'$.manifest.publishedAt'),reportedAt:timestamp(reportedAt,'$.reportedAt')});}
+import {validateTerminalCampaignManifest} from '../../audit-clean-room-campaigns/src/index.mjs';
+import {validateMergeManifest} from '../../audit-controlled-merge/src/index.mjs';
+import {timestamp,sha256,frozenClone} from '../../audit-phase78-service/src/index.mjs';
+
+function finalize(kind,body){
+ const core={schemaVersion:`audit-phase9-${kind}-report-v2`,...body};
+ const reportDigest=sha256(core);
+ return frozenClone({...core,reportId:`${kind}-report-${reportDigest.slice(7,31)}`,reportDigest});
+}
+export function createCampaignReportProjection({manifest,reportedAt}){
+ const normalized=validateTerminalCampaignManifest(manifest);
+ const complete=normalized.terminalState==='completed'&&!normalized.partialEvidence&&!normalized.truncated&&['success','findings'].includes(normalized.completionKind);
+ return finalize('campaign',{
+  manifestId:normalized.manifestId,manifestDigest:normalized.manifestDigest,
+  tenantId:normalized.tenantId,workspaceId:normalized.workspaceId,campaignId:normalized.campaignId,
+  terminalState:normalized.terminalState,completionKind:normalized.completionKind,
+  partialEvidence:normalized.partialEvidence,truncated:normalized.truncated,
+  mergeEligible:normalized.mergeEligible,complete,inventorySummary:normalized.inventorySummary,
+  completedAt:normalized.completedAt,reportedAt:timestamp(reportedAt,'$.reportedAt')
+ });
+}
+export function createMergeReportProjection({manifest,reportedAt}){
+ const normalized=validateMergeManifest(manifest);
+ return finalize('merge',{
+  manifestId:normalized.manifestId,manifestDigest:normalized.manifestDigest,
+  mergeId:normalized.mergeId,requestDigest:normalized.requestDigest,finalState:normalized.finalState,
+  terminalManifestDigests:normalized.terminalManifestDigests,
+  sourceCampaignCount:normalized.terminalManifestDigests.length,
+  duplicateMapDigest:normalized.duplicateMapDigest,conflictMapDigest:normalized.conflictMapDigest,
+  provenanceIndexDigest:normalized.provenanceIndexDigest,mergedReportRefs:normalized.mergedReportRefs,
+  policyId:normalized.policyId,operationSummary:normalized.operationSummary,
+  publishedAt:normalized.publishedAt,reportedAt:timestamp(reportedAt,'$.reportedAt')
+ });
+}
