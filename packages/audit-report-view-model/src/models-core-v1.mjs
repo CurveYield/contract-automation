@@ -28,20 +28,42 @@ function referenceModel(input) {
   return { id, label: toSafeText(read('label') || read('title') || id), url: toSafeUrl(read('url')), kind: statusText(read('kind'), 'reference') };
 }
 
+function canonicalReferences(input) {
+  const byId = new Map();
+  const conflicts = new Set();
+  for (const item of denseDataValues(input, 50).map(referenceModel)) {
+    if (!item.id || conflicts.has(item.id)) continue;
+    const prior = byId.get(item.id);
+    if (!prior) {
+      byId.set(item.id, item);
+      continue;
+    }
+    if (prior.label !== item.label || prior.url !== item.url || prior.kind !== item.kind) {
+      byId.delete(item.id);
+      conflicts.add(item.id);
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export function createEvidenceViewModel(input) { return deepFreeze(evidenceModel(input)); }
 
 export function createReportViewModel(input) {
   const data = readUiEntityData('report', input);
-  const evidence = denseDataValues(data.evidence, 50).map(evidenceModel).filter((item) => item.id && item.visible).sort((a, b) => a.id.localeCompare(b.id));
-  const references = denseDataValues(data.references, 50).map(referenceModel).filter((item) => item.id).sort((a, b) => a.id.localeCompare(b.id));
+  const hidden = data.visible === false;
+  const evidence = hidden ? [] : denseDataValues(data.evidence, 50).map(evidenceModel).filter((item) => item.id && item.visible).sort((a, b) => a.id.localeCompare(b.id));
+  const references = hidden ? [] : canonicalReferences(data.references);
   const base = {
-    id: toSafeIdentifier(data.id), title: toSafeText(data.title), status: statusText(data.status),
-    createdAt: dateText(data.createdAt), sourceUrl: toSafeUrl(data.sourceUrl)
+    id: hidden ? '' : toSafeIdentifier(data.id), title: hidden ? '' : toSafeText(data.title),
+    status: hidden ? 'not-found' : statusText(data.status),
+    createdAt: hidden ? null : dateText(data.createdAt), sourceUrl: hidden ? null : toSafeUrl(data.sourceUrl)
   };
   const extended = ['summary', 'workspaceId', 'campaignId', 'jobId', 'references'].some((key) => Object.hasOwn(data, key));
   return deepFreeze(extended ? {
-    ...base, summary: toSafeText(data.summary, MAX_LONG_TEXT), workspaceId: toSafeIdentifier(data.workspaceId),
-    campaignId: toSafeIdentifier(data.campaignId), jobId: toSafeIdentifier(data.jobId), references, evidence
+    ...base, summary: hidden ? '' : toSafeText(data.summary, MAX_LONG_TEXT),
+    workspaceId: hidden ? '' : toSafeIdentifier(data.workspaceId),
+    campaignId: hidden ? '' : toSafeIdentifier(data.campaignId),
+    jobId: hidden ? '' : toSafeIdentifier(data.jobId), references, evidence
   } : { ...base, evidence });
 }
 
