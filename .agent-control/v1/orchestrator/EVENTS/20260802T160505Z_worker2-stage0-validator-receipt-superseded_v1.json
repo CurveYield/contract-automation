@@ -1,0 +1,56 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker2-stage0-validator-receipt-superseded-20260802T160505Z",
+  "eventType": "round4_integration_evidence_supersession",
+  "createdAt": "2026-08-02T16:05:05Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "supersededEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T155455Z_worker2-stage0-validator-receipt-published_v1.json",
+  "supersededValidatedCodeHeadSha": "9bea7dd735541149e88b3773b31ffe03cd051838",
+  "supersededEvidenceReceiptHeadSha": "353f662336b647c554df8ac1dc0ff435fa0e946c",
+  "supersededReceiptBlobSha": "b2fdde334f8f0c5381121175ec456d7d4bdf7580",
+  "supersededIndexBlobSha": "b788d6a37015a1245ac680279b0cb9eb30eef79a",
+  "supersededTestBlobSha": "f6408462d32f97e7e8eb312a30cdfebc378d0a55",
+  "repairBranch": "orchestrator/worker2-stage0-validator-repair-v1",
+  "validatedCodeHeadSha": "bcf2c930bdbae0efb40c009485914bead6820d72",
+  "evidenceReceiptHeadSha": "4c2d39b064a036a2f948ff994311e467cd519d68",
+  "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
+  "receiptBlobSha": "fef4bc39d3d2ab8ebdf597be9fbca36fa02ac812",
+  "issueCommentId": 5159019450,
+  "exactIntakePaths": [
+    {
+      "path": "packages/audit-integration-round4/src/index-legacy.mjs",
+      "blobSha": "8fd316be7ce2073c7b4290443a7fe5ceee292721"
+    },
+    {
+      "path": "packages/audit-integration-round4/src/index.mjs",
+      "blobSha": "1d50a117fd216edc4678645b9cc27e4bef01bd73"
+    },
+    {
+      "path": "test/audit-round4-integration-stage0-takeover-red.test.mjs",
+      "blobSha": "2ef7a0e9f8f0fcca5ba9e383537827c9379171e9"
+    }
+  ],
+  "securityHardening": {
+    "trustedAttestationBlobSha": "2a0c85ca831bf30b042b057adb643c0d2d001435",
+    "completeInlineAttestationEqualityRequired": true,
+    "missingTrustedTakeoverRejected": true,
+    "unknownInjectedTakeoverRejected": true,
+    "mutatedPurposeTimestampOrRulesRejected": true
+  },
+  "verification": {
+    "freshCombinedSuiteStatus": "await-worker2-exact-intake-and-rerun",
+    "requiredCommand": "node --test test/audit-round4-integration-stage0-red.test.mjs test/audit-round4-integration-stage0-takeover-red.test.mjs"
+  },
+  "requiredResolution": "Worker 2 must acknowledge sequence 8 and then use only the current three path/blob pairs. The superseded index/test/receipt blobs are forbidden. Fresh combined tests and remote blob readback remain required before acceptance.",
+  "containment": {
+    "workerOwnedStateModified": false,
+    "worker2BranchModified": false,
+    "productionPathIntakeAuthorized": false,
+    "assembledCandidateFreezeAuthorized": false,
+    "pr126IntakeAuthorized": false,
+    "workflowOrSimulationActionAuthorized": false
+  }
+}
