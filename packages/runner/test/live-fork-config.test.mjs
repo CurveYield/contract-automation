@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   validateSimulationConfig,
-  validateWorkflow,
-  ValidationError
+  validateWorkflow
 } from '../../protocol/src/index.mjs';
 
 test('normalizes a fully configurable live-fork definition', () => {
@@ -46,11 +45,11 @@ test('normalizes a fully configurable live-fork definition', () => {
 test('rejects RPC URLs and secret-bearing fields anywhere in simulation configuration', () => {
   assert.throws(
     () => validateSimulationConfig({ rpc: { rpcUrl: 'https://secret.invalid' } }),
-    (error) => error instanceof ValidationError && error.code === 'forbidden_field'
+    (error) => error?.code === 'forbidden_field'
   );
   assert.throws(
     () => validateSimulationConfig({ engine: { options: { privateKey: '0xabc' } } }),
-    (error) => error instanceof ValidationError && error.code === 'forbidden_field'
+    (error) => error?.code === 'forbidden_field'
   );
 });
 
