@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: '22'
       - name: Run Phase 7-8 tests
+        id: tests
+        continue-on-error: true
         run: >-
           node --test
           test/audit-phase7-*.test.mjs
@@ -33,6 +35,8 @@ jobs:
           test/audit-round1-phases7-8-cross-phase-v1.test.mjs
           test/audit-phases7-8-semantic-boundaries-repair-v1.test.mjs
       - name: Syntax check repair surfaces
+        id: syntax
+        continue-on-error: true
         run: |
           node --check packages/audit-fork-protocol/src/internals.mjs
           node --check packages/audit-forks/src/public-service.mjs
@@ -45,9 +49,12 @@ jobs:
           node --check test/audit-phase7-proxy-boundary-v1.test.mjs
           node --check test/audit-phases7-8-semantic-boundaries-repair-v1.test.mjs
       - name: Publish verification receipt
+        if: always()
         env:
           VERIFIED_SHA: ${{ github.sha }}
           VERIFIED_RUN_ID: ${{ github.run_id }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          SYNTAX_OUTCOME: ${{ steps.syntax.outcome }}
         run: |
           set -euo pipefail
           mkdir -p docs/verification
@@ -56,8 +63,8 @@ jobs:
             "schemaVersion": "phases7-8-semantic-repair-verification-v1",
             "verifiedCommit": "$VERIFIED_SHA",
             "workflowRunId": "$VERIFIED_RUN_ID",
-            "phase7Phase8NodeTests": "passed",
-            "syntaxChecks": "passed",
+            "phase7Phase8NodeTests": "$TEST_OUTCOME",
+            "syntaxChecks": "$SYNTAX_OUTCOME",
             "dependenciesInstalled": false,
             "networkOrRpcUsed": false
           }
@@ -67,3 +74,6 @@ jobs:
           git add docs/verification/2026-08-01-phases7-8-semantic-repair.json
           git commit -m 'Record Phase 7-8 semantic repair verification'
           git push origin HEAD:audit-repair/phases7-8-semantic-boundaries-v1
+      - name: Propagate verification failure
+        if: always() && (steps.tests.outcome != 'success' || steps.syntax.outcome != 'success')
+        run: exit 1
