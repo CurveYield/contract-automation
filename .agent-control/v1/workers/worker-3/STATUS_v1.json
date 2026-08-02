@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "state": "ready",
-  "lastConsumedSequence": 6,
+  "state": "working",
+  "lastConsumedSequence": 7,
   "activeSequence": 7,
   "activeMessageId": "worker-3-round3-github-direct-audit-release-v1-000007",
   "issueNumber": 115,
@@ -14,5 +14,5 @@
   "blockers": [],
   "round": 3,
   "roundType": "penultimate-release-candidate",
-  "updatedAt": "2026-08-02T02:29:00Z"
+  "updatedAt": "2026-08-02T02:34:00Z"
 }
