@@ -13,25 +13,17 @@ import { createProvenanceIndex } from '../packages/audit-provenance/src/index.mj
 const D = `sha256:${'1'.repeat(64)}`;
 const E = `sha256:${'2'.repeat(64)}`;
 const RAW = '1'.repeat(64);
+const CORE_TENANT = `ten_${'a'.repeat(32)}`;
+const CORE_FORK = `fork_${'b'.repeat(32)}`;
+const CORE_ATTEMPT = `att_${'c'.repeat(32)}`;
 const AT = '2026-08-02T10:00:00.000Z';
 
 function request(overrides={}) {
   return {
-    operation:'fork.checkpoint',
-    tenantId:'tenant-a',
-    workspaceId:'workspace-a',
-    campaignId:'campaign-a',
-    forkId:'fork-a',
-    attemptId:'attempt-a',
-    mergeId:null,
-    requesterId:'requester-a',
-    scopes:['audit:submit'],
-    idempotencyKey:'idem-a',
-    expectedVersion:3,
-    expectedEtag:D,
-    requestedAt:AT,
-    payload:{checkpointId:'checkpoint-a',manifestDigest:E},
-    ...overrides
+    operation:'fork.checkpoint',tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',
+    forkId:'fork-a',attemptId:'attempt-a',mergeId:null,requesterId:'requester-a',scopes:['audit:submit'],
+    idempotencyKey:'idem-a',expectedVersion:3,expectedEtag:D,requestedAt:AT,
+    payload:{checkpointId:'checkpoint-a',manifestDigest:E},...overrides
   };
 }
 
@@ -82,7 +74,7 @@ test('visible provenance projection is invariant to hidden nodes and source inde
 });
 
 test('fork report rejects a deleted state that fails the repaired core validator', () => {
-  const invalidDeleted={schemaVersion:'fork-state-v1',forkId:'fork-a',tenantId:'tenant-a',attemptId:'attempt-a',requestDigest:RAW,state:'deleted',version:4,executionGate:'trusted_mock',adapterKind:'mock',chainId:1,blockNumber:1,blockHash:null,createdAt:AT,updatedAt:AT,lastTransitionId:'tr_delete_test',lastFromState:'deleting'};
+  const invalidDeleted={schemaVersion:'fork-state-v1',forkId:CORE_FORK,tenantId:CORE_TENANT,attemptId:CORE_ATTEMPT,requestDigest:RAW,state:'deleted',version:4,executionGate:'trusted_mock',adapterKind:'mock',chainId:1,blockNumber:1,blockHash:null,createdAt:AT,updatedAt:AT,lastTransitionId:'tr_delete_test',lastFromState:'deleting'};
   assert.throws(()=>createForkReportProjection({state:invalidDeleted,requestedBy:'requester-a',reportedAt:AT}),error=>error?.code==='invalid_tombstone');
 });
 
