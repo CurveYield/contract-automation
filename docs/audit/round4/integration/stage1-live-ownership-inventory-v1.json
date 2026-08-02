@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "round4-live-path-ownership-v1",
+  "domains": [
+    {"domain":"api","candidateIds":["api-auth-reviewed"],"ownedPrefixes":["apps/audit-api"],"ownedFiles":[]},
+    {"domain":"github-direct","candidateIds":["web-direct-reviewed"],"ownedPrefixes":["packages/audit-github-direct","packages/github-direct-"],"ownedFiles":[]},
+    {"domain":"phase1-6-integration","candidateIds":["phase1-6-reviewed"],"ownedPrefixes":["packages/audit-release-integration"],"ownedFiles":[]},
+    {"domain":"phase7-8","candidateIds":["phase7-8-reviewed"],"ownedPrefixes":["packages/audit-clean-room-reporting","packages/audit-fork-reporting","packages/audit-phase78-publication","packages/audit-phase78-service"],"ownedFiles":[]},
+    {"domain":"web","candidateIds":["web-direct-reviewed"],"ownedPrefixes":["apps/audit-web","packages/audit-report-view-model","packages/audit-ui-contracts","packages/audit-web-compat"],"ownedFiles":[]}
+  ],
+  "sharedFiles": [],
+  "quarantineInventory": "docs/audit/round4/integration/stage1-pr126-quarantine-inventory-v1.json",
+  "quarantinedPathCount": 41,
+  "ownershipPrefixRepairs": ["packages/audit-phase78-service", "packages/audit-phase78-publication"]
+}
