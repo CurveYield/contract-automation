@@ -1,82 +1,105 @@
 # GitHub Direct Service and CLI Operating Guide v1
 
-## Scope
+## Public entry points
 
-The service completes the trusted control plane around `github-direct-audit-v1`. It composes the accepted protocol, repository ledger, injected adapter, and execution-disabled runner. It never falls back to `cloudflare-audit-v1` and never executes submitted source.
+Use only:
+
+```text
+packages/audit-github-direct-service/src/index.mjs
+apps/audit-github-direct-cli/src/main.mjs
+```
+
+Do not import private `service.mjs` directly. The public service facade emits the self-attesting v2 result contract.
+
+## Public schemas
+
+| Record | Schema |
+|---|---|
+| command | `github-direct-service-command-v1` |
+| result | `github-direct-service-result-v2` |
+| error | `github-direct-service-error-v1` |
+
+Every v2 result includes a deterministic `resultId` and `resultDigest`. Validate every command before execution and every result/error before serialization.
 
 ## Commands
 
-| Command | Required behavior | Successful service state |
-|---|---|---|
-| `submit` | Create/reconcile request, admission and current state; publish one Check | `accepted` at `awaiting_executor`, or `completed` for an exact inert fixture |
-| `status` | Read the exact derived current pointer | `completed` |
-| `cancel` | Publish non-executed cancellation result/report and transition current state | `cancelled` |
-| `report` | Publish terminal result/report, status and comment | `execution_plane_unavailable`, `completed`, or `cancelled` |
-| `capabilities` | Return the operation-specific permission projection | `completed` |
-| `verify-fixture` | Model only an exact repository-owned fixture tuple | `completed` or `execution_plane_unavailable` |
+| Command | Purpose |
+|---|---|
+| `submit` | publish the request/admission records; non-fixtures stop at `awaiting_executor` |
+| `status` | read the server-derived current pointer |
+| `cancel` | publish immutable cancellation result/report and terminalize the job |
+| `report` | publish truthful terminal or execution-unavailable reporting |
+| `capabilities` | return the least-privilege permission manifest |
+| `verify-fixture` | perform pure exact-SHA allowlist verification without execution |
 
-All commands require the same repository ID, installation ID, canonical full name, requester, policy/profile/parser/result/report versions, exact target SHA, request timestamp and idempotency key used for submission.
+No command accepts arbitrary paths, URLs, shell commands, workflow scope, runner labels, images, credentials, mutable refs or submitted-execution flags.
 
-## Lifecycle
+## CLI behavior
 
-A normal submitted target remains cancellable:
+The CLI:
 
-```text
-requested -> validating -> admitted -> awaiting_executor
-```
+1. parses only the fixed command-specific flags;
+2. creates and validates the command contract;
+3. invokes the injected service;
+4. validates the returned service error or v2 result;
+5. emits stable sorted JSON and a stable exit code.
 
-A later `report` truthfully closes it:
+The trusted CLI contains a narrow command-bound migration adapter for an internally injected legacy v1 result. It verifies mode, command kind, job, target SHA and fallback truth, then reconstructs and validates a v2 result. External APIs must not accept v1.
 
-```text
-awaiting_executor -> execution_plane_unavailable
-```
-
-An exact repository-owned inert fixture follows:
-
-```text
-requested -> validating -> admitted -> fixture_running -> publishing -> completed
-```
-
-No lifecycle path sets `executionPerformed` to true.
-
-## Stable request identity in the workflow
-
-The workflow derives `requestedAt` from the exact target commit timestamp and derives the idempotency key from repository ID, target SHA and authenticated actor ID. Separate workflow runs by the same actor therefore address the same job. A different actor cannot silently substitute the original requester.
-
-## CLI input boundary
-
-The CLI accepts only fixed flags for the six commands. It does not accept a command string, source path, URL, workflow, runner, image, token, credential, policy override outside the fixed profile, RPC endpoint or execution switch.
-
-Exit codes are stable:
+## Exit codes
 
 | Code | Meaning |
-|---:|---|
-| `0` | Successful command |
-| `2` | Invalid bounded input |
-| `3` | Authorization denied |
-| `4` | State or publication conflict |
-| `5` | Execution plane unavailable |
-| `6` | Other bounded service failure |
+|---|---|
+| 0 | completed or accepted successfully |
+| 2 | invalid CLI input |
+| 3 | authorization denied |
+| 4 | stale state or publication conflict |
+| 5 | execution plane unavailable |
+| 6 | malformed response or other service failure |
 
-Output is one deterministic JSON object followed by one newline. Errors never include raw transport text or credentials.
+## Required request identity
 
-## Operational prerequisites
+Every command binds:
 
-- The control branch `audit-direct/control-v1` must exist.
-- The workflow must be dispatched from the protected default branch.
-- The GitHub token or injected installation capability must match the repository and installation in the request.
-- Follow-up commands must use the same authenticated requester and exact target identity as submission.
+- numeric repository ID;
+- numeric installation ID;
+- canonical lowercase repository full name;
+- requester ID;
+- policy/profile/parser/result/report versions;
+- exact 40-character target commit SHA;
+- canonical timestamps;
+- idempotency key.
 
-## First jobs-index initialization
+Mixed-case GitHub repository names normalize to lowercase before job IDs and digests are derived.
 
-The jobs index is a mutable server-owned record and therefore never uses an immutable-create mutation. First initialization uses the same CAS operation class as later updates with the all-zero 40-character SHA as an explicit "absent" precondition. The trusted transport accepts that sentinel only when the index path is absent and creates the first version without supplying a GitHub contents SHA. If the path already exists, the normal exact blob-SHA CAS rule applies.
+## State behavior
 
-## Upstream repair lineage
+- Non-fixture `submit` ends at `awaiting_executor`, publishes one neutral Check and remains cancellable.
+- Allowlisted inert fixture `submit` may publish a modeled completed result with `executionPerformed:false`.
+- `report` from `awaiting_executor` moves truthfully to `execution_plane_unavailable`.
+- `cancel` creates immutable cancellation result/report records and publishes status/comment records.
+- Exact replay converges to no-op publication decisions; changed replay content conflicts.
 
-This package incorporates the accepted protocol validation repair from issue #106 and the accepted closed-ledger/recovery repair from issue #108. Adapter and runner boundaries are additionally hardened so malformed publication plans cannot reach the transport, transport responses are exact and identity-bound, and admission/outcome/publication records must agree across fixture truth, result truth, ledger content, paths, Checks, and statuses.
+## Workflow configuration
 
-## Trusted control-ledger snapshots
+Repository-owned variables:
 
-The accepted adapter returns bounded contents metadata only. The workflow host therefore uses a separate trusted snapshot reader implemented in the fixed-host GitHub transport module. It can read only server-derived `.audit-direct/v1/**` paths and returns decoded JSON plus the deterministic planner fingerprint. No CLI or workflow input can choose a snapshot path.
+```text
+GITHUB_DIRECT_INSTALLATION_ID
+GITHUB_DIRECT_REPORT_ISSUE
+```
 
-The authoritative repaired-core input is `22c22dd9de0e21b066ac29c9e0d9422a73724a31`; earlier equivalent repair experiments are not part of the final lineage.
+Workflow callers provide only a fixed operation and exact target SHA. Trusted runner source comes from `github.workflow_sha`; target source is checked out separately as inert data.
+
+## Verification
+
+```text
+node --test test/*.test.mjs
+find packages/audit-github-direct-* apps/audit-github-direct-cli/src -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+```
+
+Also parse the workflow YAML and Round 3 JSON manifests, run whitespace checks, verify issue-owned changed paths, and verify protected simulation/RPC blobs.
+
+## Prohibited operations
+
+Do not install dependencies, execute submitted project code, add Cloudflare/R2 fallback, expose credentials, perform wallet/signing/transaction work, deploy, approve workflows, or merge from this package.
