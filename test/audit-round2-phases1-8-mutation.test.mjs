@@ -14,7 +14,11 @@ function deleteEach(value, validate, expectedCode = 'missing_field') {
   let count = 0;
   for (const key of Object.keys(value)) {
     const mutated = structuredClone(value); delete mutated[key];
-    assert.throws(() => validate(mutated), (error) => error?.code === expectedCode, key);
+    assert.throws(
+      () => validate(mutated),
+      (error) => error?.code === (key === 'schemaVersion' ? 'invalid_schema' : expectedCode),
+      key
+    );
     count += 1;
   }
   return count;
