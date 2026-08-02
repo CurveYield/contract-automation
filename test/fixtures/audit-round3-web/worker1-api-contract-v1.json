@@ -1,0 +1,26 @@
+{
+  "version": "audit-api-public/v1",
+  "capabilities": [
+    { "id": "cap-report-read", "name": "Read reports", "available": true, "category": "reporting" },
+    { "id": "cap-execution", "name": "Execute submitted projects", "available": false, "reason": "Executor unavailable", "category": "execution" }
+  ],
+  "tools": [
+    { "id": "tool-report", "name": "Report browser", "available": true, "capabilityIds": ["cap-report-read"], "profileId": "profile-solidity", "parserId": "parser-solidity" }
+  ],
+  "profiles": [
+    { "id": "profile-solidity", "name": "Solidity audit", "version": "1", "available": true, "parserId": "parser-solidity" }
+  ],
+  "parsers": [
+    { "id": "parser-solidity", "name": "Solidity result parser", "version": "1", "available": true, "profileId": "profile-solidity" }
+  ],
+  "results": [
+    { "id": "result-compat-1", "status": "completed", "profileId": "profile-solidity", "parserId": "parser-solidity", "reportId": "report-compat-1" }
+  ],
+  "githubDirect": {
+    "id": "github-direct-compat",
+    "status": "awaiting-executor",
+    "repository": "CurveYield/contract-automation",
+    "targetSha": "1111111111111111111111111111111111111111",
+    "checkStatus": "queued"
+  }
+}
