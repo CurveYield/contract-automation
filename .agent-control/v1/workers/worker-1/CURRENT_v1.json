@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-1",
-  "sequence": 3,
-  "messageId": "worker-1-phase9-catalog-api-gpt-composition-replacement-v1-000003",
-  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000003_worker-1-phase9-catalog-api-gpt-composition-replacement-v1.md",
-  "assignmentBlobSha": "c0babfe23823250b775636e77f23f801369a23fb",
-  "issuedAt": "2026-08-01T23:38:00Z"
+  "sequence": 4,
+  "messageId": "worker-1-round3-api-gpt-auth-release-v1-000004",
+  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000004_worker-1-round3-api-gpt-auth-release-v1.md",
+  "assignmentBlobSha": "2e1f6827925089df3006ffffd345293ef4f2ea00",
+  "issuedAt": "2026-08-02T02:26:00Z"
 }
