@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "sequence": 6,
-  "messageId": "worker-3-phase9-github-direct-service-workflow-v1-000006",
-  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000006_worker-3-phase9-github-direct-service-workflow-v1_v1.md",
-  "assignmentBlobSha": "d195d561381bdcbf135b7bddf0cb94b5e51f3ad3",
-  "issuedAt": "2026-08-01T23:35:00Z"
+  "sequence": 7,
+  "messageId": "worker-3-round3-github-direct-audit-release-v1-000007",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000007_worker-3-round3-github-direct-audit-release-v1.md",
+  "assignmentBlobSha": "b5c2df3c528283eaafef30a1c618a994ca09d46d",
+  "issuedAt": "2026-08-02T02:28:00Z"
 }
