@@ -1,0 +1,213 @@
+{
+  "protocolVersion": 2,
+  "schemaVersion": "round4-worker2-gate5-supersession-reconstruction-v1",
+  "repository": "CurveYield/contract-automation",
+  "createdAt": "2026-08-02T16:06:26Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "issueNumber": 122,
+  "state": "prepared-not-activated",
+  "purpose": "Replace the wrong-base Worker 2 sequence-8 integration assignment with one non-overlapping sequence-9 assignment rooted at the accepted Worker 0 integration-spine base while preserving independently verified Stage 0 and Checkpoint 1 artifacts by exact path/blob reconstruction only.",
+  "currentAssignment": {
+    "sequence": 8,
+    "messageId": "worker-2-round4-full-platform-integration-v1-000008",
+    "branch": "audit-round4/full-platform-integration-v1",
+    "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+    "frozenCheckpointHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
+    "ackRequiredPath": ".agent-control/v1/workers/worker-2/ACKS/000008_worker-2-round4-full-platform-integration-v1-000008_accepted_v1.json",
+    "ackPresentAtPreparation": false,
+    "statusLastConsumedSequenceAtPreparation": 7,
+    "statusActiveSequenceAtPreparation": 8
+  },
+  "acceptedGate5Base": {
+    "issueNumber": 120,
+    "branch": "audit-round4/review-integration-spine-v1",
+    "sha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "evidenceHeadSha": "2ca9e70fb1e34cb1fb1b163844169cae510a7f52",
+    "reportCommentId": 5157224221,
+    "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105"
+  },
+  "successorAssignment": {
+    "sequence": 9,
+    "messageId": "worker-2-round4-full-platform-integration-v2-000009",
+    "branch": "audit-round4/full-platform-integration-v2",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "issueNumber": 122,
+    "publishAuthorized": false,
+    "reason": "Sequence 8 has not yet been durably acknowledged and closed as blocked; two active assignments are forbidden."
+  },
+  "activationPreconditions": [
+    "Worker 2 creates the sequence-8 ACK exactly once at the required ACK path.",
+    "Worker 2 updates only its own STATUS_v1.json so lastConsumedSequence is 8 and the sequence-8 assignment is durably closed as blocked by wrong-base Gate 5 ancestry, with activeSequence and activeMessageId cleared.",
+    "Worker 2 writes a create-only worker event binding the sequence-8 closeout to checkpoint head 8bddd31232f14597afba63ffba13f3b96069610b and issue comment 5158815848.",
+    "The orchestrator verifies sequence 8 is no longer active and that audit-round4/full-platform-integration-v1 remains exactly at 8bddd31232f14597afba63ffba13f3b96069610b.",
+    "The orchestrator re-verifies the 27 reconstruction path/blob pairs and confirms zero overlap with all 41 PR 126 quarantined paths.",
+    "Only after all prior conditions pass may the orchestrator create sequence 9, create the v2 branch at the accepted base, update CURRENT_v1.json, post activation and update control state."
+  ],
+  "reconstruction": {
+    "method": "exact-path-blob-transplant-only",
+    "sourceCheckpointHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
+    "validatorRepairCodeHeadSha": "bcf2c930bdbae0efb40c009485914bead6820d72",
+    "validatorReceiptBlobSha": "fef4bc39d3d2ab8ebdf597be9fbca36fa02ac812",
+    "pathCount": 27,
+    "paths": [
+      {
+        "path": "docs/audit/round4/integration/round5-production-input-v1.json",
+        "blobSha": "2c03942567320bf67b00aee342698a3be90f0b5c",
+        "source": "worker2-sequence8-checkpoint0"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage0-candidate-registry-v1.json",
+        "blobSha": "df0ee92906e4412ffb18113d03c143bca44fcb29",
+        "source": "worker2-sequence8-checkpoint0"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage0-path-ownership-v1.json",
+        "blobSha": "cae0691b7509b1f8ad88243b8da68b42a392b99e",
+        "source": "worker2-sequence8-checkpoint0"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage0-review-v1.md",
+        "blobSha": "deaba0b4cfaa2e35aa31ea7a347606bb2e495f68",
+        "source": "worker2-sequence8-checkpoint0"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage0-unions-and-waves-v1.json",
+        "blobSha": "870e5ac0c9abb19dc1657ca25e0586c88863e3e5",
+        "source": "worker2-sequence8-checkpoint0"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage1-disjoint-intake-plan-v1.json",
+        "blobSha": "82fbd738efc48f3896a657a7fe1ba8d10d8f2ecb",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage1-live-ownership-inventory-v1.json",
+        "blobSha": "0542a173e7061c59e26a2dce3b41bcd11270ca44",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage1-live-source-registry-v1.json",
+        "blobSha": "9bfe37ae68dec4137ba0c492a2ad145749106250",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage1-overlap-report-v1.json",
+        "blobSha": "46bc83c52ddf9c0d96902abc2ccab6e2512c9ecf",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "docs/audit/round4/integration/stage1-pr126-quarantine-inventory-v1.json",
+        "blobSha": "de368533bccdbfcf4a4af44c1b124a76bffb3c46",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/package.json",
+        "blobSha": "248600d3602d0c19cb4c449a28dd216488e7c2e0",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/index-legacy.mjs",
+        "blobSha": "8fd316be7ce2073c7b4290443a7fe5ceee292721",
+        "source": "orchestrator-stage0-validator-repair"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/index.mjs",
+        "blobSha": "1d50a117fd216edc4678645b9cc27e4bef01bd73",
+        "source": "orchestrator-stage0-validator-repair"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-candidates.mjs",
+        "blobSha": "7082e6e15ac4f33a552eb7465f9d96364bb6ebfc",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-gates.mjs",
+        "blobSha": "a8377a4897ceb3f0fc4c2b198abdb2d8e20f17c0",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-intake-worker0.mjs",
+        "blobSha": "ce83b4dc435a7b0aa3cb1a89eb14a446332e3d9e",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-intake-worker1-production.mjs",
+        "blobSha": "86245ac007a54e7443ffb4d2bbff3d11907a21ff",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-intake-worker1-support.mjs",
+        "blobSha": "75e5895eab3554703013051890a4fe04da282661",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-intake-worker3.mjs",
+        "blobSha": "720f65623b1d8962fe48ad1cfa15162d8148f39e",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-intake-worker4.mjs",
+        "blobSha": "384ee74fe932328c88b03ab489810b97864a3c90",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence-ownership.mjs",
+        "blobSha": "8d0496c722edbc1d8b89dec55c32f76eed87cc2d",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/live-evidence.mjs",
+        "blobSha": "42aacf7dadaa2d97ee7f0c9bf5f91e49d371d54a",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "packages/audit-integration-round4/src/quarantine.mjs",
+        "blobSha": "38343f69c726377c239e9c2acadaaf3c7840717d",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "test/audit-round4-integration-live-evidence-v1.test.mjs",
+        "blobSha": "af0378370db8067a9f2a92412226c36d1d14ae76",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "test/audit-round4-integration-stage0-red.test.mjs",
+        "blobSha": "a2ad2e9b6f753b9ac34234838c346ec774d1f736",
+        "source": "worker2-sequence8-checkpoint1"
+      },
+      {
+        "path": "test/audit-round4-integration-stage0-takeover-red.test.mjs",
+        "blobSha": "2ef7a0e9f8f0fcca5ba9e383537827c9379171e9",
+        "source": "orchestrator-stage0-validator-repair"
+      },
+      {
+        "path": "test/fixtures/audit-round4/integration/stage0-unresolved-candidates-v1.json",
+        "blobSha": "7e27efa7b28d9aa0b91296c34a7493e70b9ab11c",
+        "source": "worker2-sequence8-checkpoint0"
+      }
+    ]
+  },
+  "successorVerification": {
+    "requiredCommandsBeforeAnySubsystemTransplant": [
+      "node --test test/audit-round4-integration-stage0-red.test.mjs test/audit-round4-integration-stage0-takeover-red.test.mjs test/audit-round4-integration-live-evidence-v1.test.mjs",
+      "find packages/audit-integration-round4 test -type f -name '*.mjs' -print0 | xargs -0 -r -n1 node --check"
+    ],
+    "requiredAssertions": [
+      "All 27 paths read back at exact listed blobs on the v2 branch.",
+      "The v2 branch merge base and first parent ancestry begin at bbb4cac794865f84b65ee78a2fc78d391421c759.",
+      "The v1 branch remains frozen at 8bddd31232f14597afba63ffba13f3b96069610b.",
+      "No PR 126 quarantined path exists in the 27-path reconstruction set.",
+      "No subsystem production path has been transplanted and no assembled candidate has been frozen."
+    ]
+  },
+  "forbiddenActions": [
+    "Do not edit the sequence-8 immutable assignment or CURRENT pointer in place.",
+    "Do not force-move or rewrite the v1 integration branch.",
+    "Do not activate sequence 9 while sequence 8 remains active.",
+    "Do not merge or cherry-pick the v1 or repair branches.",
+    "Do not import the superseded validator index blob b788d6a37015a1245ac680279b0cb9eb30eef79a or takeover-test blob f6408462d32f97e7e8eb312a30cdfebc378d0a55.",
+    "Do not modify or ingest any of the 41 PR 126 quarantined paths.",
+    "Do not modify workflows or trigger simulation work under this procedure."
+  ]
+}
