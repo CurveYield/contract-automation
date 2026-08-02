@@ -79,15 +79,14 @@ export function assertSafeGraph(value,path='$',seen=new WeakSet()){
 export function assertPlainObject(value,path='$'){
   assertSafeGraph(value,path);
   if(value===null||typeof value!=='object'||guardedIsArray(value,path)) fail('invalid_type',`${path} must be an object`,path);
-  return value;
+  return Object.fromEntries(objectEntries(value,path));
 }
 export function strictObject(value,allowed,required=allowed,path='$'){
-  assertPlainObject(value,path);
-  const entries=objectEntries(value,path);
-  const keys=new Set(entries.map(([key])=>key));
+  const normalized=assertPlainObject(value,path);
+  const keys=new Set(Object.keys(normalized));
   for(const key of keys) if(!allowed.has(key)) fail('unknown_field',`${path}.${key} is not allowed`,`${path}.${key}`);
   for(const key of required) if(!keys.has(key)) fail('missing_field',`${path}.${key} is required`,`${path}.${key}`);
-  return value;
+  return normalized;
 }
 export function assertString(value,path,maximum=160,pattern){
   if(typeof value!=='string'||value.length<1||value.length>maximum||(pattern&&!pattern.test(value))) fail('invalid_string',`${path} is invalid`,path);
