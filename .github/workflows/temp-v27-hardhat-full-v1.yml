@@ -1,6 +1,12 @@
 name: Temporary V27 Hardhat EDR Full Simulation v1
 
 on:
+  push:
+    branches:
+      - automation/v27-hardhat-full-v1
+    paths:
+      - 'github-native-sim/jobs/v27-hardhat-full-v1/**'
+      - '.github/workflows/temp-v27-hardhat-full-v1.yml'
   pull_request:
     paths:
       - 'github-native-sim/jobs/v27-hardhat-full-v1/**'
@@ -10,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: temp-v27-hardhat-full-v1-${{ github.event.pull_request.number }}
+  group: temp-v27-hardhat-full-v1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
