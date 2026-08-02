@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "audit-round4-worker3-stage-a-path-blob-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 123,
+  "workerId": "worker-3",
+  "executionOwner": "orchestrator-direct-takeover",
+  "sequence": 8,
+  "startingSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+  "reviewedCodeSnapshotSha": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
+  "sourceBranch": "audit-round4/review-api-auth-security-v1",
+  "takeoverBranch": "orchestrator/worker3-round4-takeover-v1",
+  "recommendation": "ACCEPT_WITH_REPAIR",
+  "stage": "A",
+  "stageBState": "waiting_for_frozen_assembled_sha",
+  "counts": {
+    "paths": 2,
+    "production": 1,
+    "tests": 1
+  },
+  "paths": [
+    {
+      "path": "apps/audit-api/src/phase9-reports.mjs",
+      "blobSha": "4b2a68acc80c22d333ff03e2a4c80b64397ce8a6",
+      "kind": "production"
+    },
+    {
+      "path": "apps/audit-api/test/round4-hidden-provider-noninterference-v1.test.mjs",
+      "blobSha": "0f75494f96f5ca401843dfbf9b1040d078c99a3a",
+      "kind": "test"
+    }
+  ],
+  "protectedBoundaries": {
+    "worker3Round3GitHubDirectProductionChanged": false,
+    "githubNativeSimulationAddonChanged": false,
+    "runnerRpcPolicyChanged": false,
+    "pr126LiveRpcPathsChanged": false,
+    "workflowsChanged": false,
+    "mainChanged": false
+  },
+  "intakeRule": "Worker 2 must transplant only the exact listed paths and blobs from reviewedCodeSnapshotSha. Traditional branch merge is forbidden. A mismatch, additional production path, or protected-path overlap blocks intake."
+}
