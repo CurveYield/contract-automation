@@ -75,4 +75,12 @@ if migration_old not in source:
     raise SystemExit('expected explicit-migration branch seed was not found')
 source = source.replace(migration_old, migration_new, 1)
 
+reverse_min_old = """        await branchRecorder.contractCall({ label: 'migrate full Yearn position back to BoostHub', contract: contracts.strategy2, signer: operatorSigner, sender: actors.operator, signature: 'migrateYearnToBoostHub(uint256,uint256,uint256)', args: [yearnShares, lpQuote * 99n / 100n, deadline], gasLimit: GAS_LIMIT });
+"""
+reverse_min_new = """        await branchRecorder.contractCall({ label: 'migrate full Yearn position back to BoostHub', contract: contracts.strategy2, signer: operatorSigner, sender: actors.operator, signature: 'migrateYearnToBoostHub(uint256,uint256,uint256)', args: [yearnShares, lpQuote * 995n / 1000n, deadline], gasLimit: GAS_LIMIT });
+"""
+if reverse_min_old not in source:
+    raise SystemExit('expected reverse migration minimum was not found')
+source = source.replace(reverse_min_old, reverse_min_new, 1)
+
 path.write_text(source, encoding='utf-8')
