@@ -6,16 +6,28 @@ function decodeResponseContent(value,path){const text=Buffer.from(value,'base64'
 function createApi({tokenProvider,fetchImpl}){if(typeof tokenProvider!=='function')fail('invalid_token_provider','$.tokenProvider');if(typeof fetchImpl!=='function')fail('invalid_fetch','$.fetchImpl');async function request(method,path,body){const token=tokenProvider();if(typeof token!=='string'||token.length<1)fail('authorization_unavailable','$');const response=await fetchImpl(`${API_BASE}${path}`,{method,headers:{accept:'application/vnd.github+json',authorization:`Bearer ${token}`,'x-github-api-version':'2022-11-28','content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});if(response.status===404)return null;if(!response.ok){const error=new Error('GitHub operation failed');error.status=response.status;throw error;}return response.status===204?null:response.json();}function repoPath(args,suffix=''){const repository=fullName(args.repositoryFullName,'$.repositoryFullName');commitSha(args.targetCommitSha,'$.targetCommitSha');return `/repos/${repository}${suffix}`;}async function readContents(args,path,ref){const result=await request('GET',`${repoPath(args)}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`);if(result===null)return null;const content=decodeResponseContent(result.content,path);return {path,nativeBlobSha:result.sha,blobSha:fingerprint(content),content,ref};}async function writeContents(args,path,branch,content,nativeSha){const body={message:`audit-direct: update ${path}`,content:encodeContent(content),branch};if(nativeSha)body.sha=nativeSha;const result=await request('PUT',`${repoPath(args)}/contents/${encodePath(path)}`,body);return {nativeBlobSha:result.content.sha,commitSha:result.commit.sha};}return {request,repoPath,readContents,writeContents};}
 export function createGitHubActionsLedgerSnapshotReader(input){const v=exactKeys(input,['tokenProvider','fetchImpl'],'$'),api=createApi(v);return async function readLedger(request,path){const safe=boundedString(path,'$.path',512);if(!safe.startsWith('.audit-direct/v1/')||safe.includes('..')||safe.includes('\\'))fail('unsafe_path','$.path');const found=await api.readContents(request,safe,CONTROL_BRANCH);return found===null?null:frozenClone({content:found.content,blobSha:found.blobSha});};}
 function commentMarker(plan){return `<!-- audit-direct:${plan.publicationId} -->`;}
+async function listPages(api,path,field=null){
+  const items=[];
+  for(let page=1;page<=10;page++){
+    const separator=path.includes('?')?'&':'?';
+    const data=await api.request('GET',`${path}${separator}per_page=100&page=${page}`);
+    const batch=field?(data?.[field]??[]):(data??[]);
+    if(!Array.isArray(batch))fail('invalid_transport_response','$.transportResult');
+    items.push(...batch);
+    if(batch.length<100)break;
+  }
+  return items;
+}
 async function findSideEffect(api,plan,issueNumber){
   if(plan.kind==='comment'){
-    const comments=await api.request('GET',`${api.repoPath(plan)}/issues/${issueNumber}/comments?per_page=100`)??[];
+    const comments=await listPages(api,`${api.repoPath(plan)}/issues/${issueNumber}/comments`);
     return comments.some((item)=>typeof item?.body==='string'&&item.body.includes(commentMarker(plan)));
   }
   if(plan.kind==='check'){
-    const data=await api.request('GET',`${api.repoPath(plan)}/commits/${plan.targetCommitSha}/check-runs?check_name=${encodeURIComponent(plan.name)}&per_page=100`)??{};
-    return (data.check_runs??[]).some((item)=>item.external_id===plan.idempotencyKey&&item.conclusion===plan.conclusion);
+    const checks=await listPages(api,`${api.repoPath(plan)}/commits/${plan.targetCommitSha}/check-runs?check_name=${encodeURIComponent(plan.name)}`,'check_runs');
+    return checks.some((item)=>item.external_id===plan.idempotencyKey&&item.conclusion===plan.conclusion);
   }
-  const statuses=await api.request('GET',`${api.repoPath(plan)}/commits/${plan.targetCommitSha}/statuses?per_page=100`)??[];
+  const statuses=await listPages(api,`${api.repoPath(plan)}/commits/${plan.targetCommitSha}/statuses`);
   return statuses.some((item)=>item.context===plan.context&&item.state===plan.state&&item.description===plan.description);
 }
 async function createSideEffect(api,plan,issueNumber){
@@ -34,6 +46,6 @@ export function createGitHubActionsTransport(input){
     async applyLedgerMutation(args){const mutation=args.mutation,existing=await api.readContents(args,mutation.path,mutation.branch);if(mutation.operation==='create-immutable'){if(existing!==null){if(sha256(existing.content)!==mutation.contentDigest){const error=new Error('immutable_conflict');error.code='immutable_conflict';error.status=409;throw error;}return frozenClone({applied:true,nextBlobSha:mutation.nextContentBlobSha});}await api.writeContents(args,mutation.path,mutation.branch,mutation.content,null);return frozenClone({applied:true,nextBlobSha:mutation.nextContentBlobSha});}if(existing===null){if(mutation.expectedBlobSha!==ABSENT_BLOB_SHA){const error=new Error('stale_blob_sha');error.code='stale_blob_sha';error.status=409;throw error;}await api.writeContents(args,mutation.path,mutation.branch,mutation.content,null);return frozenClone({applied:true,nextBlobSha:mutation.nextContentBlobSha});}if(existing.blobSha!==mutation.expectedBlobSha){const error=new Error('stale_blob_sha');error.code='stale_blob_sha';error.status=409;throw error;}await api.writeContents(args,mutation.path,mutation.branch,mutation.content,existing.nativeBlobSha);return frozenClone({applied:true,nextBlobSha:mutation.nextContentBlobSha});},
     async getPublication(args){const found=await api.readContents(args,publicationPath(args),CONTROL_BRANCH);return found?.content??null;},
     async publish(plan){const path=publicationPath(plan),existing=await api.readContents(plan,path,CONTROL_BRANCH);if(existing!==null){if(JSON.stringify(existing.content)!==JSON.stringify(plan)){const error=new Error('publication_conflict');error.code='publication_conflict';error.status=409;throw error;}return frozenClone({published:true,publicationId:plan.publicationId});}if(!(await findSideEffect(api,plan,issueNumber)))await createSideEffect(api,plan,issueNumber);await api.writeContents(plan,path,CONTROL_BRANCH,plan,null);return frozenClone({published:true,publicationId:plan.publicationId});},
-    async getArtifactMetadata(args){const data=await api.request('GET',`${api.repoPath(args)}/actions/artifacts?per_page=100`),wanted=`audit-direct-result-${args.repositoryId}-${args.targetCommitSha}`;return frozenClone((data?.artifacts??[]).filter((item)=>item.name===wanted).slice(0,100).map(item=>({artifactId:`artifact-${item.id}`,name:String(item.name).slice(0,256),sizeBytes:item.size_in_bytes,digest:/^sha256:[0-9a-f]{64}$/.test(item.digest??'')?item.digest:sha256(`${item.id}:${item.size_in_bytes}:${item.created_at}`),expired:Boolean(item.expired),createdAt:new Date(item.created_at).toISOString(),expiresAt:new Date(item.expires_at).toISOString()})));}
+    async getArtifactMetadata(args){const wanted=`audit-direct-result-${args.repositoryId}-${args.targetCommitSha}`,artifacts=await listPages(api,`${api.repoPath(args)}/actions/artifacts?name=${encodeURIComponent(wanted)}`,'artifacts');return frozenClone(artifacts.filter((item)=>item.name===wanted).slice(0,100).map(item=>({artifactId:`artifact-${item.id}`,name:String(item.name).slice(0,256),sizeBytes:item.size_in_bytes,digest:/^sha256:[0-9a-f]{64}$/.test(item.digest??'')?item.digest:sha256(`${item.id}:${item.size_in_bytes}:${item.created_at}`),expired:Boolean(item.expired),createdAt:new Date(item.created_at).toISOString(),expiresAt:new Date(item.expires_at).toISOString()})));}
   });
 }
