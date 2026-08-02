@@ -9,11 +9,20 @@
     {"candidateId": "api-auth-reviewed", "workerId": "worker-3", "state": "working", "finalSha": null},
     {"candidateId": "web-direct-reviewed", "workerId": "worker-4", "state": "working", "finalSha": null}
   ],
+  "externalQuarantine": {
+    "pullRequestNumber": 126,
+    "state": "active-draft",
+    "baseSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "headSha": "bc3b94c5a48192f5c1cc6e167794a5460ac661ec",
+    "changedFileCount": 20,
+    "productionIntakeBlocked": true
+  },
   "expectedWaveStates": [
     {"waveId": "phase1-8-core", "state": "waiting-for-stage-a"},
     {"waveId": "api-auth", "state": "waiting-for-stage-a"},
     {"waveId": "github-direct-web", "state": "waiting-for-stage-a"},
-    {"waveId": "protected-addon-final", "state": "waiting-for-stage-a"}
+    {"waveId": "protected-addon-final", "state": "waiting-for-stage-a-and-external-quarantine-release"}
   ],
-  "protectedBlobCount": 6
+  "protectedBlobCount": 6,
+  "quarantinedPathCount": 20
 }
