@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "ready",
-  "lastConsumedSequence": 6,
+  "state": "working",
+  "lastConsumedSequence": 7,
   "activeSequence": 7,
   "activeMessageId": "worker-2-round3-phases1-6-integration-spine-v1-000007",
   "issueNumber": 114,
@@ -14,5 +14,5 @@
   "blockers": [],
   "round": 3,
   "roundType": "penultimate-release-candidate",
-  "updatedAt": "2026-08-02T02:28:00Z"
+  "updatedAt": "2026-08-02T02:35:48Z"
 }
