@@ -1,0 +1,37 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-integration-ownership-conflict-blocker-20260802T193426Z",
+  "eventType": "integration_ownership_conflict_blocked",
+  "createdAt": "2026-08-02T19:34:26Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "masterIssueNumber": 119,
+  "workerIssueNumber": 122,
+  "prescribedWorkerAssignment": {
+    "workerId": "worker-2",
+    "sequence": 9,
+    "messageId": "worker-2-round4-full-platform-integration-v2-000009",
+    "branch": "audit-round4/full-platform-integration-v2",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "currentPointerState": "ready",
+    "activeSequence": null
+  },
+  "conflictingWorkstream": {
+    "branch": "orchestrator/round4-final-integration-takeover-v1",
+    "relationToApprovedBase": "10 commits ahead, 0 behind",
+    "declaredOnIssue122": true,
+    "observedProtectedPathChanges": [
+      ".github/workflows/github-native-simulate.yml",
+      "packages/github-native-sim/**",
+      "packages/runner/src/run-job.mjs"
+    ]
+  },
+  "finding": "The prescribed immutable Worker 2 sequence-9 assignment remains published and ready while a direct orchestrator takeover branch is concurrently performing integration from the same Gate 5 base. The takeover branch also changes paths protected or quarantined by issues #119/#122 and PR #126 controls. This creates conflicting ownership and prevents authoritative integration intake or candidate freeze.",
+  "containment": {
+    "integrationProductionIntakeAuthorized": false,
+    "assembledCandidateFreezeAuthorized": false,
+    "newAssignmentAuthorized": false,
+    "requiredResolution": "Durably supersede exactly one integration path, reconcile Round 4 STATE and issue #122 ownership, independently validate every takeover path against accepted manifests and PR #126 security controls, and preserve worker-owned STATUS/ACK/event records unchanged."
+  },
+  "secretValuesExposed": false
+}
