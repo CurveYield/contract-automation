@@ -2,103 +2,110 @@
 
 ## Objective
 
-Resume orchestration safely from GitHub without depending on predecessor chat context.
+Resume Round 4 safely from GitHub without predecessor chat context.
 
 ## A. Establish live state
 
 1. Fetch `agent-control-plane-v1` and record its exact head SHA.
-2. Read `PROTOCOL_v1.md`, `GLOBAL_STATE_v1.json`, and this handoff package.
-3. Read every Worker 0–3 `CURRENT_v1.json`.
-4. Read every available Worker 0–3 `STATUS_v1.json`.
-5. Verify status ownership: the orchestrator must not create, repair, or overwrite worker status files.
-6. Inspect the referenced immutable assignment and blob SHA for every sequence greater than zero.
-7. Inspect the relevant issue and branch for every worker.
-8. Inspect issue #55 directly for Worker 4.
-9. List active Scheduled Tasks and verify the expected titles without creating duplicates.
+2. Read `PROTOCOL_v2.md`, `GLOBAL_STATE_v1.json`, and the complete handoff package.
+3. Read every Worker 0–4 `CURRENT_v1.json` and `STATUS_v1.json`.
+4. Inspect each immutable assignment and verify its exact blob SHA.
+5. Inspect issues #119–#125, active worker issues, branch heads, reports and manifests.
+6. Confirm Worker 2 remains at Stage 0 until #120, #121, #123 and #124 have accepted/repaired Stage A heads.
+7. Post refreshed state and discrepancies to continuity issue #63.
+
+The current workflow uses manual wakes of the original browser worker chats. Scheduled Tasks are not required; do not create duplicates or claim unattended polling.
 
 ## B. Classify each worker
 
-For each worker, classify one of:
+Use one of:
 
-- `uninitialized`: required worker status absent;
-- `idle`: no active work and no new sequence;
-- `working`: valid current assignment or sequence-zero migration assignment is underway;
-- `blocked` or `rejected`: inspect blocker/rejection event and issue report;
-- `completed-unreviewed`: valid completed status and issue report exist, but exact final SHA is not independently accepted;
-- `accepted-awaiting-integration`;
-- `integrated`;
-- `retired`.
+- `published-awaiting-acknowledgement`;
+- `acknowledged`;
+- `working-stage-a`;
+- `working-stage-0-preparation`;
+- `blocked` or `rejected`;
+- `completed-unreviewed`;
+- `accepted-awaiting-intake`;
+- `integrated-awaiting-stage-b`;
+- `stage-b-accepted`;
+- `retired` only after an explicit current control assignment.
 
-Do not collapse `completed-unreviewed` into accepted.
+Do not infer completion from commits alone and do not treat Worker 4 as retired.
 
-## C. Review a completed worker
+## C. Review Stage A completion
 
 1. Read the worker-owned completed status.
-2. Confirm the final SHA is exactly 40 lowercase hexadecimal characters.
-3. Fetch the issue report and ensure it identifies the same final SHA, branch, issue, recommendation, changed files, commands, restrictions, and blockers.
-4. Compare the final SHA against the assigned starting SHA.
-5. Inspect every changed path against ownership and forbidden paths.
-6. Inspect source and tests directly; do not rely only on the report.
-7. Verify predecessor and phase-order gates.
-8. Decide `ACCEPT`, `ACCEPT WITH REPAIR`, or `REJECT`.
+2. Verify final SHA format and branch-head equality.
+3. Fetch the exact issue report and numeric comment ID.
+4. Verify the complete changed-path/blob/public-interface manifest.
+5. Compare against the assigned starting SHA and ownership.
+6. Inspect RED evidence, repairs, tests and residual risks independently.
+7. Verify protected simulation-addon blobs are unchanged.
+8. Decide `ACCEPT`, `ACCEPT WITH REPAIR` or `REJECT`.
 9. Record the decision as an append-only orchestrator event.
-10. Integrate only if authorized and all gates are satisfied.
-11. Publish the next mailbox assignment only after integration/review state is durable.
+10. Give Worker 2 exact intake authorization only after acceptance.
 
-## D. Integrate accepted work
+## D. Worker 2 Stage 0 and intake
 
-- Pin the exact reviewed worker SHA in the PR body.
-- Target only the correct integration branch.
-- Confirm the PR contains only accepted paths.
-- Merge with the expected head SHA guard.
-- Verify the resulting integration commit and branch state.
-- Record the PR number, merge commit, source SHA, and decision in orchestrator events and global state.
-- Never merge to `main` as part of this orchestration process.
+Before all Stage A reviews finish, Worker 2 may only build validators, ownership/overlap registries, shared-file union contracts, rerun matrices and Round 5 production-input schemas.
 
-## E. Publish follow-up work
+After all four reviews are accepted:
 
-1. Confirm no active assignment exists for that worker.
-2. Confirm no overlapping worker may still write the target paths.
-3. Create or verify the dedicated implementation branch and exact starting SHA.
-4. Create/update the authoritative GitHub issue.
-5. Determine the next per-worker sequence as current sequence plus exactly one.
-6. Create a new immutable assignment file under that worker's `ASSIGNMENTS/` directory.
-7. Fetch the assignment's blob SHA.
-8. Update `CURRENT_v1.json` with only the pointer and integrity metadata.
-9. Append an orchestrator publication event.
-10. Update global state last.
+1. resolve exact reviewed heads/reports/manifests;
+2. reject stale or mismatched inputs;
+3. intake exact owned paths in issue #119 order;
+4. apply shared-file unions field by field;
+5. restore approved `main` simulation-addon blobs byte-for-byte;
+6. publish an exact checkpoint SHA after each wave;
+7. run required post-wave gates.
 
-## F. Stale workers
+Broad branch merges and stale ancestry are forbidden.
 
-- `working` with no status update for 3 hours: record potentially stale.
-- No update for 6 hours: classify blocked pending review.
-- Do not reassign overlapping paths while the prior worker might still write.
-- Publish a higher-sequence cancellation or retirement control assignment before transferring ownership.
+## E. Frozen assembled candidate
 
-## G. Worker 4 retirement
+1. Worker 2 publishes one exact SHA on issue #119.
+2. Workers 0, 1, 3 and 4 review that same SHA.
+3. A newer SHA invalidates earlier acceptance.
+4. Any rejection requires observed RED and the minimum proven repair.
+5. After unanimous exact-SHA acceptance, independently verify combined tests, provenance, public schemas, overlaps, protected blobs, secret scans and residual risks.
+6. Only then prepare release-branch/PR and Round 5 handoff actions.
 
-Worker 4 may finish issue #55. After its exact final SHA and report are reviewed:
+Do not merge directly to `main` without explicit orchestrator verification and authority.
 
-1. record the acceptance/rejection decision;
-2. do not issue follow-up work;
-3. update global/orchestrator-owned state to `retired`;
-4. preserve its branch, issue, report, and events;
-5. do not create a Worker 4 Scheduled Task unless James explicitly changes the plan.
+## F. Publish follow-up work
 
-## H. Scheduled polling limitation
+1. Confirm no active assignment and no overlapping writer.
+2. Create the dedicated branch at the exact approved base.
+3. Create the immutable assignment file.
+4. Fetch its blob SHA.
+5. Update `CURRENT_v1.json`.
+6. Post the issue activation notice.
+7. Append an orchestrator event.
+8. Update global/orchestrator state last.
 
-Hourly is the fastest supported recurring cadence. The scheduler does not visibly put a chat into a waiting state. A task may exist while `last_run_time` remains null until its first scheduled invocation.
+Do not write worker-owned statuses. A one-time 2026-08-02 reconciliation already occurred; workers own all later status transitions.
 
-Do not claim automation has run merely because a task exists. Verify `last_run_time` and mailbox writes.
+## G. Stale workers
+
+- no progress/status for 3 hours: potentially stale;
+- no progress for 6 hours: blocked pending review;
+- do not transfer overlapping ownership automatically;
+- use a higher-sequence cancellation/supersession control assignment before transfer.
+
+## H. Frozen simulation addon
+
+Round 4 cannot repair the GitHub-native simulation/App/RPC addon. Include only current approved `main` files byte-for-byte. Its separate repair remains paused until the user explicitly resumes it.
 
 ## I. Replacement startup report
 
-Post to continuity issue #63:
+Post to issue #63:
 
 - replacement runtime/session identity when available;
-- control-plane head SHA;
-- active Scheduled Task titles and last-run observations;
-- Worker 0–4 refreshed states;
-- discrepancies from the dated snapshot;
-- immediate actions taken;
-- confirmation that no forbidden operation occurred.
+- exact control-plane head;
+- Worker 0–4 live sequence/state/branch/head;
+- current Stage A checkpoint state;
+- whether Worker 2 is Stage 0 blocked or authorized for intake;
+- discrepancies and actions taken;
+- next exact SHA requiring independent review;
+- confirmation no forbidden operation occurred.
