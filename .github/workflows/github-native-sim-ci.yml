@@ -11,15 +11,16 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: v27-remote-anvil-${{ github.ref }}
-  cancel-in-progress: true
+  group: v27-remote-anvil-slot2-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   simulate-v27-contract-stack:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
-      RPC_ANVIL_ETHEREUM1: ${{ secrets.RPC_ANVIL_ETHEREUM1 }}
+      RPC_ANVIL_ETHEREUM2: ${{ secrets.RPC_ANVIL_ETHEREUM2 }}
+      V27_RPC_SLOT_SECRET: RPC_ANVIL_ETHEREUM2
       ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
       RESULT_ROOT: /tmp/v27-remote-anvil-result
     steps:
@@ -37,6 +38,9 @@ jobs:
       - name: Install trusted runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Create workflow-level remote snapshot
+        run: node github-native-sim/jobs/live-fork-v27-v1/remote-snapshot-guard.mjs begin
+
       - name: Execute complete V27 deposit, harvest, withdrawal, and migration lifecycle
         id: simulation
         continue-on-error: true
@@ -44,90 +48,124 @@ jobs:
         run: |
           set +e
           mkdir -p "$RESULT_ROOT"
+          date +%s > "$RESULT_ROOT/.last-progress-epoch"
+          date +%s > "$RESULT_ROOT/.last-heartbeat-epoch"
 
-          announce() {
-            local key="$1"
-            local message="$2"
-            local marker="$RESULT_ROOT/.progress-${key}"
-            if [[ ! -e "$marker" ]]; then
-              touch "$marker"
-              echo "::notice title=V27 contract-stack progress::${message}"
-              printf -- '- `%s` %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$GITHUB_STEP_SUMMARY"
-            fi
+          notice() {
+            local message="$1"
+            message="${message//$'\n'/ }"
+            echo "::notice title=V27 contract-stack progress::${message}"
+            printf -- '- `%s` %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          record_started() {
+            local file="$1"
+            local base label marker
+            base="$(basename "$file")"
+            marker="$RESULT_ROOT/.reported-start-${base}"
+            [[ -e "$marker" ]] && return
+            touch "$marker"
+            label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
+            label="${label%:before}"
+            [[ -z "$label" ]] && label="$base"
+            printf '%s\n' "$label" > "$RESULT_ROOT/.current-action"
+            date +%s > "$RESULT_ROOT/.last-progress-epoch"
+            touch "$RESULT_ROOT/.evidence-seen"
+            notice "Started: ${label}"
+          }
+
+          record_completed() {
+            local file="$1"
+            local base label marker
+            base="$(basename "$file")"
+            marker="$RESULT_ROOT/.reported-complete-${base}"
+            [[ -e "$marker" ]] && return
+            touch "$marker"
+            label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
+            [[ -z "$label" ]] && label="$base"
+            printf '%s\n' "$label" > "$RESULT_ROOT/.last-completed-action"
+            printf '%s\n' 'Waiting for the next operation' > "$RESULT_ROOT/.current-action"
+            date +%s > "$RESULT_ROOT/.last-progress-epoch"
+            touch "$RESULT_ROOT/.evidence-seen"
+            echo "[v27-complete] ${label}"
+            printf -- '- `%s` Completed: %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$label" >> "$GITHUB_STEP_SUMMARY"
           }
 
           scan_progress() {
+            local file
             shopt -s nullglob
-            local file base
+            for file in "$RESULT_ROOT"/snapshots/*-before-*.json; do
+              record_started "$file"
+            done
             for file in "$RESULT_ROOT"/calls/*.json; do
-              base="$(basename "$file")"
-              case "$base" in
-                *deploy-v27-strategy-1*)
-                  announce stack-deployed 'V27 vault, converter, and strategy deployment completed.'
-                  ;;
-                *cycle-1-deposit*)
-                  announce cycle-1-deposit 'Cycle 1 deposit recorded on the remote Anvil fork.'
-                  ;;
-                *cycle-1-harvest*)
-                  announce cycle-1-harvest 'Harvest cycle 1 completed and evidence was recorded.'
-                  ;;
-                *cycle-2-deposit*)
-                  announce cycle-2-deposit 'Cycle 2 deposit recorded on the remote Anvil fork.'
-                  ;;
-                *cycle-2-harvest*)
-                  announce cycle-2-harvest 'Harvest cycle 2 completed and evidence was recorded.'
-                  ;;
-                *cycle-3-deposit*)
-                  announce cycle-3-deposit 'Cycle 3 deposit recorded on the remote Anvil fork.'
-                  ;;
-                *cycle-3-harvest*)
-                  announce cycle-3-harvest 'Harvest cycle 3 completed and evidence was recorded.'
-                  ;;
-                *cycle-4-deposit*)
-                  announce cycle-4-deposit 'Cycle 4 deposit recorded on the remote Anvil fork.'
-                  ;;
-                *cycle-4-harvest*)
-                  announce cycle-4-harvest 'Harvest cycle 4 completed and evidence was recorded.'
-                  ;;
-                *execute-strategy-1-to-strategy-2-migration*)
-                  announce migration 'Strategy 1 to strategy 2 migration completed.'
-                  ;;
-                *cycle-m1-harvest*)
-                  announce post-migration-1 'Post-migration harvest cycle 1 completed.'
-                  ;;
-                *cycle-m2-harvest*)
-                  announce post-migration-2 'Post-migration harvest cycle 2 completed.'
-                  ;;
-              esac
+              record_completed "$file"
             done
           }
 
           printf '## V27 remote-Anvil simulation progress\n\n' >> "$GITHUB_STEP_SUMMARY"
-          announce starting 'Simulation started on the persistent remote Anvil fork.'
+          notice 'Simulation started on persistent remote Anvil slot 2.'
 
-          bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh &
+          setsid bash github-native-sim/jobs/live-fork-v27-v1/run-ci-selected-slot.sh &
           simulation_pid=$!
 
-          (
-            while kill -0 "$simulation_pid" 2>/dev/null; do
-              scan_progress
-              sleep 10
-            done
+          while kill -0 "$simulation_pid" 2>/dev/null; do
             scan_progress
-          ) &
-          progress_pid=$!
+            now="$(date +%s)"
+            last_progress="$(cat "$RESULT_ROOT/.last-progress-epoch")"
+            last_heartbeat="$(cat "$RESULT_ROOT/.last-heartbeat-epoch")"
+            stalled_for=$((now - last_progress))
+
+            if [[ -e "$RESULT_ROOT/.evidence-seen" ]]; then
+              stall_limit=300
+            else
+              stall_limit=600
+            fi
+
+            if (( stalled_for >= stall_limit )); then
+              current="$(cat "$RESULT_ROOT/.current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$RESULT_ROOT/.last-completed-action" 2>/dev/null || echo 'none')"
+              notice "STALL DETECTED after ${stalled_for}s. Active operation: ${current}. Last completed: ${completed}."
+              printf '%s\n' "$current" > "$RESULT_ROOT/watchdog-blocked-operation.txt"
+              touch "$RESULT_ROOT/.watchdog-timeout"
+              kill -TERM -- "-$simulation_pid" 2>/dev/null || true
+              for _ in $(seq 1 30); do
+                kill -0 "$simulation_pid" 2>/dev/null || break
+                sleep 1
+              done
+              kill -KILL -- "-$simulation_pid" 2>/dev/null || true
+              break
+            fi
+
+            if (( now - last_heartbeat >= 120 )); then
+              current="$(cat "$RESULT_ROOT/.current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$RESULT_ROOT/.last-completed-action" 2>/dev/null || echo 'none')"
+              notice "Heartbeat: active operation is ${current}; last completed is ${completed}."
+              date +%s > "$RESULT_ROOT/.last-heartbeat-epoch"
+            fi
+            sleep 10
+          done
 
           wait "$simulation_pid"
           simulation_status=$?
-          wait "$progress_pid" || true
+          scan_progress
 
-          if [[ "$simulation_status" -eq 0 ]]; then
-            announce completed 'Full V27 contract-stack simulation completed successfully.'
-          else
-            announce failed "Simulation stopped with exit code ${simulation_status}; final evidence and the precise blocker will still be uploaded."
+          if [[ -e "$RESULT_ROOT/.watchdog-timeout" ]]; then
+            simulation_status=124
           fi
 
+          printf '%s\n' "$simulation_status" > "$RESULT_ROOT/workflow-simulation-exit-code.txt"
+          if [[ "$simulation_status" -eq 0 ]]; then
+            notice 'Full V27 contract-stack simulation completed successfully.'
+          else
+            notice "Simulation stopped with exit code ${simulation_status}; cleanup and evidence publication are continuing."
+          fi
           exit "$simulation_status"
+
+      - name: Restore workflow-level remote snapshot
+        id: cleanup
+        if: always()
+        continue-on-error: true
+        run: node github-native-sim/jobs/live-fork-v27-v1/remote-snapshot-guard.mjs revert
 
       - name: Publish compact simulation result to PR 136
         if: always()
@@ -135,10 +173,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          outer_cleanup=$(jq -r '.baselineFullyRestored // false' "$RESULT_ROOT/workflow-outer-cleanup.json" 2>/dev/null || echo false)
           if test -f "$RESULT_ROOT/final-validation.json"; then
-            body=$(jq -r '
+            body=$(jq -r --arg outer "$outer_cleanup" '
               "### V27 remote-Anvil contract-stack simulation: **" +
               (if .validatedSuccess then "PASSED" else "FAILED" end) + "**\n\n" +
+              "- RPC slot: `RPC_ANVIL_ETHEREUM2`\n" +
               "- Assurance: `" + (.assurance // "unknown") + "`\n" +
               "- RPC chain ID: `" + ((.rpcChainId // 0) | tostring) + "`\n" +
               "- Calls: `" + ((.callCount // 0) | tostring) + "`\n" +
@@ -146,13 +186,14 @@ jobs:
               "- Assertions passed: `" + ((.passedAssertionCount // 0) | tostring) + "/" + ((.assertionCount // 0) | tostring) + "`\n" +
               "- Harvest cycles: `" + ((.cycleCount // 0) | tostring) + "`\n" +
               "- Post-migration cycles: `" + ((.postMigrationCycleCount // 0) | tostring) + "`\n" +
-              "- Fork baseline restored: `" + ((.cleanup.baselineFullyRestored // false) | tostring) + "`\n" +
+              "- Workflow-level fork restoration: `" + $outer + "`\n" +
               (if .reportError then "\nError: `" + (.reportError.message // (.reportError | tostring)) + "`" else "" end)
             ' "$RESULT_ROOT/final-validation.json")
             gh pr comment 136 --repo CurveYield/contract-automation --body "$body"
           else
+            blocked=$(cat "$RESULT_ROOT/watchdog-blocked-operation.txt" 2>/dev/null || echo unknown)
             tail_text=$(tail -n 30 "$RESULT_ROOT/wrapper-stderr.log" 2>/dev/null | sed 's/`/\\`/g' || true)
-            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\nNo final validation file was produced.\n\n\`\`\`\n${tail_text}\n\`\`\`"
+            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\n- RPC slot: \`RPC_ANVIL_ETHEREUM2\`\n- Blocked operation: \`${blocked}\`\n- Workflow-level fork restoration: \`${outer_cleanup}\`\n\n\`\`\`\n${tail_text}\n\`\`\`"
           fi
 
       - name: Upload complete simulation evidence
@@ -165,6 +206,6 @@ jobs:
           retention-days: 30
           compression-level: 6
 
-      - name: Propagate simulation failure
-        if: steps.simulation.outcome == 'failure'
+      - name: Propagate simulation or cleanup failure
+        if: steps.simulation.outcome == 'failure' || steps.cleanup.outcome == 'failure'
         run: exit 1
