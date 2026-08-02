@@ -187,22 +187,21 @@ export function createInjectedGitHubAdapter(input) {
         .then((result) => validateMutationResponse(result, mutation));
     },
     publish(value) {
-      const { x, bound } = identity(value, ['plan']);
-      const plan = validatePublicationPlan(x.plan);
-      const cap = {
-        check: 'publish-check',
-        comment: 'publish-comment',
-        status: 'publish-status'
-      }[plan.kind];
-      requireCap(cap);
       return (async () => {
+        const { x, bound } = identity(value, ['plan']);
+        const plan = validatePublicationPlan(x.plan);
+        const cap = {
+          check: 'publish-check',
+          comment: 'publish-comment',
+          status: 'publish-status'
+        }[plan.kind];
+        requireCap(cap);
         const observedRaw = await call('getPublication', {
           ...bound,
           kind: plan.kind,
           idempotencyKey: plan.idempotencyKey
         });
-        const observed = observedRaw === null ? null : validatePublicationPlan(observedRaw);
-        const decision = reconcilePublication({ plan, observed });
+        const decision = reconcilePublication({ plan, observed: observedRaw });
         if (decision.action === 'noop') return decision;
         const resultRaw = await call('publish', plan);
         const result = validatePublishResponse(resultRaw, plan);
