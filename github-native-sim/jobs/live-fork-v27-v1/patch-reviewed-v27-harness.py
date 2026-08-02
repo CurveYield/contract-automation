@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import os
 import re
 import sys
 
@@ -87,12 +88,11 @@ source = replace_once_or_already(source, reverse_min_old, reverse_min_new, 'reve
 
 path.write_text(source, encoding='utf-8')
 
-# The archived helper predates ethers' synchronous JsonRpcProvider.destroy().
-# Wrap every direct destroy() result before attaching .catch(), preserving cleanup
-# semantics while avoiding `undefined.catch` before the lifecycle can begin.
 engine_path = path.with_name('hardhat-engine.mjs')
 if engine_path.exists():
     engine_source = engine_path.read_text(encoding='utf-8')
+
+    # ethers JsonRpcProvider.destroy() is synchronous in the installed version.
     engine_source = re.sub(
         r'await\s+([A-Za-z_$][A-Za-z0-9_$]*)\.destroy\(\)\.catch\(',
         r'await Promise.resolve(\1.destroy()).catch(',
@@ -103,4 +103,31 @@ if engine_path.exists():
         r'Promise.resolve(\1.destroy()).catch(',
         engine_source,
     )
+
+    # The reviewed helper originally admitted only Hardhat's client string. The
+    # same lifecycle is now intentionally running on a capability-proven Anvil
+    # endpoint, so accept either known engine while continuing to reject others.
+    accepted_guard = "if (!/(hardhat|anvil)/i.test(String(clientVersion))) {"
+    if accepted_guard not in engine_source:
+        client_guard = re.compile(
+            r"if\s*\([^{}]*\)\s*\{\s*"
+            r"await Promise\.resolve\(provider\.destroy\(\)\)\.catch\(\(\) => \{\}\);\s*"
+            r"throw new Error\(`Unexpected local client: \$\{clientVersion\}`\);\s*"
+            r"\}",
+            re.DOTALL,
+        )
+        replacement = """if (!/(hardhat|anvil)/i.test(String(clientVersion))) {
+    await Promise.resolve(provider.destroy()).catch(() => {});
+    throw new Error(`Unexpected local client: ${clientVersion}`);
+  }"""
+        engine_source, count = client_guard.subn(replacement, engine_source, count=1)
+        if count != 1:
+            raise SystemExit('expected local-client guard was not found')
+
     engine_path.write_text(engine_source, encoding='utf-8')
+
+    result_root = os.environ.get('RESULT_ROOT')
+    if result_root:
+        result_path = Path(result_root)
+        result_path.mkdir(parents=True, exist_ok=True)
+        (result_path / 'effective-hardhat-engine.mjs').write_text(engine_source, encoding='utf-8')
