@@ -1,66 +1,49 @@
-# Scheduled Task Recovery v1
+# Worker Wake and Automation Recovery v1
 
-## Expected active task set
+## Current operating mode
 
-Under the current Plus-compatible plan, the expected active recurring tasks are exactly:
+The active Round 4 workflow uses the original five browser worker chats plus durable GitHub mailboxes. Scheduled Tasks are disabled/not required because earlier tasks opened separate task conversations instead of resuming the original agents.
 
-1. `CurveYield Orchestrator Poll`
-2. `CurveYield Worker 0 Poll`
-3. `CurveYield Worker 1 Poll`
-4. `CurveYield Worker 2 Poll`
-5. `CurveYield Worker 3 Poll`
+All five workers are active, including Worker 4. Do not apply the historical Worker 4 retirement rule.
 
-Worker 4 is not a recurring participant after its current issue #55 workload.
+## Manual wake procedure
 
-## Verification procedure
+When a worker appears idle:
 
-1. List all Scheduled Tasks.
-2. Match by exact title and inspect `is_enabled`, cadence, prompt, timezone, and `last_run_time`.
-3. Confirm each expected task exists exactly once.
-4. Do not count disabled tasks.
-5. Do not claim a task has polled until `last_run_time` or mailbox evidence proves execution.
-6. If a duplicate exists, keep the correctly scoped enabled task and disable the duplicate only after comparing prompts and schedules.
-7. If a task is missing, recreate only that missing task.
+1. Verify its `CURRENT_v1.json`, assignment path/blob and branch exist.
+2. Verify its worker-owned status has not already acknowledged/started the sequence.
+3. Verify the activation notice exists on the assigned issue.
+4. Ask the user only to wake/open that original worker chat if necessary; do not ask the user to paste the full assignment because GitHub already contains it.
+5. The worker must re-fetch its mailbox, acknowledge exactly once and resume from GitHub state.
 
-## Cadence
+## Current active sequences
 
-- Recurring polling cannot run more frequently than hourly.
-- Use `exact_schedule`.
-- Stagger workers and orchestrator when practical so worker status writes can precede orchestrator review.
-- At handoff creation, workers were intended to run around `:30` and the orchestrator around `:55` each hour in `America/Los_Angeles`.
-- Refresh the actual schedules; this document does not override the live registry.
+- Worker 0: sequence 6, issue #120.
+- Worker 1: sequence 5, issue #121.
+- Worker 2: sequence 8, issue #122.
+- Worker 3: sequence 8, issue #123.
+- Worker 4: sequence 3, issue #124.
 
-## Orchestrator task requirements
+## Scheduled Tasks
 
-The orchestrator task must:
+Do not create Scheduled Tasks by default. If the user later explicitly requests automation, first verify that tasks can resume the original chats rather than opening separate conversations. Never claim background polling unless an actual supported automation is created and its runs are verifiable.
 
-- read the protocol, global state, orchestrator status/events, Worker 0–3 current/status records, and issue #55;
-- independently review completed workers at pinned SHAs;
-- enforce phase ordering and path ownership;
-- publish immutable assignments before current pointers;
-- update only orchestrator-owned records;
-- issue no future work to Worker 4;
-- perform no install, compile, deploy, external tool execution, secret addition, AWS use, Lite modification, execution enablement, or main merge.
+If tasks are ever reintroduced:
 
-## Worker task requirements
-
-Each worker task must:
-
-- read only its own current/status plus protocol/global state;
-- process only a strictly greater valid sequence;
-- create one acknowledgement per assignment;
-- resume `working` state rather than duplicate work;
-- write only its own ACKS, STATUS, EVENTS, and assigned implementation branch/issue;
-- end quietly when idle;
-- preserve all no-install/no-compile/no-deploy/security restrictions.
+- hourly is the maximum supported frequency;
+- use one task per active chat only when continuation semantics are proven;
+- prevent duplicates;
+- inspect actual run evidence, not task existence;
+- disable automation immediately if it creates disconnected task conversations.
 
 ## Failure handling
 
-- Missing status: the owning worker may bootstrap it; the orchestrator may not.
-- Task exists but has never run: do not recreate it automatically; inspect the next scheduled time first.
-- Task run failed: inspect the mailbox and task output, preserve prior valid state, and record a blocker.
-- Scheduled Tasks unavailable: disable claims of unattended operation and fall back to the rollback/manual workflow without deleting mailbox state.
+- Missing or invalid current pointer: preserve prior valid state and record an orchestrator blocker.
+- Missing worker status: the worker owns status creation/repair; the orchestrator must not fabricate it.
+- Assignment published but not acknowledged: verify pointer/blob/issue, then manually wake the original chat.
+- Worker status stale while issue/branch advances: do not infer completion; require worker-owned completed status and report.
+- Worker chat unavailable: do not transfer overlapping paths until a higher-sequence cancellation/supersession safely closes the old assignment.
 
 ## Replacement warning
 
-Scheduled Tasks are account-level resources, not GitHub files. A replacement chat must list the live registry. Never trust remembered task IDs or assume tasks transfer because the handoff folder exists.
+Automation is account-level and not represented by GitHub files. The current durable state assumes manual original-chat wakes. A replacement orchestrator must not recreate old task titles based solely on historical handoff text.
