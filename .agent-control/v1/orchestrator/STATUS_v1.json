@@ -1,20 +1,28 @@
 {
   "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "idle",
-  "lastPollAt": "2026-08-01T14:08:00Z",
-  "lastProcessedEvent": "worker-2-sequence3-phase6-published-20260801T140700Z",
+  "state": "handoff-ready-active-round4",
+  "lastPollAt": "2026-08-02T09:36:00Z",
+  "lastProcessedEvent": "round4-activated-handoff-refreshed-20260802T093500Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
+  "round": 4,
+  "round4MasterIssue": 119,
+  "round5ProductionIssue": 125,
   "pendingActions": [
-    "Monitor Worker 0 sequence 1 issue #70 after its original chat resumed.",
-    "Await Worker 1 sequence 1 issue #72 completion and pinned report.",
-    "Await Worker 2 GitHub mailbox consumption and exact-once acknowledgement of sequence 3 on issue #77.",
-    "Await Worker 3 sequence 2 transition from acknowledged to working and progress on issue #76.",
-    "Independently review Worker 2 sequence 2 final SHA 8beb17a3f4a9df0a32a07caf19fc17fb633d4d75 before any Phase 4 integration decision.",
-    "Review draft PR #73 for mergeability into audit-phase4/integration-v3 after exact-head checks; do not merge to main.",
-    "Keep Phase 5 integration blocked until Phase 4 is independently accepted and Phase 6 integration blocked until Phase 5 is independently accepted.",
-    "Publish future worker assignments and wake markers only through GitHub mailboxes/issues; do not ask the user to paste inline relay messages."
+    "Verify Worker 0 acknowledges sequence 6 and posts startup/checkpoints on issue #120.",
+    "Verify Worker 1 acknowledges sequence 5 and closes all six bounded Phase 7-8 service/report/publication gaps on issue #121.",
+    "Verify Worker 2 acknowledges sequence 8, performs Stage 0 only, and does not intake subsystem production paths before #120/#121/#123/#124 acceptance.",
+    "Verify Worker 3 acknowledges sequence 8 and posts API/auth security checkpoints on issue #123.",
+    "Verify Worker 4 acknowledges sequence 3 and posts GitHub Direct/UI compatibility checkpoints on issue #124.",
+    "Independently review every Stage A final SHA, path/blob manifest, RED evidence and intake instruction before unblocking Worker 2.",
+    "After deterministic intake, freeze one exact assembled SHA on issue #119 and collect Worker 0/1/3/4 acceptance against that same SHA.",
+    "Keep the GitHub-native simulation/App/RPC addon frozen byte-for-byte; its separate repair remains paused.",
+    "Prepare and verify Round 5 secret-name/binding, deployment, live-test, rollback, observability and recovery manifests.",
+    "Refresh the handoff package before the next context exhaustion."
   ],
-  "updatedAt": "2026-08-01T14:08:00Z"
+  "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+  "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
+  "updatedAt": "2026-08-02T09:36:00Z"
 }
