@@ -10,7 +10,7 @@ export function denseArray(value,path='$',maximum=LIMITS.array){if(!isArray(valu
 export function boundedString(value,path,maximum=LIMITS.string,allowEmpty=false){if(typeof value!=='string'||value.length>maximum||(!allowEmpty&&value.length===0))fail('invalid_string',path);if(/[\u0000-\u001f\u007f]/.test(value))fail('control_character',path);return value;}
 export function identifier(value,path){const v=boundedString(value,path,LIMITS.id);if(!/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(v)||v.includes('..')||v==='latest')fail('invalid_identifier',path);return v;}
 export function versionSlug(value,path){const v=boundedString(value,path,96);if(!/^[a-z0-9]+(?:[._-][a-z0-9]+)*-v[1-9][0-9]*$/.test(v))fail('invalid_version',path);return v;}
-export function fullName(value,path){const v=boundedString(value,path,200);if(!/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/.test(v)||v.includes('..'))fail('invalid_repository_name',path);return v;}
+export function fullName(value,path){const v=boundedString(value,path,200);if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(v)||v.includes('..'))fail('invalid_repository_name',path);return v.toLowerCase();}
 export function commitSha(value,path){const v=boundedString(value,path,40);if(!/^[0-9a-f]{40}$/.test(v))fail('invalid_commit_sha',path);return v;}
 export function digest(value,path){const v=boundedString(value,path,71);if(!/^sha256:[0-9a-f]{64}$/.test(v))fail('invalid_digest',path);return v;}
 export function timestamp(value,path){const v=boundedString(value,path,32);const d=new Date(v);if(!Number.isFinite(d.getTime())||d.toISOString()!==v)fail('invalid_timestamp',path);return v;}
@@ -26,5 +26,4 @@ export function canonicalJson(value){return jsonOf(canonical(value,'$',new WeakS
 export function sha256(value){const text=typeof value==='string'?value:canonicalJson(value);if(utf8ByteLength(text)>LIMITS.bytes)fail('encoded_bytes_exceeded','$');return `sha256:${sha256Hex(text)}`;}
 export function deepFreeze(value){if(value&&typeof value==='object'&&!Object.isFrozen(value)){for(const child of Object.values(value))deepFreeze(child);Object.freeze(value);}return value;}
 export function frozenClone(value){return deepFreeze(canonicalClone(value));}
-
 export { fail } from './errors.mjs';
