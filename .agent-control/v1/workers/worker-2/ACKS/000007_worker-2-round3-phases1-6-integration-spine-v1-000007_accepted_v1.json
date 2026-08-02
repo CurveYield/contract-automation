@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-2",
+  "sequence": 7,
+  "messageId": "worker-2-round3-phases1-6-integration-spine-v1-000007",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000007_worker-2-round3-phases1-6-integration-spine-v1.md",
+  "assignmentBlobSha": "f48e51c4c35b84c0494c2481266ac1a179ff718e",
+  "issueNumber": 114,
+  "branch": "audit-round3/phases1-8-release-integration-v1",
+  "startingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+  "acceptedAt": "2026-08-02T02:35:48Z"
+}
