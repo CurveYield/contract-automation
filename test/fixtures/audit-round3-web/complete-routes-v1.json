@@ -1,0 +1,44 @@
+{
+  "version": "audit-round3-web-complete/v1",
+  "routes": {
+    "reports": [
+      { "id": "report-1", "title": "Primary report", "status": "published", "createdAt": "2026-08-01T10:00:00Z", "summary": "Primary report summary", "references": [], "evidence": [] }
+    ],
+    "reportDetail": {
+      "id": "report-1", "title": "Primary report", "status": "published", "createdAt": "2026-08-01T10:00:00Z", "summary": "Primary report summary",
+      "workspaceId": "workspace-1", "campaignId": "campaign-1", "jobId": "job-1",
+      "references": [{ "id": "reference-1", "label": "Reference one", "url": "/reports/reference-1" }],
+      "evidence": [{ "id": "evidence-1", "title": "Evidence one", "severity": "medium", "summary": "Evidence summary", "visible": true }]
+    },
+    "workspaces": [{ "id": "workspace-1", "name": "Workspace one", "status": "active", "campaigns": [] }],
+    "workspaceDetail": { "id": "workspace-1", "name": "Workspace one", "status": "active", "campaigns": [{ "id": "campaign-1", "name": "Campaign one", "status": "admitted", "jobs": [] }] },
+    "campaignDetail": { "id": "campaign-1", "name": "Campaign one", "status": "admitted", "summary": "Campaign summary", "jobs": [{ "id": "job-1", "title": "Job one", "status": "running-model-only", "reportId": "report-1" }] },
+    "jobDetail": { "id": "job-1", "title": "Job one", "status": "running-model-only", "campaignId": "campaign-1", "reportId": "report-1" },
+    "forkDetail": {
+      "id": "fork-1", "name": "Fork one", "status": "restored", "exportStatus": "exported", "restoreStatus": "restored", "deleteStatus": "not-requested", "tombstoneStatus": "not-requested",
+      "checkpoints": [{ "id": "checkpoint-1", "status": "ready", "label": "Checkpoint one" }],
+      "exports": [{ "id": "export-1", "status": "exported", "label": "Export one", "url": "/exports/one", "sizeBytes": 12 }]
+    },
+    "cleanRoomDetail": {
+      "id": "clean-1", "name": "Clean room one", "status": "review", "accessStatus": "granted", "shareStatus": "shared", "visibleResourceIds": ["source-visible"],
+      "merges": [{ "id": "merge-1", "status": "completed", "label": "Merge one", "visible": true }],
+      "provenance": [{ "id": "provenance-1", "sourceType": "commit", "sourceId": "source-visible", "label": "Visible source", "commitSha": "abc123", "visible": true, "reportId": "report-1" }]
+    },
+    "profiles": [{ "id": "profile-solidity", "name": "Solidity audit", "version": "1", "available": true, "parserId": "parser-solidity" }],
+    "profileDetail": { "id": "profile-solidity", "name": "Solidity audit", "version": "1", "available": true, "parserId": "parser-solidity", "summary": "Profile summary" },
+    "parserDetail": { "id": "parser-solidity", "name": "Solidity parser", "version": "1", "available": true, "profileId": "profile-solidity", "summary": "Parser summary" },
+    "resultDetail": { "id": "result-1", "status": "completed", "profileId": "profile-solidity", "parserId": "parser-solidity", "reportId": "report-1", "evidenceCount": 1 },
+    "catalog": {
+      "capabilities": [{ "id": "cap-read", "name": "Read reports", "available": true }],
+      "tools": [{ "id": "tool-read", "name": "Report reader", "available": true, "capabilityIds": ["cap-read"] }]
+    },
+    "githubDirectStatus": { "id": "direct-1", "status": "awaiting-executor", "repository": "CurveYield/contract-automation", "targetSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "checkStatus": "queued", "reportId": "report-1" },
+    "operations": {
+      "quotas": [{ "id": "quota-1", "remaining": 8, "limit": 10, "used": 2, "scope": "workspace-1" }],
+      "retention": [{ "id": "retention-1", "days": 14, "policy": "bounded", "scope": "workspace-1" }],
+      "operationBudgets": [{ "id": "budget-1", "remaining": 4, "limit": 5, "used": 1, "operation": "report-read", "scope": "workspace-1" }]
+    },
+    "diagnostics": [{ "code": "STALE_CAS", "message": "State changed", "correlationId": "corr-1", "staleState": true }],
+    "releaseProvenance": { "id": "release-1", "version": "v1", "status": "candidate", "startingSha": "ssssssssssssssssssssssssssssssssssssssss", "candidateSha": "cccccccccccccccccccccccccccccccccccccccc", "compatibilityVersions": ["audit-api-public/v1", "audit-service-reporting/v1"] }
+  }
+}
