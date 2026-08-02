@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const path=new URL('../docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json',import.meta.url);
+const contract=JSON.parse(fs.readFileSync(path,'utf8'));
+test('intake contract pins the reviewed base',()=>{assert.equal(contract.reviewedBase.sha,'bbb4cac794865f84b65ee78a2fc78d391421c759');assert.equal(contract.reviewedBase.recommendation,'ACCEPT WITH REPAIR');assert.equal(contract.reviewedBase.productionPaths.length,8);});
+test('every reviewed production path has an exact blob',()=>{for(const item of contract.reviewedBase.productionPaths){assert.match(item.path,/^packages\/audit-release-integration\/src\//);assert.match(item.blobSha,/^[0-9a-f]{40}$/);}assert.equal(new Set(contract.reviewedBase.productionPaths.map(item=>item.path)).size,8);});
+test('pending external reviews cannot be intaken',()=>{for(const item of contract.requiredInputs){assert.equal(item.state,'pending');assert.equal(item.intakeAuthorized,false);}assert.deepEqual(contract.activation.requiredStageAIssues,[120,121,123,124]);assert.equal(contract.activation.productionIntakeAuthorized,false);});
+test('intake is exact-path and field-union only',()=>{assert.equal(contract.intakeRules.traditionalBranchMerge,false);assert.equal(contract.intakeRules.exactPathBlobIntake,true);assert.equal(contract.intakeRules.sharedFilesRequireFieldOwnedUnion,true);assert.equal(contract.intakeRules.staleSourceOrDestinationBlobRejected,true);});
+test('PR 126 quarantine blocks reads, writes, restoration, and candidate freeze',()=>{assert.equal(contract.quarantine.pullRequest,126);assert.equal(contract.quarantine.active,true);assert.equal(contract.quarantine.pathsMayBeRead,false);assert.equal(contract.quarantine.pathsMayBeModified,false);assert.equal(contract.quarantine.pathsMayBeRestored,false);assert.equal(contract.quarantine.finalCandidateMayBeFrozen,false);});
