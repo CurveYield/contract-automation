@@ -1,0 +1,1 @@
+Publish the latest completed Temporary V27 Ganache Full Simulation v3 run and artifact summary to latest-v3-run-result.json.
