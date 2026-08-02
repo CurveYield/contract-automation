@@ -4,13 +4,18 @@ const defineContract = (required, optional = []) => Object.freeze({
 });
 
 export const UI_ENTITY_KINDS = Object.freeze([
+  'capability', 'catalogTool', 'workspace', 'campaign', 'job', 'evidence',
+  'report', 'fork', 'checkpoint', 'cleanRoomCampaign', 'provenance', 'diagnostic'
+]);
+
+export const UI_ENTITY_KINDS_V2 = Object.freeze([
   'capability', 'catalogTool', 'workspace', 'campaign', 'job', 'evidence', 'report',
   'fork', 'checkpoint', 'export', 'cleanRoomCampaign', 'merge', 'provenance',
   'quota', 'retention', 'operationBudget', 'profile', 'parser', 'result',
   'githubDirectStatus', 'releaseProvenance', 'diagnostic'
 ]);
 
-export const UI_CONTRACTS = Object.freeze({
+export const UI_CONTRACTS_V2 = Object.freeze({
   capability: defineContract(['id', 'name', 'available'], ['summary', 'reason', 'category', 'version']),
   catalogTool: defineContract(['id', 'name', 'available'], ['summary', 'capabilityIds', 'tags', 'profileId', 'parserId']),
   workspace: defineContract(['id', 'name', 'status'], ['campaigns', 'updatedAt', 'tenantId', 'quota']),
@@ -35,6 +40,10 @@ export const UI_CONTRACTS = Object.freeze({
   diagnostic: defineContract(['code', 'message'], ['correlationId', 'retryAfterSeconds', 'quotaRemaining', 'retentionDays', 'publicationStatus', 'staleState', 'details', 'retryPlan', 'transportState', 'reportId'])
 });
 
+export const UI_CONTRACTS = Object.freeze(Object.fromEntries(
+  UI_ENTITY_KINDS.map((kind) => [kind, UI_CONTRACTS_V2[kind]])
+));
+
 export const UI_ERROR_CODES = Object.freeze([
   'UI_CONTRACT_KIND', 'UI_CONTRACT_INPUT', 'UI_CONTRACT_UNKNOWN_KEY',
   'UI_CONTRACT_MISSING_KEY', 'UI_COMPAT_VERSION', 'UI_COMPAT_INPUT',
@@ -51,13 +60,19 @@ export class UiContractError extends TypeError {
 }
 
 function safeArrayIsArray(value) {
-  try { return Array.isArray(value); }
-  catch { return false; }
+  try {
+    return Array.isArray(value);
+  } catch {
+    return false;
+  }
 }
 
 function safeDescriptors(input) {
-  try { return Object.getOwnPropertyDescriptors(input); }
-  catch { return null; }
+  try {
+    return Object.getOwnPropertyDescriptors(input);
+  } catch {
+    return null;
+  }
 }
 
 function isRecordLike(input) {
@@ -71,30 +86,36 @@ function ownEnumerableDataEntries(input) {
   const entries = [];
   for (const key of Object.keys(descriptors)) {
     const descriptor = descriptors[key];
-    if (descriptor.enumerable && Object.hasOwn(descriptor, 'value')) entries.push([key, descriptor.value]);
+    if (descriptor.enumerable && Object.hasOwn(descriptor, 'value')) {
+      entries.push([key, descriptor.value]);
+    }
   }
   return entries;
 }
 
 export function parseUiEntity(kind, input) {
-  const contract = UI_CONTRACTS[kind];
+  const contract = UI_CONTRACTS_V2[kind];
   if (!contract) throw new UiContractError('UI_CONTRACT_KIND', `Unsupported UI entity kind: ${String(kind)}`);
   const entries = ownEnumerableDataEntries(input);
   if (!entries) throw new UiContractError('UI_CONTRACT_INPUT', `${kind} must be a readable record-like object`);
   const allowed = new Set([...contract.required, ...contract.optional]);
   const result = {};
   for (const [key, value] of entries) {
-    if (!allowed.has(key)) throw new UiContractError('UI_CONTRACT_UNKNOWN_KEY', `${kind} contains unknown key: ${key}`);
+    if (!allowed.has(key)) {
+      throw new UiContractError('UI_CONTRACT_UNKNOWN_KEY', `${kind} contains unknown key: ${key}`);
+    }
     Object.defineProperty(result, key, { value, enumerable: true, writable: true, configurable: true });
   }
   for (const key of contract.required) {
-    if (!Object.hasOwn(result, key)) throw new UiContractError('UI_CONTRACT_MISSING_KEY', `${kind} is missing required key: ${key}`);
+    if (!Object.hasOwn(result, key)) {
+      throw new UiContractError('UI_CONTRACT_MISSING_KEY', `${kind} is missing required key: ${key}`);
+    }
   }
   return result;
 }
 
 export function readUiEntityData(kind, input) {
-  const contract = UI_CONTRACTS[kind];
+  const contract = UI_CONTRACTS_V2[kind];
   const result = Object.create(null);
   if (!contract) return result;
   const entries = ownEnumerableDataEntries(input);
