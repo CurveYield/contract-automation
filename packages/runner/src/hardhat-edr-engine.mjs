@@ -5,6 +5,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import { LiveForkWorkflowRuntime } from './live-fork-runtime.mjs';
+import { latestBlock } from './live-fork-time.mjs';
 
 function literalActors(workflow) {
   const actors = new Set();
@@ -31,7 +32,7 @@ function hardhatExecutable() {
   return path.join(process.cwd(), 'node_modules', '.bin', name);
 }
 
-function configSource({ chainId, hardfork, blockGasLimit, transactionGasCap }) {
+function configSource({ chainId, hardfork, blockGasLimit, transactionGasCap, blockNumber }) {
   return `import { defineConfig } from 'hardhat/config';
 const forkUrl = process.env.CURVEYIELD_FORK_RPC_URL;
 if (!forkUrl) throw new Error('CURVEYIELD_FORK_RPC_URL is required');
@@ -45,7 +46,7 @@ export default defineConfig({
       hardfork: ${JSON.stringify(hardfork)},
       blockGasLimit: ${blockGasLimit},
       transactionGasCap: ${transactionGasCap},
-      forking: { url: forkUrl }
+      forking: { url: forkUrl, blockNumber: ${blockNumber} }
     }
   }
 });
@@ -76,7 +77,20 @@ async function stopChild(child) {
     new Promise((resolve) => child.once('exit', resolve)),
     new Promise((resolve) => setTimeout(resolve, 5_000))
   ]);
-  if (child.exitCode === null) child.kill('SIGKILL');
+  if (child.exitCode === null) {
+    child.kill('SIGKILL');
+    await Promise.race([
+      new Promise((resolve) => child.once('exit', resolve)),
+      new Promise((resolve) => setTimeout(resolve, 2_000))
+    ]);
+  }
+  child.unref();
+}
+
+async function destroyProvider(provider) {
+  try {
+    await Promise.resolve(provider?.destroy?.());
+  } catch {}
 }
 
 async function resolveReforkTarget(step, forkControl) {
@@ -93,10 +107,10 @@ export async function startHardhatEdrEngine({
   chainId,
   forkUrl,
   block,
-  configuration = {},
   forkControl,
   options = {}
 }) {
+  if (!Number.isSafeInteger(block) || block < 0) throw new Error('Hardhat EDR requires an exact safe fork block');
   const ethers = await import('ethers');
   const executable = hardhatExecutable();
   try {
@@ -113,7 +127,11 @@ export async function startHardhatEdrEngine({
   const hardfork = options.hardfork ?? 'osaka';
   const blockGasLimit = options.blockGasLimit ?? 60_000_000;
   const transactionGasCap = options.transactionGasCap ?? 16_777_216;
-  await fs.writeFile(configPath, configSource({ chainId, hardfork, blockGasLimit, transactionGasCap }), 'utf8');
+  await fs.writeFile(
+    configPath,
+    configSource({ chainId, hardfork, blockGasLimit, transactionGasCap, blockNumber: block }),
+    'utf8'
+  );
   const logHandle = await fs.open(logPath, 'w');
   const child = spawn(executable, [
     'node',
@@ -135,6 +153,10 @@ export async function startHardhatEdrEngine({
   try {
     ({ metadata, clientVersion } = await waitForNode(provider, child, options.startupTimeoutMs ?? 60_000));
     if (!/hardhat/i.test(String(clientVersion))) throw new Error(`Unexpected local EVM client: ${clientVersion}`);
+    const actualForkBlock = Number(metadata?.forkedNetwork?.forkBlockNumber);
+    if (actualForkBlock !== block) {
+      throw new Error(`Hardhat EDR fork block mismatch: requested ${block}, received ${actualForkBlock}`);
+    }
     for (const actor of actors) await provider.send('hardhat_impersonateAccount', [actor]);
     const accounts = await provider.send('eth_accounts', []);
     const aliases = Object.fromEntries(accounts.map((account, index) => [`account${index}`, account]));
@@ -143,8 +165,8 @@ export async function startHardhatEdrEngine({
     const reforkHandler = async (step, context) => {
       const target = await resolveReforkTarget(step, forkControl);
       const stateStrategy = step.stateStrategy ?? 'discard';
-      if (['state-overlay'].includes(stateStrategy)) {
-        throw new Error(`Hardhat EDR cannot capture a complete state overlay for ${stateStrategy}`);
+      if (stateStrategy === 'state-overlay') {
+        throw new Error('Hardhat EDR cannot capture a complete state overlay');
       }
       if (stateStrategy === 'custom-handler') {
         if (typeof options.customReforkHandler !== 'function') {
@@ -154,6 +176,7 @@ export async function startHardhatEdrEngine({
       }
 
       const previousHistory = [...(context.history ?? [])];
+      const previousCheckpointSteps = { ...(context.checkpointSteps ?? {}) };
       const baseAliases = Object.fromEntries(Object.entries(context.aliases).filter(([key]) => /^account\d+$/.test(key)));
       await provider.send('hardhat_reset', [{
         forking: { jsonRpcUrl: forkUrl, blockNumber: target.blockNumber }
@@ -175,7 +198,7 @@ export async function startHardhatEdrEngine({
       }
       if (stateStrategy === 'replay-from-checkpoint') {
         const checkpoint = step.replay?.checkpoint;
-        const from = checkpoint === undefined ? 0 : context.checkpointSteps?.[checkpoint];
+        const from = checkpoint === undefined ? 0 : previousCheckpointSteps[checkpoint];
         if (!Number.isInteger(from)) throw new Error(`Unknown replay checkpoint: ${checkpoint}`);
         replaySteps = previousHistory.slice(from);
       }
@@ -189,11 +212,10 @@ export async function startHardhatEdrEngine({
           throw new Error(`Replay produced no output for ${replayStep.action}`);
         }
       }
-      const latest = await provider.getBlock('latest');
+      const localHead = await latestBlock(provider);
       return {
-        blockNumber: Number(latest.number),
-        blockHash: latest.hash,
-        blockTimestamp: Number(latest.timestamp),
+        blockNumber: localHead.number,
+        blockTimestamp: localHead.timestamp,
         stateStrategy,
         replayedSteps: replaySteps.length
       };
@@ -215,17 +237,17 @@ export async function startHardhatEdrEngine({
       clientVersion,
       processId: child.pid,
       async getEvidence() {
-        const latest = await provider.getBlock('latest');
+        const localHead = await latestBlock(provider);
+        const currentMetadata = await provider.send('hardhat_metadata', []);
         return {
           clientVersion,
-          metadata,
-          finalBlockNumber: Number(latest.number),
-          finalBlockHash: latest.hash,
-          finalBlockTimestamp: Number(latest.timestamp)
+          metadata: currentMetadata,
+          finalBlockNumber: localHead.number,
+          finalBlockTimestamp: localHead.timestamp
         };
       },
       async close() {
-        await provider.destroy().catch(() => {});
+        await destroyProvider(provider);
         await stopChild(child);
         await logHandle.close().catch(() => {});
         await fs.rm(configPath, { force: true });
@@ -233,7 +255,7 @@ export async function startHardhatEdrEngine({
       }
     };
   } catch (error) {
-    await provider.destroy().catch(() => {});
+    await destroyProvider(provider);
     await stopChild(child);
     await logHandle.close().catch(() => {});
     let logTail = '';
