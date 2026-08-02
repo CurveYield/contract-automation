@@ -3,6 +3,18 @@ const QUOTA_MESSAGE = /(?:quota|rate limit|too many requests|monthly limit|usage
 const TRANSIENT_MESSAGE = /(?:timeout|timed out|temporar|try again|gateway|socket hang up|connection reset|fetch failed|unavailable)/i;
 const TRANSIENT_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 const DEFAULT_RETRY_DELAYS_MS = Object.freeze([0, 250, 1_000, 2_500]);
+const PUBLIC_ERROR_MESSAGE = 'Archive RPC request failed';
+const PUBLIC_FAILURE_CLASSES = new Set([
+  'quota_or_rate_limit',
+  'transient_http',
+  'method_unsupported',
+  'network_or_timeout',
+  'rpc_error',
+  'invalid_response',
+  'unknown',
+  'no_eligible_slot'
+]);
+const PUBLIC_METHOD = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -89,14 +101,22 @@ function eligiblePools(route, configuration) {
 
 function classifyFailure({ status, decoded, error }) {
   const message = String(decoded?.error?.message ?? error?.message ?? 'RPC request failed');
-  if (status === 429 || QUOTA_MESSAGE.test(message)) return { class: 'quota_or_rate_limit', qualifying: true, message };
-  if (status && TRANSIENT_STATUS.has(status)) return { class: 'transient_http', qualifying: true, message };
+  if (status === 429 || QUOTA_MESSAGE.test(message)) return { class: 'quota_or_rate_limit', qualifying: true };
+  if (status && TRANSIENT_STATUS.has(status)) return { class: 'transient_http', qualifying: true };
   if (decoded?.error?.code === -32601 || /method not found|not supported/i.test(message)) {
-    return { class: 'method_unsupported', qualifying: true, message };
+    return { class: 'method_unsupported', qualifying: true };
   }
-  if (error || TRANSIENT_MESSAGE.test(message)) return { class: 'network_or_timeout', qualifying: true, message };
-  if (decoded?.error) return { class: 'rpc_error', qualifying: true, message };
-  return { class: 'invalid_response', qualifying: true, message };
+  if (error || TRANSIENT_MESSAGE.test(message)) return { class: 'network_or_timeout', qualifying: true };
+  if (decoded?.error) return { class: 'rpc_error', qualifying: true };
+  return { class: 'invalid_response', qualifying: true };
+}
+
+function publicFailureClass(value) {
+  return typeof value === 'string' && PUBLIC_FAILURE_CLASSES.has(value) ? value : 'unknown';
+}
+
+function publicMethod(value) {
+  return typeof value === 'string' && PUBLIC_METHOD.test(value) ? value : null;
 }
 
 function responseId(payload) {
@@ -143,7 +163,7 @@ async function requestOne({ slot, payload, fetchImpl, requestTimeoutMs, retryDel
       clearTimeout(timeout);
     }
   }
-  return { failure: lastFailure ?? { class: 'unknown', qualifying: true, message: 'RPC request failed' } };
+  return { failure: lastFailure ?? { class: 'unknown', qualifying: true } };
 }
 
 function createSlotState(slot) {
@@ -265,10 +285,11 @@ export function createArchiveRpcRouter({
         if (result.failure.qualifying && state.failures >= threshold) state.quarantined = true;
       }
     }
-    const error = new Error(lastFailure?.message ?? `No healthy RPC slot supports ${payload.method}`);
+    const error = new Error(PUBLIC_ERROR_MESSAGE);
     error.code = 'ARCHIVE_RPC_UNAVAILABLE';
-    error.failureClass = lastFailure?.class ?? 'no_eligible_slot';
-    error.method = payload.method;
+    error.failureClass = publicFailureClass(lastFailure?.class ?? 'no_eligible_slot');
+    const method = publicMethod(payload.method);
+    if (method) error.method = method;
     throw error;
   }
 
@@ -288,13 +309,19 @@ export function createArchiveRpcRouter({
       return diagnosticsFor(states, requestCount, failureCount);
     },
     jsonError(payload, error) {
+      const failureClass = publicFailureClass(error?.failureClass);
+      const method = publicMethod(error?.method);
       return {
         jsonrpc: '2.0',
         id: responseId(payload),
         error: {
           code: -32000,
-          message: error?.message ?? String(error),
-          data: { code: error?.code ?? 'ARCHIVE_RPC_UNAVAILABLE', method: error?.method }
+          message: PUBLIC_ERROR_MESSAGE,
+          data: {
+            code: 'ARCHIVE_RPC_UNAVAILABLE',
+            failureClass,
+            ...(method ? { method } : {})
+          }
         }
       };
     }

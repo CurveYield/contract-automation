@@ -12,7 +12,7 @@ function failedSession(run, slot = 'primary-01') {
     version: 'rpc-health-event/v1',
     type: 'session',
     chain: 'ethereum',
-    runId: run,
+    runId: String(run),
     at: `2026-08-02T00:00:0${run}.000Z`,
     slots: [{
       id: slot,
@@ -23,7 +23,8 @@ function failedSession(run, slot = 'primary-01') {
       successes: 0,
       failures: 3,
       quarantined: true,
-      failureClass: 'quota_or_rate_limit'
+      failureClass: 'quota_or_rate_limit',
+      unsupportedMethods: []
     }]
   };
 }
@@ -53,7 +54,8 @@ test('a successful selected session resets the consecutive failure streak', () =
       successes: 4,
       failures: 0,
       quarantined: false,
-      failureClass: null
+      failureClass: null,
+      unsupportedMethods: []
     }]
   };
   const state = reduceRpcHealth([
@@ -79,7 +81,8 @@ test('an unused slot does not gain a failed session', () => {
       successes: 0,
       failures: 0,
       quarantined: false,
-      failureClass: null
+      failureClass: null,
+      unsupportedMethods: []
     }]
   };
   const state = reduceRpcHealth([failedSession(1), unused], { crossSessionFailureThreshold: 4 });
@@ -106,7 +109,7 @@ test('administrator recovery re-enables a persistently disabled slot', () => {
 test('converts redacted router diagnostics into one append-only session event', () => {
   const event = sessionEventFromDiagnostics({
     chain: 'ethereum',
-    runId: 'run-7',
+    runId: '7',
     at: '2026-08-02T00:00:07.000Z',
     diagnostics: {
       slots: [
@@ -117,7 +120,8 @@ test('converts redacted router diagnostics into one append-only session event', 
           successes: 8,
           failures: 0,
           quarantined: false,
-          lastFailureClass: null
+          lastFailureClass: null,
+          unsupportedMethods: []
         },
         {
           id: 'primary-01',
@@ -126,7 +130,8 @@ test('converts redacted router diagnostics into one append-only session event', 
           successes: 0,
           failures: 3,
           quarantined: true,
-          lastFailureClass: 'method_unsupported'
+          lastFailureClass: 'method_unsupported',
+          unsupportedMethods: ['debug_traceCall']
         }
       ]
     }

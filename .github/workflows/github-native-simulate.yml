@@ -3,7 +3,7 @@ name: GitHub-Native Contract Simulation
 on:
   push:
     branches:
-      - 'github-native-sim/**'
+      - main
     paths:
       - 'github-native-sim/jobs/**'
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      PUSH_BEFORE: ${{ github.event.before || '' }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       RPC_BASE: ${{ secrets.RPC_BASE }}
       RPC_KATANA: ${{ secrets.RPC_KATANA }}
@@ -106,13 +106,13 @@ jobs:
       SIM_ARCHIVE_SECONDARY_OPTIMISM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_OPTIMISM_03 }}
     steps:
       - name: Check out trusted runner and committed job
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
 
@@ -126,8 +126,16 @@ jobs:
         env:
           MANUAL_JOB_PATH: ${{ inputs.job_path || '' }}
         run: |
-          git fetch --no-tags origin "$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
-          changed_paths="$(git diff --name-only "origin/$DEFAULT_BRANCH...$GITHUB_SHA")"
+          set -euo pipefail
+          changed_paths=''
+          if test "$GITHUB_EVENT_NAME" = 'push'; then
+            test -n "$PUSH_BEFORE"
+            if printf '%s' "$PUSH_BEFORE" | grep -Eq '^0+$'; then
+              changed_paths="$(git show --pretty='' --name-only "$GITHUB_SHA")"
+            else
+              changed_paths="$(git diff --name-only "$PUSH_BEFORE...$GITHUB_SHA")"
+            fi
+          fi
           selection="$(CHANGED_PATHS="$changed_paths" node packages/github-native-sim/src/select-job.mjs)"
           job_id="$(printf '%s' "$selection" | jq -r '.jobId')"
           job_root="$(printf '%s' "$selection" | jq -r '.jobRoot')"
@@ -149,7 +157,7 @@ jobs:
 
       - name: Upload GitHub-native result
         if: always() && steps.select.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: github-native-sim-${{ steps.select.outputs.job_id }}-${{ github.run_id }}
           path: ${{ steps.select.outputs.output_dir }}

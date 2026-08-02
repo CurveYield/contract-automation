@@ -1,4 +1,4 @@
-name: Live Fork Engine Smoke
+name: V27 Full Live-Fork Acceptance
 
 on:
   workflow_dispatch:
@@ -6,26 +6,22 @@ on:
     branches:
       - main
     paths:
-      - 'packages/runner/src/archive-rpc-pool.mjs'
-      - 'packages/runner/src/live-fork-proxy.mjs'
-      - 'packages/runner/src/fork-engine.mjs'
-      - 'packages/runner/src/hardhat-edr-engine.mjs'
-      - 'packages/runner/src/live-fork-runtime.mjs'
-      - 'packages/runner/src/live-fork-time.mjs'
-      - 'scripts/live-fork-engine-smoke.mjs'
-      - '.github/workflows/live-fork-engine-smoke.yml'
+      - 'github-native-sim/jobs/live-fork-v27-v1/**'
+      - 'packages/runner/**'
+      - '.github/workflows/v27-full-live-fork.yml'
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
-  group: live-fork-engine-smoke-${{ github.ref }}
-  cancel-in-progress: true
+  group: v27-full-live-fork-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  smoke:
+  v27-full-live-fork:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 70
     env:
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
@@ -38,13 +34,14 @@ jobs:
       SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
       SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
       SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
-      LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
+      SIM_RPC_HEALTH_GITHUB_TOKEN: ${{ github.token }}
+      RESULT_ROOT: ${{ runner.temp }}/v27-full-live-fork
     steps:
-      - name: Check out trusted branch
+      - name: Check out trusted source and migration job
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -56,20 +53,20 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
 
-      - name: Execute live Ethereum fork smoke
+      - name: Execute full V27 shared live-fork lifecycle
         id: execute
         continue-on-error: true
-        run: node scripts/live-fork-engine-smoke.mjs
+        run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
 
-      - name: Upload live fork evidence
+      - name: Upload complete or partial V27 report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: live-fork-engine-smoke-${{ github.run_id }}
-          path: ${{ runner.temp }}/live-fork-engine-smoke
+          name: v27-full-live-fork-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-full-live-fork
           if-no-files-found: error
           retention-days: 30
 
-      - name: Propagate smoke failure
+      - name: Propagate V27 validation failure
         if: steps.execute.outcome == 'failure'
         run: exit 1
