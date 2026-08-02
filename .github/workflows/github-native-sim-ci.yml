@@ -1,4 +1,5 @@
-name: V27 Contract Stack Remote Anvil Simulation
+name: Security-reconcile merged live-fork workflows and RPC health state
+run-name: Security-reconcile merged live-fork workflows and RPC health state
 
 on:
   pull_request:
@@ -39,7 +40,94 @@ jobs:
       - name: Execute complete V27 deposit, harvest, withdrawal, and migration lifecycle
         id: simulation
         continue-on-error: true
-        run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RESULT_ROOT"
+
+          announce() {
+            local key="$1"
+            local message="$2"
+            local marker="$RESULT_ROOT/.progress-${key}"
+            if [[ ! -e "$marker" ]]; then
+              touch "$marker"
+              echo "::notice title=V27 contract-stack progress::${message}"
+              printf -- '- `%s` %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          scan_progress() {
+            shopt -s nullglob
+            local file base
+            for file in "$RESULT_ROOT"/calls/*.json; do
+              base="$(basename "$file")"
+              case "$base" in
+                *deploy-v27-strategy-1*)
+                  announce stack-deployed 'V27 vault, converter, and strategy deployment completed.'
+                  ;;
+                *cycle-1-deposit*)
+                  announce cycle-1-deposit 'Cycle 1 deposit recorded on the remote Anvil fork.'
+                  ;;
+                *cycle-1-harvest*)
+                  announce cycle-1-harvest 'Harvest cycle 1 completed and evidence was recorded.'
+                  ;;
+                *cycle-2-deposit*)
+                  announce cycle-2-deposit 'Cycle 2 deposit recorded on the remote Anvil fork.'
+                  ;;
+                *cycle-2-harvest*)
+                  announce cycle-2-harvest 'Harvest cycle 2 completed and evidence was recorded.'
+                  ;;
+                *cycle-3-deposit*)
+                  announce cycle-3-deposit 'Cycle 3 deposit recorded on the remote Anvil fork.'
+                  ;;
+                *cycle-3-harvest*)
+                  announce cycle-3-harvest 'Harvest cycle 3 completed and evidence was recorded.'
+                  ;;
+                *cycle-4-deposit*)
+                  announce cycle-4-deposit 'Cycle 4 deposit recorded on the remote Anvil fork.'
+                  ;;
+                *cycle-4-harvest*)
+                  announce cycle-4-harvest 'Harvest cycle 4 completed and evidence was recorded.'
+                  ;;
+                *execute-strategy-1-to-strategy-2-migration*)
+                  announce migration 'Strategy 1 to strategy 2 migration completed.'
+                  ;;
+                *cycle-m1-harvest*)
+                  announce post-migration-1 'Post-migration harvest cycle 1 completed.'
+                  ;;
+                *cycle-m2-harvest*)
+                  announce post-migration-2 'Post-migration harvest cycle 2 completed.'
+                  ;;
+              esac
+            done
+          }
+
+          printf '## V27 remote-Anvil simulation progress\n\n' >> "$GITHUB_STEP_SUMMARY"
+          announce starting 'Simulation started on the persistent remote Anvil fork.'
+
+          bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh &
+          simulation_pid=$!
+
+          (
+            while kill -0 "$simulation_pid" 2>/dev/null; do
+              scan_progress
+              sleep 10
+            done
+            scan_progress
+          ) &
+          progress_pid=$!
+
+          wait "$simulation_pid"
+          simulation_status=$?
+          wait "$progress_pid" || true
+
+          if [[ "$simulation_status" -eq 0 ]]; then
+            announce completed 'Full V27 contract-stack simulation completed successfully.'
+          else
+            announce failed "Simulation stopped with exit code ${simulation_status}; final evidence and the precise blocker will still be uploaded."
+          fi
+
+          exit "$simulation_status"
 
       - name: Publish compact simulation result to PR 136
         if: always()
