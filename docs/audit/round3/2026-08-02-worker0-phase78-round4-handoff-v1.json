@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "audit-worker0-round4-handoff-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 112,
+  "workerId": "worker-0",
+  "branch": "audit-round3/phase78-service-release-v1",
+  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+  "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+  "recommendation": "ACCEPT_WITH_REPAIR",
+  "completedScope": [
+    "phase7 transient lifecycle and retry convergence",
+    "phase7 tenant and attempt scoped reads",
+    "phase7 hostile graph and canonical traversal hardening",
+    "phase8 merge request and manifest semantic validation",
+    "phase8 duplicate and conflict relation validation",
+    "phase8 provenance hostile-safe classification"
+  ],
+  "ownedPrefixes": [
+    "packages/audit-fork-protocol/",
+    "packages/audit-forks/",
+    "packages/audit-fork-mock-adapter/",
+    "packages/audit-clean-room-protocol/",
+    "packages/audit-clean-room-access/",
+    "packages/audit-clean-room-campaigns/",
+    "packages/audit-controlled-merge/",
+    "packages/audit-provenance/",
+    "packages/audit-phase78-service/",
+    "packages/audit-fork-reporting/",
+    "packages/audit-clean-room-reporting/",
+    "packages/audit-phase78-publication/"
+  ],
+  "changedPaths": [
+    "packages/audit-controlled-merge/src/publication-storage.mjs",
+    "packages/audit-controlled-merge/src/relations.mjs",
+    "packages/audit-controlled-merge/src/request-state.mjs",
+    "packages/audit-fork-protocol/src/internals.mjs",
+    "packages/audit-forks/src/checkpoint-export.mjs",
+    "packages/audit-forks/src/checkpoint-operations.mjs",
+    "packages/audit-forks/src/checkpoint-publication.mjs",
+    "packages/audit-forks/src/checkpoint-reader.mjs",
+    "packages/audit-forks/src/checkpoint-restore.mjs",
+    "packages/audit-forks/src/fork-deletion.mjs",
+    "packages/audit-forks/src/lifecycle.mjs",
+    "packages/audit-forks/src/service.mjs",
+    "packages/audit-provenance/src/contracts.mjs",
+    "packages/audit-provenance/src/graph.mjs",
+    "packages/audit-provenance/src/index.mjs",
+    "packages/audit-provenance/src/report-reference.mjs",
+    "packages/audit-provenance/src/tracing.mjs",
+    "test/audit-phase7-checkpoint-storage-v1.test.mjs",
+    "test/audit-phase7-fork-deletion-recovery-v1.test.mjs",
+    "test/audit-phase7-fork-state-machine-v1.test.mjs",
+    "test/audit-round3-phase78-phase7-recovery-v1.test.mjs",
+    "test/audit-round3-phase78-phase7-red-v1.test.mjs",
+    "test/audit-round3-phase78-phase7-service-scope-v1.test.mjs",
+    "test/audit-round3-phase78-semantic-red-v1.test.mjs",
+    "test/fixtures/audit-round3-phase78/module-interface-storage-map-v1.json",
+    "test/fixtures/audit-round3-phase78/protected-addon-baseline-v1.json",
+    "test/fixtures/audit-round3-phase78/source-truth-matrix-v1.json"
+  ],
+  "verificationEvidence": {
+    "phase7Focused": {"passed": 43, "failed": 0},
+    "phase8Focused": {"passed": 32, "failed": 0},
+    "combinedPhase78": {"passed": 75, "failed": 0},
+    "hostileGetterInvocations": 0
+  },
+  "requiredRound4Repair": [
+    "independently reconcile audit-phase78-service orchestration and operation summaries with repaired transient lifecycle and measured storage operations",
+    "verify fork and checkpoint public service projections use only tenant and attempt scoped readers",
+    "revalidate fork, clean-room and provenance report schemas against repaired core validators",
+    "exercise pagination, quota, retention, tombstone, publication replay and multi-tenant end-to-end service scenarios",
+    "publish a complete per-path blob manifest after focused repairs"
+  ],
+  "protectedSimulationAddon": {
+    "workflowBlob": "54e446d4a715ca9678ed4d7434f7ba90b2c67c96",
+    "forkProxyBlob": "bf34fe47348f1fbe0cbee4ba47b4672c18aa71f3",
+    "changed": false
+  },
+  "round4ReviewIssue": 121,
+  "round4MasterIssue": 119,
+  "productionAcceptanceIssue": 125,
+  "executionEnabled": false
+}
