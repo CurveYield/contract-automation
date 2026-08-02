@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "audit-round3-api-contract-catalog-capability-inventory-v1",
+  "issueNumber": 113,
+  "branch": "audit-round3/api-gpt-auth-release-v1",
+  "startingSha": "d2d17ce80071f67cf5894c09d3a7291f5904cf43",
+  "apiContract": {
+    "version": "audit-api-contracts-v2",
+    "bounds": {
+      "encodedValueBytes": 1000000,
+      "responseBodyBytes": 1000000,
+      "stringBytes": 8192,
+      "keyBytes": 160,
+      "collectionEntries": 1000,
+      "nestingDepth": 24,
+      "cursorBytes": 4096
+    },
+    "readIdentities": [
+      "client",
+      "gpt",
+      "legacy-read",
+      "legacy-submit",
+      "legacy-admin",
+      "service-read"
+    ],
+    "duplicateCredentialPolicy": "fail-closed-before-token-matching",
+    "corsPolicy": "canonical-http-or-https-origin-or-null",
+    "responseHeaderPolicy": "security-cache-content-and-cors-headers-are-reserved"
+  },
+  "catalog": {
+    "version": "audit-catalog-composition-v2",
+    "profileCount": 13,
+    "phaseCounts": {
+      "phase4": 6,
+      "phase5": 4,
+      "phase6": 3
+    },
+    "identityFields": [
+      "profileId",
+      "parserVersion",
+      "adapterVersion",
+      "toolName",
+      "toolVersion",
+      "parserPackage",
+      "parserPackageVersion",
+      "parserFunction",
+      "captureSchemaVersion",
+      "resultSchemaVersion",
+      "evidenceSchemaVersion",
+      "trustedProducer",
+      "sourcePackage",
+      "sourceCommit"
+    ],
+    "phase5SourceCommit": "2982614879f1f6d252a7630eb5331031d5934b4e",
+    "phase6SourceCommit": "1b20f634b6d3c5f1261d490e545415c81d7488f2"
+  },
+  "phase78Compatibility": {
+    "schemaVersion": "audit-phase78-service-compatibility-v1",
+    "servicePackage": "@curveyield/audit-phase78-service",
+    "serviceVersion": "0.1.0",
+    "sourceCommit": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+    "indexBlobSha": "d23b4922f8209b5829618b4d9a4174f3b5849be9",
+    "constantsBlobSha": "8f8ae95fb8a6b582aa8d91af3183bf5fbbadc79a",
+    "operationCount": 15,
+    "storageInternalsImported": false,
+    "executionEnabled": false
+  },
+  "capabilities": {
+    "version": "audit-aggregate-capabilities-v2",
+    "rawPhase7Or8BooleansAccepted": false,
+    "environmentAvailabilityAliasesAccepted": false,
+    "phase7Available": false,
+    "phase8Available": false,
+    "phase7ServiceDiscovery": true,
+    "phase8ServiceDiscovery": true,
+    "executionEnabled": false,
+    "executorState": "unavailable"
+  },
+  "verification": {
+    "focusedTests": 21,
+    "passed": 21,
+    "failed": 0,
+    "syntaxFiles": 2,
+    "syntaxPassed": 2,
+    "dependenciesInstalled": false,
+    "compiled": false
+  }
+}
