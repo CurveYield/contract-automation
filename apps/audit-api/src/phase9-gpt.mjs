@@ -1,7 +1,7 @@
 import { PHASE4_PROFILE_CATALOG } from '../../../packages/audit-tool-catalog/src/index.mjs';
 import {
   ApiContractError,
-  authenticateAuditRead,
+  canonicalJson,
   corsHeaders,
   createJsonResponse,
   decodePageCursor,
@@ -10,8 +10,14 @@ import {
   parsePageLimit,
   validateExternalValue
 } from '../../../packages/audit-api-contracts/src/index.mjs';
-import { resolveAuditReadScope } from '../../../packages/audit-api-contracts/src/discovery.mjs';
-import { validateStatusSummary } from '../../../packages/audit-api-contracts/src/status.mjs';
+import {
+  AUDIT_ROUTE_SCOPES,
+  authorizeAuditReadRequest
+} from '../../../packages/audit-api-contracts/src/authorization.mjs';
+import {
+  validateEvidenceSummary,
+  validateStatusSummary
+} from '../../../packages/audit-api-contracts/src/status.mjs';
 import {
   createAggregateAuditCapabilities,
   createAuditCatalogComposition
@@ -23,25 +29,34 @@ const CATALOG_PATH = '/audit/v1/gpt/catalog';
 const CATALOG_ITEM_PREFIX = `${CATALOG_PATH}/`;
 const REPORTS_PATH = '/audit/v1/gpt/reports';
 const REPORTS_ITEM_PREFIX = `${REPORTS_PATH}/`;
-const CAMPAIGN_PREFIX = '/audit/v1/gpt/campaigns/';
-const JOB_PREFIX = '/audit/v1/gpt/jobs/';
+const ROUTE_PREFIXES = Object.freeze([
+  ['/audit/v1/gpt/workspaces/', 'workspace', 'workspaceStatusRead', 'getWorkspaceStatus', 'workspaceId'],
+  ['/audit/v1/gpt/campaigns/', 'campaign', 'campaignStatusRead', 'getCampaignStatus', 'campaignId'],
+  ['/audit/v1/gpt/jobs/', 'job', 'jobStatusRead', 'getJobStatus', 'jobId'],
+  ['/audit/v1/gpt/forks/', 'fork', 'forkStatusRead', 'getForkStatus', 'forkId'],
+  ['/audit/v1/gpt/clean-rooms/', 'clean-room', 'cleanRoomStatusRead', 'getCleanRoomStatus', 'cleanRoomId']
+]);
+const GPT_IDENTITIES = Object.freeze(['client', 'gpt', 'service-read']);
 
 const CATALOG = createAuditCatalogComposition({ phase4Profiles: PHASE4_PROFILE_CATALOG.profiles });
 const CAPABILITIES = createAggregateAuditCapabilities({
   catalog: CATALOG,
-  basePhases: { phase1: true, phase2: true, phase3: true },
-  phase4ResultContracts: false,
-  phase7Available: false,
-  phase8Available: false
+  legacyCapabilities: { service: 'curveyield-audit', apiVersion: 'audit-v1', phase: 3 },
+  phase4ResultContracts: false
 });
 
 export function auditPhase9Capabilities(baseCapabilities = {}) {
   const base = baseCapabilities && typeof baseCapabilities === 'object'
-    ? structuredClone(baseCapabilities)
+    ? validateExternalValue(baseCapabilities, '$.baseCapabilities')
     : {};
+  const derived = createAggregateAuditCapabilities({
+    catalog: CATALOG,
+    legacyCapabilities: base,
+    phase4ResultContracts: false
+  });
   return validateExternalValue({
-    ...base,
-    ...structuredClone(CAPABILITIES),
+    ...structuredClone(base),
+    ...structuredClone(derived),
     phase: 9,
     executionEnabled: false,
     executionState: 'awaiting_executor',
@@ -54,22 +69,43 @@ function decodedSegment(encoded, code, path) {
   let value;
   try { value = decodeURIComponent(encoded); }
   catch { throw new ApiContractError(code, 'Identifier is invalid', path); }
-  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(value)) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(value)) {
     throw new ApiContractError(code, 'Identifier is invalid', path);
   }
   return value;
 }
 
-function statusRoute(pathname, prefix, resourceType) {
-  if (!pathname.startsWith(prefix)) return null;
-  const suffix = pathname.slice(prefix.length);
-  if (!suffix.endsWith('/status')) throw new ApiContractError('invalid_resource_id', 'Status route is invalid', '$.resourceId');
-  const encoded = suffix.slice(0, -'/status'.length);
-  return {
-    kind: 'status',
-    resourceType,
-    resourceId: decodedSegment(encoded, 'invalid_resource_id', '$.resourceId')
-  };
+function statusOrEvidenceRoute(pathname) {
+  for (const [prefix, resourceType, routeScopeKey, providerName, argumentName] of ROUTE_PREFIXES) {
+    if (!pathname.startsWith(prefix)) continue;
+    const suffix = pathname.slice(prefix.length);
+    if (resourceType === 'job' && suffix.endsWith('/evidence-summary')) {
+      return {
+        kind: 'evidence-summary',
+        resourceType: 'job',
+        resourceId: decodedSegment(
+          suffix.slice(0, -'/evidence-summary'.length),
+          'invalid_resource_id',
+          '$.resourceId'
+        ),
+        routeScopeKey: 'evidenceSummaryRead',
+        providerName: 'getEvidenceSummary',
+        argumentName: 'jobId'
+      };
+    }
+    if (!suffix.endsWith('/status')) {
+      throw new ApiContractError('invalid_resource_id', 'Status route is invalid', '$.resourceId');
+    }
+    return {
+      kind: 'status',
+      resourceType,
+      resourceId: decodedSegment(suffix.slice(0, -'/status'.length), 'invalid_resource_id', '$.resourceId'),
+      routeScopeKey,
+      providerName,
+      argumentName
+    };
+  }
+  return null;
 }
 
 function match(pathname) {
@@ -81,59 +117,106 @@ function match(pathname) {
       profileId: decodedSegment(pathname.slice(CATALOG_ITEM_PREFIX.length), 'invalid_profile_id', '$.profileId')
     };
   }
-  if (pathname === REPORTS_PATH || pathname.startsWith(REPORTS_ITEM_PREFIX)) return { kind: 'reports' };
-  return statusRoute(pathname, CAMPAIGN_PREFIX, 'campaign') ?? statusRoute(pathname, JOB_PREFIX, 'job');
+  if (pathname === REPORTS_PATH) return { kind: 'reports-list' };
+  if (pathname.startsWith(REPORTS_ITEM_PREFIX)) {
+    return {
+      kind: 'reports-item',
+      reportId: decodedSegment(pathname.slice(REPORTS_ITEM_PREFIX.length), 'invalid_report_id', '$.reportId')
+    };
+  }
+  return statusOrEvidenceRoute(pathname);
 }
 
 function exactQuery(url, allowed) {
-  for (const key of url.searchParams.keys()) {
-    if (!allowed.has(key)) throw new ApiContractError('invalid_query', 'Query parameter is not allowed', '$.query');
-  }
-  for (const key of allowed) {
-    if (url.searchParams.getAll(key).length > 1) throw new ApiContractError('invalid_query', 'Duplicate query parameter', '$.query');
+  const seen = new Set();
+  for (const [key] of url.searchParams) {
+    if (!allowed.has(key) || seen.has(key)) {
+      throw new ApiContractError('invalid_query', 'Query parameter is not allowed', '$.query');
+    }
+    seen.add(key);
   }
 }
 
 function providerMethod(env, name) {
   const provider = env?.AUDIT_STATUS_DISCOVERY;
-  const descriptor = provider && typeof provider === 'object'
-    ? Object.getOwnPropertyDescriptor(provider, name)
-    : null;
+  let descriptor;
+  try {
+    descriptor = provider && typeof provider === 'object'
+      ? Object.getOwnPropertyDescriptor(provider, name)
+      : null;
+  } catch {
+    throw new ApiContractError('capability_unavailable', 'Status discovery is unavailable', '$', 503);
+  }
   if (!descriptor || typeof descriptor.value !== 'function') {
     throw new ApiContractError('capability_unavailable', 'Status discovery is unavailable', '$', 503);
   }
   return descriptor.value.bind(provider);
 }
 
-function gptIdentity(identity) {
-  if (identity.identity !== 'client' && identity.identity !== 'gpt') {
-    throw new ApiContractError('forbidden', 'GPT read identity required', '$', 403);
-  }
-  return identity;
-}
-
 function rewrittenReportRequest(request) {
   const url = new URL(request.url);
   url.pathname = url.pathname.replace('/audit/v1/gpt/reports', '/audit/v1/reports');
-  return new Request(url, {
-    method: request.method,
-    headers: request.headers
+  return new Request(url, { method: request.method, headers: request.headers });
+}
+
+async function authorizationForRoute(request, env, route) {
+  if (route.kind === 'reports-list') {
+    return authorizeAuditReadRequest(request, env, {
+      routeScope: AUDIT_ROUTE_SCOPES.reportsList,
+      allowedIdentities: GPT_IDENTITIES
+    });
+  }
+  if (route.kind === 'reports-item') {
+    return authorizeAuditReadRequest(request, env, {
+      routeScope: AUDIT_ROUTE_SCOPES.reportRead,
+      resourceType: 'report',
+      resourceId: route.reportId,
+      allowedIdentities: GPT_IDENTITIES
+    });
+  }
+  if (route.kind === 'catalog-list' || route.kind === 'catalog-item') {
+    return authorizeAuditReadRequest(request, env, {
+      routeScope: AUDIT_ROUTE_SCOPES.catalogRead,
+      allowedIdentities: GPT_IDENTITIES
+    });
+  }
+  if (route.kind === 'capabilities') {
+    return authorizeAuditReadRequest(request, env, {
+      routeScope: AUDIT_ROUTE_SCOPES.capabilitiesRead,
+      allowedIdentities: GPT_IDENTITIES
+    });
+  }
+  return authorizeAuditReadRequest(request, env, {
+    routeScope: AUDIT_ROUTE_SCOPES[route.routeScopeKey],
+    resourceType: route.resourceType,
+    resourceId: route.resourceId,
+    allowedIdentities: GPT_IDENTITIES
   });
 }
 
 export async function handlePhase9GptRequest(request, env) {
-  const url = new URL(request.url);
+  let url;
   let route;
-  try { route = match(url.pathname); }
-  catch (cause) { return errorResponse(cause, env); }
+  try {
+    url = new URL(request.url);
+    route = match(url.pathname);
+  } catch (cause) { return errorResponse(cause, env); }
   if (!route) return null;
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
   try {
-    const identity = gptIdentity(await authenticateAuditRead(request, env));
-    const scope = resolveAuditReadScope(identity, env);
-    if (request.method !== 'GET') throw new ApiContractError('method_not_allowed', 'GPT routes are read-only', '$', 405);
-    if (route.kind === 'reports') return handlePhase9ReportRequest(rewrittenReportRequest(request), env);
-    const cache = { tenantId: scope.tenantId, workspaceId: scope.workspaceId, route: url.pathname, query: url.search };
+    if (request.method !== 'GET') {
+      throw new ApiContractError('method_not_allowed', 'GPT routes are read-only', '$', 405);
+    }
+    const scope = await authorizationForRoute(request, env, route);
+    if (route.kind === 'reports-list' || route.kind === 'reports-item') {
+      return handlePhase9ReportRequest(rewrittenReportRequest(request), env);
+    }
+    const cache = {
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      route: url.pathname,
+      query: canonicalJson(Object.fromEntries([...url.searchParams.entries()].sort()))
+    };
     if (route.kind === 'capabilities') {
       exactQuery(url, new Set());
       return createJsonResponse(CAPABILITIES, { env, cache });
@@ -155,28 +238,42 @@ export async function handlePhase9GptRequest(request, env) {
       const afterIndex = decoded
         ? CATALOG.entries.findIndex((entry) => entry.profileId === decoded.after)
         : -1;
-      if (decoded && afterIndex < 0) throw new ApiContractError('invalid_cursor', 'Cursor is invalid', '$.cursor');
+      if (decoded && afterIndex < 0) {
+        throw new ApiContractError('stale_cursor', 'Cursor anchor is no longer available', '$.cursor');
+      }
       const profiles = CATALOG.entries.slice(afterIndex + 1, afterIndex + 1 + limit);
       const hasMore = CATALOG.entries.length > afterIndex + 1 + limit;
       const nextCursor = hasMore && profiles.length
         ? await encodePageCursor({ scope: cursorScope, kind: 'gpt-catalog', after: profiles.at(-1).profileId })
         : null;
-      return createJsonResponse({ schemaVersion: 'audit-gpt-catalog-list-v1', profiles, nextCursor }, { env, cache });
+      return createJsonResponse({
+        schemaVersion: 'audit-gpt-catalog-list-v2',
+        profiles,
+        nextCursor
+      }, { env, cache });
     }
     exactQuery(url, new Set());
-    const name = route.resourceType === 'campaign' ? 'getCampaignStatus' : 'getJobStatus';
-    const argumentName = route.resourceType === 'campaign' ? 'campaignId' : 'jobId';
-    const raw = await providerMethod(env, name)({ ...scope, [argumentName]: route.resourceId });
+    const raw = await providerMethod(env, route.providerName)({
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      [route.argumentName]: route.resourceId
+    });
     if (raw === null || raw === undefined) {
       throw new ApiContractError('not_found', 'Resource not found', '$.resourceId', 404);
     }
-    const status = validateStatusSummary(raw, {
-      resourceType: route.resourceType,
-      resourceId: route.resourceId,
-      tenantId: scope.tenantId,
-      workspaceId: scope.workspaceId
-    });
-    return createJsonResponse(status, { env, cache });
+    const value = route.kind === 'evidence-summary'
+      ? validateEvidenceSummary(raw, {
+        jobId: route.resourceId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId
+      })
+      : validateStatusSummary(raw, {
+        resourceType: route.resourceType,
+        resourceId: route.resourceId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId
+      });
+    return createJsonResponse(value, { env, cache });
   } catch (cause) {
     return errorResponse(cause, env);
   }
