@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-0",
-  "sequence": 4,
-  "messageId": "worker-0-phase9-phase78-service-reporting-v1-000004",
-  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000004_worker-0-phase9-phase78-service-reporting-v1_v1.md",
-  "assignmentBlobSha": "e9744263a965226b6ff10a80771845a0c81e0131",
-  "issuedAt": "2026-08-01T23:32:00Z"
+  "sequence": 5,
+  "messageId": "worker-0-round3-phase78-release-v1-000005",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000005_worker-0-round3-phase78-release-v1.md",
+  "assignmentBlobSha": "183f78fdc8102999b154c37482479b229bd92edc",
+  "issuedAt": "2026-08-02T02:25:00Z"
 }
