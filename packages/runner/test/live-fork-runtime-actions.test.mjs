@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { GanacheWorkflowRuntime } from '../src/engine.mjs';
+import { LiveForkWorkflowRuntime } from '../src/live-fork-runtime.mjs';
 
 function runtimeWithProvider({ blockNumber = 100, timestamp = 1_000, reforkHandler } = {}) {
   const calls = [];
@@ -18,7 +18,7 @@ function runtimeWithProvider({ blockNumber = 100, timestamp = 1_000, reforkHandl
     async getBlockNumber() { return currentBlock; },
     async getBlock() { return { number: currentBlock, timestamp: currentTimestamp }; }
   };
-  const runtime = new GanacheWorkflowRuntime({
+  const runtime = new LiveForkWorkflowRuntime({
     provider,
     artifacts: { get() { throw new Error('artifact lookup not expected'); } },
     ethers: {},
