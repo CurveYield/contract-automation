@@ -6,7 +6,7 @@ import { publishCheckpointOperation, exportCheckpointOperation, restoreCheckpoin
 const ts='2026-08-02T02:40:00.000Z';
 const ids={forkId:`fork_${'1'.repeat(32)}`,tenantId:`ten_${'2'.repeat(32)}`,attemptId:`att_${'3'.repeat(32)}`,checkpointId:`snap_${'4'.repeat(32)}`};
 function serviceFixture({failWrite=false}={}){
-  let current={...ids,state:'ready',etag:'etag-ready',chainId:1,blockNumber:10,blockHash:null};
+  let current={...ids,state:'ready',etag:'etag-ready',chainId:1,blockNumber:10,blockHash:`0x${'a'.repeat(64)}`};
   const transitions=[];let writes=0;
   const service={
     transitions,
@@ -17,13 +17,13 @@ function serviceFixture({failWrite=false}={}){
       async head(){return{size:3};},
       async get(){return null;}
     },
-    async readFork(){return current;},
-    async readCheckpoint(){return{...ids,objectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sha256:'a'.repeat(64),bytes:3};},
+    async readForkForTenant(){return current;},
+    async readCheckpointForTenant(){return{...ids,objectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sha256:'a'.repeat(64),bytes:3};},
     async transitionFork(input){transitions.push(input.to);current={...current,state:input.to,etag:`etag-${input.to}`,lastTransitionId:input.transitionId,lastFromState:input.from};return current;}
   };
   return service;
 }
-async function checkpointManifest(){const bytes=new Uint8Array([1,2,3]);return{bytes,manifest:{...ids,schemaVersion:'fork-checkpoint-manifest-v1',chainId:1,blockNumber:10,blockHash:null,objectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sha256:await sha256Hex(bytes),bytes:3,contentType:'application/octet-stream',opaque:true,encryption:{mode:'client-managed',keyReference:'opaque'},createdAt:ts,expiresAt:'2026-08-03T02:40:00.000Z'}};}
+async function checkpointManifest(){const bytes=new Uint8Array([1,2,3]);return{bytes,manifest:{...ids,schemaVersion:'fork-checkpoint-manifest-v1',chainId:1,blockNumber:10,blockHash:`0x${'a'.repeat(64)}`,objectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sha256:await sha256Hex(bytes),bytes:3,contentType:'application/octet-stream',opaque:true,encryption:{mode:'client-managed',keyReference:'opaque'},createdAt:ts,expiresAt:'2026-08-03T02:40:00.000Z'}};}
 
 test('RED: checkpoint publication enters checkpointing then returns ready',async()=>{
   const service=serviceFixture(),input=await checkpointManifest();
@@ -39,7 +39,7 @@ test('RED: checkpoint failure leaves recoverable checkpointing state',async()=>{
 
 test('RED: export enters exporting then returns ready',async()=>{
   const service=serviceFixture();
-  await exportCheckpointOperation(service,{...ids,schemaVersion:'fork-export-manifest-v1',exportId:'exp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',sourceObjectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sourceSha256:'a'.repeat(64),createdAt:ts,expiresAt:'2026-08-09T02:40:00.000Z'});
+  await exportCheckpointOperation(service,{forkId:ids.forkId,tenantId:ids.tenantId,checkpointId:ids.checkpointId,schemaVersion:'fork-export-manifest-v1',exportId:'exp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',sourceObjectKey:`forks/${ids.forkId}/checkpoints/${ids.checkpointId}.bin`,sourceSha256:'a'.repeat(64),createdAt:ts,expiresAt:'2026-08-09T02:40:00.000Z'});
   assert.deepEqual(service.transitions,['exporting','ready']);
 });
 

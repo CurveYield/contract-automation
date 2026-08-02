@@ -20,6 +20,43 @@ export const EXPORT_ID=/^exp_[0-9a-f]{32}$/;
 export const RESTORE_ID=/^rst_[0-9a-f]{32}$/;
 function normalizedKey(key){return key.replace(/[^A-Za-z0-9]/g,'').toLowerCase();}
 export function fail(code,message,path='$'){throw new ValidationError(code,message,path);}
+function reflect(operation,path){try{return operation();}catch{fail('hostile_reflection',`${path} could not be inspected safely`,path);}}
+function safeIsArray(value,path){return reflect(()=>Array.isArray(value),path);}
+function safePrototype(value,path){return reflect(()=>Object.getPrototypeOf(value),path);}
+function safeDescriptors(value,path){return reflect(()=>Object.getOwnPropertyDescriptors(value),path);}
+function safeArrayItems(value,path,maximum=256){
+  if(!safeIsArray(value,path)) fail('invalid_type',`${path} must be an array`,path);
+  if(safePrototype(value,path)!==Array.prototype) fail('unsafe_object',`${path} must use the ordinary Array prototype`,path);
+  const descriptors=safeDescriptors(value,path),lengthDescriptor=descriptors.length;
+  if(!lengthDescriptor||lengthDescriptor.get||lengthDescriptor.set||!Object.hasOwn(lengthDescriptor,'value')||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0) fail('unsafe_object',`${path}.length must be a data property`,`${path}.length`);
+  const length=lengthDescriptor.value;if(length>maximum) fail('value_too_large',`${path} has too many items`,path);
+  for(const key of Reflect.ownKeys(descriptors)){
+    if(typeof key!=='string') fail('unsafe_object',`${path} contains a symbol key`,path);
+    if(key==='length') continue;
+    if(!/^(0|[1-9][0-9]*)$/.test(key)||Number(key)>=length) fail('unsafe_object',`${path}.${key} is not a valid dense-array index`,`${path}.${key}`);
+  }
+  const items=[];
+  for(let index=0;index<length;index+=1){
+    const descriptor=descriptors[String(index)];
+    if(!descriptor) fail('unsafe_object',`${path} must be dense`,`${path}[${index}]`);
+    if(descriptor.get||descriptor.set||!Object.hasOwn(descriptor,'value')) fail('unsafe_object',`${path}[${index}] must be a data property`,`${path}[${index}]`);
+    items.push(descriptor.value);
+  }
+  return items;
+}
+function safeObjectEntries(value,path){
+  const prototype=safePrototype(value,path);
+  if(prototype!==Object.prototype&&prototype!==null) fail('unsafe_object',`${path} must be a plain object`,path);
+  const descriptors=safeDescriptors(value,path),entries=[];
+  for(const key of Reflect.ownKeys(descriptors)){
+    if(typeof key!=='string') fail('unsafe_object',`${path} contains a symbol key`,path);
+    const descriptor=descriptors[key];
+    if(!descriptor||descriptor.get||descriptor.set||!Object.hasOwn(descriptor,'value')) fail('unsafe_object',`${path}.${key} must be a data property`,`${path}.${key}`);
+    if(FORBIDDEN_KEYS.has(normalizedKey(key))) fail('forbidden_field',`${path}.${key} is forbidden`,`${path}.${key}`);
+    entries.push([key,descriptor.value]);
+  }
+  return entries;
+}
 export function assertSafeGraph(value,path='$',seen=new WeakSet()){
   if(value===null||typeof value==='boolean') return;
   if(typeof value==='string'){
@@ -34,31 +71,24 @@ export function assertSafeGraph(value,path='$',seen=new WeakSet()){
   if(typeof value!=='object'||typeof value==='function') fail('invalid_type',`${path} contains an unsupported value`,path);
   if(seen.has(value)) fail('cyclic_value',`${path} contains a cycle`,path);
   seen.add(value);
-  if(Array.isArray(value)){
-    if(value.length>256) fail('value_too_large',`${path} has too many items`,path);
-    for(let index=0;index<value.length;index+=1) assertSafeGraph(value[index],`${path}[${index}]`,seen);
-    seen.delete(value); return;
+  if(safeIsArray(value,path)){
+    const items=safeArrayItems(value,path);
+    for(let index=0;index<items.length;index+=1) assertSafeGraph(items[index],`${path}[${index}]`,seen);
+    seen.delete(value);return;
   }
-  const prototype=Object.getPrototypeOf(value);
-  if(prototype!==Object.prototype&&prototype!==null) fail('unsafe_object',`${path} must be a plain object`,path);
-  for(const key of Reflect.ownKeys(value)){
-    if(typeof key!=='string') fail('unsafe_object',`${path} contains a symbol key`,path);
-    const descriptor=Object.getOwnPropertyDescriptor(value,key);
-    if(!descriptor||descriptor.get||descriptor.set) fail('unsafe_object',`${path}.${key} must be a data property`,`${path}.${key}`);
-    if(FORBIDDEN_KEYS.has(normalizedKey(key))) fail('forbidden_field',`${path}.${key} is forbidden`,`${path}.${key}`);
-    assertSafeGraph(descriptor.value,`${path}.${key}`,seen);
-  }
+  for(const [key,item] of safeObjectEntries(value,path)) assertSafeGraph(item,`${path}.${key}`,seen);
   seen.delete(value);
 }
 export function assertPlainObject(value,path='$'){
   assertSafeGraph(value,path);
-  if(value===null||typeof value!=='object'||Array.isArray(value)) fail('invalid_type',`${path} must be an object`,path);
+  if(value===null||typeof value!=='object'||safeIsArray(value,path)) fail('invalid_type',`${path} must be an object`,path);
   return value;
 }
 export function strictObject(value,allowed,required=allowed,path='$'){
   assertPlainObject(value,path);
-  for(const key of Object.keys(value)) if(!allowed.has(key)) fail('unknown_field',`${path}.${key} is not allowed`,`${path}.${key}`);
-  for(const key of required) if(!(key in value)) fail('missing_field',`${path}.${key} is required`,`${path}.${key}`);
+  const entries=safeObjectEntries(value,path),actual=new Set(entries.map(([key])=>key));
+  for(const key of actual) if(!allowed.has(key)) fail('unknown_field',`${path}.${key} is not allowed`,`${path}.${key}`);
+  for(const key of required) if(!actual.has(key)) fail('missing_field',`${path}.${key} is required`,`${path}.${key}`);
   return value;
 }
 export function assertString(value,path,maximum=160,pattern){
@@ -75,8 +105,7 @@ export function assertLimit(value,path,minimum,maximum){
   return value;
 }
 export function assertIso(value,path){
-  assertString(value,path,40);
-  const date=new Date(value);
+  assertString(value,path,40);const date=new Date(value);
   if(Number.isNaN(date.getTime())||date.toISOString()!==value) fail('invalid_timestamp',`${path} must be a canonical ISO instant`,path);
   return value;
 }
@@ -89,13 +118,18 @@ export function assertAttemptId(value,path='$.attemptId'){return assertAuditId(v
 export function assertCheckpointId(value,path='$.checkpointId'){return assertAuditId(value,'snapshot',path);}
 export function assertRequester(value,path){return assertString(value,path,96,/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/);}
 export function assertScopes(value,path){
-  if(!Array.isArray(value)||value.length<1||value.length>4) fail('invalid_scope',`${path} must be a bounded scope array`,path);
-  const allowed=['audit:read','audit:submit','audit:admin','audit:internal']; const unique=new Set();
-  for(let index=0;index<value.length;index+=1){const scope=assertEnum(value[index],allowed,`${path}[${index}]`);if(unique.has(scope)) fail('duplicate_scope',`${path} contains a duplicate scope`,path);unique.add(scope);}
-  return [...value];
+  const items=safeArrayItems(value,path,4);
+  if(items.length<1) fail('invalid_scope',`${path} must be a bounded scope array`,path);
+  const allowed=['audit:read','audit:submit','audit:admin','audit:internal'],unique=new Set();
+  for(let index=0;index<items.length;index+=1){const scope=assertEnum(items[index],allowed,`${path}[${index}]`);if(unique.has(scope)) fail('duplicate_scope',`${path} contains a duplicate scope`,path);unique.add(scope);}
+  return [...items];
 }
 export function clone(value){return structuredClone(value);}
-function canonicalValue(value){if(Array.isArray(value))return value.map(canonicalValue);if(value&&typeof value==='object'){const result={};for(const key of Object.keys(value).sort()) result[key]=canonicalValue(value[key]);return result;}return value;}
+function canonicalValue(value,path='$'){
+  if(value===null||typeof value!=='object') return value;
+  if(safeIsArray(value,path)) return safeArrayItems(value,path).map((item,index)=>canonicalValue(item,`${path}[${index}]`));
+  const result={};for(const [key,item] of safeObjectEntries(value,path).sort(([a],[b])=>a.localeCompare(b))) result[key]=canonicalValue(item,`${path}.${key}`);return result;
+}
 export function canonicalJson(value){assertSafeGraph(value);return JSON.stringify(canonicalValue(value));}
 export async function sha256Hex(value){const bytes=typeof value==='string'?ENCODER.encode(value):value;if(!(bytes instanceof Uint8Array)) fail('invalid_type','$.bytes must be Uint8Array','$.bytes');return sha256HexBytes(bytes);}
 export { assertAuditId, assertProfileId };
