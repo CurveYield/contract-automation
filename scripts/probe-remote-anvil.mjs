@@ -6,7 +6,9 @@ const url = process.env.RPC_ANVIL_ETHEREUM1;
 const proofPath = process.env.PROOF_PATH ?? '/tmp/remote-anvil-proof.json';
 if (!url) throw new Error('RPC_ANVIL_ETHEREUM1 is not configured');
 
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 let requestId = 0;
+
 async function rpc(method, params = []) {
   const response = await fetch(url, {
     method: 'POST',
@@ -71,11 +73,22 @@ let failure;
 try {
   const chainIdHex = await rpc('eth_chainId');
   const chainId = Number(BigInt(chainIdHex));
-  if (chainId !== 1) throw new Error(`Expected Ethereum chain ID 1, received ${chainId}`);
-
   const clientVersion = await rpc('web3_clientVersion').catch(() => 'unavailable');
   const baselineBlockHex = await rpc('eth_blockNumber');
   const baselineBlock = await rpc('eth_getBlockByNumber', [baselineBlockHex, false]);
+
+  const wethCode = await rpc('eth_getCode', [WETH, 'latest']);
+  if (wethCode === '0x') throw new Error('Canonical Ethereum WETH code is missing from the fork');
+  const wethInterface = new Interface(['function name() view returns (string)']);
+  const wethNameResult = await rpc('eth_call', [{
+    to: WETH,
+    data: wethInterface.encodeFunctionData('name', [])
+  }, 'latest']);
+  const [wethName] = wethInterface.decodeFunctionResult('name', wethNameResult);
+  if (wethName !== 'Wrapped Ether') {
+    throw new Error(`Canonical WETH read returned unexpected name: ${wethName}`);
+  }
+
   const actorBefore = await rpc('eth_getBalance', [actor, 'latest']);
   const recipientBefore = await rpc('eth_getBalance', [recipient, 'latest']);
 
@@ -157,6 +170,12 @@ try {
     blockHash: baselineBlock.hash,
     timestamp: Number(BigInt(baselineBlock.timestamp))
   };
+  result.forkState = {
+    sourceChain: 'ethereum',
+    canonicalWethAddress: WETH,
+    wethName,
+    wethCodeBytes: (wethCode.length - 2) / 2
+  };
   result.capabilities = {
     snapshot: true,
     setBalance: true,
@@ -215,6 +234,7 @@ console.log(JSON.stringify({
   status: result.status,
   chainId: result.chainId,
   clientVersion: result.clientVersion,
+  forkState: result.forkState,
   capabilities: result.capabilities,
   revertProof: result.revertProof
 }, null, 2));
