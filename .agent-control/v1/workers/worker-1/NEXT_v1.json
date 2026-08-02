@@ -1,0 +1,15 @@
+{
+  "protocolVersion": 2,
+  "workerId": "worker-1",
+  "state": "queued",
+  "nextSequence": 6,
+  "round": 5,
+  "masterIssue": 125,
+  "issueNumber": 129,
+  "plannedBranch": "audit-round5/live-api-auth-gpt-r2-v1",
+  "templatePath": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000006_worker-1-round5-live-api-auth-gpt-r2-v1.md",
+  "startingSha": null,
+  "activationCommentId": null,
+  "compiledAssignmentPath": null,
+  "rule": "Do not acknowledge or execute while state is queued. After the current assignment is completed, re-check this pointer. Consume only when state is ready, startingSha is exact, compiledAssignmentPath is present, CURRENT_v1.json points to the same sequence/blob, and issue #129 has the matching activation comment."
+}
