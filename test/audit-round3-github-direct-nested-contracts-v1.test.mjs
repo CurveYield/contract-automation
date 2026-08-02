@@ -12,6 +12,7 @@ import {
 } from '../packages/audit-github-direct-adapter/src/index.mjs';
 import {
   createJobIndex,
+  planRequestPublication,
   validateRequestPublicationPlan
 } from '../packages/audit-github-direct-ledger/src/index.mjs';
 import {
@@ -22,8 +23,7 @@ import {
 } from '../packages/audit-github-direct-reporting/src/index.mjs';
 import {
   createServiceCommand,
-  createServiceResult,
-  validateServiceResult
+  createServiceResult
 } from '../packages/audit-github-direct-service/src/index.mjs';
 
 const at='2026-08-02T02:34:00.000Z';
@@ -90,6 +90,6 @@ test('cancellation reporting validator binds result/report ledger order and cont
 
 test('request publication still validates after nested contract hardening',()=>{
   const index=createJobIndex({entries:[],updatedAt:at});
-  const plan=(await import('../packages/audit-github-direct-ledger/src/index.mjs')).planRequestPublication({request,currentIndex:index,indexBlobSha:'d'.repeat(40),at});
+  const plan=planRequestPublication({request,currentIndex:index,indexBlobSha:'d'.repeat(40),at});
   assert.deepEqual(validateRequestPublicationPlan(plan),plan);
 });
