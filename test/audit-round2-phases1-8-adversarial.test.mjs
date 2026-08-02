@@ -41,7 +41,7 @@ test('Phase 4 lifecycle and parser identity substitutions fail deterministically
 });
 
 test('Phase 5 terminal exit-code drift is repaired and later substitution is rejected', () => {
-  const parsed = parsePhase5ToolResult('hardhat-test-v1', { resultJson: '{}', exitCode: 137, durationMs: 1, termination: 'resource_exhaustion' });
+  const parsed = parsePhase5ToolResult('hardhat-test-v1', { resultBytes: '{}', exitCode: 137, durationMs: 1, termination: 'resource_exhausted' });
   assert.equal(parsed.exitCode, null);
   const drift = structuredClone(parsed); drift.exitCode = 137;
   assert.throws(() => validatePhase5ToolResult(drift), (error) => error.code === 'lifecycle_mismatch');
