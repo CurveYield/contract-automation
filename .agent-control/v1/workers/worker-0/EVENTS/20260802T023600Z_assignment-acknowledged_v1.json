@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "eventType": "assignment_acknowledged",
+  "timestamp": "2026-08-02T02:36:00Z",
+  "sequence": 5,
+  "messageId": "worker-0-round3-phase78-release-v1-000005",
+  "assignmentBlobSha": "183f78fdc8102999b154c37482479b229bd92edc",
+  "issueNumber": 112,
+  "branch": "audit-round3/phase78-service-release-v1",
+  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4"
+}
