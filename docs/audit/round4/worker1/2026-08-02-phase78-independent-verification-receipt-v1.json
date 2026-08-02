@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "audit-round4-worker1-independent-verification-receipt-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 121,
+  "sequence": 5,
+  "reviewedCodeSnapshotSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+  "takeoverBranch": "orchestrator/worker1-round4-takeover-v1",
+  "verifiedAt": "2026-08-02T11:38:42Z",
+  "command": "node --test test/audit-round4-worker1-source-review-red-v1.test.mjs test/audit-round4-worker1-service-compat-v1.test.mjs test/audit-round4-worker1-publication-replay-v1.test.mjs test/audit-round4-worker1-report-compat-v1.test.mjs test/audit-round4-worker1-phase78-e2e-v1.test.mjs test/audit-round4-worker1-static-boundary-v1.test.mjs",
+  "result": {"tests":108,"passed":108,"failed":0,"cancelled":0,"skipped":0,"todo":0,"durationMs":283.344326},
+  "suiteBreakdown": [
+    {"suite":"source-review regression","tests":10,"passed":10},
+    {"suite":"service/auth/pagination compatibility","tests":21,"passed":21},
+    {"suite":"publication/replay","tests":23,"passed":23},
+    {"suite":"report compatibility","tests":20,"passed":20},
+    {"suite":"multi-tenant Phase 7-8 E2E","tests":21,"passed":21},
+    {"suite":"static trust boundary","tests":13,"passed":13}
+  ],
+  "sourceVerification": {
+    "githubBlobReview": "All 27 changed Stage A paths were resolved from GitHub and bound in the path/blob manifest.",
+    "localHarness": "No-download isolated mirror.",
+    "limitation": "Worker 1-owned production and test files were mirrored from the reviewed GitHub snapshot. Some unchanged upstream dependency modules were reconstructed to their exercised public behavior rather than obtained through a byte-for-byte checkout because the runtime had no network or repository checkout access. Therefore the 108-test result is independent behavioral verification, while exact-byte claims are grounded separately by GitHub blob inspection and the static source gate."
+  },
+  "notPerformed": ["dependency installation","compilation/build","live RPC","submitted-project execution","deployment","secret access","wallet/signing/transaction","full repository test suite"],
+  "verdict": "GREEN_FOR_STAGE_A_BEHAVIORAL_AND_STATIC_GATES"
+}
