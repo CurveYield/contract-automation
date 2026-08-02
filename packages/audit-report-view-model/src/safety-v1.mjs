@@ -25,12 +25,13 @@ export function toSafeText(value, max = MAX_TEXT) {
 
 export function redactDiagnosticText(value, max = MAX_LONG_TEXT) {
   return toSafeText(value, max)
+    .replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g, '[redacted-secret]')
     .replace(/\bhttps?:\/\/[^\s"']+/gi, '[redacted-url]')
     .replace(/\b[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s]+/g, '[redacted-path]')
     .replace(/\/(?:root|home|Users|var|tmp|opt|srv|workspace|mnt)\/[^\s)]+/g, '[redacted-path]')
     .replace(/\bat\s+[A-Za-z_$][\w$.-]*(?:\s*\([^)]*\)|\s+[^\s]+)?/g, '[redacted-stack]')
     .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+\/-]+=*/gi, '[redacted-secret]')
-    .replace(/\b(?:api[_-]?key|token|secret|password|authorization|cookie|signature)\s*[:=]\s*[^\s,;]+/gi, '[redacted-secret]');
+    .replace(/\b(?:api[_-]?key|x[-_]?access[-_]?token|token|secret|password|authorization|cookie|signature)\s*[:=]\s*[^\s,;]+/gi, '[redacted-secret]');
 }
 
 export function toSafeIdentifier(value) { return toSafeText(value, 160).replace(/\s+/g, '-'); }
