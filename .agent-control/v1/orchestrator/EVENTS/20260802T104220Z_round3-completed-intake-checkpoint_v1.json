@@ -1,0 +1,68 @@
+{
+  "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
+  "eventId": "round3-completed-intake-checkpoint-20260802T104220Z",
+  "eventType": "prior_round_completed_work_integrated",
+  "createdAt": "2026-08-02T10:42:20Z",
+  "createdBy": "replacement-orchestrator",
+  "repository": "CurveYield/contract-automation",
+  "sourcePolicy": "Only completed previous-round work with durable final reports and exact accepted source SHAs was used. Active Round 4 workers were not modified or reassigned.",
+  "integration": {
+    "branch": "orchestrator/round3-completed-intake-v1",
+    "baseSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+    "codeSnapshotSha": "0ab63530dbfd67a6a4d555dec7cc58f0b6937448",
+    "metadataHeadSha": "8245f7dad4b40a251329b824b6d8d23ee4b2995f",
+    "manifestPath": "docs/audit/integration/2026-08-02-round3-completed-intake-manifest-v2.json",
+    "receiptPath": "docs/audit/integration/2026-08-02-round3-completed-intake-receipt-v1.json",
+    "broadBranchMergeUsed": false,
+    "exactBlobTransplantsOnly": true
+  },
+  "integratedComponents": [
+    {
+      "componentId": "api-gpt-auth",
+      "issueNumber": 113,
+      "sourceSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "reportCommentId": 5154958425,
+      "pathCount": 50,
+      "recommendation": "ACCEPT"
+    },
+    {
+      "componentId": "github-direct-audit",
+      "issueNumber": 115,
+      "codeSourceSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "documentationSourceSha": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "reportCommentId": 5156758072,
+      "pathCount": 90,
+      "recommendation": "ACCEPT"
+    },
+    {
+      "componentId": "web-operator-ui",
+      "issueNumber": 116,
+      "sourceSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "reportCommentId": 5154997216,
+      "pathCount": 50,
+      "recommendation": "ACCEPT"
+    }
+  ],
+  "totalIntegratedComponentPaths": 190,
+  "verification": {
+    "staticPathAndBlobClosure": "PASS",
+    "criticalImportPresence": "PASS",
+    "rootWorkspaceCoverage": "PASS",
+    "activeRound4BranchesModified": false,
+    "workerOwnedStatusesModified": false,
+    "pr126PathsModified": false,
+    "newTestsExecuted": false,
+    "compilationPerformed": false,
+    "dependenciesDownloaded": false
+  },
+  "remainingBlockers": [
+    "Round 3 Phase 7-8 candidate remains unintegrated because its ACCEPT WITH REPAIR verdict requires the bounded compatibility repair currently owned by active Round 4 Worker 1.",
+    "Draft PR 126 remains an externally owned active BlockPI/live-RPC workstream and is quarantined until James declares it complete and authorizes independent review.",
+    "Combined execution and specialist acceptance must wait for active Round 4 final reports and one later exact assembled SHA.",
+    "AWS-dependent hardened execution-plane functions remain deferred."
+  ],
+  "mainMergeAuthorized": false,
+  "productionTestingAuthorized": false,
+  "productionDeploymentAuthorized": false
+}
