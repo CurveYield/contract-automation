@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "pr126-security-repair-acceptance-v1",
+  "recordedAt": "2026-08-02T18:27:37Z",
+  "repository": "CurveYield/contract-automation",
+  "sourcePullRequest": 126,
+  "reviewPullRequest": 138,
+  "baseSha": "500de7b8752e926f7478feafb81b92586d6364ea",
+  "acceptedHeadSha": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
+  "reviewMergeRefSha": "bca043d056e44df2f8cdae1d21f95bca8e9b7758",
+  "branch": "orchestrator/pr126-security-reconciliation-v1",
+  "verdict": "ACCEPT_FOR_ROUND4_STATIC_INTAKE",
+  "trustedLiveRegression": {
+    "required": true,
+    "phase": "round5-production-acceptance",
+    "reason": "The repaired full V27 workflow is intentionally unavailable to pull-request events. The prior exact V27 functional artifact remains accepted; the repaired runtime must receive one trusted live regression after release activation."
+  },
+  "resolvedFindings": [
+    {
+      "id": "PR126-S-01",
+      "severity": "critical",
+      "resolution": "Pull-request CI is secretless and read-only. Secret-bearing live workflows accept only trusted main pushes or workflow_dispatch events."
+    },
+    {
+      "id": "PR126-S-02",
+      "severity": "high",
+      "resolution": "Every third-party action in the affected workflows is pinned to an immutable 40-character commit SHA."
+    },
+    {
+      "id": "PR126-S-03",
+      "severity": "critical",
+      "resolution": "RPC health events use exact schemas and closed slot IDs, null-prototype state, exact GitHub Actions bot identity for session events, and trusted repository associations for administrative recovery."
+    },
+    {
+      "id": "PR126-S-04",
+      "severity": "high",
+      "resolution": "Archive routing and the local live-fork proxy return stable public error contracts without upstream URLs, provider messages, credential-bearing paths, or arbitrary method text."
+    }
+  ],
+  "verification": {
+    "workflowRuns": [
+      {
+        "runId": 30760725877,
+        "name": "Live Fork Upgrade CI",
+        "conclusion": "success",
+        "focusedTests": { "passed": 14, "failed": 0 },
+        "repositoryTests": { "passed": 149, "failed": 0 },
+        "javascriptSyntaxModules": 78,
+        "lint": "passed",
+        "build": "passed"
+      },
+      {
+        "runId": 30760725876,
+        "name": "GitHub-Native Simulation CI",
+        "conclusion": "success"
+      }
+    ],
+    "warnings": [
+      "npm reported deprecated tar@7.4.3 in the installed dependency graph.",
+      "GitHub reported Node 20 action-runtime deprecation while forcing the pinned actions to Node 24."
+    ]
+  },
+  "pathSets": {
+    "originalPr126PathCount": 41,
+    "securityAddedPathCount": 7,
+    "finalPathCount": 48,
+    "paths": [
+      { "path": ".github/workflows/export-v27-hardhat-harness.yml", "blobSha": "458a5b2c425d2d0267e979a36f20382844dfbf44", "origin": "pr126" },
+      { "path": ".github/workflows/github-native-sim-ci.yml", "blobSha": "06fa57cf9edd5f17cb4fe17fd3cbad3f3cd12865", "origin": "pr126" },
+      { "path": ".github/workflows/github-native-simulate.yml", "blobSha": "c6312e071401acdd6554bacfe753f3791b6d1502", "origin": "pr126" },
+      { "path": ".github/workflows/live-fork-engine-smoke.yml", "blobSha": "35ee72491b2146e2072e7516f3831dde77967c32", "origin": "pr126" },
+      { "path": ".github/workflows/live-fork-upgrade-ci.yml", "blobSha": "6be38b187fe47d7fe1bc941c1150ac694549a2b0", "origin": "pr126" },
+      { "path": ".github/workflows/simulate.yml", "blobSha": "b339cd4bd5ed4eb3ca91172e4fd1697aaf0232fe", "origin": "pr126" },
+      { "path": "docs/live-fork-rpc-administration.md", "blobSha": "4c39ebb0b2bdcac42fc2589cf2db1926429dfa20", "origin": "pr126" },
+      { "path": "docs/live-fork-simulation-authoring.md", "blobSha": "cab912d19dfa2c93aaed641b940e37438c3c04ba", "origin": "pr126" },
+      { "path": "docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md", "blobSha": "08e5f8cf200a37605bd1b40f5a4920a25f934361", "origin": "pr126" },
+      { "path": "docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md", "blobSha": "b012d9f83d7d8b367d94cd08630cfafc5a2068f3", "origin": "pr126" },
+      { "path": "github-native-sim/jobs/live-fork-v27-v1/README.md", "blobSha": "db41c595df2ff8bb6251f8bd762e6ead3d30d7cf", "origin": "pr126" },
+      { "path": "github-native-sim/jobs/live-fork-v27-v1/patch-reviewed-v27-harness.py", "blobSha": "fac3318b9e2048d3f03f754afb3ad49184e56992", "origin": "pr126" },
+      { "path": "github-native-sim/jobs/live-fork-v27-v1/run-ci.sh", "blobSha": "9898d07ef6df2582eea9f20a670f2514ad30f8ab", "origin": "pr126" },
+      { "path": "github-native-sim/jobs/live-fork-v27-v1/run-v27-live-fork.mjs", "blobSha": "58259e72ad5c9192a6ff6cacb11ebaf9e2b3b48f", "origin": "pr126" },
+      { "path": "packages/github-native-sim/src/local-state-journal.mjs", "blobSha": "320d528f3fc47a953ea40e814318a70f0ebc99b0", "origin": "pr126" },
+      { "path": "packages/github-native-sim/src/run-job-file.mjs", "blobSha": "1c8285295d3c5efaebcfbae87fe5968de7f6c56f", "origin": "pr126" },
+      { "path": "packages/github-native-sim/src/schema.mjs", "blobSha": "364089b2794973218b0fc765d97abd4def5d05cc", "origin": "pr126" },
+      { "path": "packages/github-native-sim/test/local-state-journal.test.mjs", "blobSha": "91ea9f19ba13ebaa95290eea951a6b95466639f9", "origin": "pr126" },
+      { "path": "packages/github-native-sim/test/run-job-file.test.mjs", "blobSha": "438a62dea6fe566d725b7d4e29780e55d68379b4", "origin": "pr126" },
+      { "path": "packages/protocol/src/index.mjs", "blobSha": "da13fcbe25223ae275c6c79e7c2a0daf1265cd19", "origin": "pr126" },
+      { "path": "packages/protocol/src/simulation-config.mjs", "blobSha": "b3b65ee9118c64c38130e1c01f3dac5366d08753", "origin": "pr126" },
+      { "path": "packages/runner/src/archive-rpc-pool.mjs", "blobSha": "ec9580b21df5920db57626719cf30596835ab790", "origin": "pr126" },
+      { "path": "packages/runner/src/fork-engine.mjs", "blobSha": "2b9189e0ed429e57e562484ddbf2ec58a4307113", "origin": "pr126" },
+      { "path": "packages/runner/src/github-rpc-health-store.mjs", "blobSha": "c4672f71005afd48863b5b88a32968c063cd00e7", "origin": "pr126" },
+      { "path": "packages/runner/src/hardhat-edr-engine.mjs", "blobSha": "3ed7afaff58592cfb09b06866d66523006ba351e", "origin": "pr126" },
+      { "path": "packages/runner/src/live-fork-proxy.mjs", "blobSha": "5de64d40b6b9b033c39b2eaab019a1cd960b0518", "origin": "pr126" },
+      { "path": "packages/runner/src/live-fork-runtime.mjs", "blobSha": "340fac48436650e5df5e90fa83dd8c6b2b44e1a7", "origin": "pr126" },
+      { "path": "packages/runner/src/live-fork-time.mjs", "blobSha": "1362adb3aa0fd02d3d3890fac4b687a2e8421ba7", "origin": "pr126" },
+      { "path": "packages/runner/src/rpc-health-ledger.mjs", "blobSha": "47e03a25b3edd056f7a800f7499f345cc684c163", "origin": "pr126" },
+      { "path": "packages/runner/src/rpc-health-session.mjs", "blobSha": "b7086c9dbef547683c0f5986e1e5d4b831d19e91", "origin": "pr126" },
+      { "path": "packages/runner/src/run-job.mjs", "blobSha": "6c61203ce69fa4c2f317807ea477cc27e1d2df81", "origin": "pr126" },
+      { "path": "packages/runner/src/workflow.mjs", "blobSha": "cbe592a76ac533385d08858f72027e111b105a0c", "origin": "pr126" },
+      { "path": "packages/runner/test/archive-rpc-pool.test.mjs", "blobSha": "dfaef578303f72a50e0645832bed1c0d2b627017", "origin": "pr126" },
+      { "path": "packages/runner/test/live-fork-config.test.mjs", "blobSha": "aa35cef09c7df59c94c55b5e3e0815bf16ca6da7", "origin": "pr126" },
+      { "path": "packages/runner/test/live-fork-proxy.test.mjs", "blobSha": "0d8fbb7261310607c2b441dda92e7a1cf6735e00", "origin": "pr126" },
+      { "path": "packages/runner/test/live-fork-runtime-actions.test.mjs", "blobSha": "a8e3a3c86098a67a4771ed8b001bb6ab3a64027e", "origin": "pr126" },
+      { "path": "packages/runner/test/rpc-health-ledger.test.mjs", "blobSha": "931ed6863229a65c9bb0ac6f42fd58cc26a3ca86", "origin": "pr126" },
+      { "path": "packages/runner/test/rpc-health-session.test.mjs", "blobSha": "4feb2d30e82a2eaee9541f96730d0b940a554ac9", "origin": "pr126" },
+      { "path": "packages/runner/test/run-job-live-fork.test.mjs", "blobSha": "4a2cc42f792999f41bf04f90cc2127f7ef56dd79", "origin": "pr126" },
+      { "path": "scripts/live-fork-engine-smoke.mjs", "blobSha": "31cdedcc7d549b2df21ff25775db26e69da4e073", "origin": "pr126" },
+      { "path": "scripts/rpc-health-admin.mjs", "blobSha": "d68e9061913f38e30141a9256a104ebd0ff74e9a", "origin": "pr126" },
+      { "path": ".github/workflows/v27-full-live-fork.yml", "blobSha": "8370879a3479811e0081f283357c6d0d0dcdc2d0", "origin": "security-repair" },
+      { "path": "docs/superpowers/plans/2026-08-02-pr126-security-reconciliation.md", "blobSha": "107b82d62025d25a00990f87e4ab4a4865d1dbdc", "origin": "security-repair" },
+      { "path": "docs/superpowers/specs/2026-08-02-pr126-security-reconciliation-design.md", "blobSha": "bf97641c3d897132cf1c074fcafeb3ecaa397da7", "origin": "security-repair" },
+      { "path": "packages/runner/test/github-rpc-health-store.test.mjs", "blobSha": "d444f466fb9024295e6f17caa5af905763b5d50b", "origin": "security-repair" },
+      { "path": "packages/runner/test/rpc-error-redaction-security.test.mjs", "blobSha": "fd57cdce9711480061cb9d28e412d803815469d7", "origin": "security-repair" },
+      { "path": "packages/runner/test/rpc-health-ledger-security.test.mjs", "blobSha": "3f2f5f01c876dd54a1bd672fa921621de0070eff", "origin": "security-repair" },
+      { "path": "test/pr126-workflow-trust-v1.test.mjs", "blobSha": "a3dee2d974f1d979573ffaa9cb243f616e6be110", "origin": "security-repair" }
+    ]
+  },
+  "integrationRules": [
+    "Use exact path/blob reconstruction only; do not merge or cherry-pick the repair branch.",
+    "All 48 listed paths must be reconstructed as one coherent simulation/security intake set.",
+    "No other path from the review branch is authorized by this record.",
+    "The accepted repair head must remain immutable after publication.",
+    "Round 5 must execute one trusted V27 live regression and bind its artifact digest to the accepted release SHA."
+  ]
+}
