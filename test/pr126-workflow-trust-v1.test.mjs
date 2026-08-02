@@ -69,7 +69,7 @@ test('full V27 live-fork acceptance remains available only on trusted events', (
 
 test('main-push job selection uses the immutable event before SHA', () => {
   const text = source('.github/workflows/github-native-simulate.yml');
-  assert.match(text, /PUSH_BEFORE:\s*\$\{\{\s*github\.event\.before\s*\}\}/u);
-  assert.match(text, /git diff --name-only "\$PUSH_BEFORE\.\.\.$GITHUB_SHA"/u);
+  assert.match(text, /PUSH_BEFORE:\s*\$\{\{\s*github\.event\.before(?:\s*\|\|\s*'')?\s*\}\}/u);
+  assert.match(text, /git diff --name-only "\$PUSH_BEFORE\.\.\.\$GITHUB_SHA"/u);
   assert.doesNotMatch(text, /origin\/\$DEFAULT_BRANCH\.\.\.\$GITHUB_SHA/u);
 });
