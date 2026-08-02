@@ -1,0 +1,27 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-integration-conflict-continued-mutation-blocker-20260802T203415Z",
+  "eventType": "blocker_observed",
+  "createdAt": "2026-08-02T20:34:15Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "blockerId": "integration-ownership-conflict-continued-mutation-v1",
+  "prescribedWorkerBranch": "audit-round4/full-platform-integration-v2",
+  "prescribedWorkerSequence": 9,
+  "prescribedWorkerState": "ready",
+  "prescribedWorkerStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "conflictingBranch": "orchestrator/round4-final-integration-takeover-v1",
+  "observedRelationToGate5Base": {
+    "status": "ahead",
+    "aheadBy": 39,
+    "behindBy": 0,
+    "mergeBaseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759"
+  },
+  "finding": "The conflicting takeover branch continued from 10 commits ahead to 39 commits ahead after the ownership-conflict freeze was recorded. It now contains subsystem intake, accepted PR #126 security-repair paths, protected workflows/addon paths, and an assembled-candidate checkpoint while Worker 2 sequence 9 remains durably published and ready.",
+  "requiredResolution": "Durably supersede exactly one integration owner before any further integration commit. If the takeover is retained, close or supersede Worker 2 sequence 9 without fabricating worker-owned records, reconcile CURRENT/STATUS/STATE and issue #122 ownership, then independently validate every takeover path against accepted Stage A manifests and the PR #126 acceptance manifest before candidate freeze.",
+  "productionIntakeAuthorized": false,
+  "assembledCandidateFreezeAuthorized": false,
+  "secretValuesObserved": false
+}
