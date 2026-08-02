@@ -73,6 +73,7 @@ function attestation() {
 
 function takeoverEvidence() {
   return {
+    attestationBlobSha: '2a0c85ca831bf30b042b057adb643c0d2d001435',
     attestation: attestation(),
     resolvedTakeoverBranchHead: 'df983ab905266ddd2dad39866f0e0341aaa0f100',
     resolvedReviewedCodeSnapshotSha: 'e26b78c2c26f3c11897e8fea397c8615fc66a5a0'
@@ -82,6 +83,7 @@ function takeoverEvidence() {
 test('accepts exact orchestrator direct-takeover evidence without a completed worker status', () => {
   const value = validateCompletedCandidateEvidence(worker1Slot(), takeoverEvidence());
   assert.equal(value.evidenceMode, 'orchestrator-direct-takeover');
+  assert.equal(value.attestationBlobSha, '2a0c85ca831bf30b042b057adb643c0d2d001435');
   assert.equal(value.finalSha, 'e26b78c2c26f3c11897e8fea397c8615fc66a5a0');
   assert.equal(value.evidenceHeadSha, 'df983ab905266ddd2dad39866f0e0341aaa0f100');
   assert.equal(value.branch, 'orchestrator/worker1-round4-takeover-v1');
@@ -89,13 +91,14 @@ test('accepts exact orchestrator direct-takeover evidence without a completed wo
   assert.equal(value.manifests.length, 4);
 });
 
-test('rejects forged takeover branch, code snapshot, evidence head, report, or manifest binding', () => {
+test('rejects forged takeover branch, code snapshot, evidence head, report, manifest, or attestation blob', () => {
   const mutations = [
     (value) => { value.attestation.takeovers[0].originalBranch = 'audit-round4/wrong-v1'; },
     (value) => { value.resolvedReviewedCodeSnapshotSha = '0'.repeat(40); },
     (value) => { value.resolvedTakeoverBranchHead = '1'.repeat(40); },
     (value) => { value.attestation.takeovers[0].report.commentId = 1; },
-    (value) => { value.attestation.takeovers[0].manifests[0].blobSha = '2'.repeat(40); }
+    (value) => { value.attestation.takeovers[0].manifests[0].blobSha = '2'.repeat(40); },
+    (value) => { value.attestationBlobSha = '3'.repeat(40); }
   ];
   for (const mutate of mutations) {
     const value = structuredClone(takeoverEvidence());
