@@ -64,11 +64,15 @@ export function assertSafeGraph(value,path='$',seen=new WeakSet()){
   if(typeof value!=='object'||typeof value==='function') fail('invalid_type',`${path} contains an unsupported value`,path);
   if(seen.has(value)) fail('cyclic_value',`${path} contains a cycle`,path);
   seen.add(value);
-  const entries=guardedIsArray(value,path)?arrayEntries(value,path):objectEntries(value,path);
-  for(const [key,item] of entries.entries?entries.entries():entries){
-    const itemPath=guardedIsArray(value,path)?`${path}[${key}]`:`${path}.${key}`;
-    if(!guardedIsArray(value,path)&&FORBIDDEN_KEYS.has(normalizedKey(key))) fail('forbidden_field',`${itemPath} is forbidden`,itemPath);
-    assertSafeGraph(item,itemPath,seen);
+  if(guardedIsArray(value,path)){
+    const items=arrayEntries(value,path);
+    for(let index=0;index<items.length;index+=1)assertSafeGraph(items[index],`${path}[${index}]`,seen);
+  }else{
+    for(const [key,item] of objectEntries(value,path)){
+      const itemPath=`${path}.${key}`;
+      if(FORBIDDEN_KEYS.has(normalizedKey(key))) fail('forbidden_field',`${itemPath} is forbidden`,itemPath);
+      assertSafeGraph(item,itemPath,seen);
+    }
   }
   seen.delete(value);
 }
