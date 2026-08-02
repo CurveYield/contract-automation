@@ -91,6 +91,7 @@ try {
 
   const actorBefore = await rpc('eth_getBalance', [actor, 'latest']);
   const recipientBefore = await rpc('eth_getBalance', [recipient, 'latest']);
+  result.preRevert = { actorBefore, recipientBefore };
 
   snapshot = await rpc('evm_snapshot');
   await rpc('anvil_setBalance', [actor, '0x8ac7230489e80000']);
@@ -98,7 +99,7 @@ try {
   if (BigInt(fundedActorBalance) !== 10n ** 19n) throw new Error('anvil_setBalance did not persist remotely');
 
   const impersonationResult = await rpc('anvil_impersonateAccount', [actor]);
-  if (impersonationResult !== true) throw new Error('anvil_impersonateAccount did not return true');
+  if (impersonationResult === false) throw new Error('anvil_impersonateAccount returned false');
   impersonated = true;
 
   const artifact = compileProbe();
@@ -196,7 +197,6 @@ try {
     storageReadBack: storageReadBack.toString()
   };
   result.time = { before: timeBefore, after: timeAfter };
-  result.preRevert = { actorBefore, recipientBefore };
 } catch (error) {
   failure = error;
   result.status = 'failed';
