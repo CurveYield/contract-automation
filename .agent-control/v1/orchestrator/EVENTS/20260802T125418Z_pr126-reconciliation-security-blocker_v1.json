@@ -1,0 +1,25 @@
+{
+  "protocolVersion": 2,
+  "schemaVersion": "orchestrator-event-v1",
+  "eventId": "20260802T125418Z-pr126-reconciliation-security-blocker-v1",
+  "recordedAt": "2026-08-02T12:54:18Z",
+  "repository": "CurveYield/contract-automation",
+  "eventType": "merged-external-workstream-security-repair-required",
+  "pullRequest": 126,
+  "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
+  "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
+  "functionalVerdict": "ACCEPT",
+  "securityVerdict": "REJECT_PENDING_REPAIR",
+  "round4IntakeAuthorized": false,
+  "findingIds": ["PR126-S-01", "PR126-S-02", "PR126-S-03", "PR126-S-04"],
+  "reviewPath": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-pr126-independent-reconciliation-v1.json",
+  "reviewCommit": "27eef67a7b80377efcfab573500780aa12185b28",
+  "requiredAction": "Test-first security repair from merge commit, then regenerate exact 41-path reconciliation manifest before Worker 2 intake.",
+  "safety": {
+    "mainModifiedByReview": false,
+    "prModifiedByReview": false,
+    "workerBranchModified": false,
+    "secretValuesRead": false,
+    "transactionBroadcast": false
+  }
+}
