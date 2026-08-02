@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "round4-disjoint-intake-plan-v1",
+  "state": "prepared-not-transplanted",
+  "sourceRegistry": "docs/audit/round4/integration/stage1-live-source-registry-v1.json",
+  "quarantineInventory": "docs/audit/round4/integration/stage1-pr126-quarantine-inventory-v1.json",
+  "overlapReport": "docs/audit/round4/integration/stage1-overlap-report-v1.json",
+  "pathCount": 55,
+  "method": "exact-path-blob-transplant-only",
+  "traditionalBranchMerge": false,
+  "cherryPick": false,
+  "wholeSideConflictResolution": false,
+  "nextWave": "phase1-8-core-disjoint-intake",
+  "blockingReceipts": [
+    "pr126-security-repair-acceptance",
+    "stage0-direct-takeover-validator-repair-receipt"
+  ],
+  "finalAssembledCandidateAuthorized": false,
+  "candidatePathCounts": {
+    "phase1-6-reviewed": 8,
+    "phase7-8-reviewed": 27,
+    "api-auth-reviewed": 2,
+    "web-direct-reviewed": 18
+  },
+  "exactRegistryModules": [
+    "packages/audit-integration-round4/src/live-evidence-intake-worker0.mjs",
+    "packages/audit-integration-round4/src/live-evidence-intake-worker1-production.mjs",
+    "packages/audit-integration-round4/src/live-evidence-intake-worker1-support.mjs",
+    "packages/audit-integration-round4/src/live-evidence-intake-worker3.mjs",
+    "packages/audit-integration-round4/src/live-evidence-intake-worker4.mjs"
+  ]
+}
