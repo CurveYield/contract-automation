@@ -39,7 +39,7 @@ export const UI_ERROR_CODES = Object.freeze([
   'UI_CONTRACT_KIND', 'UI_CONTRACT_INPUT', 'UI_CONTRACT_UNKNOWN_KEY',
   'UI_CONTRACT_MISSING_KEY', 'UI_COMPAT_VERSION', 'UI_COMPAT_INPUT',
   'UI_CLIENT_UNSAFE_PATH', 'UI_CLIENT_ABORTED', 'UI_CLIENT_STALE_RESPONSE',
-  'UI_CLIENT_TRANSPORT', 'UI_CLIENT_UNAUTHORIZED', 'UI_CLIENT_OFFLINE'
+  'UI_CLIENT_TRANSPORT', 'UI_CLIENT_UNAUTHORIZED', 'UI_CLIENT_OFFLINE', 'UI_CLIENT_CACHE_MISS'
 ]);
 
 export class UiContractError extends TypeError {
@@ -51,19 +51,13 @@ export class UiContractError extends TypeError {
 }
 
 function safeArrayIsArray(value) {
-  try {
-    return Array.isArray(value);
-  } catch {
-    return false;
-  }
+  try { return Array.isArray(value); }
+  catch { return false; }
 }
 
 function safeDescriptors(input) {
-  try {
-    return Object.getOwnPropertyDescriptors(input);
-  } catch {
-    return null;
-  }
+  try { return Object.getOwnPropertyDescriptors(input); }
+  catch { return null; }
 }
 
 function isRecordLike(input) {
@@ -77,9 +71,7 @@ function ownEnumerableDataEntries(input) {
   const entries = [];
   for (const key of Object.keys(descriptors)) {
     const descriptor = descriptors[key];
-    if (descriptor.enumerable && Object.hasOwn(descriptor, 'value')) {
-      entries.push([key, descriptor.value]);
-    }
+    if (descriptor.enumerable && Object.hasOwn(descriptor, 'value')) entries.push([key, descriptor.value]);
   }
   return entries;
 }
@@ -92,15 +84,11 @@ export function parseUiEntity(kind, input) {
   const allowed = new Set([...contract.required, ...contract.optional]);
   const result = {};
   for (const [key, value] of entries) {
-    if (!allowed.has(key)) {
-      throw new UiContractError('UI_CONTRACT_UNKNOWN_KEY', `${kind} contains unknown key: ${key}`);
-    }
+    if (!allowed.has(key)) throw new UiContractError('UI_CONTRACT_UNKNOWN_KEY', `${kind} contains unknown key: ${key}`);
     Object.defineProperty(result, key, { value, enumerable: true, writable: true, configurable: true });
   }
   for (const key of contract.required) {
-    if (!Object.hasOwn(result, key)) {
-      throw new UiContractError('UI_CONTRACT_MISSING_KEY', `${kind} is missing required key: ${key}`);
-    }
+    if (!Object.hasOwn(result, key)) throw new UiContractError('UI_CONTRACT_MISSING_KEY', `${kind} is missing required key: ${key}`);
   }
   return result;
 }
