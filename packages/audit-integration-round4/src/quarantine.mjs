@@ -75,37 +75,61 @@ export const ROUND4_EXTERNAL_QUARANTINE = deepFreeze({
   schemaVersion: 'round4-external-workstream-quarantine-v1',
   pullRequestNumber: 126,
   title: 'Upgrade simulations to configurable live-fork multi-RPC routing',
-  state: 'active-draft',
+  state: 'merged-security-repair-required',
   baseSha: '3f68cc1b12cc7f9a84e4cb04b768c049138814c6',
-  headSha: 'bc3b94c5a48192f5c1cc6e167794a5460ac661ec',
-  changedFileCount: 20,
+  headSha: 'df2e51824d257669dac204de5bf869c80ed6e844',
+  mergeCommitSha: '500de7b8752e926f7478feafb81b92586d6364ea',
+  mainHeadSha: '500de7b8752e926f7478feafb81b92586d6364ea',
+  mergedAt: '2026-08-02T11:31:25Z',
+  changedFileCount: 41,
   paths: [
     '.github/workflows/export-v27-hardhat-harness.yml',
+    '.github/workflows/github-native-sim-ci.yml',
+    '.github/workflows/github-native-simulate.yml',
+    '.github/workflows/live-fork-engine-smoke.yml',
     '.github/workflows/live-fork-upgrade-ci.yml',
+    '.github/workflows/simulate.yml',
+    'docs/live-fork-rpc-administration.md',
+    'docs/live-fork-simulation-authoring.md',
     'docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md',
     'docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md',
+    'github-native-sim/jobs/live-fork-v27-v1/README.md',
+    'github-native-sim/jobs/live-fork-v27-v1/patch-reviewed-v27-harness.py',
+    'github-native-sim/jobs/live-fork-v27-v1/run-ci.sh',
+    'github-native-sim/jobs/live-fork-v27-v1/run-v27-live-fork.mjs',
+    'packages/github-native-sim/src/local-state-journal.mjs',
     'packages/github-native-sim/src/run-job-file.mjs',
     'packages/github-native-sim/src/schema.mjs',
+    'packages/github-native-sim/test/local-state-journal.test.mjs',
     'packages/github-native-sim/test/run-job-file.test.mjs',
     'packages/protocol/src/index.mjs',
     'packages/protocol/src/simulation-config.mjs',
     'packages/runner/src/archive-rpc-pool.mjs',
     'packages/runner/src/fork-engine.mjs',
+    'packages/runner/src/github-rpc-health-store.mjs',
+    'packages/runner/src/hardhat-edr-engine.mjs',
     'packages/runner/src/live-fork-proxy.mjs',
     'packages/runner/src/live-fork-runtime.mjs',
     'packages/runner/src/live-fork-time.mjs',
+    'packages/runner/src/rpc-health-ledger.mjs',
+    'packages/runner/src/rpc-health-session.mjs',
     'packages/runner/src/run-job.mjs',
+    'packages/runner/src/workflow.mjs',
     'packages/runner/test/archive-rpc-pool.test.mjs',
     'packages/runner/test/live-fork-config.test.mjs',
     'packages/runner/test/live-fork-proxy.test.mjs',
     'packages/runner/test/live-fork-runtime-actions.test.mjs',
-    'packages/runner/test/run-job-live-fork.test.mjs'
-  ].sort(),
+    'packages/runner/test/rpc-health-ledger.test.mjs',
+    'packages/runner/test/rpc-health-session.test.mjs',
+    'packages/runner/test/run-job-live-fork.test.mjs',
+    'scripts/live-fork-engine-smoke.mjs',
+    'scripts/rpc-health-admin.mjs'
+  ],
   releaseConditions: [
-    'James declares PR 126 complete',
-    'the exact final PR head is independently reviewed',
-    'an explicit integration authorization replaces the quarantine event',
-    'all affected protected baselines and intake manifests are regenerated'
+    'the PR 126 security repair publishes observed RED and accepted GREEN evidence',
+    'the accepted security-repair head and exact path/blob manifest are published by the orchestrator',
+    'the integration intake proves every accepted subsystem path is disjoint from all 41 PR 126 paths',
+    'the final candidate preserves current main for all PR 126 paths without restoration or adaptation'
   ]
 });
 
@@ -124,7 +148,6 @@ export function validateStage0PathOwnershipRegistry(input) {
     error.path = '$';
     throw error;
   }
-
   const base = validatePathOwnershipRegistry({
     schemaVersion: source.schemaVersion,
     domains: source.domains,
@@ -133,12 +156,11 @@ export function validateStage0PathOwnershipRegistry(input) {
   });
   const quarantinedPaths = validateQuarantinedPaths(source.quarantinedPaths);
   if (JSON.stringify(quarantinedPaths) !== JSON.stringify(ROUND4_EXTERNAL_QUARANTINE.paths)) {
-    const error = new Error('$.quarantinedPaths does not match the active PR 126 quarantine');
+    const error = new Error('$.quarantinedPaths does not match the merged PR 126 quarantine');
     error.code = 'quarantine_mismatch';
     error.path = '$.quarantinedPaths';
     throw error;
   }
-
   for (const domain of base.domains) {
     for (const claim of [...domain.ownedPrefixes, ...domain.ownedFiles]) {
       if (quarantinedPaths.some((path) => overlap(path, claim))) {
@@ -149,6 +171,5 @@ export function validateStage0PathOwnershipRegistry(input) {
       }
     }
   }
-
   return deepFreeze({ ...base, quarantinedPaths });
 }
