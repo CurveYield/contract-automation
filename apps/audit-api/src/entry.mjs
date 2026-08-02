@@ -9,12 +9,26 @@ import {
   auditPhase4Capabilities,
   handlePhase4CatalogRequest
 } from './phase4-catalog.mjs';
+import { handlePhase5CatalogRequest } from './phase5-catalog.mjs';
+import { handlePhase6CatalogRequest } from './phase6-catalog.mjs';
+import { handlePhase9ReportRequest } from './phase9-reports.mjs';
+import {
+  auditPhase9Capabilities,
+  handlePhase9GptRequest
+} from './phase9-gpt.mjs';
 import {
   deriveUploadGrantSigningKey,
   encodeUploadGrantSigningKey
 } from './upload-grants.mjs';
 
 const encoder = new TextEncoder();
+const READ_ONLY_HANDLERS = Object.freeze([
+  handlePhase4CatalogRequest,
+  handlePhase5CatalogRequest,
+  handlePhase6CatalogRequest,
+  handlePhase9ReportRequest,
+  handlePhase9GptRequest
+]);
 
 async function digest(value) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)));
@@ -87,15 +101,18 @@ export default {
     const url = new URL(request.url);
     const runtimeEnv = await prepareAuditRuntimeEnv(env);
 
-    const phase4CatalogResponse = await handlePhase4CatalogRequest(request, runtimeEnv);
-    if (phase4CatalogResponse) return phase4CatalogResponse;
+    for (const handler of READ_ONLY_HANDLERS) {
+      const handled = await handler(request, runtimeEnv);
+      if (handled) return handled;
+    }
 
     const retentionDenied = await unsupportedRetentionResponse(request, runtimeEnv, url);
     if (retentionDenied) return retentionDenied;
 
     const response = await worker.fetch(request, runtimeEnv);
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/capabilities') {
-      return jsonWithHeaders(auditPhase4Capabilities(auditPhase3Capabilities(env)), response);
+      const legacy = auditPhase4Capabilities(auditPhase3Capabilities(env));
+      return jsonWithHeaders(auditPhase9Capabilities(legacy), response);
     }
     if (response.status === 200 && request.method === 'GET' && url.pathname === '/audit/v1/readiness') {
       return jsonWithHeaders(auditRuntimeReadiness(env), response);
