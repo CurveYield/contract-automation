@@ -2,7 +2,7 @@
   "protocolVersion": 1,
   "workerId": "worker-1",
   "state": "working",
-  "lastConsumedSequence": 4,
+  "lastConsumedSequence": 5,
   "activeSequence": 5,
   "activeMessageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
   "issueNumber": 121,
@@ -14,6 +14,24 @@
   "blockers": [],
   "round": 4,
   "roundType": "final-static-integration-and-acceptance",
+  "acknowledgement": {
+    "path": ".agent-control/v1/workers/worker-1/EVENTS/20260802T104921Z_assignment-acknowledged_v1.json",
+    "blobSha": "d1d8500ed785398a1c5173e915b4efb87920a272",
+    "commitSha": "033f34b29965faee92f23d2d159ff8063b4a5146",
+    "acknowledgedAt": "2026-08-02T10:49:21Z"
+  },
+  "stageA": {
+    "status": "working",
+    "sourceSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+    "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+    "reportCommentId": 5156777973
+  },
+  "stageB": {
+    "status": "waiting_for_frozen_assembled_sha",
+    "assembledSha": null,
+    "masterGateIssue": 119,
+    "integrationIssue": 122
+  },
   "previousRound": {
     "issueNumber": 113,
     "finalSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
@@ -21,5 +39,5 @@
     "recommendation": "ACCEPT",
     "reportCommentId": 5154958425
   },
-  "updatedAt": "2026-08-02T09:22:00Z"
+  "updatedAt": "2026-08-02T10:50:00Z"
 }
