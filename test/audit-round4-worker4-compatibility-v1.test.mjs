@@ -49,18 +49,23 @@ test('GitHub Direct result adapter rejects schema skew, fallback and identity/st
     acceptedResult({ token: 'secret' }),
     acceptedResult({ commandKind: 'status', state: 'completed', data: { currentState: { jobId: 'job-1', targetCommitSha: sha, state: 'attacker_state' } } })
   ];
-  for (const input of invalid) assert.throws(() => adaptGitHubDirectResultV2(input), (error) => error instanceof AuditWebCompatibilityError);
+  for (const input of invalid) {
+    assert.throws(() => adaptGitHubDirectResultV2(input), (error) => error instanceof AuditWebCompatibilityError);
+  }
 });
 
 test('completed GitHub Direct result projects one immutable report reference and execution truth', async () => {
   const { adaptGitHubDirectResultV2 } = await load('packages/audit-web-compat/src/index-v1.mjs');
   const result = acceptedResult({
-    commandKind: 'report', state: 'completed',
+    commandKind: 'report',
+    state: 'completed',
     data: {
       currentState: { jobId: 'job-1', targetCommitSha: sha, repositoryFullName: 'CurveYield/contract-automation', state: 'completed' },
       bundle: {
-        schemaVersion: 'github-direct-terminal-reporting-v1', jobId: 'job-1', targetCommitSha: sha,
-        resultManifest: { jobId: 'job-1', targetCommitSha: sha, executionState: 'fixture-modeled', outcome: 'modeled-fixture' },
+        schemaVersion: 'github-direct-terminal-reporting-v1',
+        jobId: 'job-1',
+        targetCommitSha: sha,
+        resultManifest: { jobId: 'job-1', targetCommitSha: sha, executionState: 'fixture_modeled', outcome: 'modeled_fixture' },
         reportIndex: { jobId: 'job-1', targetCommitSha: sha, entries: [{ reportId: 'report-1', reportDigest: digest }] }
       }
     }
