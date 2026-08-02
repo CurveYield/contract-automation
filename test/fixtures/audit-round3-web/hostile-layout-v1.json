@@ -1,0 +1,42 @@
+{
+  "version": "audit-round3-web-hostile-layout/v1",
+  "reportSeed": {
+    "idLength": 1000,
+    "titleLength": 3000,
+    "summaryLength": 5000,
+    "referenceCount": 60,
+    "referenceLabelLength": 300,
+    "evidenceCount": 60,
+    "evidenceSummaryRepeats": 100,
+    "graphNodeCount": 100
+  },
+  "operations": {
+    "quotas": [
+      {
+        "id": "quota-hostile",
+        "remaining": "1000000000000000000000000000000",
+        "limit": "1000000000000000000000000000000",
+        "used": -100,
+        "scope": "workspace-hostile"
+      }
+    ],
+    "retention": [
+      {
+        "id": "retention-hostile",
+        "days": 999999,
+        "policy": "bounded",
+        "scope": "workspace-hostile"
+      }
+    ],
+    "operationBudgets": [
+      {
+        "id": "budget-hostile",
+        "remaining": "Infinity",
+        "limit": "10000000000000000000000000000000000000000",
+        "used": "10000000000000000000000000000000000000000",
+        "operation": "report-read",
+        "scope": "workspace-hostile"
+      }
+    ]
+  }
+}
