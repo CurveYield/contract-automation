@@ -94,3 +94,4 @@ export class CleanRoomCampaignService {
 }
 
 export const BlindCampaignService = CleanRoomCampaignService;
+export * from './terminal-manifest.mjs';

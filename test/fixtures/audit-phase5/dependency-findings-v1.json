@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "source":{"path":"package-lock.json","type":"lockfile"},
+      "packages":[
+        {
+          "package":{"name":"example-lib","version":"1.2.3","ecosystem":"npm"},
+          "vulnerabilities":[
+            {"id":"OSV-EXAMPLE-2","aliases":["CVE-2099-0002"],"summary":"Example high-severity issue","severity":"high","fixedVersion":"1.2.5"},
+            {"id":"OSV-EXAMPLE-1","aliases":[],"summary":"Example moderate issue","severity":"moderate","fixedVersion":null},
+            {"id":"OSV-EXAMPLE-1","aliases":[],"summary":"Example moderate issue","severity":"moderate","fixedVersion":null}
+          ]
+        }
+      ]
+    }
+  ]
+}

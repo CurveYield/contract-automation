@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"file":"test/zeta-v1.test.mjs","suite":"Zeta","name":"returns value","status":"passed","durationMs":8},
+    {"file":"test/alpha-v1.test.mjs","suite":"Alpha","name":"rejects invalid input","status":"passed","durationMs":3},
+    {"file":"test/alpha-v1.test.mjs","suite":"Alpha","name":"rejects invalid input","status":"passed","durationMs":3}
+  ]
+}
