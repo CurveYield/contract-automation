@@ -7,148 +7,130 @@ on:
         description: Fixed GitHub Direct operation
         required: true
         type: choice
-        options:
-          - submit
-          - status
-          - cancel
-          - report
-          - capabilities
-          - verify-fixture
+        options: [submit, status, cancel, report, capabilities, verify-fixture]
       target_sha:
         description: Exact 40-character target commit SHA
         required: true
         type: string
-      installation_id:
-        description: GitHub App installation ID
-        required: true
-        type: string
-      report_issue_number:
-        description: Trusted issue receiving bounded comments
-        required: true
-        type: string
 
-permissions:
-  contents: write
-  checks: write
-  statuses: write
-  issues: write
-  actions: read
+permissions: {}
 
 concurrency:
-  group: audit-direct-v1-${{ github.repository_id }}-${{ inputs.target_sha }}
-  cancel-in-progress: true
+  group: audit-direct-v1-${{ github.repository_id }}-${{ inputs.target_sha }}-${{ inputs.operation }}
+  cancel-in-progress: false
 
 jobs:
-  audit-direct:
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true
+  read-only:
+    if: >-
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      github.ref_protected == true &&
+      contains(fromJSON('["status","capabilities","verify-fixture"]'), inputs.operation)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout trusted workflow implementation
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
-        with:
-          ref: ${{ github.workflow_sha }}
-          path: trusted-runner
-          persist-credentials: false
-
-      - name: Validate bounded workflow inputs
-        shell: bash
-        env:
-          AUDIT_OPERATION: ${{ inputs.operation }}
-          TARGET_SHA: ${{ inputs.target_sha }}
-          INSTALLATION_ID: ${{ inputs.installation_id }}
-          REPORT_ISSUE_NUMBER: ${{ inputs.report_issue_number }}
-        run: |
-          set -euo pipefail
-          case "$AUDIT_OPERATION" in
-            submit|status|cancel|report|capabilities|verify-fixture) ;;
-            *) exit 2 ;;
-          esac
-          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
-          [[ "$INSTALLATION_ID" =~ ^[1-9][0-9]*$ ]] || exit 2
-          [[ "$REPORT_ISSUE_NUMBER" =~ ^[1-9][0-9]*$ ]] || exit 2
-
+        with: { ref: '${{ github.workflow_sha }}', path: trusted-runner, persist-credentials: false }
       - name: Checkout target commit as inert data
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
-        with:
-          ref: ${{ inputs.target_sha }}
-          path: target-source
-          persist-credentials: false
-
-      - name: Bind target checkout to exact input SHA
-        shell: bash
-        env:
-          TARGET_SHA: ${{ inputs.target_sha }}
-        run: |
-          set -euo pipefail
-          ACTUAL_SHA="$(git -C target-source rev-parse HEAD)"
-          test "$ACTUAL_SHA" = "$TARGET_SHA"
-          TREE_SHA="$(git -C target-source rev-parse 'HEAD^{tree}')"
-          COMMIT_EPOCH="$(git -C target-source show -s --format=%ct HEAD)"
-          REQUESTED_AT="$(date -u -d "@$COMMIT_EPOCH" +%Y-%m-%dT%H:%M:%S.000Z)"
-          git -C target-source ls-tree -r --name-only HEAD | sed -n '1,10000p' > target-file-index.txt
-          printf 'DIRECT_REQUESTED_AT=%s\n' "$REQUESTED_AT" >> "$GITHUB_ENV"
-          printf '{"schemaVersion":"github-direct-target-binding-v1","targetCommitSha":"%s","targetTreeSha":"%s","requestedAt":"%s"}\n' \
-            "$ACTUAL_SHA" "$TREE_SHA" "$REQUESTED_AT" > target-binding.json
-
-      - name: Run trusted GitHub Direct service
+        with: { ref: '${{ inputs.target_sha }}', path: target-source, persist-credentials: false }
+      - name: Run fixed read-only operation
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_DIRECT_REPORT_ISSUE: ${{ inputs.report_issue_number }}
-          AUDIT_OPERATION: ${{ inputs.operation }}
+          GITHUB_DIRECT_REPORT_ISSUE: ${{ vars.GITHUB_DIRECT_REPORT_ISSUE }}
           TARGET_SHA: ${{ inputs.target_sha }}
-          INSTALLATION_ID: ${{ inputs.installation_id }}
+          AUDIT_OPERATION: ${{ inputs.operation }}
           REPOSITORY_ID: ${{ github.repository_id }}
           REPOSITORY_FULL_NAME: ${{ github.repository }}
           REQUESTER_ID: actor-${{ github.actor_id }}
         run: |
           set -euo pipefail
-          REQUESTED_AT="$DIRECT_REQUESTED_AT"
-          COMMON=(
-            --repository-id "$REPOSITORY_ID"
-            --installation-id "$INSTALLATION_ID"
-            --repository "$REPOSITORY_FULL_NAME"
-            --requester "$REQUESTER_ID"
-            --policy direct-policy-v1
-            --profile hardhat-test-v1
-            --parser hardhat-test-parser-v1
-            --result-contract phase5-tool-result-v1
-            --report-contract audit-report-v1
-            --target-sha "$TARGET_SHA"
-            --requested-at "$REQUESTED_AT"
-            --idempotency-key "workflow-${REPOSITORY_ID}-${TARGET_SHA:0:12}-${REQUESTER_ID}"
-            --at "$REQUESTED_AT"
-          )
-          RESULT_ID="result-${TARGET_SHA:0:12}"
-          REPORT_ID="report-${TARGET_SHA:0:12}"
-          case "$AUDIT_OPERATION" in
-            submit)
-              EXTRA=(--result-id "$RESULT_ID" --report-id "$REPORT_ID" --comment "GitHub Direct submission processed.")
-              ;;
-            report)
-              EXTRA=(--result-id "$RESULT_ID" --report-id "$REPORT_ID" --comment "GitHub Direct report reconciled.")
-              ;;
-            cancel)
-              EXTRA=(--reason workflow-cancelled)
-              ;;
-            verify-fixture)
-              EXTRA=(--source-sha "$TARGET_SHA")
-              ;;
-            *)
-              EXTRA=()
-              ;;
-          esac
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GITHUB_DIRECT_REPORT_ISSUE" =~ ^[1-9][0-9]*$ ]]
+          ACTUAL_SHA="$(git -C target-source rev-parse HEAD)"; test "$ACTUAL_SHA" = "$TARGET_SHA"
+          REQUESTED_AT="$(date -u -d "@$(git -C target-source show -s --format=%ct HEAD)" +%Y-%m-%dT%H:%M:%S.000Z)"
+          COMMON=(--repository-id "$REPOSITORY_ID" --installation-id "$REPOSITORY_ID" --repository "$REPOSITORY_FULL_NAME" --requester "$REQUESTER_ID" --policy direct-policy-v1 --profile hardhat-test-v1 --parser hardhat-test-parser-v1 --result-contract phase5-tool-result-v1 --report-contract audit-report-v1 --target-sha "$TARGET_SHA" --requested-at "$REQUESTED_AT" --idempotency-key "workflow-${REPOSITORY_ID}-${TARGET_SHA:0:12}-${REQUESTER_ID}" --at "$REQUESTED_AT")
+          EXTRA=(); if [[ "$AUDIT_OPERATION" == verify-fixture ]]; then EXTRA=(--source-sha "$TARGET_SHA"); fi
           node trusted-runner/apps/audit-github-direct-cli/src/main.mjs "$AUDIT_OPERATION" "${COMMON[@]}" "${EXTRA[@]}" > audit-direct-output.json
 
+  submit:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true && inputs.operation == 'submit'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      checks: write
+      statuses: write
+      issues: write
+      actions: read
+    steps:
+      - name: Checkout trusted workflow implementation
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ github.workflow_sha }}', path: trusted-runner, persist-credentials: false }
+      - name: Checkout target commit as inert data
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ inputs.target_sha }}', path: target-source, persist-credentials: false }
+      - name: Run fixed submit operation
+        shell: bash
+        env: { GITHUB_TOKEN: '${{ github.token }}', GITHUB_DIRECT_REPORT_ISSUE: '${{ vars.GITHUB_DIRECT_REPORT_ISSUE }}', TARGET_SHA: '${{ inputs.target_sha }}', REPOSITORY_ID: '${{ github.repository_id }}', REPOSITORY_FULL_NAME: '${{ github.repository }}', REQUESTER_ID: 'actor-${{ github.actor_id }}' }
+        run: |
+          set -euo pipefail; [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; [[ "$GITHUB_DIRECT_REPORT_ISSUE" =~ ^[1-9][0-9]*$ ]]
+          test "$(git -C target-source rev-parse HEAD)" = "$TARGET_SHA"
+          REQUESTED_AT="$(date -u -d "@$(git -C target-source show -s --format=%ct HEAD)" +%Y-%m-%dT%H:%M:%S.000Z)"
+          COMMON=(--repository-id "$REPOSITORY_ID" --installation-id "$REPOSITORY_ID" --repository "$REPOSITORY_FULL_NAME" --requester "$REQUESTER_ID" --policy direct-policy-v1 --profile hardhat-test-v1 --parser hardhat-test-parser-v1 --result-contract phase5-tool-result-v1 --report-contract audit-report-v1 --target-sha "$TARGET_SHA" --requested-at "$REQUESTED_AT" --idempotency-key "workflow-${REPOSITORY_ID}-${TARGET_SHA:0:12}-${REQUESTER_ID}" --at "$REQUESTED_AT")
+          node trusted-runner/apps/audit-github-direct-cli/src/main.mjs submit "${COMMON[@]}" --result-id "result-${TARGET_SHA:0:12}" --report-id "report-${TARGET_SHA:0:12}" --comment 'GitHub Direct submission processed.' > audit-direct-output.json
       - name: Upload bounded machine result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: audit-direct-result
-          path: |
-            audit-direct-output.json
-            target-binding.json
-            target-file-index.txt
-          if-no-files-found: warn
-          retention-days: 1
+        with: { name: 'audit-direct-result-${{ github.repository_id }}-${{ inputs.target_sha }}', path: audit-direct-output.json, if-no-files-found: warn, retention-days: 1 }
+
+  cancel:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true && inputs.operation == 'cancel'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: { contents: write, statuses: write, issues: write }
+    steps:
+      - name: Checkout trusted workflow implementation
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ github.workflow_sha }}', path: trusted-runner, persist-credentials: false }
+      - name: Checkout target commit as inert data
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ inputs.target_sha }}', path: target-source, persist-credentials: false }
+      - name: Run fixed cancel operation
+        shell: bash
+        env: { GITHUB_TOKEN: '${{ github.token }}', GITHUB_DIRECT_REPORT_ISSUE: '${{ vars.GITHUB_DIRECT_REPORT_ISSUE }}', TARGET_SHA: '${{ inputs.target_sha }}', REPOSITORY_ID: '${{ github.repository_id }}', REPOSITORY_FULL_NAME: '${{ github.repository }}', REQUESTER_ID: 'actor-${{ github.actor_id }}' }
+        run: |
+          set -euo pipefail; [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; [[ "$GITHUB_DIRECT_REPORT_ISSUE" =~ ^[1-9][0-9]*$ ]]
+          test "$(git -C target-source rev-parse HEAD)" = "$TARGET_SHA"
+          REQUESTED_AT="$(date -u -d "@$(git -C target-source show -s --format=%ct HEAD)" +%Y-%m-%dT%H:%M:%S.000Z)"
+          COMMON=(--repository-id "$REPOSITORY_ID" --installation-id "$REPOSITORY_ID" --repository "$REPOSITORY_FULL_NAME" --requester "$REQUESTER_ID" --policy direct-policy-v1 --profile hardhat-test-v1 --parser hardhat-test-parser-v1 --result-contract phase5-tool-result-v1 --report-contract audit-report-v1 --target-sha "$TARGET_SHA" --requested-at "$REQUESTED_AT" --idempotency-key "workflow-${REPOSITORY_ID}-${TARGET_SHA:0:12}-${REQUESTER_ID}" --at "$REQUESTED_AT")
+          node trusted-runner/apps/audit-github-direct-cli/src/main.mjs cancel "${COMMON[@]}" --reason workflow-cancelled > audit-direct-output.json
+
+  report:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true && inputs.operation == 'report'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: { contents: write, statuses: write, issues: write, actions: read }
+    steps:
+      - name: Checkout trusted workflow implementation
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ github.workflow_sha }}', path: trusted-runner, persist-credentials: false }
+      - name: Checkout target commit as inert data
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with: { ref: '${{ inputs.target_sha }}', path: target-source, persist-credentials: false }
+      - name: Run fixed report operation
+        shell: bash
+        env: { GITHUB_TOKEN: '${{ github.token }}', GITHUB_DIRECT_REPORT_ISSUE: '${{ vars.GITHUB_DIRECT_REPORT_ISSUE }}', TARGET_SHA: '${{ inputs.target_sha }}', REPOSITORY_ID: '${{ github.repository_id }}', REPOSITORY_FULL_NAME: '${{ github.repository }}', REQUESTER_ID: 'actor-${{ github.actor_id }}' }
+        run: |
+          set -euo pipefail; [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]; [[ "$GITHUB_DIRECT_REPORT_ISSUE" =~ ^[1-9][0-9]*$ ]]
+          test "$(git -C target-source rev-parse HEAD)" = "$TARGET_SHA"
+          REQUESTED_AT="$(date -u -d "@$(git -C target-source show -s --format=%ct HEAD)" +%Y-%m-%dT%H:%M:%S.000Z)"
+          COMMON=(--repository-id "$REPOSITORY_ID" --installation-id "$REPOSITORY_ID" --repository "$REPOSITORY_FULL_NAME" --requester "$REQUESTER_ID" --policy direct-policy-v1 --profile hardhat-test-v1 --parser hardhat-test-parser-v1 --result-contract phase5-tool-result-v1 --report-contract audit-report-v1 --target-sha "$TARGET_SHA" --requested-at "$REQUESTED_AT" --idempotency-key "workflow-${REPOSITORY_ID}-${TARGET_SHA:0:12}-${REQUESTER_ID}" --at "$REQUESTED_AT")
+          node trusted-runner/apps/audit-github-direct-cli/src/main.mjs report "${COMMON[@]}" --result-id "result-${TARGET_SHA:0:12}" --report-id "report-${TARGET_SHA:0:12}" --comment 'GitHub Direct report reconciled.' > audit-direct-output.json
+      - name: Upload bounded machine result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with: { name: 'audit-direct-result-${{ github.repository_id }}-${{ inputs.target_sha }}', path: audit-direct-output.json, if-no-files-found: warn, retention-days: 1 }
