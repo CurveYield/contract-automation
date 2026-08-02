@@ -75,14 +75,14 @@ jobs:
           )
           file.write_text(source, encoding='utf-8')
           PY
-          echo '517299c69b42c08ced465050f8a039ff15908c0158ec3356e1b7a2c6d5c11e93  github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
+          echo '517299c64d5538ac921dd8f3907c35e736b3870f07e159de7040684246c11e93  github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
           node --check "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
           cat > "$result_root/runner-verification.json" <<JSON
           {
             "baseRunnerCommit": "$runner_ref",
             "baseGzipSha256": "f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba",
             "baseSourceSha256": "fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe",
-            "patchedSourceSha256": "517299c69b42c08ced465050f8a039ff15908c0158ec3356e1b7a2c6d5c11e93",
+            "patchedSourceSha256": "517299c64d5538ac921dd8f3907c35e736b3870f07e159de7040684246c11e93",
             "compilerEvmVersion": "shanghai",
             "syntax": "passed"
           }
