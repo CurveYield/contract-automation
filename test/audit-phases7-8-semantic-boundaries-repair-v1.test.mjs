@@ -39,6 +39,7 @@ const ids = {
   exportId: `exp_${'7'.repeat(32)}`,
   restoreId: `rst_${'8'.repeat(32)}`
 };
+const readForkInput = { forkId: ids.forkId, tenantId: ids.tenantId, attemptId: ids.attemptId };
 
 function forkRequest() {
   return {
@@ -189,9 +190,9 @@ test('checkpoint failure leaves a retryable checkpointing state and exact retry 
   const manifest = checkpointManifest(digest, bytes.byteLength);
   store.arm('put', (key) => key === manifest.objectKey);
   await assert.rejects(() => service.publishCheckpoint({ manifest, bytes }), /simulated-put-failure/);
-  assert.equal((await service.readFork(ids.forkId)).state, 'checkpointing');
+  assert.equal((await service.readFork(readForkInput)).state, 'checkpointing');
   await service.publishCheckpoint({ manifest, bytes });
-  assert.equal((await service.readFork(ids.forkId)).state, 'ready');
+  assert.equal((await service.readFork(readForkInput)).state, 'ready');
 });
 
 test('export failure leaves a retryable exporting state and exact retry returns ready', async () => {
@@ -199,9 +200,9 @@ test('export failure leaves a retryable exporting state and exact retry returns 
   const manifest = exportManifest(digest);
   store.arm('put', (key) => key === exportManifestKey(ids.forkId, ids.exportId));
   await assert.rejects(() => service.exportCheckpoint(manifest), /simulated-put-failure/);
-  assert.equal((await service.readFork(ids.forkId)).state, 'exporting');
+  assert.equal((await service.readFork(readForkInput)).state, 'exporting');
   await service.exportCheckpoint(manifest);
-  assert.equal((await service.readFork(ids.forkId)).state, 'ready');
+  assert.equal((await service.readFork(readForkInput)).state, 'ready');
 });
 
 test('restore failure leaves a retryable restoring state and exact retry returns ready', async () => {
@@ -209,9 +210,9 @@ test('restore failure leaves a retryable restoring state and exact retry returns
   const manifest = restoreManifest(digest);
   store.arm('put', (key) => key === forkRestoreManifestKey(ids.forkId, ids.restoreId));
   await assert.rejects(() => service.restoreCheckpoint(manifest), /simulated-put-failure/);
-  assert.equal((await service.readFork(ids.forkId)).state, 'restoring');
+  assert.equal((await service.readFork(readForkInput)).state, 'restoring');
   await service.restoreCheckpoint(manifest);
-  assert.equal((await service.readFork(ids.forkId)).state, 'ready');
+  assert.equal((await service.readFork(readForkInput)).state, 'ready');
 });
 
 test('Phase 7 exposes tenant-bound fork and checkpoint reads', async () => {
@@ -219,6 +220,7 @@ test('Phase 7 exposes tenant-bound fork and checkpoint reads', async () => {
   assert.equal(typeof service.readForkForTenant, 'function');
   assert.equal(typeof service.readCheckpointForTenant, 'function');
   assert.equal((await service.readForkForTenant({ forkId: ids.forkId, tenantId: ids.tenantId })).forkId, ids.forkId);
+  await assert.rejects(() => service.readFork(ids.forkId), { code: 'invalid_type' });
   await assert.rejects(
     () => service.readForkForTenant({ forkId: ids.forkId, tenantId: ids.otherTenantId }),
     { code: 'fork_not_found' }
