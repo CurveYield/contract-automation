@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "stage_a_complete_with_integration_blockers",
+  "state": "integration_successor_activated_reconstruction_pending",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -24,8 +24,7 @@
       "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157224221,
       "intakeManifestPath": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json",
-      "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105",
-      "acceptedAt": "2026-08-02T11:36:57Z"
+      "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105"
     },
     "worker-1": {
       "issueNumber": 121,
@@ -35,8 +34,7 @@
       "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157596912,
       "intakeManifestPath": "docs/audit/round4/worker1/2026-08-02-phase78-stage-a-path-blob-manifest-v1.json",
-      "intakeManifestBlobSha": "3ddd153e315459bfb9f1e2673a297e6f8552e8b7",
-      "acceptedAt": "2026-08-02T13:34:02Z"
+      "intakeManifestBlobSha": "3ddd153e315459bfb9f1e2673a297e6f8552e8b7"
     },
     "worker-3": {
       "issueNumber": 123,
@@ -46,8 +44,7 @@
       "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157962261,
       "intakeManifestPath": "docs/audit/round4/worker3/2026-08-02-worker3-stage-a-path-blob-manifest-v1.json",
-      "intakeManifestBlobSha": "246ae11f0c1b377773f941394cfcee9defac5301",
-      "acceptedAt": "2026-08-02T13:34:03Z"
+      "intakeManifestBlobSha": "246ae11f0c1b377773f941394cfcee9defac5301"
     },
     "worker-4": {
       "issueNumber": 124,
@@ -57,42 +54,38 @@
       "recommendation": "ACCEPT",
       "reportCommentId": 5157176317,
       "intakeManifestPath": "test/fixtures/audit-round4/worker4/stage-a-intake-v1.json",
-      "intakeManifestBlobSha": "f4aefc7deac3efabbbf6bd3e1d3b8a664c9157d0",
-      "acceptedAt": "2026-08-02T10:35:25Z"
+      "intakeManifestBlobSha": "f4aefc7deac3efabbbf6bd3e1d3b8a664c9157d0"
     }
   },
   "integrationWorkerActivated": true,
-  "integrationWorkerStage": "checkpoint-1-prepared-not-transplanted",
-  "integrationWorkerBranchHead": "8bddd31232f14597afba63ffba13f3b96069610b",
-  "integrationCheckpoint1CommentId": 5158815848,
+  "integrationWorkerSequence": 9,
+  "integrationWorkerMessageId": "worker-2-round4-full-platform-integration-v2-000009",
+  "integrationWorkerStage": "successor-ready-reconstruction-pending",
+  "integrationWorkerBranch": "audit-round4/full-platform-integration-v2",
+  "integrationWorkerBranchHead": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "integrationWorkerStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
   "integrationProductionIntakeAuthorized": false,
+  "integrationProductionIntakeCondition": "Authorize only after the 27 exact reconstruction blobs read back and the prescribed Stage 0 tests and syntax checks pass.",
   "integrationValidatorRepair": {
-    "state": "receipt-published-await-worker2-intake-verification",
-    "repairBranch": "orchestrator/worker2-stage0-validator-repair-v1",
-    "validatedCodeHeadSha": "bcf2c930bdbae0efb40c009485914bead6820d72",
-    "evidenceReceiptHeadSha": "4c2d39b064a036a2f948ff994311e467cd519d68",
+    "state": "assigned-for-successor-reconstruction",
     "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
     "receiptBlobSha": "fef4bc39d3d2ab8ebdf597be9fbca36fa02ac812",
-    "issueCommentId": 5159019450,
-    "controlEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T160505Z_worker2-stage0-validator-receipt-superseded_v1.json",
-    "supersededControlEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T155455Z_worker2-stage0-validator-receipt-published_v1.json",
     "exactIntakePathCount": 3,
-    "completeTrustedAttestationBinding": true,
     "freshCombinedSuiteRequired": true
   },
   "integrationSupersessionProcedure": {
-    "state": "prepared-not-activated",
+    "state": "activated",
     "path": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
     "blobSha": "493e987b9dd1e83f056305380c4245ba8007f2a6",
-    "controlCommitSha": "5e819dcd231166d62c19867dbbe525a6598f72eb",
-    "issueCommentId": 5159105534,
-    "currentSequence": 8,
-    "currentFrozenHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
+    "closedSequence": 8,
+    "closedFrozenHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
     "successorSequence": 9,
     "successorBranch": "audit-round4/full-platform-integration-v2",
     "successorStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "assignmentBlobSha": "cc735acf452edfb16319a9439bb3880dbfb01bbc",
     "reconstructionPathCount": 27,
-    "activationBlockedByWorker2Sequence8Closeout": true
+    "pr126OverlapCount": 0,
+    "activatedAt": "2026-08-02T16:32:58Z"
   },
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
@@ -100,49 +93,27 @@
     {
       "workstreamId": "live-fork-rpc-routing-pr126-v1",
       "pullRequestNumber": 126,
-      "branch": "agent/live-fork-rpc-routing-design",
       "state": "merged-security-repair-required",
       "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
       "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
-      "quarantineEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T095457Z_external-live-fork-workstream-quarantine_v1.json",
       "round4InterferenceAuthorized": false,
       "finalCandidateFreezeBlocked": true,
-      "requiredResolution": "Complete and independently accept the test-first PR 126 security repair with one exact head and path/blob manifest, then regenerate affected protected baselines and rerun affected gates."
+      "requiredResolution": "Complete and independently accept the test-first PR 126 security repair with one exact head and path/blob manifest."
     }
   ],
   "blockers": [
     {
-      "blockerId": "worker2-existing-sequence8-wrong-base-v1",
+      "blockerId": "stage0-successor-reconstruction-verification-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
-      "description": "All four Stage A outputs are valid, but Worker 2 sequence 8 remains active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759. A 27-path exact reconstruction procedure is prepared but not activated.",
-      "procedurePath": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
-      "requiredResolution": "Worker 2 must first acknowledge and close sequence 8 as blocked at frozen head 8bddd31232f14597afba63ffba13f3b96069610b. After independent verification that no assignment remains active, the orchestrator may publish sequence 9 and create audit-round4/full-platform-integration-v2 at bbb4cac794865f84b65ee78a2fc78d391421c759, then Worker 2 may reconstruct only the 27 exact path/blob pairs.",
-      "detectedAt": "2026-08-02T13:34:04Z"
-    },
-    {
-      "blockerId": "worker2-sequence8-ack-status-inconsistent-v1",
-      "workerId": "worker-2",
-      "issueNumber": 122,
-      "description": "The branch is at verified Checkpoint 1 head 8bddd31232f14597afba63ffba13f3b96069610b, 35 commits ahead of the sequence-8 start, while worker-owned STATUS still records lastConsumedSequence 7 and the expected sequence-8 ACK artifact is absent.",
-      "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T152910Z_worker2-sequence8-ack-status-blocker_v1.json",
-      "requiredResolution": "Worker 2 must follow issue comment 5159105534: acknowledge sequence 8 exactly once, close it as wrong-base blocked, clear active sequence/message and publish its worker-owned status/event evidence."
-    },
-    {
-      "blockerId": "stage0-direct-takeover-validator-intake-verification-v1",
-      "workerId": "worker-2",
-      "issueNumber": 122,
-      "description": "The hardened direct-takeover validator receipt is durable on issue #122 at comment 5159019450 and supersedes the earlier wrapper/test blobs, but Worker 2 has not yet exact-transplanted the current three blobs or published a fresh combined Stage 0 test result and remote blob readback.",
-      "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T160505Z_worker2-stage0-validator-receipt-superseded_v1.json",
-      "requiredResolution": "On the control-plane-approved successor branch, Worker 2 must use only index-legacy blob 8fd316be7ce2073c7b4290443a7fe5ceee292721, index blob 1d50a117fd216edc4678645b9cc27e4bef01bd73 and takeover-test blob 2ef7a0e9f8f0fcca5ba9e383537827c9379171e9; run the required Stage 0 tests; publish exact results; and verify remote blobs.",
-      "detectedAt": "2026-08-02T16:05:05Z"
+      "description": "Sequence 9 is activated at the correct Gate 5 base, but production subsystem intake remains blocked until the 27 exact reconstruction paths and hardened validator blobs are verified and the required Stage 0 suites pass.",
+      "requiredResolution": "Worker 2 acknowledges sequence 9, reconstructs only the exact listed blobs, runs the prescribed tests and syntax checks, and publishes remote blob readback evidence."
     },
     {
       "blockerId": "pr126-security-repair-acceptance-v1",
       "pullRequestNumber": 126,
-      "description": "PR #126 is merged, but four independently identified security blockers remain and no accepted security-repair head/path-blob manifest is durable.",
-      "requiredResolution": "Complete and independently accept the test-first security repair before ingesting, adapting or freezing any of the 41 PR #126 paths.",
-      "detectedAt": "2026-08-02T15:29:10Z"
+      "description": "PR #126 is merged, but its security repair lacks an independently accepted exact head and path/blob manifest.",
+      "requiredResolution": "Complete and independently accept the separate security repair before any quarantined path is ingested or the assembled candidate is frozen."
     }
   ],
   "productionTestTarget": {
@@ -151,5 +122,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T16:06:26Z"
+  "updatedAt": "2026-08-02T16:32:58Z"
 }
