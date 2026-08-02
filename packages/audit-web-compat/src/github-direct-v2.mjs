@@ -9,6 +9,8 @@ const COMMAND_STATES = Object.freeze({
   capabilities: ['completed'], 'verify-fixture': ['completed', 'execution_plane_unavailable']
 });
 const DIRECT_STATES = ['requested', 'validating', 'admitted', 'awaiting_executor', 'fixture_running', 'publishing', 'completed', 'failed', 'cancelled', 'policy_rejected', 'execution_plane_unavailable'];
+const EXECUTION_STATES = ['fixture_modeled', 'not_executed', 'execution_plane_unavailable'];
+const OUTCOMES = ['modeled_fixture', 'success', 'findings', 'failed', 'cancelled', 'resource_exhaustion', 'execution_unavailable'];
 const ERROR_CODES = ['invalid_command', 'authorization_denied', 'transport_failure', 'stale_state', 'publication_conflict', 'execution_plane_unavailable', 'internal_error'];
 
 function descriptors(value) { if (value === null || typeof value !== 'object') return null; try { return Object.getOwnPropertyDescriptors(value); } catch { return null; } }
@@ -53,12 +55,24 @@ function identity(value, context, label, ErrorClass) {
   }
   return value;
 }
-function projection(data, context, ErrorClass) {
+function expectedBundleSchema(command, state) {
+  if (command === 'submit') return state === 'completed' ? 'github-direct-reporting-bundle-v1' : 'github-direct-submission-reporting-v1';
+  if (command === 'cancel' || (command === 'report' && state === 'cancelled')) return 'github-direct-cancellation-reporting-v1';
+  if (command === 'report') return 'github-direct-terminal-reporting-v1';
+  return null;
+}
+function projection(data, context, command, ErrorClass) {
   const current = own(data, 'currentState') == null ? null : identity(own(data, 'currentState'), context, 'currentState', ErrorClass);
   const currentState = current ? enumValue(own(current, 'state'), DIRECT_STATES, 'currentState.state', ErrorClass) : null;
   const repository = current && typeof own(current, 'repositoryFullName') === 'string' ? own(current, 'repositoryFullName') : '';
   const bundle = own(data, 'bundle') == null ? null : identity(own(data, 'bundle'), context, 'bundle', ErrorClass);
+  const expectedSchema = expectedBundleSchema(command, context.state);
+  if (expectedSchema && (!bundle || own(bundle, 'schemaVersion') !== expectedSchema)) fail(ErrorClass, 'UI_COMPAT_VERSION', 'GitHub Direct reporting bundle schema mismatch.');
+  if (!expectedSchema && bundle) fail(ErrorClass, 'UI_COMPAT_INPUT', 'Unexpected GitHub Direct reporting bundle.');
   const manifest = bundle && own(bundle, 'resultManifest') ? identity(own(bundle, 'resultManifest'), context, 'resultManifest', ErrorClass) : null;
+  const executionState = manifest ? enumValue(own(manifest, 'executionState'), EXECUTION_STATES, 'resultManifest.executionState', ErrorClass) : context.state === 'execution_plane_unavailable' ? 'execution_plane_unavailable' : 'not_executed';
+  const outcome = manifest ? enumValue(own(manifest, 'outcome'), OUTCOMES, 'resultManifest.outcome', ErrorClass) : '';
+  if (['github-direct-reporting-bundle-v1', 'github-direct-terminal-reporting-v1', 'github-direct-cancellation-reporting-v1'].includes(expectedSchema) && !manifest) fail(ErrorClass, 'UI_COMPAT_INPUT', 'GitHub Direct result manifest is required.');
   const index = bundle && own(bundle, 'reportIndex') ? identity(own(bundle, 'reportIndex'), context, 'reportIndex', ErrorClass) : null;
   const entries = index ? dense(own(index, 'entries')) : []; if (entries.length > 1) fail(ErrorClass, 'UI_COMPAT_CONFLICT', 'Conflicting report references.');
   let reportId = '', reportDigest = '';
@@ -66,11 +80,7 @@ function projection(data, context, ErrorClass) {
     const entry = exact(entries[0], ['reportId', 'reportDigest'], ['kind'], 'report entry', ErrorClass);
     reportId = text(own(entry, 'reportId'), 'reportId', 160, ErrorClass); reportDigest = digest(own(entry, 'reportDigest'), 'reportDigest', ErrorClass);
   }
-  return {
-    currentState, repository, reportId, reportDigest,
-    executionState: manifest && typeof own(manifest, 'executionState') === 'string' ? own(manifest, 'executionState') : context.state === 'execution_plane_unavailable' ? 'execution_plane_unavailable' : 'not_executed',
-    outcome: manifest && typeof own(manifest, 'outcome') === 'string' ? own(manifest, 'outcome') : ''
-  };
+  return { currentState, repository, reportId, reportDigest, executionState, outcome };
 }
 function consistent(command, state, current, ErrorClass) {
   if (!COMMAND_STATES[command]?.includes(state)) fail(ErrorClass, 'UI_COMPAT_STATE', 'Contradictory command/result state.');
@@ -90,7 +100,7 @@ export function adaptDirectResultV2(input, ErrorClass) {
   if (resultId !== `direct-service-result-${resultDigest.slice(7, 31)}`) fail(ErrorClass, 'UI_COMPAT_IDENTITY', 'resultId/resultDigest mismatch.');
   if (own(record, 'cloudflareFallback') !== false) fail(ErrorClass, 'UI_COMPAT_STATE', 'Fallback must remain disabled.');
   const data = own(record, 'data'); if (!descriptors(data)) fail(ErrorClass, 'UI_COMPAT_INPUT', 'Result data must be readable.'); rejectCredentials(data, ErrorClass);
-  const projected = projection(data, context, ErrorClass); consistent(command, state, projected.currentState, ErrorClass);
+  const projected = projection(data, context, command, ErrorClass); consistent(command, state, projected.currentState, ErrorClass);
   return createGitHubDirectStatusViewModel({
     id: resultId, status: command === 'status' && projected.currentState ? projected.currentState : state === 'accepted' ? 'awaiting_executor' : projected.currentState || state,
     repository: projected.repository, targetSha: context.targetCommitSha,
