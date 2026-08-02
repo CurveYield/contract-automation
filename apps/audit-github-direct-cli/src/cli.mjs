@@ -1,5 +1,5 @@
-import { createDirectRequest,integer,fullName,identifier,versionSlug,commitSha,timestamp,boundedString,fail } from '../../../packages/audit-github-direct-protocol/src/index.mjs';
-import { createServiceCommand,SERVICE_COMMANDS,validateServiceResult,validateServiceError } from '../../../packages/audit-github-direct-service/src/index.mjs';
+import { createDirectRequest,integer,fullName,identifier,versionSlug,commitSha,timestamp,boundedString,exactKeys,fail } from '../../../packages/audit-github-direct-protocol/src/index.mjs';
+import { createServiceCommand,createServiceResult,SERVICE_COMMANDS,validateServiceResult,validateServiceError } from '../../../packages/audit-github-direct-service/src/index.mjs';
 export const CLI_EXIT_CODES=Object.freeze({success:0,invalid_input:2,authorization_denied:3,conflict:4,execution_unavailable:5,service_failure:6});
 const COMMON=Object.freeze(['repository-id','installation-id','repository','requester','policy','profile','parser','result-contract','report-contract','target-sha','requested-at','idempotency-key','at']);
 const COMMAND_FLAGS=Object.freeze({submit:['result-id','report-id','comment'],status:[],cancel:['reason'],report:['result-id','report-id','comment'],capabilities:[],'verify-fixture':['source-sha']});
@@ -14,7 +14,14 @@ export async function runCli(input){
   try{command=parseCliArgs(argv);}catch(error){const payload={schemaVersion:'github-direct-cli-error-v1',code:error?.code??'invalid_input',message:'Invalid GitHub Direct CLI input'};stderr(`${stableJson(payload)}\n`);return CLI_EXIT_CODES.invalid_input;}
   const raw=await service.execute(command);
   let result;
-  try{result=raw?.schemaVersion==='github-direct-service-error-v1'?validateServiceError(raw):validateServiceResult(raw);}catch{const payload={schemaVersion:'github-direct-cli-error-v1',code:'service_failure',message:'GitHub Direct service returned an invalid response'};stderr(`${stableJson(payload)}\n`);return CLI_EXIT_CODES.service_failure;}
+  try{
+    if(raw?.schemaVersion==='github-direct-service-error-v1')result=validateServiceError(raw);
+    else if(raw?.schemaVersion==='github-direct-service-result-v1'){
+      const legacy=exactKeys(raw,['schemaVersion','modeId','commandKind','jobId','targetCommitSha','state','data','completedAt','cloudflareFallback'],'$.legacyResult');
+      if(legacy.modeId!=='github-direct-audit-v1'||legacy.commandKind!==command.kind||legacy.jobId!==command.request.jobId||legacy.targetCommitSha!==command.request.targetCommitSha||legacy.cloudflareFallback!==false)fail('service_identity_mismatch','$.legacyResult');
+      result=createServiceResult({command,state:legacy.state,data:legacy.data,completedAt:legacy.completedAt});
+    }else result=validateServiceResult(raw);
+  }catch{const payload={schemaVersion:'github-direct-cli-error-v1',code:'service_failure',message:'GitHub Direct service returned an invalid response'};stderr(`${stableJson(payload)}\n`);return CLI_EXIT_CODES.service_failure;}
   const text=`${stableJson(result)}\n`;
   if(result.schemaVersion==='github-direct-service-error-v1'){stderr(text);if(result.code==='authorization_denied')return CLI_EXIT_CODES.authorization_denied;if(result.code==='stale_state'||result.code==='publication_conflict')return CLI_EXIT_CODES.conflict;return CLI_EXIT_CODES.service_failure;}
   stdout(text);return result.state==='execution_plane_unavailable'?CLI_EXIT_CODES.execution_unavailable:CLI_EXIT_CODES.success;
