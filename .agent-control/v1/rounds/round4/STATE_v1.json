@@ -80,6 +80,20 @@
     "completeTrustedAttestationBinding": true,
     "freshCombinedSuiteRequired": true
   },
+  "integrationSupersessionProcedure": {
+    "state": "prepared-not-activated",
+    "path": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
+    "blobSha": "493e987b9dd1e83f056305380c4245ba8007f2a6",
+    "controlCommitSha": "5e819dcd231166d62c19867dbbe525a6598f72eb",
+    "issueCommentId": 5159105534,
+    "currentSequence": 8,
+    "currentFrozenHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
+    "successorSequence": 9,
+    "successorBranch": "audit-round4/full-platform-integration-v2",
+    "successorStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "reconstructionPathCount": 27,
+    "activationBlockedByWorker2Sequence8Closeout": true
+  },
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
   "externalWorkstreams": [
@@ -101,8 +115,9 @@
       "blockerId": "worker2-existing-sequence8-wrong-base-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
-      "description": "All four Stage A outputs are valid, but Worker 2 sequence 8 remains active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759.",
-      "requiredResolution": "Define and execute a control-plane-approved supersession/reconstruction procedure that preserves accepted Stage 0/Checkpoint 1 artifacts without a second active assignment, silent immutable-assignment rewrite, overlapping ownership or stale ancestry.",
+      "description": "All four Stage A outputs are valid, but Worker 2 sequence 8 remains active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759. A 27-path exact reconstruction procedure is prepared but not activated.",
+      "procedurePath": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
+      "requiredResolution": "Worker 2 must first acknowledge and close sequence 8 as blocked at frozen head 8bddd31232f14597afba63ffba13f3b96069610b. After independent verification that no assignment remains active, the orchestrator may publish sequence 9 and create audit-round4/full-platform-integration-v2 at bbb4cac794865f84b65ee78a2fc78d391421c759, then Worker 2 may reconstruct only the 27 exact path/blob pairs.",
       "detectedAt": "2026-08-02T13:34:04Z"
     },
     {
@@ -111,8 +126,7 @@
       "issueNumber": 122,
       "description": "The branch is at verified Checkpoint 1 head 8bddd31232f14597afba63ffba13f3b96069610b, 35 commits ahead of the sequence-8 start, while worker-owned STATUS still records lastConsumedSequence 7 and the expected sequence-8 ACK artifact is absent.",
       "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T152910Z_worker2-sequence8-ack-status-blocker_v1.json",
-      "requiredResolution": "Worker 2 must acknowledge sequence 8 exactly once and reconcile its worker-owned status before any further integration action.",
-      "detectedAt": "2026-08-02T15:29:10Z"
+      "requiredResolution": "Worker 2 must follow issue comment 5159105534: acknowledge sequence 8 exactly once, close it as wrong-base blocked, clear active sequence/message and publish its worker-owned status/event evidence."
     },
     {
       "blockerId": "stage0-direct-takeover-validator-intake-verification-v1",
@@ -120,7 +134,7 @@
       "issueNumber": 122,
       "description": "The hardened direct-takeover validator receipt is durable on issue #122 at comment 5159019450 and supersedes the earlier wrapper/test blobs, but Worker 2 has not yet exact-transplanted the current three blobs or published a fresh combined Stage 0 test result and remote blob readback.",
       "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T160505Z_worker2-stage0-validator-receipt-superseded_v1.json",
-      "requiredResolution": "After acknowledging sequence 8, Worker 2 must use only index-legacy blob 8fd316be7ce2073c7b4290443a7fe5ceee292721, index blob 1d50a117fd216edc4678645b9cc27e4bef01bd73 and takeover-test blob 2ef7a0e9f8f0fcca5ba9e383537827c9379171e9; run the two-file Stage 0 Node test command; publish exact pass/fail counts; and verify resulting remote blobs.",
+      "requiredResolution": "On the control-plane-approved successor branch, Worker 2 must use only index-legacy blob 8fd316be7ce2073c7b4290443a7fe5ceee292721, index blob 1d50a117fd216edc4678645b9cc27e4bef01bd73 and takeover-test blob 2ef7a0e9f8f0fcca5ba9e383537827c9379171e9; run the required Stage 0 tests; publish exact results; and verify remote blobs.",
       "detectedAt": "2026-08-02T16:05:05Z"
     },
     {
@@ -137,5 +151,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T16:05:05Z"
+  "updatedAt": "2026-08-02T16:06:26Z"
 }
