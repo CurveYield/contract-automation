@@ -22,6 +22,7 @@ const ids = {
 };
 const occurredAt = '2026-08-01T02:00:00.000Z';
 const reason = 'user-request';
+const readInput = { forkId: ids.forkId, tenantId: ids.tenantId, attemptId: ids.attemptId };
 
 function request() {
   return {
@@ -130,7 +131,7 @@ async function expectRetryConverges(method, predicate) {
   const { service, store } = await setup();
   store.arm(method, predicate);
   await assert.rejects(() => service.deleteFork(deletionInput()), /simulated-/);
-  assert.equal((await service.readFork(ids.forkId)).state, 'deleting');
+  assert.equal((await service.readFork(readInput)).state, 'deleting');
   const recovered = await service.deleteFork(deletionInput());
   assert.equal(recovered.state, 'deleted');
   return { service, store, recovered };
@@ -143,7 +144,7 @@ test('enters deleting before any destructive mutation', async () => {
   assert.ok(await store.head(objectKey), 'checkpoint object must survive a failed deleting transition');
   assert.ok(await store.head(checkpointManifestKey(ids.forkId, ids.checkpointId)));
   assert.ok(await store.head(exportManifestKey(ids.forkId, ids.exportId)));
-  assert.equal((await service.readFork(ids.forkId)).state, 'ready');
+  assert.equal((await service.readFork(readInput)).state, 'ready');
 });
 
 test('recovers after checkpoint object deletion failure', async () => {
@@ -176,7 +177,8 @@ test('matching retry after successful deletion is idempotent and conflicting ret
   await assert.rejects(() => service.deleteFork(deletionInput({ occurredAt: '2026-08-01T02:00:01.000Z' })), { code: 'deletion_conflict' });
 });
 
-test('tenant index mutation seam is private and request-bound', async () => {
+test('tenant index mutation seam and unscoped record readers are private', async () => {
   const service = new ForkService(new InMemoryAuditStore());
   assert.equal(service.upsertTenantForkState, undefined);
+  await assert.rejects(() => service.readFork(ids.forkId), { code: 'invalid_type' });
 });
