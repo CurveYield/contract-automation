@@ -3,7 +3,8 @@ import { LiveForkWorkflowRuntime } from './live-fork-runtime.mjs';
 
 const ENGINE_VERSION = Object.freeze({
   ganache: '7.9.2',
-  'hardhat-edr': '3.12.0'
+  'hardhat-edr': '3.12.0',
+  'remote-rpc': 'anvil-json-rpc'
 });
 
 async function startNamedEngine(name, options) {
@@ -23,6 +24,11 @@ async function startNamedEngine(name, options) {
     const engine = await startHardhatEdrEngine(options);
     return { name, version: ENGINE_VERSION[name], ...engine };
   }
+  if (name === 'remote-rpc') {
+    const { startRemoteRpcEngine } = await import('./remote-rpc-engine.mjs');
+    const engine = await startRemoteRpcEngine(options);
+    return { name, version: ENGINE_VERSION[name], ...engine };
+  }
   throw new Error(`Unsupported fork engine: ${name}`);
 }
 
@@ -32,7 +38,7 @@ export async function startForkEngine({
   fallbackOn = [],
   ...options
 }) {
-  if (mode === 'ganache' || mode === 'hardhat-edr') {
+  if (mode === 'ganache' || mode === 'hardhat-edr' || mode === 'remote-rpc') {
     return startNamedEngine(mode, options);
   }
   if (mode === 'auto') {
