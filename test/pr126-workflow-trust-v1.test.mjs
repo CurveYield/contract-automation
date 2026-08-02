@@ -26,7 +26,7 @@ function source(path) {
 }
 
 function thirdPartyActions(text) {
-  return [...text.matchAll(/^\s*uses:\s*([^\s#]+)\s*$/gmu)]
+  return [...text.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)\s*$/gmu)]
     .map((match) => match[1])
     .filter((reference) => !reference.startsWith('./'));
 }
