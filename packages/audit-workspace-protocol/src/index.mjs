@@ -2,6 +2,7 @@ import {
   ValidationError,
   assertAuditId,
   createOperationBudget,
+  deepFreezeAuditValue,
   scanAuditForbiddenFields
 } from '../../audit-protocol/src/index.mjs';
 
@@ -87,6 +88,7 @@ function assertManifestSize(value, path) {
     throw new ValidationError('manifest_too_large', `${path} exceeds ${MAX_WORKSPACE_MANIFEST_BYTES} bytes`, path);
   }
 }
+function frozen(value) { return deepFreezeAuditValue(structuredClone(value)); }
 
 export function ingressKey(tenantId, sha256) {
   assertAuditId(tenantId, 'tenant', '$.tenantId');
@@ -139,7 +141,7 @@ export function validateUploadGrantRequest(value) {
     throw new ValidationError('invalid_content_type', `$.contentType must be ${ZIP_CONTENT_TYPE}`, '$.contentType');
   }
   assertIsoInstant(value.expiresAt, '$.expiresAt');
-  return structuredClone(value);
+  return frozen(value);
 }
 
 export function validateGitHubWorkspaceSource(value) {
@@ -158,7 +160,7 @@ export function validateGitHubWorkspaceSource(value) {
   assertString(value.refName, '$.refName', 255);
   assertSha256(value.archiveSha256, '$.archiveSha256');
   assertBytes(value.bytes, '$.bytes', MAX_SOURCE_BYTES);
-  return structuredClone(value);
+  return frozen(value);
 }
 
 export function validateWorkspaceManifest(value) {
@@ -181,11 +183,13 @@ export function validateWorkspaceManifest(value) {
   assertSha256(value.sourceSha256, '$.sourceSha256');
   assertBytes(value.sourceBytes, '$.sourceBytes', MAX_SOURCE_BYTES);
   assertSafeObjectKey(value.sourceObjectKey, '$.sourceObjectKey');
+  const expectedPrefix = `workspaces/${value.workspaceId}/`;
+  if (!value.sourceObjectKey.startsWith(expectedPrefix)) throw new ValidationError('workspace_identity_mismatch', `$.sourceObjectKey must remain under ${expectedPrefix}`, '$.sourceObjectKey');
   assertIsoInstant(value.sealedAt, '$.sealedAt');
   assertSha256(value.canonicalArchiveSha256, '$.canonicalArchiveSha256');
   assertCount(value.fileCount, '$.fileCount');
   assertManifestSize(value, '$');
-  return structuredClone(value);
+  return frozen(value);
 }
 
 export function validateLayerManifest(value) {
@@ -205,9 +209,10 @@ export function validateLayerManifest(value) {
   assertSha256(value.archiveSha256, '$.archiveSha256');
   assertBytes(value.archiveBytes, '$.archiveBytes', MAX_LAYER_BYTES);
   assertSafeObjectKey(value.archiveObjectKey, '$.archiveObjectKey');
+  if (value.archiveObjectKey !== layerArchiveKey(value.workspaceId, value.layerId)) throw new ValidationError('workspace_identity_mismatch', '$.archiveObjectKey must equal the deterministic layer key', '$.archiveObjectKey');
   assertIsoInstant(value.createdAt, '$.createdAt');
   assertString(value.generator, '$.generator', 160);
   assertCount(value.fileCount, '$.fileCount');
   assertManifestSize(value, '$');
-  return structuredClone(value);
+  return frozen(value);
 }
