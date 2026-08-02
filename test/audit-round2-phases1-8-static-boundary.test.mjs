@@ -10,7 +10,7 @@ const preserved = Object.freeze({
   '.github/workflows/github-native-simulate.yml': 'c6312e071401acdd6554bacfe753f3791b6d1502',
   'packages/runner/src/rpc-method-policy.mjs': '59dfa72f41a697d533720a4d8f939a81aeba6736',
   'packages/runner/src/fork-rpc-guard.mjs': '73690f16b506baa50ca471ce5b5566ccb601e765',
-  'packages/runner/src/run-job.mjs': 'e6489c756d43a2f294120ac3c84687030fb919db',
+  'packages/runner/src/run-job.mjs': '6c61203ce69fa4c2f317807ea477cc27e1d2df81',
   'packages/github-native-sim/src/fork-rpc-proxy.mjs': '4d7e2bd1114f5a37914b26447c9c79a1e40a58e6',
   'packages/github-native-sim/src/run-job-file.mjs': '8c4c82d76e249b74efc630c8cbf0d7707d25b5f2'
 });
