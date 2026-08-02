@@ -18,7 +18,7 @@ concurrency:
 jobs:
   simulate:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     env:
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
     steps:
@@ -39,7 +39,7 @@ jobs:
       - name: Prepare partial-report directory
         run: mkdir -p "$RUNNER_TEMP/v27-ganache-full-v1"
 
-      - name: Reconstruct and verify Ganache lifecycle runner
+      - name: Reconstruct and patch Ganache lifecycle runner
         run: |
           set -euo pipefail
           job_root='github-native-sim/jobs/v27-ganache-full-v1'
@@ -75,15 +75,17 @@ jobs:
           )
           file.write_text(source, encoding='utf-8')
           PY
-          echo '517299c64d5538ac921dd8f3907c35e736b3870f07e159de7040684246c11e93  github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
+          python "$job_root/scripts/patch-v27-runner-yb-compatibility.py" "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          patched_sha="$(sha256sum "$job_root/scripts/run-v27-ganache-lifecycle.mjs" | awk '{print $1}')"
           node --check "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
           cat > "$result_root/runner-verification.json" <<JSON
           {
             "baseRunnerCommit": "$runner_ref",
             "baseGzipSha256": "f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba",
             "baseSourceSha256": "fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe",
-            "patchedSourceSha256": "517299c64d5538ac921dd8f3907c35e736b3870f07e159de7040684246c11e93",
+            "patchedSourceSha256": "$patched_sha",
             "compilerEvmVersion": "shanghai",
+            "ybCompatibilityPatch": "verified source runtime replacement inside ephemeral Ganache",
             "syntax": "passed"
           }
           JSON
@@ -96,6 +98,8 @@ jobs:
           node --check packages/github-native-sim/src/local-state-journal.mjs
           node --check "$job_root/scripts/v27-observers.mjs"
           node --check "$job_root/scripts/ganache-call-recorder.mjs"
+          python -m py_compile "$job_root/scripts/patch-v27-runner-yb-compatibility.py"
+          bash -n "$job_root/scripts/build-yb-shanghai-runtime.sh"
 
       - name: Reconstruct and verify exact V27 Solidity sources
         run: |
@@ -126,8 +130,22 @@ jobs:
           }
           JSON
 
+      - name: Build verified YB Shanghai runtime for Ganache
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          compatibility_root="$RUNNER_TEMP/v27-ganache-full-v1/compatibility"
+          mkdir -p "$compatibility_root"
+          bash "$job_root/scripts/build-yb-shanghai-runtime.sh" \
+            "$compatibility_root/yb-shanghai-runtime.hex" \
+            "$compatibility_root/yb-shanghai-runtime-report.json"
+          jq '{address, compilerVersion, originalPc, originalByteAtPc, originalRuntimeBytes, compatibilityCompilerVersion, compatibilityRuntimeBytes, sourceBundleSha256, originalRuntimeSha256, compatibilityRuntimeSha256}' \
+            "$compatibility_root/yb-shanghai-runtime-report.json"
+
       - name: Execute one-shot V27 Ganache full simulation
         id: execute
+        env:
+          YB_SHANGHAI_RUNTIME_FILE: ${{ runner.temp }}/v27-ganache-full-v1/compatibility/yb-shanghai-runtime.hex
         run: |
           set -u
           job_root='github-native-sim/jobs/v27-ganache-full-v1'
@@ -145,7 +163,7 @@ jobs:
             printf 'success=0\n' >> "$GITHUB_OUTPUT"
           fi
           if test -f "$result_root/data-report.json"; then
-            jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), supplementalTestCount: (.supplementalTests | length), finalJournalHash}' "$result_root/data-report.json" || true
+            jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), supplementalTestCount: (.supplementalTests | length), finalJournalHash, ybCompatibility: .execution.ybGanacheCompatibility}' "$result_root/data-report.json" || true
           fi
           exit 0
 
