@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - audit-repair/phases7-8-semantic-boundaries-v1
+    paths-ignore:
+      - 'docs/verification/2026-08-01-phases7-8-semantic-repair.json'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: temp-phases7-8-semantic-repair-${{ github.ref }}
@@ -19,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -33,10 +35,35 @@ jobs:
       - name: Syntax check repair surfaces
         run: |
           node --check packages/audit-fork-protocol/src/internals.mjs
+          node --check packages/audit-forks/src/public-service.mjs
           node --check packages/audit-forks/src/service.mjs
           node --check packages/audit-forks/src/checkpoint-operations.mjs
           node --check packages/audit-controlled-merge/src/request-state.mjs
           node --check packages/audit-controlled-merge/src/relations.mjs
           node --check packages/audit-controlled-merge/src/publication-storage.mjs
           node --check packages/audit-provenance/src/index.mjs
+          node --check test/audit-phase7-proxy-boundary-v1.test.mjs
           node --check test/audit-phases7-8-semantic-boundaries-repair-v1.test.mjs
+      - name: Publish verification receipt
+        env:
+          VERIFIED_SHA: ${{ github.sha }}
+          VERIFIED_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p docs/verification
+          cat > docs/verification/2026-08-01-phases7-8-semantic-repair.json <<JSON
+          {
+            "schemaVersion": "phases7-8-semantic-repair-verification-v1",
+            "verifiedCommit": "$VERIFIED_SHA",
+            "workflowRunId": "$VERIFIED_RUN_ID",
+            "phase7Phase8NodeTests": "passed",
+            "syntaxChecks": "passed",
+            "dependenciesInstalled": false,
+            "networkOrRpcUsed": false
+          }
+          JSON
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/verification/2026-08-01-phases7-8-semantic-repair.json
+          git commit -m 'Record Phase 7-8 semantic repair verification'
+          git push origin HEAD:audit-repair/phases7-8-semantic-boundaries-v1
