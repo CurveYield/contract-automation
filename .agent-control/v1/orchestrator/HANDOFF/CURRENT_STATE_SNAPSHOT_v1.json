@@ -1,103 +1,141 @@
 {
   "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "snapshotType": "replacement-orchestrator-handoff",
-  "snapshotCreatedAt": "2026-08-01T12:43:00Z",
+  "snapshotCreatedAt": "2026-08-02T09:30:00Z",
   "timezone": "America/Los_Angeles",
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "continuityIssue": 63,
-  "warning": "This is a dated hint only. Refresh all mailbox files, issues, branches, reports, PRs, SHAs, wake requests, and Scheduled Tasks before acting.",
-  "phaseState": {
-    "phase1To3AcceptedRepairSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
-    "phase1To3ReconstructionIssue": 70,
-    "phase4IntegrationBranch": "audit-phase4/integration-v3",
-    "phase4KnownIntegrationHead": "d90099c201d3012c090b6f73dda604bd5b143c95",
-    "phase4CatalogIntegrationIssue": 72,
-    "phase4ResultContractIssue": 57,
-    "phase5AcceptedHardeningSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
-    "phase5CompatibilityIssue": 71,
-    "phase5IntegrationGate": "blocked-until-phase4-accepted",
-    "phase6AcceptedCandidateSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-    "phase6IntegrationGate": "blocked-until-phase5-accepted",
-    "worker4Disposition": "retired-no-future-assignment"
+  "round4MasterIssue": 119,
+  "round5ProductionIssue": 125,
+  "warning": "Refresh every live mailbox, issue, branch head, report and manifest before acting. This snapshot is a durable starting point, not permission to integrate a mutable head.",
+  "operatingMode": {
+    "coordination": "manual-original-chat-wake-with-github-mailboxes",
+    "scheduledTasksRequired": false,
+    "allFiveWorkersActive": true,
+    "workerStatusOwnership": "worker-owned after one-time 2026-08-02 reconciliation"
+  },
+  "round3Inputs": {
+    "worker0": {
+      "issue": 112,
+      "finalDocumentationSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "reportCommentId": 5156777973,
+      "remainingRepairOwner": "worker-1-round4"
+    },
+    "worker1": {
+      "issue": 113,
+      "finalSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "implementationSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5154958425
+    },
+    "worker2": {
+      "issue": 114,
+      "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "recommendation": "ACCEPT WITH DOCUMENTED REPAIR",
+      "reportCommentId": 5156779012,
+      "warning": "Phase 7-8 production embedded on this branch is stale and superseded"
+    },
+    "worker3": {
+      "issue": 115,
+      "finalDocumentationSha": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "codeWorkflowCandidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5156758072,
+      "compatibilityManifestId": "direct-compatibility-2a7b937fd31fac897e936414",
+      "releaseManifestId": "direct-round3-release-418edd6cf9b65dbd77032a08"
+    },
+    "worker4": {
+      "issue": 116,
+      "finalSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "implementationSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5154997216
+    }
   },
   "workers": {
     "worker-0": {
-      "mailboxSequence": 1,
-      "stateAtSnapshot": "ready-awaiting-acknowledgement",
-      "messageId": "worker-0-phase1-3-pr-chain-000001",
-      "issueNumber": 70,
-      "branch": "audit-repair/phases-1-3-pr-chain-v1",
-      "startingSha": "4a236915ed14920e77603af1c49e3d370f0b2200",
-      "nextOrchestratorAction": "wait for acknowledgement/progress; local wake request 000001 is actionable"
+      "sequence": 6,
+      "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+      "assignmentBlobSha": "d445f8e93ac6fdb364bfe195b6ebe701dec9caa0",
+      "issue": 120,
+      "branch": "audit-round4/review-integration-spine-v1",
+      "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "stage": "stage-a-cross-review-then-stage-b-acceptance"
     },
     "worker-1": {
-      "mailboxSequence": 1,
-      "stateAtSnapshot": "ready-awaiting-acknowledgement",
-      "messageId": "worker-1-phase4-catalog-api-integration-v2-000001",
-      "issueNumber": 72,
-      "branch": "audit-phase4/catalog-api-integration-v2",
-      "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "nextOrchestratorAction": "wait for acknowledgement/progress; local wake request 000005 is actionable"
+      "sequence": 5,
+      "messageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
+      "assignmentBlobSha": "a584ab7e0f1839badc586b73dc58ab7ebca08e72",
+      "issue": 121,
+      "branch": "audit-round4/review-phase78-api-compat-v1",
+      "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "stage": "stage-a-required-worker0-service-report-repair-then-stage-b-acceptance"
     },
     "worker-2": {
-      "mailboxSequence": 1,
-      "stateAtSnapshot": "working",
-      "messageId": "worker-2-phase4-result-contract-compatibility-000001",
-      "issueNumber": 57,
-      "branch": "audit-phase4/result-contract-compatibility-v1",
-      "startingSha": "d90099c201d3012c090b6f73dda604bd5b143c95",
-      "observedBranchRelation": "17-commits-ahead-0-behind",
-      "observedChangedFiles": 13,
-      "nextOrchestratorAction": "wait for valid completed status and pinned final issue report, then independently review"
+      "sequence": 8,
+      "messageId": "worker-2-round4-full-platform-integration-v1-000008",
+      "assignmentBlobSha": "ed428c965386b980a8e652d32fcfb17a58474364",
+      "issue": 122,
+      "branch": "audit-round4/full-platform-integration-v1",
+      "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+      "stage": "stage-0-preparation",
+      "productionIntakeBlockedUntilIssuesComplete": [120, 121, 123, 124]
     },
     "worker-3": {
-      "mailboxSequence": 1,
-      "stateAtSnapshot": "working",
-      "messageId": "worker-3-phase5-result-contract-compatibility-000001",
-      "issueNumber": 71,
-      "branch": "audit-phase5/result-contract-compatibility-v1",
-      "startingSha": "0145922dc09756e69e58c0eb3a9feba24c86d2fd",
-      "observedBranchRelation": "at-least-1-commit-ahead",
-      "nextOrchestratorAction": "wait for valid completed status; Phase 5 integration remains gated on accepted Phase 4"
+      "sequence": 8,
+      "messageId": "worker-3-round4-api-auth-security-review-v1-000008",
+      "assignmentBlobSha": "1f918de5b1ebe887fade4f99974a9d167e72f4ef",
+      "issue": 123,
+      "branch": "audit-round4/review-api-auth-security-v1",
+      "startingSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "stage": "stage-a-security-review-then-stage-b-acceptance"
     },
     "worker-4": {
-      "mailboxParticipation": "retired",
-      "stateAtSnapshot": "accepted-preserved-retired",
-      "completedIssueNumber": 55,
-      "branch": "audit-phase6/contracts-parsers-fixtures-v2",
-      "finalSha": "5b2575eb22b63773e24943f084a72d14f2565e1b",
-      "nextOrchestratorAction": "issue no future assignment; integrate only after Phase 5 acceptance through a different authorized agent"
+      "sequence": 3,
+      "messageId": "worker-4-round4-web-direct-e2e-review-v1-000003",
+      "assignmentBlobSha": "496f26cdcd61bb6fae9e577133bc1e903c7627a0",
+      "issue": 124,
+      "branch": "audit-round4/review-web-direct-e2e-v1",
+      "startingSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "stage": "stage-a-ui-direct-review-then-stage-b-acceptance"
     }
   },
-  "localWakeAgent": {
-    "state": "awaiting-local-bootstrap",
-    "protocolPath": ".agent-control/v1/local-wake-agent/PROTOCOL_v1.md",
-    "bootstrapPromptPath": ".agent-control/v1/local-wake-agent/BOOTSTRAP_PROMPT_v1.md",
-    "actionableTargets": ["worker-0", "worker-1"],
-    "satisfiedOrSupersededTargets": ["worker-2", "worker-3"]
+  "round4Rules": {
+    "stageARequired": [120, 121, 123, 124],
+    "integrationOwner": "worker-2",
+    "assemblyIssue": 122,
+    "masterCandidateIssue": 119,
+    "intakeMethod": "exact-owned-path-and-blob-only",
+    "broadBranchMergesForbidden": true,
+    "singleFrozenShaForSpecialistAcceptance": true,
+    "newShaInvalidatesOldAcceptances": true
   },
-  "scheduledTasksAtSnapshot": {
-    "activeRequiredCount": 5,
-    "hourlyFloor": true,
-    "tasks": [
-      "CurveYield Orchestrator Poll",
-      "CurveYield Worker 0 Poll",
-      "CurveYield Worker 1 Poll",
-      "CurveYield Worker 2 Poll",
-      "CurveYield Worker 3 Poll"
-    ],
-    "lastRunObservation": "Workers 0–3 have recorded at least one run. Worker 0 was found disabled after completion and was re-enabled for sequence 1. The orchestrator task exists and is enabled but had not yet reached its first scheduled 05:55 PT run at this snapshot."
+  "frozenSimulationAddon": {
+    "approvedMainSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "repairState": "paused-until-explicit-user-resumption",
+    "round4Rule": "byte-for-byte-only"
   },
+  "immediateOrchestratorActions": [
+    "verify each worker acknowledges its current sequence and posts startup",
+    "monitor Stage A checkpoints and independently review exact final heads",
+    "do not allow Worker 2 production intake before all four Stage A manifests are accepted",
+    "freeze and announce one assembled SHA on issue 119",
+    "collect Worker 0, 1, 3 and 4 acceptance against that same SHA",
+    "verify combined evidence before release-branch or main decisions",
+    "prepare Round 5 production test handoff and update this package before context exhaustion"
+  ],
   "standingRestrictions": [
-    "no dependency installation or download",
-    "no compilation",
-    "no deployment",
-    "no submitted-project or external audit-tool execution",
-    "no production secrets",
-    "no AWS",
+    "no production secret values",
+    "no submitted-project execution",
+    "no wallet keys, signing or transaction broadcasting",
+    "no live production deployment in Round 4",
+    "no unreviewed broad branch merge",
     "no CurveYield Lite modification",
-    "AUDIT_EXECUTION_ENABLED remains false",
-    "no merge to main"
+    "no AWS",
+    "no direct main merge before exact-SHA specialist acceptance and orchestrator verification"
   ]
 }
