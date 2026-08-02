@@ -1,69 +1,82 @@
 import { ValidationError } from '../../audit-protocol/src/index.mjs';
 import {
-  LOCKFILE_NAMES, MAX_UINT32, MUTATION_OPERATORS, PHASE5_PROFILE_IDS,
-  SEVERITIES, TEMPLATE_BY_ID, TEST_MODES
+  MAX_UINT32,
+  TEST_MODES,
+  MUTATION_OPERATORS,
+  SEVERITIES,
+  LOCKFILE_NAMES
 } from './templates.mjs';
+import {
+  knownProfile,
+  plainObject,
+  scanPhase5ForbiddenFields,
+  exactKeys,
+  uniqueArray,
+  safeRelativePath,
+  boundedString,
+  boolean,
+  integer,
+  enumeration
+} from './helpers.mjs';
 
-function plain(value, path) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) {
-    throw new ValidationError('invalid_plain_object', `${path} must be an ordinary object`, path);
-  }
-  return value;
-}
-function exact(value, keys, path) {
-  for (const key of Object.keys(value)) if (!keys.includes(key)) throw new ValidationError('unknown_field', `${path}.${key} is not allowed`, `${path}.${key}`);
-  for (const key of keys) if (!Object.hasOwn(value, key)) throw new ValidationError('missing_field', `${path}.${key} is required`, `${path}.${key}`);
-}
-function integer(value, path, min, max) {
-  if (!Number.isSafeInteger(value) || value < min || value > max) throw new ValidationError('invalid_integer', `${path} is outside the configured range`, path);
-  return value;
-}
-function boolean(value, path) {
-  if (typeof value !== 'boolean') throw new ValidationError('invalid_boolean', `${path} must be boolean`, path);
-  return value;
-}
-function strings(value, path, allowed = null, max = 64) {
-  if (!Array.isArray(value) || value.length > max) throw new ValidationError('invalid_array', `${path} is invalid`, path);
-  const seen = new Set();
-  return value.map((item, index) => {
-    if (typeof item !== 'string' || item.length < 1 || item.length > 256 || (allowed && !allowed.has(item))) throw new ValidationError('invalid_array_item', `${path}[${index}] is invalid`, `${path}[${index}]`);
-    if (seen.has(item)) throw new ValidationError('duplicate_array_item', `${path}[${index}] is duplicated`, `${path}[${index}]`);
-    seen.add(item); return item;
-  });
-}
 export function getPhase5ProfileTemplate(profileId) {
-  if (!PHASE5_PROFILE_IDS.includes(profileId)) throw new ValidationError('unknown_profile_id', 'Unsupported Phase 5 profile', '$.profileId');
-  return TEMPLATE_BY_ID.get(profileId);
+  return knownProfile(profileId);
 }
-export function validatePhase5ProfileConfiguration(profileId, value) {
-  const template = getPhase5ProfileTemplate(profileId);
-  plain(value, '$.configuration'); exact(value, template.configurationFields, '$.configuration');
-  if (profileId === 'hardhat-test-v1') return {
-    testFiles: strings(value.testFiles, '$.configuration.testFiles'),
-    grep: value.grep === null ? null : String(value.grep),
-    bail: boolean(value.bail, '$.configuration.bail'),
-    parallel: boolean(value.parallel, '$.configuration.parallel'),
-    concurrency: integer(value.concurrency, '$.configuration.concurrency', 1, 64)
-  };
-  if (profileId === 'echidna-v1') return {
-    testMode: TEST_MODES.has(value.testMode) ? value.testMode : (() => { throw new ValidationError('invalid_enum', 'invalid testMode', '$.configuration.testMode'); })(),
-    testLimit: integer(value.testLimit, '$.configuration.testLimit', 1, 10_000_000),
-    sequenceLength: integer(value.sequenceLength, '$.configuration.sequenceLength', 1, 10_000),
-    shrinkLimit: integer(value.shrinkLimit, '$.configuration.shrinkLimit', 0, 100_000),
-    seed: integer(value.seed, '$.configuration.seed', 0, MAX_UINT32),
-    workers: integer(value.workers, '$.configuration.workers', 1, 64)
-  };
-  if (profileId === 'mutation-v1') return {
-    sourceFiles: strings(value.sourceFiles, '$.configuration.sourceFiles'),
-    mutationOperators: strings(value.mutationOperators, '$.configuration.mutationOperators', MUTATION_OPERATORS),
-    maxMutants: integer(value.maxMutants, '$.configuration.maxMutants', 1, 100_000),
-    seed: integer(value.seed, '$.configuration.seed', 0, MAX_UINT32),
-    validateMutants: boolean(value.validateMutants, '$.configuration.validateMutants')
-  };
-  return {
-    lockfiles: strings(value.lockfiles, '$.configuration.lockfiles', LOCKFILE_NAMES),
-    includeDevDependencies: boolean(value.includeDevDependencies, '$.configuration.includeDevDependencies'),
-    minimumSeverity: SEVERITIES.has(value.minimumSeverity) ? value.minimumSeverity : (() => { throw new ValidationError('invalid_enum', 'invalid severity', '$.configuration.minimumSeverity'); })(),
-    failOnFindings: boolean(value.failOnFindings, '$.configuration.failOnFindings')
-  };
+
+export function validatePhase5ProfileConfiguration(profileId, configuration) {
+  const profile = knownProfile(profileId);
+  plainObject(configuration, '$.configuration');
+  scanPhase5ForbiddenFields(configuration, '$.configuration');
+  exactKeys(configuration, new Set(profile.configurationFields), '$.configuration');
+
+  let result;
+  switch (profileId) {
+    case 'hardhat-test-v1':
+      result = {
+        testFiles: uniqueArray(configuration.testFiles, '$.configuration.testFiles', (item, path) => safeRelativePath(item, path, ['.js', '.cjs', '.mjs', '.ts', '.mts', '.cts']), 32),
+        grep: boundedString(configuration.grep, '$.configuration.grep', 160),
+        bail: boolean(configuration.bail, '$.configuration.bail'),
+        parallel: boolean(configuration.parallel, '$.configuration.parallel'),
+        concurrency: integer(configuration.concurrency, '$.configuration.concurrency', 1, 8)
+      };
+      if (!result.parallel && result.concurrency !== 1) {
+        throw new ValidationError('invalid_concurrency', '$.configuration.concurrency must equal 1 when parallel is false', '$.configuration.concurrency');
+      }
+      break;
+    case 'echidna-v1':
+      result = {
+        testMode: enumeration(configuration.testMode, '$.configuration.testMode', TEST_MODES),
+        testLimit: integer(configuration.testLimit, '$.configuration.testLimit', 1, 1_000_000),
+        sequenceLength: integer(configuration.sequenceLength, '$.configuration.sequenceLength', 1, 1_000),
+        shrinkLimit: integer(configuration.shrinkLimit, '$.configuration.shrinkLimit', 0, 100_000),
+        seed: integer(configuration.seed, '$.configuration.seed', 0, MAX_UINT32),
+        workers: integer(configuration.workers, '$.configuration.workers', 1, 8)
+      };
+      break;
+    case 'mutation-v1':
+      result = {
+        sourceFiles: uniqueArray(configuration.sourceFiles, '$.configuration.sourceFiles', (item, path) => safeRelativePath(item, path, ['.sol']), 64),
+        mutationOperators: uniqueArray(configuration.mutationOperators, '$.configuration.mutationOperators', (item, path) => enumeration(item, path, MUTATION_OPERATORS), MUTATION_OPERATORS.size),
+        maxMutants: integer(configuration.maxMutants, '$.configuration.maxMutants', 1, 10_000),
+        seed: integer(configuration.seed, '$.configuration.seed', 0, MAX_UINT32),
+        validateMutants: boolean(configuration.validateMutants, '$.configuration.validateMutants')
+      };
+      break;
+    case 'dependency-scan-v1':
+      result = {
+        lockfiles: uniqueArray(configuration.lockfiles, '$.configuration.lockfiles', (item, path) => {
+          const checked = safeRelativePath(item, path, [...LOCKFILE_NAMES]);
+          const name = checked.split('/').at(-1);
+          if (!LOCKFILE_NAMES.has(name)) throw new ValidationError('invalid_lockfile', `${path} is not an allowlisted lockfile`, path);
+          return checked;
+        }, 64),
+        includeDevDependencies: boolean(configuration.includeDevDependencies, '$.configuration.includeDevDependencies'),
+        minimumSeverity: enumeration(configuration.minimumSeverity, '$.configuration.minimumSeverity', SEVERITIES),
+        failOnFindings: boolean(configuration.failOnFindings, '$.configuration.failOnFindings')
+      };
+      break;
+    default:
+      throw new ValidationError('unknown_profile_id', `Unsupported Phase 5 profileId: ${profileId}`, '$.profileId');
+  }
+  return structuredClone(result);
 }
