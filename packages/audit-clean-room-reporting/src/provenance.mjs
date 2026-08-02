@@ -1,3 +1,26 @@
-import {denseArray,identifier,digest,timestamp,sha256,frozenClone} from '../../audit-phase78-service/src/index.mjs';
+import {validateProvenanceIndex} from '../../audit-provenance/src/index.mjs';
+import {denseArray,identifier,timestamp,sha256,frozenClone} from '../../audit-phase78-service/src/index.mjs';
 import {createHiddenReportProjection} from './hidden.mjs';
-export function createProvenanceReportProjection({index,nodeId,visibleCampaignIds,reportedAt}){const visible=new Set(denseArray(visibleCampaignIds,'$.visibleCampaignIds',10000).map((x,i)=>identifier(x,`$.visibleCampaignIds[${i}]`))),target=identifier(nodeId,'$.nodeId');const rawNodes=denseArray(index.nodes,'$.index.nodes',200000),node=rawNodes.find(item=>item.nodeId===target);if(!node||(node.campaignId!==null&&!visible.has(node.campaignId)))return createHiddenReportProjection();const nodes=rawNodes.filter(item=>item.campaignId===null||visible.has(item.campaignId)).map(item=>({nodeId:identifier(item.nodeId,'$.node.nodeId'),campaignId:item.campaignId===null?null:identifier(item.campaignId,'$.node.campaignId'),type:identifier(item.type,'$.node.type'),digest:digest(item.digest,'$.node.digest')})).sort((a,b)=>a.nodeId.localeCompare(b.nodeId));const ids=new Set(nodes.map(item=>item.nodeId));const edges=denseArray(index.edges,'$.index.edges',400000).filter(item=>ids.has(item.from)&&ids.has(item.to)).map(item=>({edgeId:identifier(item.edgeId,'$.edge.edgeId'),from:identifier(item.from,'$.edge.from'),to:identifier(item.to,'$.edge.to'),type:identifier(item.type,'$.edge.type')})).sort((a,b)=>a.edgeId.localeCompare(b.edgeId));const core={schemaVersion:'audit-phase9-provenance-report-v1',indexId:identifier(index.indexId,'$.index.indexId'),indexDigest:digest(index.indexDigest,'$.index.indexDigest'),mergeId:identifier(index.mergeId,'$.index.mergeId'),nodeId:target,nodes,edges,reportedAt:timestamp(reportedAt,'$.reportedAt')};const reportDigest=sha256(core);return frozenClone({...core,reportId:`provenance-report-${reportDigest.slice(7,31)}`,reportDigest});}
+
+export function createProvenanceReportProjection({index,nodeId,visibleCampaignIds,reportedAt}){
+ const normalized=validateProvenanceIndex(index);
+ const visible=new Set(denseArray(visibleCampaignIds,'$.visibleCampaignIds',10000).map((x,i)=>identifier(x,`$.visibleCampaignIds[${i}]`)));
+ const target=identifier(nodeId,'$.nodeId');
+ const node=normalized.nodes.find(item=>item.nodeId===target);
+ if(!node||(node.campaignId!==null&&!visible.has(node.campaignId)))return createHiddenReportProjection();
+ const nodes=normalized.nodes.filter(item=>item.campaignId===null||visible.has(item.campaignId)).map(item=>({
+  nodeId:item.nodeId,campaignId:item.campaignId,type:item.type,digest:item.digest
+ })).sort((a,b)=>a.nodeId.localeCompare(b.nodeId));
+ const ids=new Set(nodes.map(item=>item.nodeId));
+ const edges=normalized.edges.filter(item=>ids.has(item.from)&&ids.has(item.to)).map(item=>({
+  edgeId:item.edgeId,from:item.from,to:item.to,type:item.type
+ })).sort((a,b)=>a.edgeId.localeCompare(b.edgeId));
+ const visibleIndexCore={mergeId:normalized.mergeId,nodes,edges};
+ const indexDigest=sha256(visibleIndexCore);
+ const core={
+  schemaVersion:'audit-phase9-provenance-report-v2',mergeId:normalized.mergeId,nodeId:target,
+  indexDigest,nodes,edges,reportedAt:timestamp(reportedAt,'$.reportedAt')
+ };
+ const reportDigest=sha256(core);
+ return frozenClone({...core,reportId:`provenance-report-${reportDigest.slice(7,31)}`,reportDigest});
+}
