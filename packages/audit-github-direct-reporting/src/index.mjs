@@ -32,3 +32,70 @@ export function validateArtifactMetadataIndex(value){
   if(new Set(items.map((item)=>item.artifactId)).size!==items.length)fail('duplicate_identity','$.items');
   return frozenClone({schemaVersion:v.schemaVersion,jobId,targetCommitSha,items});
 }
+
+export function validateSubmissionReportingBundle(value){
+  const v=exactKeys(value,['schemaVersion','modeId','jobId','targetCommitSha','publications','publishedAt'],'$');
+  if(v.schemaVersion!=='github-direct-submission-reporting-v1')fail('invalid_schema','$.schemaVersion');
+  if(v.modeId!=='github-direct-audit-v1')fail('invalid_mode','$.modeId');
+  const jobId=identifier(v.jobId,'$.jobId');
+  const targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha');
+  const publishedAt=timestamp(v.publishedAt,'$.publishedAt');
+  const publications=denseArray(v.publications,'$.publications',1).map(validatePublicationPlan);
+  if(publications.length!==1)fail('invalid_publications','$.publications');
+  const check=publications[0];
+  if(
+    check.kind!=='check' || check.jobId!==jobId || check.targetCommitSha!==targetCommitSha ||
+    check.at!==publishedAt || check.name!=='CurveYield GitHub Direct Audit' ||
+    check.summary!=='Awaiting executor; submitted source was not executed.' ||
+    check.conclusion!=='neutral'
+  ) fail('reporting_binding_mismatch','$.publications');
+  return frozenClone({schemaVersion:v.schemaVersion,modeId:v.modeId,jobId,targetCommitSha,publications,publishedAt});
+}
+
+export function validateCancellationReportingBundle(value){
+  const v=exactKeys(value,['schemaVersion','modeId','jobId','targetCommitSha','resultManifest','reportIndex','ledgerPlans','publications','publishedAt'],'$');
+  if(v.schemaVersion!=='github-direct-cancellation-reporting-v1')fail('invalid_schema','$.schemaVersion');
+  if(v.modeId!=='github-direct-audit-v1')fail('invalid_mode','$.modeId');
+  const jobId=identifier(v.jobId,'$.jobId');
+  const targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha');
+  const publishedAt=timestamp(v.publishedAt,'$.publishedAt');
+  const resultManifest=validateResultManifest(v.resultManifest);
+  const reportIndex=validateReportIndex(v.reportIndex);
+  if(
+    resultManifest.jobId!==jobId || resultManifest.targetCommitSha!==targetCommitSha ||
+    resultManifest.outcome!=='cancelled' || resultManifest.executionState!=='not_executed' ||
+    resultManifest.resultDigest!==null || resultManifest.producedAt!==publishedAt ||
+    reportIndex.jobId!==jobId || reportIndex.targetCommitSha!==targetCommitSha ||
+    reportIndex.publishedAt!==publishedAt
+  ) fail('reporting_identity_mismatch','$.resultManifest');
+  const ledgerPlans=denseArray(v.ledgerPlans,'$.ledgerPlans',2).map(validateLedgerMutation);
+  if(ledgerPlans.length!==2||ledgerPlans.some((plan)=>plan.operation!=='create-immutable')){
+    fail('reporting_binding_mismatch','$.ledgerPlans');
+  }
+  const resultInfo=ledgerPathInfo(ledgerPlans[0].path,'$.ledgerPlans[0].path');
+  const reportInfo=ledgerPathInfo(ledgerPlans[1].path,'$.ledgerPlans[1].path');
+  if(
+    resultInfo.kind!=='result' || reportInfo.kind!=='report' ||
+    resultInfo.jobId!==jobId || reportInfo.jobId!==jobId ||
+    !resultInfo.resultId?.startsWith('cancel-result-v') ||
+    !reportInfo.reportId?.startsWith('cancel-report-v') ||
+    canonicalJson(ledgerPlans[0].content)!==canonicalJson(resultManifest) ||
+    canonicalJson(ledgerPlans[1].content)!==canonicalJson(reportIndex) ||
+    reportIndex.entries.length!==1 || reportIndex.entries[0].reportId!==reportInfo.reportId ||
+    reportIndex.entries[0].reportDigest!==resultManifest.manifestDigest
+  ) fail('reporting_binding_mismatch','$.ledgerPlans');
+  const publications=denseArray(v.publications,'$.publications',2).map(validatePublicationPlan);
+  if(publications.length!==2||publications[0].kind!=='status'||publications[1].kind!=='comment'){
+    fail('reporting_binding_mismatch','$.publications');
+  }
+  const [status,comment]=publications;
+  if(
+    status.jobId!==jobId || comment.jobId!==jobId ||
+    status.targetCommitSha!==targetCommitSha || comment.targetCommitSha!==targetCommitSha ||
+    status.at!==publishedAt || comment.at!==publishedAt ||
+    status.state!=='error' || status.description!=='GitHub Direct audit cancelled' ||
+    status.context!=='curveyield/github-direct-audit' ||
+    comment.body!=='GitHub Direct audit cancelled before submitted-project execution.'
+  ) fail('reporting_binding_mismatch','$.publications');
+  return frozenClone({schemaVersion:v.schemaVersion,modeId:v.modeId,jobId,targetCommitSha,resultManifest,reportIndex,ledgerPlans,publications,publishedAt});
+}
