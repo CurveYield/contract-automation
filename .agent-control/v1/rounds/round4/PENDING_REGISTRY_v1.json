@@ -1,0 +1,93 @@
+{
+  "protocolVersion": 1,
+  "round": 4,
+  "state": "pending_round3_completion",
+  "masterIssueNumber": 119,
+  "productionAcceptanceIssueNumber": 125,
+  "activationPolicy": {
+    "pollCadence": "hourly",
+    "requireCompletedStatus": true,
+    "requireNullActiveSequence": true,
+    "requireExactFinalSha": true,
+    "requireDurableFinalReport": true,
+    "requireBranchHeadMatch": true,
+    "requireManifestAgreement": true,
+    "neverUseIntermediateSha": true,
+    "publishAssignmentBeforeCurrentPointer": true,
+    "singleActiveAssignmentPerWorker": true
+  },
+  "workers": [
+    {
+      "workerId": "worker-0",
+      "nextSequence": 6,
+      "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+      "issueNumber": 120,
+      "branch": "audit-round4/review-integration-spine-v1",
+      "startingShaSource": ".agent-control/v1/workers/worker-2/STATUS_v1.json#finalSha",
+      "requiredSourceIssue": 114,
+      "dependsOn": ["worker-2-round3-completed"],
+      "stageAReviews": "worker-2-phase1-6-and-integration-spine",
+      "stageBAccepts": "assembled-phase1-8-semantics"
+    },
+    {
+      "workerId": "worker-1",
+      "nextSequence": 5,
+      "messageId": "worker-1-round4-phase78-api-review-v1-000005",
+      "issueNumber": 121,
+      "branch": "audit-round4/review-phase78-api-compat-v1",
+      "startingShaSource": ".agent-control/v1/workers/worker-0/STATUS_v1.json#finalSha",
+      "requiredSourceIssue": 112,
+      "dependsOn": ["worker-0-round3-completed"],
+      "stageAReviews": "worker-0-phase7-8-service-reporting",
+      "stageBAccepts": "assembled-api-gpt-auth"
+    },
+    {
+      "workerId": "worker-2",
+      "nextSequence": 8,
+      "messageId": "worker-2-round4-full-platform-integration-v1-000008",
+      "issueNumber": 122,
+      "branch": "audit-round4/full-platform-integration-v1",
+      "startingShaSource": "accepted-or-repaired-worker-2-round3-head-from-issue-120",
+      "requiredSourceIssue": 114,
+      "dependsOn": ["all-round3-completed", "issues-120-121-123-124-stageA-verdicts"],
+      "stageAReviews": "all-candidate-manifests-and-overlaps",
+      "stageBAccepts": "integration-lead-and-release-candidate-assembly"
+    },
+    {
+      "workerId": "worker-3",
+      "nextSequence": 8,
+      "messageId": "worker-3-round4-api-auth-security-review-v1-000008",
+      "issueNumber": 123,
+      "branch": "audit-round4/review-api-auth-security-v1",
+      "startingShaSource": ".agent-control/v1/workers/worker-1/STATUS_v1.json#finalSha",
+      "requiredSourceIssue": 113,
+      "dependsOn": ["worker-1-round3-completed"],
+      "stageAReviews": "worker-1-api-gpt-auth",
+      "stageBAccepts": "assembled-trust-security-workflows"
+    },
+    {
+      "workerId": "worker-4",
+      "nextSequence": 3,
+      "messageId": "worker-4-round4-web-direct-e2e-review-v1-000003",
+      "issueNumber": 124,
+      "branch": "audit-round4/review-web-direct-e2e-v1",
+      "startingShaSource": ".agent-control/v1/workers/worker-4/STATUS_v1.json#finalSha",
+      "requiredSourceIssue": 116,
+      "externalSourceStatus": ".agent-control/v1/workers/worker-3/STATUS_v1.json#finalSha",
+      "dependsOn": ["worker-3-round3-completed", "worker-4-round3-completed"],
+      "stageAReviews": "worker-3-github-direct-and-public-ui-compatibility",
+      "stageBAccepts": "assembled-web-accessibility-e2e"
+    }
+  ],
+  "integrationOrder": [
+    "accepted-or-repaired-worker-2-phase1-6-base",
+    "accepted-or-repaired-worker-0-phase7-8-paths",
+    "accepted-or-repaired-worker-1-api-paths",
+    "accepted-or-repaired-worker-3-github-direct-paths",
+    "accepted-or-repaired-worker-4-web-paths",
+    "field-level-shared-file-unions",
+    "current-main-protected-simulation-addon-byte-for-byte",
+    "combined-release-metadata-and-round5-plan"
+  ],
+  "updatedAt": "2026-08-02T03:28:00Z"
+}
