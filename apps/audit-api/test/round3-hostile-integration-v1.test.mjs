@@ -171,13 +171,18 @@ test('concurrent tenant/workspace scopes remain isolated across provider argumen
   assert.equal(responses.every((response) => response.status === 200), true);
   assert.equal(etags.size, 3);
   assert.equal(observed.length, 24);
-  for (const [index, argument] of observed.entries()) {
-    const expected = cases[Math.floor(index / 8)];
-    assert.equal(argument.tenantId, expected[0]);
-    assert.equal(argument.workspaceId, expected[1]);
+  const counts = new Map();
+  for (const argument of observed) {
     assert.equal('token' in argument, false);
     assert.equal('authorization' in argument, false);
+    const key = `${argument.tenantId}/${argument.workspaceId}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+  assert.deepEqual(counts, new Map([
+    ['tenant-a/workspace-a', 8],
+    ['tenant-b/workspace-b', 8],
+    ['tenant-c/workspace-c', 8]
+  ]));
 });
 
 test('request-supplied capability, execution, scope, and identity fields never alter the server-owned response', async () => {
