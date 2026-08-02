@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "audit-round3-protected-addon-baseline-v1",
+  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+  "present": [
+    {
+      "path": ".github/workflows/github-native-sim-ci.yml",
+      "blobSha": "ef3a16934d06cf56a1b2fb71a16dfb8ffdbc3682"
+    },
+    {
+      "path": ".github/workflows/github-native-simulate.yml",
+      "blobSha": "54e446d4a715ca9678ed4d7434f7ba90b2c67c96"
+    },
+    {
+      "path": "docs/github-native-simulation.md",
+      "blobSha": "ca424fc87389c0740fb78d59e8df1e60e3efd547"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-01-github-native-simulation.md",
+      "blobSha": "b8ba8b7071c09c62e05a594be0feb1870d14a4ea"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-01-github-native-simulation-design.md",
+      "blobSha": "d0b9203bb99a16879224408a3110060be74609c2"
+    },
+    {
+      "path": "github-native-sim/examples/compile-smoke/job.json",
+      "blobSha": "3bdb397342dede3a7ff8b54c44c26ddff922910d"
+    },
+    {
+      "path": "github-native-sim/examples/compile-smoke/project/Counter.sol",
+      "blobSha": "cb9f2d7cb8edf28445e6d20dfc688be57ffbb514"
+    },
+    {
+      "path": "packages/github-native-sim/README.md",
+      "blobSha": "ee6640f1c700c0ddacf6bc5c837b5808cbef97e8"
+    },
+    {
+      "path": "packages/github-native-sim/fixtures/ethereum-genesis-rpc-response.json",
+      "blobSha": "965f0c5915fc57bc046d573285aefeec4908aa2e"
+    },
+    {
+      "path": "packages/github-native-sim/src/chain-fixtures.mjs",
+      "blobSha": "6a7c9b0e7300765fe9f8485eed4cbdc0fe9ec9db"
+    },
+    {
+      "path": "packages/github-native-sim/src/cli.mjs",
+      "blobSha": "17d3a5597bbd83ed155ef115efa2fd2528d2ff0b"
+    },
+    {
+      "path": "packages/github-native-sim/src/fork-rpc-proxy.mjs",
+      "blobSha": "bf34fe47348f1fbe0cbee4ba47b4672c18aa71f3"
+    },
+    {
+      "path": "packages/github-native-sim/src/ganache-accounts.mjs",
+      "blobSha": "f1018079c3f552dfb2c6719698296a831efdcd2b"
+    },
+    {
+      "path": "packages/github-native-sim/src/project.mjs",
+      "blobSha": "d1529658c7f6dda3ef2f41b255fe99aa66de4a9d"
+    },
+    {
+      "path": "packages/github-native-sim/src/run-job-file.mjs",
+      "blobSha": "75ddc6b77b81ecd6d55e94c905e30bed47b34853"
+    },
+    {
+      "path": "packages/github-native-sim/src/schema.mjs",
+      "blobSha": "4efcbf5b8b95a68f8e4d476f299f4f93e951dfd7"
+    },
+    {
+      "path": "packages/github-native-sim/src/select-job.mjs",
+      "blobSha": "c0cc36e865d7cfd78464ce3e1ef9012f7194f173"
+    },
+    {
+      "path": "packages/github-native-sim/test/chain-fixtures.test.mjs",
+      "blobSha": "36dac90f4a05432438a1a107a068c07a8460c846"
+    },
+    {
+      "path": "packages/github-native-sim/test/cli.test.mjs",
+      "blobSha": "c7c96ab04ca06b21785bfedbf1beca20fdc827ef"
+    },
+    {
+      "path": "packages/github-native-sim/test/fixtures/compile/job.json",
+      "blobSha": "39ae62eeb506762ace3cfd4213442094d4bb837e"
+    },
+    {
+      "path": "packages/github-native-sim/test/fixtures/compile/project/Counter.sol",
+      "blobSha": "cb9f2d7cb8edf28445e6d20dfc688be57ffbb514"
+    },
+    {
+      "path": "packages/github-native-sim/test/fixtures/missing-rpc/job.json",
+      "blobSha": "163369402633e557b93b95b55321af79d3794834"
+    },
+    {
+      "path": "packages/github-native-sim/test/fixtures/missing-rpc/project/Counter.sol",
+      "blobSha": "567d7ee7c892b549084e29a5c677c949e8c998b5"
+    },
+    {
+      "path": "packages/github-native-sim/test/fork-metadata.test.mjs",
+      "blobSha": "19904d4938cdd65a5b54afea7bcd91b21c17e720"
+    },
+    {
+      "path": "packages/github-native-sim/test/fork-rpc-proxy.test.mjs",
+      "blobSha": "3dfc760d61230a04364ff39be9bec37ce68495dd"
+    },
+    {
+      "path": "packages/github-native-sim/test/ganache-accounts.test.mjs",
+      "blobSha": "8dd2c84a03cba29bc7a900c43264e47d1cb5023f"
+    },
+    {
+      "path": "packages/github-native-sim/test/project.test.mjs",
+      "blobSha": "bc2af67be9a42ef66a59fce301bf2de9ae0f3a87"
+    },
+    {
+      "path": "packages/github-native-sim/test/run-job-file.test.mjs",
+      "blobSha": "74af38d3b185453e71c7339d7f31d2efb499c36c"
+    },
+    {
+      "path": "packages/github-native-sim/test/schema.test.mjs",
+      "blobSha": "1430871402f6f509b4b590c72d1e9f9871ff769f"
+    },
+    {
+      "path": "packages/github-native-sim/test/select-job.test.mjs",
+      "blobSha": "3225a35983b8866882ae0cd6f140c722208240b2"
+    }
+  ],
+  "absent": [
+    {
+      "path": "packages/runner/src/rpc-method-policy.mjs",
+      "proof": "404 at starting SHA"
+    },
+    {
+      "path": "packages/runner/src/fork-rpc-guard.mjs",
+      "proof": "404/not present in starting lineage"
+    }
+  ],
+  "presentCount": 30,
+  "absentCount": 2
+}

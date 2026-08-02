@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "audit-round3-phase78-source-truth-v1",
+  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+  "priorHeads": {
+    "issue97": "4c875bb9291d3e714af9cd0013ee5d460f576a2b",
+    "issue101": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+    "issue111": "superseded-by-issue-112"
+  },
+  "findings": [
+    {
+      "id": "P7-TRANSIENT-STATES",
+      "claim": "checkpoint/export/restore lifecycle states are implemented",
+      "truth": "unsupported",
+      "productionEvidence": "checkpoint-operations writes records and indexes without transitionFork",
+      "redTest": "checkpoint/export/restore enter transient state and return ready"
+    },
+    {
+      "id": "P7-RETRY-RECOVERY",
+      "claim": "partial-write retry recovery covers Phase 7 operations",
+      "truth": "overstated",
+      "productionEvidence": "only deletion has explicit retry-state reconciliation",
+      "redTest": "checkpoint failure leaves checkpointing state"
+    },
+    {
+      "id": "P7-HOSTILE-GRAPH",
+      "claim": "Phase 7 hostile objects are deterministically bounded",
+      "truth": "unsupported-for-arrays",
+      "productionEvidence": "assertSafeGraph reads Array.isArray, length and indexes directly",
+      "redTest": "array getter is not invoked; revoked array maps hostile_reflection"
+    },
+    {
+      "id": "P7-SCOPED-READS",
+      "claim": "public fork/checkpoint reads are tenant scoped",
+      "truth": "unsupported",
+      "productionEvidence": "ForkService exports readFork(forkId), readRequest(forkId), readCheckpoint(forkId, checkpointId)",
+      "redTest": "scoped public read signatures only"
+    },
+    {
+      "id": "P8-MERGE-REQUEST",
+      "claim": "validateMergeRequest enforces builder semantics",
+      "truth": "unsupported",
+      "productionEvidence": "validator omits minimum input and duplicate campaign checks",
+      "redTest": "one input and duplicate campaign rejection"
+    },
+    {
+      "id": "P8-MERGE-MANIFEST",
+      "claim": "validateMergeManifest validates canonical nested semantics",
+      "truth": "unsupported",
+      "productionEvidence": "validator discards terminal digest normalization and does not validate report refs or operation values",
+      "redTest": "malformed report digest and negative operation count rejection"
+    },
+    {
+      "id": "P8-RELATIONS",
+      "claim": "relation validators prove relation semantics",
+      "truth": "unsupported",
+      "productionEvidence": "validators omit member uniqueness/material consistency and actual conflict-field recomputation",
+      "redTest": "duplicate/member-material and conflict-field mutations"
+    },
+    {
+      "id": "P8-PROVENANCE-HOSTILE",
+      "claim": "provenance classification is hostile-safe",
+      "truth": "unsupported",
+      "productionEvidence": "createProvenanceIndex reads item.schemaVersion directly",
+      "redTest": "schemaVersion getter not invoked; revoked proxy maps hostile_reflection"
+    },
+    {
+      "id": "P9-CORE-DEPENDENCY",
+      "claim": "Phase 9 service/report lifecycle truth is fully grounded in accepted core",
+      "truth": "requires-reconciliation",
+      "productionEvidence": "service/report plans were accepted before the eight core semantic defects were identified",
+      "redTest": "Round 3 service/report reconciliation after core repair"
+    }
+  ],
+  "observedRed": {
+    "testFiles": 2,
+    "tests": 15,
+    "passed": 0,
+    "failed": 15
+  }
+}

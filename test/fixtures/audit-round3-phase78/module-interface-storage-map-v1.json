@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "audit-round3-phase78-module-storage-map-v1",
+  "startingSha": "13af0c6c6c3d74ceacdc1894d6f3146460884fb4",
+  "modules": [
+    {
+      "path": "packages/audit-fork-protocol/src/internals.mjs",
+      "interfaces": [
+        "assertSafeGraph",
+        "canonicalJson"
+      ],
+      "repair": "descriptor-safe hostile traversal"
+    },
+    {
+      "path": "packages/audit-forks/src/service.mjs",
+      "interfaces": [
+        "readForkForTenant",
+        "readCheckpointForTenant",
+        "internal record readers",
+        "transitionFork"
+      ],
+      "repair": "scoped reads and lifecycle orchestration"
+    },
+    {
+      "path": "packages/audit-forks/src/checkpoint-operations.mjs",
+      "interfaces": [
+        "publishCheckpointOperation",
+        "exportCheckpointOperation",
+        "restoreCheckpointOperation",
+        "deleteForkOperation"
+      ],
+      "repair": "transient states, idempotency, partial-write recovery"
+    },
+    {
+      "path": "packages/audit-controlled-merge/src/request-state.mjs",
+      "interfaces": [
+        "validateMergeRequest"
+      ],
+      "repair": "builder/validator semantic parity"
+    },
+    {
+      "path": "packages/audit-controlled-merge/src/publication-storage.mjs",
+      "interfaces": [
+        "validateMergeManifest"
+      ],
+      "repair": "nested canonical semantic validation"
+    },
+    {
+      "path": "packages/audit-controlled-merge/src/relations.mjs",
+      "interfaces": [
+        "validateDuplicateRelation",
+        "validateConflictRelation"
+      ],
+      "repair": "member/material/conflict semantics"
+    },
+    {
+      "path": "packages/audit-provenance/src/index.mjs",
+      "interfaces": [
+        "createProvenanceIndex",
+        "validateProvenanceIndex"
+      ],
+      "repair": "descriptor-safe classification"
+    }
+  ],
+  "storageOperations": [
+    {
+      "operation": "checkpoint",
+      "transition": [
+        "ready",
+        "checkpointing",
+        "ready"
+      ],
+      "immutableWrites": [
+        "checkpoint object",
+        "checkpoint manifest"
+      ],
+      "mutableWrites": [
+        "checkpoint index",
+        "fork current",
+        "tenant fork index"
+      ],
+      "failureBoundaries": [
+        "enter transient",
+        "object",
+        "manifest",
+        "index",
+        "return ready"
+      ]
+    },
+    {
+      "operation": "export",
+      "transition": [
+        "ready",
+        "exporting",
+        "ready"
+      ],
+      "immutableWrites": [
+        "export manifest"
+      ],
+      "mutableWrites": [
+        "export index",
+        "fork current",
+        "tenant fork index"
+      ],
+      "failureBoundaries": [
+        "enter transient",
+        "manifest",
+        "index",
+        "return ready"
+      ]
+    },
+    {
+      "operation": "restore",
+      "transition": [
+        "ready",
+        "restoring",
+        "ready"
+      ],
+      "immutableWrites": [
+        "restore manifest"
+      ],
+      "mutableWrites": [
+        "fork current",
+        "tenant fork index"
+      ],
+      "failureBoundaries": [
+        "enter transient",
+        "manifest",
+        "return ready"
+      ]
+    },
+    {
+      "operation": "delete",
+      "transition": [
+        "ready|transient",
+        "deleting",
+        "deleted"
+      ],
+      "immutableWrites": [
+        "tombstone"
+      ],
+      "destructive": [
+        "checkpoint objects/manifests",
+        "export manifests"
+      ],
+      "mutableWrites": [
+        "fork current",
+        "tenant fork index"
+      ],
+      "failureBoundaries": [
+        "enter deleting",
+        "each delete",
+        "tombstone",
+        "deleted CAS"
+      ]
+    }
+  ]
+}
