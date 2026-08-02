@@ -22,7 +22,7 @@ export const UI_CONTRACTS_V2 = Object.freeze({
   campaign: defineContract(['id', 'name', 'status'], ['jobs', 'workspaceId', 'updatedAt', 'summary', 'admittedAt']),
   job: defineContract(['id', 'status'], ['campaignId', 'title', 'error', 'updatedAt', 'reportId', 'resourceLimit', 'timeoutAt', 'admittedAt']),
   evidence: defineContract(['id', 'title'], ['severity', 'url', 'summary', 'kind', 'visible', 'referenceId']),
-  report: defineContract(['id', 'title', 'status'], ['createdAt', 'sourceUrl', 'evidence', 'summary', 'workspaceId', 'campaignId', 'jobId', 'references']),
+  report: defineContract(['id', 'title', 'status'], ['createdAt', 'sourceUrl', 'evidence', 'summary', 'workspaceId', 'campaignId', 'jobId', 'references', 'visible']),
   fork: defineContract(['id', 'status'], ['name', 'checkpoints', 'exports', 'exportStatus', 'restoreStatus', 'deleteStatus', 'tombstoneStatus', 'retentionExpiresAt', 'createdAt']),
   checkpoint: defineContract(['id', 'status'], ['createdAt', 'label', 'exportUrl', 'forkId']),
   export: defineContract(['id', 'status'], ['createdAt', 'label', 'url', 'checkpointId', 'forkId', 'sizeBytes']),
@@ -35,7 +35,7 @@ export const UI_CONTRACTS_V2 = Object.freeze({
   profile: defineContract(['id', 'name', 'version'], ['available', 'summary', 'toolVersion', 'parserId']),
   parser: defineContract(['id', 'name', 'version'], ['available', 'summary', 'profileId']),
   result: defineContract(['id', 'status'], ['profileId', 'parserId', 'summary', 'reportId', 'createdAt', 'evidenceCount']),
-  githubDirectStatus: defineContract(['id', 'status'], ['repository', 'targetSha', 'checkStatus', 'reportId', 'updatedAt', 'reason']),
+  githubDirectStatus: defineContract(['id', 'status'], ['repository', 'targetSha', 'checkStatus', 'reportId', 'updatedAt', 'reason', 'sourceSchema', 'commandKind', 'serviceState', 'resultId', 'resultDigest', 'executionState', 'outcome', 'reportDigest', 'retryable', 'errorCode']),
   releaseProvenance: defineContract(['id', 'version'], ['candidateSha', 'startingSha', 'compatibilityVersions', 'createdAt', 'status']),
   diagnostic: defineContract(['code', 'message'], ['correlationId', 'retryAfterSeconds', 'quotaRemaining', 'retentionDays', 'publicationStatus', 'staleState', 'details', 'retryPlan', 'transportState', 'reportId'])
 });
