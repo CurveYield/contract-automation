@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 import sys
 
 if len(sys.argv) != 2:
@@ -73,7 +74,7 @@ migration_new = """    await branchRecorder.contractCall({ label: 'branch deposi
       passed: migrationSpendable > 0n,
       detail: { retainedTokenState: plain(migrationReserve) }
     });
-    if (migrationSpendable === 0n) throw new Error('explicit migration reserve was not credited');
+    if (migrationSpendable == 0n) throw new Error('explicit migration reserve was not credited');
     const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
 """
 source = replace_once_or_already(source, migration_old, migration_new, 'explicit-migration branch seed')
@@ -85,3 +86,21 @@ reverse_min_new = """        await branchRecorder.contractCall({ label: 'migrate
 source = replace_once_or_already(source, reverse_min_old, reverse_min_new, 'reverse migration minimum')
 
 path.write_text(source, encoding='utf-8')
+
+# The archived helper predates ethers' synchronous JsonRpcProvider.destroy().
+# Wrap every direct destroy() result before attaching .catch(), preserving cleanup
+# semantics while avoiding `undefined.catch` before the lifecycle can begin.
+engine_path = path.with_name('hardhat-engine.mjs')
+if engine_path.exists():
+    engine_source = engine_path.read_text(encoding='utf-8')
+    engine_source = re.sub(
+        r'await\s+([A-Za-z_$][A-Za-z0-9_$]*)\.destroy\(\)\.catch\(',
+        r'await Promise.resolve(\1.destroy()).catch(',
+        engine_source,
+    )
+    engine_source = re.sub(
+        r'(?<!Promise\.resolve\()([A-Za-z_$][A-Za-z0-9_$]*)\.destroy\(\)\.catch\(',
+        r'Promise.resolve(\1.destroy()).catch(',
+        engine_source,
+    )
+    engine_path.write_text(engine_source, encoding='utf-8')
