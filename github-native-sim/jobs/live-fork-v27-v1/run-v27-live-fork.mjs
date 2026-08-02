@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -32,6 +33,66 @@ function childResult(child) {
     child.once('error', reject);
     child.once('exit', (code, signal) => resolve({ code, signal }));
   });
+}
+
+function closeWriteStream(stream) {
+  return new Promise((resolve, reject) => {
+    stream.once('error', reject);
+    stream.end(resolve);
+  });
+}
+
+function progressSummary(report) {
+  const cycles = Array.isArray(report?.cycles) ? report.cycles : [];
+  const postMigrationCycles = Array.isArray(report?.postMigrationCycles) ? report.postMigrationCycles : [];
+  const allCycles = [...cycles, ...postMigrationCycles];
+  const latestCycle = allCycles.at(-1);
+  const latestHarvest = latestCycle?.reconciliations?.harvestEvents?.at(-1) ?? null;
+  const assertions = Array.isArray(report?.assertions) ? report.assertions : [];
+  const calls = Array.isArray(report?.calls) ? report.calls : [];
+  return {
+    status: report?.status ?? 'running',
+    calls: calls.length,
+    successfulTransactions: calls.filter((entry) => entry?.method === 'eth_sendTransaction' && entry?.receiptStatus === 1).length,
+    assertionsPassed: assertions.filter((entry) => entry?.passed === true).length,
+    assertionCount: assertions.length,
+    harvestCycles: cycles.length,
+    postMigrationCycles: postMigrationCycles.length,
+    latestCycle: latestCycle?.cycle ?? null,
+    latestHarvest: latestHarvest && {
+      grossSdYB: latestHarvest.grossSdYB ?? '0',
+      feeSdYB: latestHarvest.feeSdYB ?? '0',
+      retainedSdYB: latestHarvest.retainedSdYB ?? '0',
+      complete: latestHarvest.complete === true
+    }
+  };
+}
+
+function startProgressReporter(reportPath) {
+  let stopped = false;
+  let lastSummary = '';
+  const check = async () => {
+    if (stopped) return;
+    try {
+      const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+      const summary = JSON.stringify(progressSummary(report));
+      if (summary !== lastSummary) {
+        process.stdout.write(`[v27-progress] ${summary}\n`);
+        lastSummary = summary;
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+        process.stderr.write(`[v27-progress] report read warning: ${redact(error?.message ?? String(error))}\n`);
+      }
+    }
+  };
+  const timer = setInterval(check, 10_000);
+  void check();
+  return async () => {
+    stopped = true;
+    clearInterval(timer);
+    await check();
+  };
 }
 
 let requestId = 0;
@@ -116,8 +177,16 @@ try {
 
   const stdoutFile = path.join(resultRoot, 'workflow-stdout.log');
   const stderrFile = path.join(resultRoot, 'workflow-stderr.log');
-  const stdoutHandle = await fs.open(stdoutFile, 'w');
-  const stderrHandle = await fs.open(stderrFile, 'w');
+  const stdoutStream = createWriteStream(stdoutFile, { flags: 'w' });
+  const stderrStream = createWriteStream(stderrFile, { flags: 'w' });
+  const stopProgressReporter = startProgressReporter(path.join(resultRoot, 'data-report.json'));
+  process.stdout.write(`[v27-progress] ${JSON.stringify({
+    status: 'starting',
+    rpcChainId,
+    sourceChainId: SOURCE_CHAIN_ID,
+    forkBlock: baseline.blockNumber
+  })}\n`);
+
   try {
     const child = spawn(process.execPath, [lifecycle], {
       cwd: process.cwd(),
@@ -131,12 +200,20 @@ try {
         V27_REMOTE_ANVIL_CHAIN_ID: String(rpcChainId),
         V27_SOURCE_CHAIN_ID: String(SOURCE_CHAIN_ID)
       },
-      stdio: ['ignore', stdoutHandle.fd, stderrHandle.fd]
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    child.stdout.on('data', (chunk) => {
+      stdoutStream.write(chunk);
+      process.stdout.write(chunk);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderrStream.write(chunk);
+      process.stderr.write(chunk);
     });
     childExit = await childResult(child);
   } finally {
-    await stdoutHandle.close();
-    await stderrHandle.close();
+    await stopProgressReporter();
+    await Promise.all([closeWriteStream(stdoutStream), closeWriteStream(stderrStream)]);
   }
 
   wrapperReport.childExit = childExit;
