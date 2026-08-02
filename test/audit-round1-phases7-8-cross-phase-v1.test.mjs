@@ -39,7 +39,7 @@ test('Phase 7 deletion enters deleting before destructive work and exact retry c
   const bytes=new Uint8Array([1,2,3]);const objectKey=checkpointObjectKey(phase7Ids.forkId,phase7Ids.checkpointId);
   await service.publishCheckpoint({manifest:{schemaVersion:'fork-checkpoint-manifest-v1',checkpointId:phase7Ids.checkpointId,forkId:phase7Ids.forkId,tenantId:phase7Ids.tenantId,attemptId:phase7Ids.attemptId,chainId:1,blockNumber:21_000_000,blockHash:`0x${'a'.repeat(64)}`,objectKey,sha256:await sha256Hex(bytes),bytes:bytes.byteLength,contentType:'application/octet-stream',opaque:true,encryption:{mode:'client-managed',keyReference:'opaque'},createdAt:'2026-08-01T00:30:00.000Z',expiresAt:'2026-08-02T00:30:00.000Z'},bytes});
   const deletion={forkId:phase7Ids.forkId,tenantId:phase7Ids.tenantId,attemptId:phase7Ids.attemptId,occurredAt:'2026-08-01T02:00:00.000Z',reason:'round1'};
-  await assert.rejects(()=>service.deleteFork(deletion),/injected/);assert.equal((await service.readFork(phase7Ids.forkId)).state,'deleting');
+  await assert.rejects(()=>service.deleteFork(deletion),/injected/);assert.equal((await service.readFork({forkId:phase7Ids.forkId,tenantId:phase7Ids.tenantId,attemptId:phase7Ids.attemptId})).state,'deleting');
   assert.equal((await service.deleteFork(deletion)).state,'deleted');assert.equal((await service.deleteFork(deletion)).state,'deleted');
 });
 
