@@ -11,5 +11,8 @@
   "startingSha": null,
   "activationCommentId": null,
   "compiledAssignmentPath": null,
-  "rule": "Do not acknowledge or execute while state is queued. After the current assignment is completed, re-check this pointer. Consume only when state is ready, startingSha is exact, compiledAssignmentPath is present, CURRENT_v1.json points to the same sequence/blob, and issue #129 has the matching activation comment."
+  "executionOwner": "orchestrator-direct-takeover",
+  "workerRuntimeEligible": false,
+  "replacementAgentRequired": false,
+  "rule": "No Worker 1 runtime may acknowledge or execute this pointer. The former Worker 1 lane is owned directly by the orchestrator. It remains inactive while state is queued and may be activated only by orchestrator-authored exact-SHA compilation after all Round 5 gates are satisfied."
 }
