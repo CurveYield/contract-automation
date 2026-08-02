@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "audit-round4-worker1-phase78-public-compatibility-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 121,
+  "sequence": 5,
+  "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+  "reviewedCodeSnapshotSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+  "takeoverBranch": "orchestrator/worker1-round4-takeover-v1",
+  "recommendation": "ACCEPT_WITH_REPAIR",
+  "stageBState": "waiting_for_frozen_assembled_sha",
+  "publicContracts": {
+    "serviceRequest": ["audit-phase9-service-request-v1", "audit-phase9-service-request-v2"],
+    "serviceResponse": ["audit-phase9-service-response-v1", "audit-phase9-service-response-v2"],
+    "serviceError": ["audit-phase9-service-error-v1", "audit-phase9-service-error-v2", "audit-phase9-normalized-error-v1"],
+    "authorization": "audit-phase9-authorization-decision-v2",
+    "orchestration": "audit-phase9-orchestration-plan-v2",
+    "pagination": ["audit-phase9-page-cursor-v1", "audit-phase9-page-cursor-v2", "audit-phase9-page-v1", "audit-phase9-page-v2", "audit-phase9-scoped-cache-metadata-v1"],
+    "reports": ["audit-phase9-fork-report-v2", "audit-phase9-checkpoint-report-v2", "audit-phase9-export-report-v2", "audit-phase9-fork-delete-report-v2", "audit-phase9-campaign-report-v2", "audit-phase9-merge-report-v2", "audit-phase9-relation-summary-v2", "audit-phase9-provenance-report-v2", "audit-phase9-hidden-report-v2"],
+    "publication": ["audit-phase9-immutable-publication-plan-v2", "audit-phase9-mutable-pointer-publication-plan-v2", "audit-phase9-publication-recovery-v2", "audit-phase9-scoped-publication-recovery-v1"]
+  },
+  "requiredExports": ["createServiceRequest", "validateServiceRequest", "createServiceResponse", "validateServiceResponse", "validateServiceResponseForRequest", "createServiceError", "validateServiceError", "validateServiceErrorForRequest", "authorizePhase78Operation", "planPhase78Operation", "createRetryPlan", "createPageCursor", "validatePageCursor", "paginateDeterministically", "createScopedCacheMetadata", "normalizePhase78ServiceError", "planImmutablePublication", "planMutablePointerPublication", "validatePublicationPlan", "planPublicationRecovery", "planScopedPublicationRecovery"],
+  "behaviorLocks": {
+    "forkAttemptIdentityRequiredForV2ForkOperations": true,
+    "hiddenAndAbsentAuthorizationByteIdentical": true,
+    "requestBoundResponseAndErrorIdentity": true,
+    "cursorBoundToTenantWorkspaceCampaignForkAttemptMergeIndexAndView": true,
+    "v2PagesExposeTotal": false,
+    "cacheControl": "private, no-store",
+    "cacheVary": "authorization",
+    "reportInputsValidatedByCoreContracts": true,
+    "hiddenReportsExposeExistenceOrCounts": false,
+    "publicationKeysBindExactResourceScope": true,
+    "immutableWritesUseIfNoneMatch": true,
+    "mutablePointersUseExactIfMatchCas": true,
+    "recoveryOrder": ["immutable", "index-cas", "pointer-last"],
+    "executionEnabled": false,
+    "usesPrefixListing": false
+  },
+  "productionPrerequisites": [
+    "Worker 2 must freeze one exact assembled SHA and publish it on issue #119.",
+    "All API/GPT/auth routes must consume only these versioned public exports; no storage-internal or unscoped reader imports.",
+    "Cloudflare import/static checks must remain green on the assembled SHA.",
+    "Protected simulation-addon and PR #126 reconciled blobs must be verified independently before Stage B.",
+    "Stage B must rerun identity, hidden-resource, pagination/cache, redaction, report discovery and protected-blob gates against the same exact assembled SHA."
+  ],
+  "residualRisks": [
+    "Stage A verification does not accept any assembled integration SHA.",
+    "No live deployment, live R2, live GitHub, live RPC or production credential path was tested in Stage A.",
+    "Legacy v1 contracts remain supported for compatibility and must not be used where attempt-bound fork identity is required."
+  ]
+}
