@@ -19,6 +19,7 @@ export function sanitize(value,path='$',seen=new Map()){
 export function exactKeys(value,keys,path='$'){const safe=sanitize(value,path);const expected=new Set(keys);for(const key of Object.keys(safe))if(!expected.has(key))fail('unknown_field',`${path}.${key}`);for(const key of keys)if(!Object.hasOwn(safe,key))fail('missing_field',`${path}.${key}`);return safe;}
 export function boundedString(value,path,maximum=256){if(typeof value!=='string'||value.length<1||value.length>maximum||CONTROL.test(value))fail('invalid_string',path);return value;}
 export function identifier(value,path){return boundedString(value,path,128).match(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)?value:fail('invalid_identifier',path);}
+export function safePath(value,path){const result=boundedString(value,path,512).replaceAll('\\','/');if(result.startsWith('/')||/^[A-Za-z]:\//.test(result)||result.includes('//')||result.split('/').includes('..')||!/^[A-Za-z0-9_.@+\/-]+$/.test(result))fail('unsafe_path',path);return result;}
 export function digest(value,path){return typeof value==='string'&&/^sha256:[0-9a-f]{64}$/.test(value)?value:fail('invalid_digest',path);}
 export function timestamp(value,path){boundedString(value,path,40);const date=new Date(value);if(Number.isNaN(date.getTime())||date.toISOString()!==value)fail('invalid_timestamp',path);return value;}
 export function integer(value,path,minimum=0,maximum=Number.MAX_SAFE_INTEGER){if(!Number.isSafeInteger(value)||Object.is(value,-0)||value<minimum||value>maximum)fail('invalid_integer',path);return value;}
