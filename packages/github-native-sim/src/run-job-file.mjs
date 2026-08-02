@@ -4,18 +4,19 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import { CHAINS } from '../../protocol/src/index.mjs';
+import { loadArchiveRpcSlots } from '../../runner/src/archive-rpc-pool.mjs';
 import {
   buildCompilerInput,
   collectSoliditySources,
   compileProject
 } from '../../runner/src/compiler.mjs';
-import { startGanacheEngine } from '../../runner/src/engine.mjs';
+import { startForkEngine } from '../../runner/src/fork-engine.mjs';
+import { startLiveForkProxy } from '../../runner/src/live-fork-proxy.mjs';
 import { materializeOpenZeppelin } from '../../runner/src/project.mjs';
 import { renderHtmlReport } from '../../runner/src/report.mjs';
 import { raceWithRpcPolicyTermination } from '../../runner/src/rpc-method-policy.mjs';
 import { executeWorkflow } from '../../runner/src/workflow.mjs';
 import { getGenesisBlockFixture } from './chain-fixtures.mjs';
-import { startForkRpcProxy } from './fork-rpc-proxy.mjs';
 import { getDeterministicGanacheAccounts } from './ganache-accounts.mjs';
 import { resolveJobProjectRoot } from './project.mjs';
 import { validateGitHubNativeJob } from './schema.mjs';
@@ -71,11 +72,15 @@ async function writeArtifacts(outputDir, artifacts) {
   await writeJson(path.join(artifactDirectory, 'index.json'), index);
 }
 
+function isRpcSecretName(key) {
+  return key.startsWith('RPC_') || key.startsWith('SIM_ARCHIVE_');
+}
+
 function redactText(value, environment) {
   if (typeof value !== 'string') return value;
   let output = value;
   for (const [key, secret] of Object.entries(environment ?? {})) {
-    if (!key.startsWith('RPC_') || typeof secret !== 'string' || secret.length === 0) continue;
+    if (!isRpcSecretName(key) || typeof secret !== 'string' || secret.length === 0) continue;
     output = output.replaceAll(secret, `[redacted:${key}]`);
   }
   return output;
@@ -98,6 +103,22 @@ async function writeResultBundle(outputDir, result) {
   await writeTextAtomic(path.join(outputDir, 'report.html'), renderHtmlReport(result));
 }
 
+function needsGanacheAccounts(engine) {
+  if (engine.mode === 'ganache') return true;
+  if (engine.mode === 'differential') return engine.engines.includes('ganache');
+  if (engine.mode === 'auto') return engine.preference[0] === 'ganache';
+  return false;
+}
+
+function normalizedEngineEvidence(engine, requestedMode) {
+  if (!engine) return undefined;
+  return {
+    requestedMode,
+    name: engine.name ?? requestedMode,
+    version: engine.version
+  };
+}
+
 export async function runGitHubNativeJob({
   jobFile,
   outputDir,
@@ -109,8 +130,8 @@ export async function runGitHubNativeJob({
 
   const loadGenesisFixture = services.getGenesisBlockFixture ?? getGenesisBlockFixture;
   const discoverGanacheAccounts = services.getDeterministicGanacheAccounts ?? getDeterministicGanacheAccounts;
-  const startProxy = services.startForkRpcProxy ?? startForkRpcProxy;
-  const startEngine = services.startGanacheEngine ?? startGanacheEngine;
+  const startProxy = services.startLiveForkProxy ?? startLiveForkProxy;
+  const startEngine = services.startForkEngine ?? startForkEngine;
   const absoluteJobFile = path.resolve(jobFile);
   const absoluteOutputDir = path.resolve(outputDir);
   const startedAt = new Date().toISOString();
@@ -123,7 +144,10 @@ export async function runGitHubNativeJob({
   let deployments = {};
   let steps = [];
   let resolvedBlock;
+  let resolvedBlockHash;
+  let resolvedBlockTimestamp;
   let forkTransport;
+  let engineEvidence;
 
   await fs.mkdir(absoluteOutputDir, { recursive: true });
 
@@ -157,29 +181,56 @@ export async function runGitHubNativeJob({
 
     if (job.mode === 'simulate') {
       const chain = CHAINS[job.chain];
-      const rpcUrl = environment[chain.rpcEnv];
-      if (!rpcUrl) throw new Error(`Runner secret ${chain.rpcEnv} is not configured`);
+      const slots = loadArchiveRpcSlots({
+        chainName: job.chain,
+        legacyEnv: chain.rpcEnv,
+        environment,
+        allowLegacyFallback: job.simulation.rpc.allowLegacyRpcFallback
+      });
+      if (slots.length === 0) {
+        throw new Error(`No archive RPC slots are configured for ${job.chain}`);
+      }
 
       const [localAccounts, genesisBlock] = await Promise.all([
-        discoverGanacheAccounts(20),
+        needsGanacheAccounts(job.simulation.engine) ? discoverGanacheAccounts(20) : Promise.resolve([]),
         loadGenesisFixture(chain.chainId)
       ]);
       forkProxy = await startProxy({
-        upstreamUrl: rpcUrl,
-        block: job.block,
+        slots,
+        blockPolicy: job.simulation.fork.start,
         chainId: chain.chainId,
         genesisBlock,
-        localAccounts
+        localAccounts,
+        routing: {
+          distribution: job.simulation.rpc.distribution,
+          methodRoutes: job.simulation.rpc.methodRoutes,
+          allowPrimaryForSecondaryFailure: job.simulation.rpc.allowPrimaryForSecondaryFailure,
+          allowSecondaryForPrimaryFailure: job.simulation.rpc.allowSecondaryForPrimaryFailure,
+          unknownMethodPool: job.simulation.rpc.unknownMethodPool,
+          retryDelaysMs: job.simulation.rpc.retryDelaysMs,
+          requestTimeoutMs: job.simulation.rpc.requestTimeoutMs
+        },
+        healthPolicy: job.simulation.rpc.health,
+        consistency: job.simulation.rpc.consistency
       });
       resolvedBlock = forkProxy.blockNumber;
+      resolvedBlockHash = forkProxy.blockHash;
+      resolvedBlockTimestamp = forkProxy.blockTimestamp;
       forkTransport = forkProxy.diagnostics;
       engine = await raceWithRpcPolicyTermination(
         startEngine({
+          mode: job.simulation.engine.mode,
+          preference: job.simulation.engine.preference,
+          fallbackOn: job.simulation.engine.fallbackOn,
+          engines: job.simulation.engine.engines,
+          comparison: job.simulation.engine.comparison,
+          options: job.simulation.engine.options,
           artifacts: compilation.artifacts,
           workflow: job.workflow,
           chainId: chain.chainId,
           forkUrl: forkProxy.url,
-          block: resolvedBlock
+          block: resolvedBlock,
+          configuration: job.simulation
         }),
         forkProxy.termination,
         {
@@ -188,6 +239,7 @@ export async function runGitHubNativeJob({
           }
         }
       );
+      engineEvidence = normalizedEngineEvidence(engine, job.simulation.engine.mode);
       const execution = await raceWithRpcPolicyTermination(
         executeWorkflow(job.workflow, engine.runtime, { aliases: engine.aliases }),
         forkProxy.termination
@@ -204,7 +256,11 @@ export async function runGitHubNativeJob({
       chain: job.chain,
       chainId: job.chain ? CHAINS[job.chain].chainId : undefined,
       block: job.block,
+      simulation: job.simulation,
       resolvedBlock,
+      resolvedBlockHash,
+      resolvedBlockTimestamp,
+      engine: engineEvidence,
       forkTransport,
       compilerVersion: job.compilerVersion,
       compilerDiagnostics,
@@ -232,7 +288,11 @@ export async function runGitHubNativeJob({
         chain: job?.chain,
         chainId: job?.chain ? CHAINS[job.chain]?.chainId : undefined,
         block: job?.block,
+        simulation: job?.simulation,
         resolvedBlock,
+        resolvedBlockHash,
+        resolvedBlockTimestamp,
+        engine: engineEvidence,
         forkTransport,
         compilerVersion: job?.compilerVersion,
         compilerDiagnostics,
