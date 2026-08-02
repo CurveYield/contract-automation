@@ -298,16 +298,24 @@ export async function startLiveForkProxy({
       response.end(JSON.stringify(Array.isArray(payload) ? outputs : outputs[0]));
     } catch (error) {
       const cause = policy.error ?? error;
+      let publicResponse;
+      if (cause?.code === 'CALL_NOT_SUPPORTED') {
+        publicResponse = rpcCallNotSupportedResponse(payload, cause);
+      } else if (cause?.code === 'ARCHIVE_RPC_UNAVAILABLE') {
+        publicResponse = router.jsonError(payload, cause);
+      } else {
+        publicResponse = {
+          jsonrpc: '2.0',
+          id: Array.isArray(payload) ? null : payload.id ?? null,
+          error: {
+            code: -32000,
+            message: 'Simulation request failed',
+            data: { code: 'SIMULATION_REQUEST_FAILED' }
+          }
+        };
+      }
       response.writeHead(502, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({
-        jsonrpc: '2.0',
-        id: Array.isArray(payload) ? null : payload.id ?? null,
-        error: {
-          code: cause?.rpcCode ?? -32000,
-          message: cause?.message ?? String(cause),
-          data: { code: cause?.code, method: cause?.method, failureClass: cause?.failureClass }
-        }
-      }));
+      response.end(JSON.stringify(publicResponse));
     }
   });
 
