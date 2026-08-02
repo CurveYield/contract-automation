@@ -1,4 +1,4 @@
-import { ValidationError, createOperationBudget, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
+import { ValidationError, createOperationBudget, deepFreezeAuditValue, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
 import { ConditionalWriteError } from '../../audit-r2-store/src/index.mjs';
 
 export const MAX_PROFILE_METADATA_BYTES = 5_000_000;
@@ -41,6 +41,7 @@ function safeKey(value, path) {
   if (value.startsWith('/') || value.includes('..') || value.includes('\\')) throw new ValidationError('invalid_object_key', `${path} must be a safe relative object key`, path);
   return value;
 }
+function frozen(value) { return deepFreezeAuditValue(structuredClone(value)); }
 
 export function assertProfileId(profileId, path = '$.profileId') {
   if (typeof profileId !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9][0-9]*$/.test(profileId)) {
@@ -84,30 +85,49 @@ export function validateProfileManifest(value) {
   if (!Array.isArray(value.evidenceContract.requiredArtifacts) || value.evidenceContract.requiredArtifacts.length > 64 || value.evidenceContract.requiredArtifacts.some((item) => typeof item !== 'string' || item.length < 1 || item.length > 160)) {
     throw new ValidationError('invalid_evidence_contract', '$.evidenceContract.requiredArtifacts is invalid', '$.evidenceContract.requiredArtifacts');
   }
+  if (new Set(value.evidenceContract.requiredArtifacts).size !== value.evidenceContract.requiredArtifacts.length) throw new ValidationError('duplicate_artifact', '$.evidenceContract.requiredArtifacts contains duplicates', '$.evidenceContract.requiredArtifacts');
   sha256(value.sbomSha256, '$.sbomSha256'); sha256(value.attestationSha256, '$.attestationSha256'); instant(value.publishedAt, '$.publishedAt');
-  return structuredClone(value);
+  return frozen(value);
 }
 
 function validateReference(value, kind, profileId) {
   object(value, `$.${kind}`);
+  scanAuditForbiddenFields(value, `$.${kind}`);
   const allowed = new Set(['schemaVersion', 'sha256', 'objectKey']);
   keys(value, allowed, `$.${kind}`); required(value, allowed, `$.${kind}`);
   const version = kind === 'sbom' ? 'sbom-reference-v1' : 'attestation-reference-v1';
   if (value.schemaVersion !== version) throw new ValidationError('invalid_schema_version', `$.${kind}.schemaVersion must be ${version}`, `$.${kind}.schemaVersion`);
   sha256(value.sha256, `$.${kind}.sha256`); safeKey(value.objectKey, `$.${kind}.objectKey`);
-  if (!value.objectKey.startsWith(`profiles/${profileId}/`)) throw new ValidationError('invalid_object_key', `$.${kind}.objectKey must remain under the profile prefix`, `$.${kind}.objectKey`);
-  return structuredClone(value);
+  const expectedKey = kind === 'sbom' ? profileSbomKey(profileId) : profileAttestationKey(profileId);
+  if (value.objectKey !== expectedKey) throw new ValidationError('invalid_object_key', `$.${kind}.objectKey must equal ${expectedKey}`, `$.${kind}.objectKey`);
+  return frozen(value);
 }
 function validateIndex(value) {
   object(value, '$.index');
+  scanAuditForbiddenFields(value, '$.index');
   keys(value, new Set(['schemaVersion', 'profiles', 'records']), '$.index');
   required(value, new Set(['schemaVersion', 'profiles']), '$.index');
   if (value.schemaVersion !== 'profile-index-v1') throw new ValidationError('invalid_schema_version', '$.index.schemaVersion must be profile-index-v1', '$.index.schemaVersion');
   if (!Array.isArray(value.profiles) || value.profiles.some((id) => { try { assertProfileId(id); return false; } catch { return true; } })) throw new ValidationError('invalid_profile_index', '$.index.profiles is invalid', '$.index.profiles');
-  if (value.records !== undefined) object(value.records, '$.index.records');
-  return structuredClone(value);
+  if (new Set(value.profiles).size !== value.profiles.length || JSON.stringify(value.profiles) !== JSON.stringify([...value.profiles].sort())) throw new ValidationError('noncanonical_profile_index', '$.index.profiles must be unique and sorted', '$.index.profiles');
+  const records = value.records ?? {};
+  object(records, '$.index.records');
+  const recordKeys = Object.keys(records).sort();
+  if (JSON.stringify(recordKeys) !== JSON.stringify(value.profiles)) throw new ValidationError('profile_index_mismatch', '$.index.records must exactly match profiles', '$.index.records');
+  for (const profileId of recordKeys) {
+    const entry = records[profileId];
+    object(entry, `$.index.records.${profileId}`);
+    keys(entry, new Set(['manifest', 'revoked', 'revocation']), `$.index.records.${profileId}`);
+    required(entry, new Set(['manifest', 'revoked', 'revocation']), `$.index.records.${profileId}`);
+    const manifest = validateProfileManifest(entry.manifest);
+    if (manifest.profileId !== profileId) throw new ValidationError('profile_index_mismatch', 'Profile record manifest identity does not match its key', `$.index.records.${profileId}.manifest.profileId`);
+    if (typeof entry.revoked !== 'boolean') throw new ValidationError('invalid_revocation_state', 'Profile revoked state must be boolean', `$.index.records.${profileId}.revoked`);
+    if (!entry.revoked && entry.revocation !== null) throw new ValidationError('invalid_revocation_state', 'Unrevoked profiles must have null revocation', `$.index.records.${profileId}.revocation`);
+    if (entry.revoked && (!entry.revocation || typeof entry.revocation !== 'object')) throw new ValidationError('invalid_revocation_state', 'Revoked profiles require revocation metadata', `$.index.records.${profileId}.revocation`);
+  }
+  return frozen({ schemaVersion: value.schemaVersion, profiles: value.profiles, records });
 }
-function emptyIndex() { return { schemaVersion: 'profile-index-v1', profiles: [], records: {} }; }
+function emptyIndex() { return frozen({ schemaVersion: 'profile-index-v1', profiles: [], records: {} }); }
 function parse(record) { return record ? JSON.parse(typeof record.value === 'string' ? record.value : new TextDecoder().decode(record.value)) : null; }
 function sameJson(record, expected) {
   try { return JSON.stringify(parse(record)) === JSON.stringify(expected); }
@@ -146,11 +166,11 @@ export class ProfileRegistry {
     }
     const currentIndex = indexRecord ? validateIndex(parse(indexRecord)) : emptyIndex();
     if (currentIndex.records?.[manifest.profileId]) throw new ValidationError('profile_exists', 'Profile already exists', '$.profileId');
-    const storedIndex = {
+    const storedIndex = validateIndex({
       schemaVersion: 'profile-index-v1',
       profiles: [...new Set([...currentIndex.profiles, manifest.profileId])].sort(),
       records: { ...(currentIndex.records ?? {}), [manifest.profileId]: { manifest, revoked: false, revocation: null } }
-    };
+    });
     const total = new TextEncoder().encode(JSON.stringify({ manifest, sbom, attestation, index: storedIndex })).byteLength;
     if (total > MAX_PROFILE_METADATA_BYTES) throw new ValidationError('profile_metadata_too_large', `Profile metadata exceeds ${MAX_PROFILE_METADATA_BYTES} bytes`, '$');
 
@@ -159,7 +179,7 @@ export class ProfileRegistry {
     const recoveredAttestation = await putImmutable(this.store, profileAttestationKey(manifest.profileId), attestation);
     const onlyIf = indexRecord ? { etagMatches: indexRecord.etag } : { etagDoesNotMatch: '*' };
     await this.store.put(profileIndexKey(), JSON.stringify(storedIndex), { onlyIf });
-    return Object.freeze({
+    return frozen({
       profileId: manifest.profileId,
       recoveredPartialPublication: recoveredManifest || recoveredSbom || recoveredAttestation,
       operationBudget: PROFILE_OPERATION_BUDGETS.publish
@@ -167,14 +187,14 @@ export class ProfileRegistry {
   }
   async readIndex() {
     const record = await this.store.get(profileIndexKey());
-    if (!record) return Object.freeze(emptyIndex());
-    return Object.freeze(validateIndex(parse(record)));
+    if (!record) return emptyIndex();
+    return validateIndex(parse(record));
   }
   async read(profileId) {
     assertProfileId(profileId);
     const index = await this.readIndex(); const entry = index.records?.[profileId];
     if (!entry) throw new ValidationError('not_found', 'Profile not found', '$.profileId');
-    return Object.freeze({ ...entry.manifest, revoked: entry.revoked, revocation: entry.revocation });
+    return frozen({ ...entry.manifest, revoked: entry.revoked, revocation: entry.revocation });
   }
   async revoke(profileId, revocation) {
     assertProfileId(profileId); object(revocation, '$.revocation'); scanAuditForbiddenFields(revocation, '$.revocation');
@@ -182,11 +202,23 @@ export class ProfileRegistry {
     if (revocation.schemaVersion !== 'profile-revocation-v1') throw new ValidationError('invalid_schema_version', '$.revocation.schemaVersion must be profile-revocation-v1', '$.revocation.schemaVersion');
     if (revocation.profileId !== profileId) throw new ValidationError('profile_mismatch', '$.revocation.profileId must match', '$.revocation.profileId');
     string(revocation.reason, '$.revocation.reason', 256); instant(revocation.revokedAt, '$.revocation.revokedAt');
+    const checkedRevocation = frozen(revocation);
     const indexRecord = await this.store.get(profileIndexKey()); if (!indexRecord) throw new ValidationError('not_found', 'Profile index not found', '$.profileId');
     const index = validateIndex(parse(indexRecord)); if (!index.records?.[profileId]) throw new ValidationError('not_found', 'Profile not found', '$.profileId');
-    await this.store.put(profileRevocationKey(profileId), JSON.stringify(revocation), { onlyIf: { etagDoesNotMatch: '*' } });
-    index.records[profileId] = { ...index.records[profileId], revoked: true, revocation: structuredClone(revocation) };
-    await this.store.put(profileIndexKey(), JSON.stringify(index), { onlyIf: { etagMatches: indexRecord.etag } });
-    return Object.freeze({ profileId, revoked: true, operationBudget: PROFILE_OPERATION_BUDGETS.revoke });
+    const existingEntry = index.records[profileId];
+    if (existingEntry.revoked) {
+      if (JSON.stringify(existingEntry.revocation) !== JSON.stringify(checkedRevocation)) throw new ValidationError('revocation_conflict', 'Existing profile revocation differs from the retry', '$.revocation');
+      const recovered = await putImmutable(this.store, profileRevocationKey(profileId), checkedRevocation);
+      return frozen({ profileId, revoked: true, idempotent: true, recoveredPartialPublication: recovered, operationBudget: PROFILE_OPERATION_BUDGETS.revoke });
+    }
+    const recoveredRevocation = await putImmutable(this.store, profileRevocationKey(profileId), checkedRevocation);
+    const next = {
+      schemaVersion: index.schemaVersion,
+      profiles: [...index.profiles],
+      records: { ...index.records, [profileId]: { ...existingEntry, revoked: true, revocation: checkedRevocation } }
+    };
+    const validatedNext = validateIndex(next);
+    await this.store.put(profileIndexKey(), JSON.stringify(validatedNext), { onlyIf: { etagMatches: indexRecord.etag } });
+    return frozen({ profileId, revoked: true, idempotent: false, recoveredPartialPublication: recoveredRevocation, operationBudget: PROFILE_OPERATION_BUDGETS.revoke });
   }
 }
