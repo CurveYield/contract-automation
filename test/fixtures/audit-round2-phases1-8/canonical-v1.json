@@ -11,16 +11,16 @@
   },
   "phase5": {
     "hardhatInput": {
-      "resultJson": "{\"records\":[{\"suite\":\"A\",\"name\":\"works\",\"status\":\"passed\"}]}",
+      "resultBytes": "{\"tests\":[{\"file\":\"test/zeta-v1.test.mjs\",\"suite\":\"Zeta\",\"name\":\"returns value\",\"status\":\"passed\",\"durationMs\":8},{\"file\":\"test/alpha-v1.test.mjs\",\"suite\":\"Alpha\",\"name\":\"rejects invalid input\",\"status\":\"passed\",\"durationMs\":3},{\"file\":\"test/alpha-v1.test.mjs\",\"suite\":\"Alpha\",\"name\":\"rejects invalid input\",\"status\":\"passed\",\"durationMs\":3}]}",
       "exitCode": 0,
       "durationMs": 1,
       "termination": "completed"
     },
     "resourceExhaustion": {
-      "resultJson": "{}",
+      "resultBytes": "{}",
       "exitCode": 137,
       "durationMs": 2,
-      "termination": "resource_exhaustion"
+      "termination": "resource_exhausted"
     }
   },
   "phase6": {
