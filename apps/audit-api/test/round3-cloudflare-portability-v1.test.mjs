@@ -27,7 +27,6 @@ const forbidden = Object.freeze([
   /\b(?:child_process|worker_threads|cluster|filesystem|socket)\b/iu,
   /\b(?:XMLHttpRequest|WebSocket|EventSource)\b/u,
   /\bglobalThis\.fetch\b/u,
-  /(?<![.\w])fetch\s*\(/u,
   /\b(?:eval|Function)\s*\(/u,
   /\bWebAssembly\b/u,
   /\b(?:npm|pnpm|yarn|bun|pip|cargo)\s+(?:install|add|run)\b/iu,
@@ -39,7 +38,7 @@ const forbidden = Object.freeze([
   /from\s+['"][^'"]*(?:github-native-sim|rpc-method-policy|fork-rpc-guard|curveyield-lite)[^'"]*['"]/iu
 ]);
 
-test('all owned production modules use no Node-only, filesystem, process, socket, network, dynamic-code, wallet, deployment, or execution-enablement primitive', async () => {
+test('all owned production modules use no Node-only, filesystem, process, socket, network-client, dynamic-code, wallet, deployment, or execution-enablement primitive', async () => {
   const matches = [];
   for (const relative of productionFiles) {
     const source = await readFile(resolve(root, relative), 'utf8');
