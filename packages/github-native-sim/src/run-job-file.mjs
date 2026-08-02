@@ -15,6 +15,11 @@ import { startLiveForkProxy } from '../../runner/src/live-fork-proxy.mjs';
 import { materializeOpenZeppelin } from '../../runner/src/project.mjs';
 import { renderHtmlReport } from '../../runner/src/report.mjs';
 import { raceWithRpcPolicyTermination } from '../../runner/src/rpc-method-policy.mjs';
+import {
+  closeRpcHealthSession,
+  filterDisabledRpcSlots,
+  openRpcHealthSession
+} from '../../runner/src/rpc-health-session.mjs';
 import { executeWorkflow } from '../../runner/src/workflow.mjs';
 import { getGenesisBlockFixture } from './chain-fixtures.mjs';
 import { getDeterministicGanacheAccounts } from './ganache-accounts.mjs';
@@ -140,6 +145,19 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
   let resolvedBlockTimestamp;
   let forkTransport;
   let runtimeEvidence;
+  let rpcHealthSession;
+  let rpcHealthPersist;
+
+  async function persistRpcHealth() {
+    if (rpcHealthPersist || !rpcHealthSession) return rpcHealthPersist;
+    rpcHealthPersist = await closeRpcHealthSession({
+      session: rpcHealthSession,
+      environment,
+      diagnostics: forkTransport?.rpc,
+      runId: environment.GITHUB_RUN_ID ?? job?.id
+    });
+    return rpcHealthPersist;
+  }
 
   await fs.mkdir(absoluteOutputDir, { recursive: true });
 
@@ -167,13 +185,20 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
 
     if (job.mode === 'simulate') {
       const chain = CHAINS[job.chain];
-      const slots = loadArchiveRpcSlots({
+      rpcHealthSession = await openRpcHealthSession({
+        environment,
+        chain: job.chain,
+        crossSessionFailureThreshold: job.simulation.rpc.health.crossSessionFailureThreshold,
+        store: services.rpcHealthStore
+      });
+      const configuredSlots = loadArchiveRpcSlots({
         chainName: job.chain,
         legacyEnv: chain.rpcEnv,
         environment,
         allowLegacyFallback: job.simulation.rpc.allowLegacyRpcFallback
       });
-      if (slots.length === 0) throw new Error(`No archive RPC slots are configured for ${job.chain}`);
+      const slots = filterDisabledRpcSlots(configuredSlots, rpcHealthSession.disabledSlotIds);
+      if (slots.length === 0) throw new Error(`No healthy archive RPC slots are configured for ${job.chain}`);
 
       const [localAccounts, genesisBlock] = await Promise.all([
         needsGanacheAccounts(job.simulation.engine) ? discoverGanacheAccounts(20) : Promise.resolve([]),
@@ -227,6 +252,7 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
       steps = execution.steps;
       deployments = execution.context.deployments;
       runtimeEvidence = typeof engine.getEvidence === 'function' ? await engine.getEvidence() : undefined;
+      await persistRpcHealth();
     }
 
     const result = {
@@ -243,6 +269,7 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
       resolvedBlockTimestamp,
       engine: normalizedEngineEvidence(engine, job.simulation?.engine?.mode, runtimeEvidence),
       forkTransport,
+      rpcHealth: rpcHealthSession ? { load: rpcHealthSession.load, persist: rpcHealthPersist } : undefined,
       compilerVersion: job.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
@@ -257,6 +284,7 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
     if (cause?.compilerDiagnostics) compilerDiagnostics = cause.compilerDiagnostics;
     if (cause?.workflowSteps) steps = cause.workflowSteps;
     if (cause?.workflowContext?.deployments) deployments = cause.workflowContext.deployments;
+    try { await persistRpcHealth(); } catch (healthError) { cause.rpcHealthError = healthError; }
     try {
       const result = {
         jobId: job?.id ?? path.basename(path.dirname(absoluteJobFile)),
@@ -272,6 +300,7 @@ export async function runGitHubNativeJob({ jobFile, outputDir, environment = pro
         resolvedBlockTimestamp,
         engine: normalizedEngineEvidence(engine, job?.simulation?.engine?.mode, runtimeEvidence),
         forkTransport,
+        rpcHealth: rpcHealthSession ? { load: rpcHealthSession.load, persist: rpcHealthPersist } : undefined,
         compilerVersion: job?.compilerVersion,
         compilerDiagnostics,
         artifacts: compiledArtifacts,
