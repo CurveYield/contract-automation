@@ -63,11 +63,7 @@ async function writeArtifacts(outputDir, artifacts) {
     const artifact = artifacts[position];
     const file = artifactFileName(artifact, position);
     await writeJson(path.join(artifactDirectory, file), artifact);
-    index.push({
-      sourceName: artifact.sourceName,
-      contractName: artifact.contractName,
-      file
-    });
+    index.push({ sourceName: artifact.sourceName, contractName: artifact.contractName, file });
   }
   await writeJson(path.join(artifactDirectory, 'index.json'), index);
 }
@@ -110,21 +106,17 @@ function needsGanacheAccounts(engine) {
   return false;
 }
 
-function normalizedEngineEvidence(engine, requestedMode) {
+function normalizedEngineEvidence(engine, requestedMode, runtimeEvidence) {
   if (!engine) return undefined;
   return {
     requestedMode,
     name: engine.name ?? requestedMode,
-    version: engine.version
+    version: engine.version,
+    runtime: runtimeEvidence
   };
 }
 
-export async function runGitHubNativeJob({
-  jobFile,
-  outputDir,
-  environment = process.env,
-  services = {}
-}) {
+export async function runGitHubNativeJob({ jobFile, outputDir, environment = process.env, services = {} }) {
   if (typeof jobFile !== 'string' || jobFile.length === 0) throw new Error('jobFile is required');
   if (typeof outputDir !== 'string' || outputDir.length === 0) throw new Error('outputDir is required');
 
@@ -147,7 +139,7 @@ export async function runGitHubNativeJob({
   let resolvedBlockHash;
   let resolvedBlockTimestamp;
   let forkTransport;
-  let engineEvidence;
+  let runtimeEvidence;
 
   await fs.mkdir(absoluteOutputDir, { recursive: true });
 
@@ -156,12 +148,7 @@ export async function runGitHubNativeJob({
     job = validateGitHubNativeJob(raw);
     const projectRoot = resolveJobProjectRoot(absoluteJobFile, job.projectPath);
     const sources = await collectSoliditySources(projectRoot);
-    const settings = {
-      optimizer: job.optimizer,
-      viaIR: job.viaIR,
-      evmVersion: job.evmVersion
-    };
-
+    const settings = { optimizer: job.optimizer, viaIR: job.viaIR, evmVersion: job.evmVersion };
     const compilerInput = buildCompilerInput(sources, settings);
     await writeJson(path.join(absoluteOutputDir, 'compiler-input.json'), compilerInput);
 
@@ -172,7 +159,6 @@ export async function runGitHubNativeJob({
       settings,
       openZeppelinRoot
     });
-
     compilerDiagnostics = compilation.diagnostics;
     compiledArtifacts = compilation.artifacts.all.map(normalizedArtifact);
     await writeJson(path.join(absoluteOutputDir, 'compiler-output.json'), compilation.output);
@@ -187,9 +173,7 @@ export async function runGitHubNativeJob({
         environment,
         allowLegacyFallback: job.simulation.rpc.allowLegacyRpcFallback
       });
-      if (slots.length === 0) {
-        throw new Error(`No archive RPC slots are configured for ${job.chain}`);
-      }
+      if (slots.length === 0) throw new Error(`No archive RPC slots are configured for ${job.chain}`);
 
       const [localAccounts, genesisBlock] = await Promise.all([
         needsGanacheAccounts(job.simulation.engine) ? discoverGanacheAccounts(20) : Promise.resolve([]),
@@ -229,23 +213,20 @@ export async function runGitHubNativeJob({
           workflow: job.workflow,
           chainId: chain.chainId,
           forkUrl: forkProxy.url,
+          forkControl: forkProxy,
           block: resolvedBlock,
           configuration: job.simulation
         }),
         forkProxy.termination,
-        {
-          async onLateValue(lateEngine) {
-            await Promise.resolve(lateEngine?.close?.()).catch(() => {});
-          }
-        }
+        { async onLateValue(lateEngine) { await Promise.resolve(lateEngine?.close?.()).catch(() => {}); } }
       );
-      engineEvidence = normalizedEngineEvidence(engine, job.simulation.engine.mode);
       const execution = await raceWithRpcPolicyTermination(
         executeWorkflow(job.workflow, engine.runtime, { aliases: engine.aliases }),
         forkProxy.termination
       );
       steps = execution.steps;
       deployments = execution.context.deployments;
+      runtimeEvidence = typeof engine.getEvidence === 'function' ? await engine.getEvidence() : undefined;
     }
 
     const result = {
@@ -260,7 +241,7 @@ export async function runGitHubNativeJob({
       resolvedBlock,
       resolvedBlockHash,
       resolvedBlockTimestamp,
-      engine: engineEvidence,
+      engine: normalizedEngineEvidence(engine, job.simulation?.engine?.mode, runtimeEvidence),
       forkTransport,
       compilerVersion: job.compilerVersion,
       compilerDiagnostics,
@@ -276,10 +257,7 @@ export async function runGitHubNativeJob({
     if (cause?.compilerDiagnostics) compilerDiagnostics = cause.compilerDiagnostics;
     if (cause?.workflowSteps) steps = cause.workflowSteps;
     if (cause?.workflowContext?.deployments) deployments = cause.workflowContext.deployments;
-
     try {
-      await writeJson(path.join(absoluteOutputDir, 'compiler-diagnostics.json'), compilerDiagnostics);
-      if (compiledArtifacts.length > 0) await writeArtifacts(absoluteOutputDir, compiledArtifacts);
       const result = {
         jobId: job?.id ?? path.basename(path.dirname(absoluteJobFile)),
         status: 'failed',
@@ -292,7 +270,7 @@ export async function runGitHubNativeJob({
         resolvedBlock,
         resolvedBlockHash,
         resolvedBlockTimestamp,
-        engine: engineEvidence,
+        engine: normalizedEngineEvidence(engine, job?.simulation?.engine?.mode, runtimeEvidence),
         forkTransport,
         compilerVersion: job?.compilerVersion,
         compilerDiagnostics,
@@ -303,6 +281,8 @@ export async function runGitHubNativeJob({
         startedAt,
         finishedAt: new Date().toISOString()
       };
+      await writeJson(path.join(absoluteOutputDir, 'compiler-diagnostics.json'), compilerDiagnostics);
+      if (compiledArtifacts.length > 0) await writeArtifacts(absoluteOutputDir, compiledArtifacts);
       await writeResultBundle(absoluteOutputDir, result);
       cause.githubNativeResult = result;
     } catch (writeCause) {
@@ -310,8 +290,8 @@ export async function runGitHubNativeJob({
     }
     throw cause;
   } finally {
-    if (engine) await engine.close().catch(() => {});
-    if (forkProxy) await forkProxy.close().catch(() => {});
+    if (engine) await Promise.resolve(engine.close()).catch(() => {});
+    if (forkProxy) await Promise.resolve(forkProxy.close()).catch(() => {});
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 }
