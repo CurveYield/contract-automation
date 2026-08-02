@@ -1,6 +1,6 @@
 import {
   exactKeys, identifier, digest, timestamp, enumValue, boolean, integer,
-  stringArray, validateReferenceList, frozenClone, sha256, fail, denseArray
+  stringArray, validateReferenceList, frozenClone, sha256, fail, denseArray, canonicalJson
 } from '../../audit-clean-room-protocol/src/index.mjs';
 
 export const TERMINAL_MANIFEST_SCHEMA='phase8-terminal-campaign-manifest-v1';
@@ -72,7 +72,7 @@ export function validateTerminalCampaignManifest(input){
   const rebuilt=createTerminalCampaignManifest({tenantId:v.tenantId,workspaceId:v.workspaceId,campaignId:v.campaignId,workspaceSourceDigest:v.workspaceSourceDigest,baseArtifactDigest:v.baseArtifactDigest,terminalState:v.terminalState,completionKind:v.completionKind,partialEvidence:v.partialEvidence,truncated:v.truncated,policyId:v.policyId,profileVersions:v.profileVersions,layerRefs:v.layerRefs,jobRefs:v.jobRefs,attemptRefs:v.attemptRefs,evidenceRefs:v.evidenceRefs,reportRefs:v.reportRefs,findings:v.findings,completedAt:v.completedAt});
   if(v.manifestId!==rebuilt.manifestId) fail('identity_mismatch','$.manifestId');
   if(v.manifestDigest!==rebuilt.manifestDigest) fail('digest_mismatch','$.manifestDigest');
-  if(JSON.stringify(v.inventorySummary)!==JSON.stringify(rebuilt.inventorySummary)) fail('inventory_mismatch','$.inventorySummary');
+  if(canonicalJson(v.inventorySummary)!==canonicalJson(rebuilt.inventorySummary)) fail('inventory_mismatch','$.inventorySummary');
   if(v.mergeEligible!==rebuilt.mergeEligible) fail('eligibility_mismatch','$.mergeEligible');
   return rebuilt;
 }
