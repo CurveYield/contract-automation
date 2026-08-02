@@ -1,0 +1,1 @@
+Trigger the hardened Vyper standard-JSON transport v3 and one-shot V27 Ganache lifecycle. No V27 source, simulation sequence, or evidence schema changes.
