@@ -1,62 +1,11 @@
 {
   "schemaVersion": "round4-preliminary-path-ownership-v1",
   "domains": [
-    {
-      "domain": "api",
-      "candidateId": "api-auth-reviewed",
-      "ownedPrefixes": ["apps/audit-api", "packages/audit-api-", "packages/audit-auth-", "packages/audit-gpt-"],
-      "ownedFiles": [],
-      "sharedFiles": ["package.json"]
-    },
-    {
-      "domain": "github-direct",
-      "candidateId": "web-direct-reviewed",
-      "ownedPrefixes": ["packages/audit-github-direct", "packages/github-direct-"],
-      "ownedFiles": [".github/workflows/audit-direct-v1.yml"],
-      "sharedFiles": ["package.json"]
-    },
-    {
-      "domain": "phase1-6-integration",
-      "candidateId": "phase1-6-reviewed",
-      "ownedPrefixes": [
-        "packages/audit-protocol",
-        "packages/audit-r2-store",
-        "packages/audit-profile-registry",
-        "packages/audit-workspace-protocol",
-        "packages/audit-workspaces",
-        "packages/audit-campaign-protocol",
-        "packages/audit-campaigns",
-        "packages/audit-evidence",
-        "packages/audit-tool-",
-        "packages/audit-executor-adapters",
-        "packages/audit-phase5-",
-        "packages/audit-phase6-",
-        "packages/audit-release-integration",
-        "packages/audit-integration-round4"
-      ],
-      "ownedFiles": [],
-      "sharedFiles": ["package.json"]
-    },
-    {
-      "domain": "phase7-8",
-      "candidateId": "phase7-8-reviewed",
-      "ownedPrefixes": [
-        "packages/audit-fork-",
-        "packages/audit-forks",
-        "packages/audit-clean-room-",
-        "packages/audit-controlled-merge",
-        "packages/audit-provenance"
-      ],
-      "ownedFiles": [],
-      "sharedFiles": ["package.json"]
-    },
-    {
-      "domain": "web",
-      "candidateId": "web-direct-reviewed",
-      "ownedPrefixes": ["apps/audit-web", "packages/audit-web-", "packages/audit-ui-", "packages/audit-report-view-"],
-      "ownedFiles": [],
-      "sharedFiles": ["package.json"]
-    }
+    {"domain":"api","candidateId":"api-auth-reviewed","ownedPrefixes":["apps/audit-api","packages/audit-api-","packages/audit-auth-","packages/audit-gpt-"],"ownedFiles":[],"sharedFiles":["package.json"]},
+    {"domain":"github-direct","candidateId":"web-direct-reviewed","ownedPrefixes":["packages/audit-github-direct","packages/github-direct-"],"ownedFiles":[".github/workflows/audit-direct-v1.yml"],"sharedFiles":["package.json"]},
+    {"domain":"phase1-6-integration","candidateId":"phase1-6-reviewed","ownedPrefixes":["packages/audit-protocol","packages/audit-r2-store","packages/audit-profile-registry","packages/audit-workspace-protocol","packages/audit-workspaces","packages/audit-campaign-protocol","packages/audit-campaigns","packages/audit-evidence","packages/audit-tool-","packages/audit-executor-adapters","packages/audit-phase5-","packages/audit-phase6-","packages/audit-release-integration","packages/audit-integration-round4"],"ownedFiles":[],"sharedFiles":["package.json"]},
+    {"domain":"phase7-8","candidateId":"phase7-8-reviewed","ownedPrefixes":["packages/audit-fork-","packages/audit-forks","packages/audit-clean-room-","packages/audit-controlled-merge","packages/audit-provenance"],"ownedFiles":[],"sharedFiles":["package.json"]},
+    {"domain":"web","candidateId":"web-direct-reviewed","ownedPrefixes":["apps/audit-web","packages/audit-web-","packages/audit-ui-","packages/audit-report-view-"],"ownedFiles":[],"sharedFiles":["package.json"]}
   ],
   "protectedPaths": [
     ".github/workflows/github-native-simulate.yml",
@@ -66,13 +15,72 @@
     "packages/runner/src/rpc-method-policy.mjs",
     "packages/runner/src/run-job.mjs"
   ],
+  "externalQuarantine": {
+    "schemaVersion": "round4-external-workstream-quarantine-v1",
+    "pullRequestNumber": 126,
+    "state": "active-draft",
+    "baseSha": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "headSha": "bc3b94c5a48192f5c1cc6e167794a5460ac661ec",
+    "changedFileCount": 20,
+    "paths": [
+      ".github/workflows/export-v27-hardhat-harness.yml",
+      ".github/workflows/live-fork-upgrade-ci.yml",
+      "docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md",
+      "docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md",
+      "packages/github-native-sim/src/run-job-file.mjs",
+      "packages/github-native-sim/src/schema.mjs",
+      "packages/github-native-sim/test/run-job-file.test.mjs",
+      "packages/protocol/src/index.mjs",
+      "packages/protocol/src/simulation-config.mjs",
+      "packages/runner/src/archive-rpc-pool.mjs",
+      "packages/runner/src/fork-engine.mjs",
+      "packages/runner/src/live-fork-proxy.mjs",
+      "packages/runner/src/live-fork-runtime.mjs",
+      "packages/runner/src/live-fork-time.mjs",
+      "packages/runner/src/run-job.mjs",
+      "packages/runner/test/archive-rpc-pool.test.mjs",
+      "packages/runner/test/live-fork-config.test.mjs",
+      "packages/runner/test/live-fork-proxy.test.mjs",
+      "packages/runner/test/live-fork-runtime-actions.test.mjs",
+      "packages/runner/test/run-job-live-fork.test.mjs"
+    ],
+    "releaseConditions": [
+      "James declares PR 126 complete",
+      "the exact final PR head is independently reviewed",
+      "an explicit integration authorization replaces the quarantine event",
+      "affected protected baselines and intake manifests are regenerated"
+    ]
+  },
+  "quarantinedPaths": [
+    ".github/workflows/export-v27-hardhat-harness.yml",
+    ".github/workflows/live-fork-upgrade-ci.yml",
+    "docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md",
+    "docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md",
+    "packages/github-native-sim/src/run-job-file.mjs",
+    "packages/github-native-sim/src/schema.mjs",
+    "packages/github-native-sim/test/run-job-file.test.mjs",
+    "packages/protocol/src/index.mjs",
+    "packages/protocol/src/simulation-config.mjs",
+    "packages/runner/src/archive-rpc-pool.mjs",
+    "packages/runner/src/fork-engine.mjs",
+    "packages/runner/src/live-fork-proxy.mjs",
+    "packages/runner/src/live-fork-runtime.mjs",
+    "packages/runner/src/live-fork-time.mjs",
+    "packages/runner/src/run-job.mjs",
+    "packages/runner/test/archive-rpc-pool.test.mjs",
+    "packages/runner/test/live-fork-config.test.mjs",
+    "packages/runner/test/live-fork-proxy.test.mjs",
+    "packages/runner/test/live-fork-runtime-actions.test.mjs",
+    "packages/runner/test/run-job-live-fork.test.mjs"
+  ],
   "sharedFiles": ["package.json"],
   "rules": [
     "no candidate may own a protected path or a parent/child of a protected path",
+    "no candidate may own, restore, union, cherry-pick or overwrite a quarantined PR 126 path",
     "exact or nested overlap between domains is rejected",
     "a shared file requires a committed field-owned union manifest",
     "whole-side conflict resolution is forbidden",
     "unregistered paths and undocumented adaptations block intake",
-    "the final ownership registry must be regenerated from the accepted Stage A manifests"
+    "the final ownership registry must be regenerated from accepted Stage A manifests and the independently reviewed final PR 126 head"
   ]
 }
