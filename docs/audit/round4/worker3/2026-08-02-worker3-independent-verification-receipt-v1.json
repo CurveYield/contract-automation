@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "audit-round4-worker3-independent-verification-receipt-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 123,
+  "reviewedCodeSnapshotSha": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
+  "verifiedAt": "2026-08-02T12:42:02Z",
+  "redEvidence": {
+    "tests": 5,
+    "passed": 3,
+    "failed": 2,
+    "expectedFailures": [
+      "hidden accessor-bearing report row is indistinguishable from absence",
+      "hidden cyclic and oversized report bodies do not affect visible response"
+    ]
+  },
+  "greenCommand": "node --check apps/audit-api/src/phase9-reports.mjs && node --check apps/audit-api/test/round4-hidden-provider-noninterference-v1.test.mjs && node --test apps/audit-api/test/round4-hidden-provider-noninterference-v1.test.mjs",
+  "greenResult": {
+    "tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "durationMs": 76.698778
+  },
+  "exactBlobVerification": {
+    "productionPath": "apps/audit-api/src/phase9-reports.mjs",
+    "productionBlobSha": "4b2a68acc80c22d333ff03e2a4c80b64397ce8a6",
+    "localGitBlobSha": "4b2a68acc80c22d333ff03e2a4c80b64397ce8a6",
+    "testPath": "apps/audit-api/test/round4-hidden-provider-noninterference-v1.test.mjs",
+    "testBlobSha": "0f75494f96f5ca401843dfbf9b1040d078c99a3a"
+  },
+  "sourceReview": {
+    "credentialAndCursorContracts": "Inspected exact GitHub blobs for audit-api-contracts v2 authentication, authorization, cursor, cache and error normalization.",
+    "routeContracts": "Inspected exact GitHub blobs for entry composition, report routes and GPT route/resource authorization.",
+    "protectedBaselineBlobSha": "67700e16187103647150465c642f5c3ccbefc5c4",
+    "changedPathOverlap": false
+  },
+  "limitation": "The focused behavioral test used an isolated no-download mirror with the exact repaired production blob and test-only dependency stubs. Exact-byte provenance is separately established by GitHub blob equality and the path/blob manifest. The full repository test suite was not run in this runtime.",
+  "notPerformed": [
+    "dependency installation",
+    "compilation/build",
+    "full repository test suite",
+    "live GitHub or RPC calls",
+    "Cloudflare deployment",
+    "secret access",
+    "wallet/signing/transaction"
+  ],
+  "verdict": "GREEN_FOR_BOUNDED_STAGE_A_REPAIR"
+}
