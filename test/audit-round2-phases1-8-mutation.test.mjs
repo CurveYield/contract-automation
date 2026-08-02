@@ -26,7 +26,7 @@ test('Phase 4 every public result field is required', () => {
 });
 
 test('Phase 5 every public result field is required', () => {
-  const canonical = parsePhase5ToolResult('hardhat-test-v1', {resultJson:'{"records":[]}',exitCode:0,durationMs:1,termination:'completed'});
+  const canonical = parsePhase5ToolResult('hardhat-test-v1', {resultBytes:'{"tests":[]}',exitCode:0,durationMs:1,termination:'completed'});
   assert.equal(deleteEach(canonical, validatePhase5ToolResult), 15);
 });
 
