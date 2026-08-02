@@ -3,38 +3,74 @@ import os from 'node:os';
 import path from 'node:path';
 import { CHAINS, validateCreateJobRequest } from '../../protocol/src/index.mjs';
 import { RunnerApiClient } from './api-client.mjs';
+import { loadArchiveRpcSlots } from './archive-rpc-pool.mjs';
 import { collectSoliditySources, compileProject } from './compiler.mjs';
-import { startGanacheEngine } from './engine.mjs';
-import { startForkRpcGuard } from './fork-rpc-guard.mjs';
+import { startForkEngine } from './fork-engine.mjs';
+import { startLiveForkProxy } from './live-fork-proxy.mjs';
 import { materializeOpenZeppelin, materializeProject } from './project.mjs';
 import { renderHtmlReport } from './report.mjs';
 import { raceWithRpcPolicyTermination } from './rpc-method-policy.mjs';
 import { executeWorkflow } from './workflow.mjs';
 
-function serializeError(cause) {
+function isRpcSecretName(key) {
+  return key.startsWith('RPC_') || key.startsWith('SIM_ARCHIVE_');
+}
+
+function redactText(value, environment) {
+  if (typeof value !== 'string') return value;
+  let output = value;
+  for (const [key, secret] of Object.entries(environment ?? {})) {
+    if (!isRpcSecretName(key) || typeof secret !== 'string' || secret.length === 0) continue;
+    output = output.replaceAll(secret, `[redacted:${key}]`);
+  }
+  return output;
+}
+
+function serializeError(cause, environment) {
   return {
     name: cause?.name ?? 'Error',
-    message: cause?.message ?? String(cause),
+    message: redactText(cause?.message ?? String(cause), environment),
     code: cause?.code,
     rpcCode: cause?.rpcCode,
     method: cause?.method,
-    shortMessage: cause?.shortMessage,
+    shortMessage: redactText(cause?.shortMessage, environment),
     data: cause?.data
   };
 }
 
-export async function runJob({ jobId, apiUrl, runnerApiKey, environment = process.env }) {
-  const api = new RunnerApiClient({ baseUrl: apiUrl, apiKey: runnerApiKey });
+function normalizedEngineEvidence(engine, requestedMode) {
+  if (!engine) return undefined;
+  return {
+    requestedMode,
+    name: engine.name ?? requestedMode,
+    version: engine.version
+  };
+}
+
+export async function runJob({
+  jobId,
+  apiUrl,
+  runnerApiKey,
+  environment = process.env,
+  services = {}
+}) {
+  const api = services.apiClient ?? new RunnerApiClient({ baseUrl: apiUrl, apiKey: runnerApiKey });
+  const startProxy = services.startLiveForkProxy ?? startLiveForkProxy;
+  const startEngine = services.startForkEngine ?? startForkEngine;
   const startedAt = new Date().toISOString();
   const root = await fs.mkdtemp(path.join(os.tmpdir(), `preflightsim-${jobId}-`));
   let engine;
-  let forkGuard;
+  let forkProxy;
   let forkTransport;
+  let engineEvidence;
   let request;
   let compilerDiagnostics = [];
   let steps = [];
   let deployments = {};
   let compiledArtifacts = [];
+  let resolvedBlock;
+  let resolvedBlockHash;
+  let resolvedBlockTimestamp;
   try {
     await api.updateStatus(jobId, { status: 'running', stage: 'fetching_project' });
     const rawJob = await api.getJob(jobId);
@@ -88,32 +124,63 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     }
 
     const chain = CHAINS[request.chain];
-    const rpcUrl = environment[chain.rpcEnv];
-    if (!rpcUrl) throw new Error(`Runner secret ${chain.rpcEnv} is not configured`);
+    const slots = loadArchiveRpcSlots({
+      chainName: request.chain,
+      legacyEnv: chain.rpcEnv,
+      environment,
+      allowLegacyFallback: request.simulation.rpc.allowLegacyRpcFallback
+    });
+    if (slots.length === 0) throw new Error(`No archive RPC slots are configured for ${request.chain}`);
 
     await api.updateStatus(jobId, { status: 'running', stage: 'starting_fork' });
-    forkGuard = await startForkRpcGuard({ upstreamUrl: rpcUrl });
-    forkTransport = forkGuard.diagnostics;
+    forkProxy = await startProxy({
+      slots,
+      chainId: chain.chainId,
+      blockPolicy: request.simulation.fork.start,
+      routing: {
+        distribution: request.simulation.rpc.distribution,
+        methodRoutes: request.simulation.rpc.methodRoutes,
+        allowPrimaryForSecondaryFailure: request.simulation.rpc.allowPrimaryForSecondaryFailure,
+        allowSecondaryForPrimaryFailure: request.simulation.rpc.allowSecondaryForPrimaryFailure,
+        unknownMethodPool: request.simulation.rpc.unknownMethodPool,
+        retryDelaysMs: request.simulation.rpc.retryDelaysMs,
+        requestTimeoutMs: request.simulation.rpc.requestTimeoutMs
+      },
+      healthPolicy: request.simulation.rpc.health,
+      consistency: request.simulation.rpc.consistency
+    });
+    resolvedBlock = forkProxy.blockNumber;
+    resolvedBlockHash = forkProxy.blockHash;
+    resolvedBlockTimestamp = forkProxy.blockTimestamp;
+    forkTransport = forkProxy.diagnostics;
     engine = await raceWithRpcPolicyTermination(
-      startGanacheEngine({
+      startEngine({
+        mode: request.simulation.engine.mode,
+        preference: request.simulation.engine.preference,
+        fallbackOn: request.simulation.engine.fallbackOn,
+        engines: request.simulation.engine.engines,
+        comparison: request.simulation.engine.comparison,
+        options: request.simulation.engine.options,
         artifacts: compilation.artifacts,
         workflow: request.workflow,
         chainId: chain.chainId,
-        forkUrl: forkGuard.url,
-        block: request.block
+        forkUrl: forkProxy.url,
+        block: resolvedBlock,
+        configuration: request.simulation
       }),
-      forkGuard.termination,
+      forkProxy.termination,
       {
         async onLateValue(lateEngine) {
           await Promise.resolve(lateEngine?.close?.()).catch(() => {});
         }
       }
     );
+    engineEvidence = normalizedEngineEvidence(engine, request.simulation.engine.mode);
 
     await api.updateStatus(jobId, { status: 'running', stage: 'executing_workflow' });
     const execution = await raceWithRpcPolicyTermination(
       executeWorkflow(request.workflow, engine.runtime, { aliases: engine.aliases }),
-      forkGuard.termination
+      forkProxy.termination
     );
     steps = execution.steps;
     deployments = execution.context.deployments;
@@ -125,6 +192,11 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       chain: request.chain,
       chainId: chain.chainId,
       block: request.block,
+      simulation: request.simulation,
+      resolvedBlock,
+      resolvedBlockHash,
+      resolvedBlockTimestamp,
+      engine: engineEvidence,
       forkTransport,
       compilerVersion: request.compilerVersion,
       compilerDiagnostics,
@@ -146,13 +218,18 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
       mode: request?.mode,
       chain: request?.chain,
       block: request?.block,
+      simulation: request?.simulation,
+      resolvedBlock,
+      resolvedBlockHash,
+      resolvedBlockTimestamp,
+      engine: engineEvidence,
       forkTransport,
       compilerVersion: request?.compilerVersion,
       compilerDiagnostics,
       artifacts: compiledArtifacts,
       deployments,
       steps,
-      error: serializeError(cause),
+      error: serializeError(cause, environment),
       startedAt,
       finishedAt: new Date().toISOString()
     };
@@ -167,7 +244,7 @@ export async function runJob({ jobId, apiUrl, runnerApiKey, environment = proces
     throw cause;
   } finally {
     if (engine) await engine.close().catch(() => {});
-    if (forkGuard) await forkGuard.close().catch(() => {});
+    if (forkProxy) await forkProxy.close().catch(() => {});
     await fs.rm(root, { recursive: true, force: true });
   }
 }
