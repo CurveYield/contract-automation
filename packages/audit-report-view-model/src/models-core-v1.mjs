@@ -89,7 +89,7 @@ export function createReportListViewModel(reports, options = {}) {
   if (status !== 'all') items = items.filter((item) => item.status === status);
   items.sort((a, b) => {
     if (sort === 'title-asc') return a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
-    if (sort === 'title-desc') return b.title.localeCompare(a.title) || b.id.localeCompare(a.id);
+    if (sort === 'title-desc') return b.title.localeCompare(a.title) || a.id.localeCompare(b.id);
     const direction = sort === 'created-asc' ? 1 : -1;
     return direction * String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || a.id.localeCompare(b.id);
   });
