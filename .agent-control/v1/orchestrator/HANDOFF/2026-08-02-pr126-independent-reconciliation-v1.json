@@ -1,0 +1,154 @@
+{
+  "protocolVersion": 2,
+  "schemaVersion": "round4-pr126-independent-reconciliation-v1",
+  "repository": "CurveYield/contract-automation",
+  "recordedAt": "2026-08-02T12:54:18Z",
+  "pullRequest": 126,
+  "state": "merged-security-repair-required",
+  "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
+  "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
+  "mainHeadVerified": true,
+  "changedFileCount": 41,
+  "changedPaths": [
+    ".github/workflows/export-v27-hardhat-harness.yml",
+    ".github/workflows/github-native-sim-ci.yml",
+    ".github/workflows/github-native-simulate.yml",
+    ".github/workflows/live-fork-engine-smoke.yml",
+    ".github/workflows/live-fork-upgrade-ci.yml",
+    ".github/workflows/simulate.yml",
+    "docs/live-fork-rpc-administration.md",
+    "docs/live-fork-simulation-authoring.md",
+    "docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md",
+    "docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md",
+    "github-native-sim/jobs/live-fork-v27-v1/README.md",
+    "github-native-sim/jobs/live-fork-v27-v1/patch-reviewed-v27-harness.py",
+    "github-native-sim/jobs/live-fork-v27-v1/run-ci.sh",
+    "github-native-sim/jobs/live-fork-v27-v1/run-v27-live-fork.mjs",
+    "packages/github-native-sim/src/local-state-journal.mjs",
+    "packages/github-native-sim/src/run-job-file.mjs",
+    "packages/github-native-sim/src/schema.mjs",
+    "packages/github-native-sim/test/local-state-journal.test.mjs",
+    "packages/github-native-sim/test/run-job-file.test.mjs",
+    "packages/protocol/src/index.mjs",
+    "packages/protocol/src/simulation-config.mjs",
+    "packages/runner/src/archive-rpc-pool.mjs",
+    "packages/runner/src/fork-engine.mjs",
+    "packages/runner/src/github-rpc-health-store.mjs",
+    "packages/runner/src/hardhat-edr-engine.mjs",
+    "packages/runner/src/live-fork-proxy.mjs",
+    "packages/runner/src/live-fork-runtime.mjs",
+    "packages/runner/src/live-fork-time.mjs",
+    "packages/runner/src/rpc-health-ledger.mjs",
+    "packages/runner/src/rpc-health-session.mjs",
+    "packages/runner/src/run-job.mjs",
+    "packages/runner/src/workflow.mjs",
+    "packages/runner/test/archive-rpc-pool.test.mjs",
+    "packages/runner/test/live-fork-config.test.mjs",
+    "packages/runner/test/live-fork-proxy.test.mjs",
+    "packages/runner/test/live-fork-runtime-actions.test.mjs",
+    "packages/runner/test/rpc-health-ledger.test.mjs",
+    "packages/runner/test/rpc-health-session.test.mjs",
+    "packages/runner/test/run-job-live-fork.test.mjs",
+    "scripts/live-fork-engine-smoke.mjs",
+    "scripts/rpc-health-admin.mjs"
+  ],
+  "functionalEvidence": {
+    "workflowRuns": [
+      {"id":30745082616,"name":"Export Proven V27 Hardhat Harness","conclusion":"success"},
+      {"id":30745082608,"name":"Live Fork Upgrade CI","conclusion":"success"},
+      {"id":30745082610,"name":"GitHub-Native Simulation CI","conclusion":"success"}
+    ],
+    "artifact": {
+      "id": 8832830514,
+      "name": "v27-full-live-fork-30745082610",
+      "declaredDigest": "sha256:ec4e17b10a45af7df6b62ab77b2be82058c21d11b4c914ae928b63fe9502ebbd",
+      "downloadedDigest": "sha256:ec4e17b10a45af7df6b62ab77b2be82058c21d11b4c914ae928b63fe9502ebbd",
+      "digestMatches": true
+    },
+    "validation": {
+      "validatedSuccess": true,
+      "wrapperExitCode": 0,
+      "assurance": "continuous-archive-backed-local-fork",
+      "forkBlockNumber": 25666794,
+      "forkBlockHash": "0x0dd80dfb71507c7ab1701bdf64f5d1e1e9d3ed55a7cd132f86b97be28a39abaa",
+      "forkIdentityMatches": true,
+      "rpcRequests": 124460,
+      "rpcFailures": 0,
+      "rpcRetries": 0,
+      "rpcQuarantines": 0,
+      "lifecycleCalls": 53,
+      "successfulTransactions": 42,
+      "expectedRevertTransactions": 2,
+      "assertions": 85,
+      "passedAssertions": 85,
+      "cycles": 4,
+      "postMigrationCycles": 2,
+      "supplementalTests": 4,
+      "passedSupplementalTests": 4,
+      "publicChainBroadcasts": 0
+    }
+  },
+  "securityFindings": [
+    {
+      "id": "PR126-S-01",
+      "severity": "critical",
+      "title": "Pull-request workflows execute PR-controlled code with live RPC secrets and write-capable token",
+      "paths": [
+        ".github/workflows/github-native-sim-ci.yml",
+        ".github/workflows/live-fork-engine-smoke.yml"
+      ],
+      "evidence": "Both workflows trigger on pull_request, check out the PR source, install/execute repository code, and expose live archive RPC secrets. github-native-sim-ci also grants issues: write and passes github.token to the health store.",
+      "requiredRepair": "Split secretless pull-request validation from trusted live-fork jobs. Live jobs must run only through a trusted push/manual/reusable workflow against an explicitly reviewed SHA with least-privilege permissions."
+    },
+    {
+      "id": "PR126-S-02",
+      "severity": "high",
+      "title": "Third-party GitHub Actions are referenced by mutable tags",
+      "paths": [
+        ".github/workflows/export-v27-hardhat-harness.yml",
+        ".github/workflows/github-native-sim-ci.yml",
+        ".github/workflows/github-native-simulate.yml",
+        ".github/workflows/live-fork-engine-smoke.yml",
+        ".github/workflows/live-fork-upgrade-ci.yml",
+        ".github/workflows/simulate.yml"
+      ],
+      "evidence": "actions/checkout@v4, actions/setup-node@v4 and actions/upload-artifact@v4 are mutable references.",
+      "requiredRepair": "Pin every third-party action to a reviewed full 40-character commit SHA and retain the version only in a comment."
+    },
+    {
+      "id": "PR126-S-03",
+      "severity": "critical",
+      "title": "Public issue comments can forge RPC health events and trigger prototype pollution",
+      "paths": [
+        "packages/runner/src/github-rpc-health-store.mjs",
+        "packages/runner/src/rpc-health-ledger.mjs"
+      ],
+      "evidence": "The repository is public. The store parses every comment containing the marker without validating author identity. The reducer accepts arbitrary slot IDs into a normal object; an event using slotId or entry.id __proto__ resolves Object.prototype and writes health fields onto it.",
+      "requiredRepair": "Authenticate accepted comment authors/issuers, validate an exact event schema and bounded slot-ID grammar, reject prototype-sensitive names, and store slots in a null-prototype Map/object. Recovery/disable events must be authorized separately from session events."
+    },
+    {
+      "id": "PR126-S-04",
+      "severity": "high",
+      "title": "Upstream RPC error text is returned to the local JSON-RPC client",
+      "paths": [
+        "packages/runner/src/archive-rpc-pool.mjs",
+        "packages/runner/src/live-fork-proxy.mjs"
+      ],
+      "evidence": "Provider/network decoded error.message becomes the thrown error message and is emitted as JSON-RPC error.message. Such text can contain endpoint URLs, API-key-bearing paths, account identifiers or transport internals.",
+      "requiredRepair": "Return stable bounded public error text and retain only a classified failure code in diagnostics. Never expose provider/network messages or URLs."
+    }
+  ],
+  "verdict": {
+    "functional": "ACCEPT",
+    "security": "REJECT_PENDING_REPAIR",
+    "round4IntakeAuthorized": false,
+    "reason": "Functional acceptance evidence is strong, but four external trust-boundary findings must be repaired and independently verified before the merged paths can be reconciled into the Round 4 candidate."
+  },
+  "requiredNextSteps": [
+    "Create a test-first security repair on an isolated branch from merge commit 500de7b8752e926f7478feafb81b92586d6364ea.",
+    "Regenerate the exact 41-path main reconciliation registry after the repair.",
+    "Run complete repository tests, syntax gates, workflow static security tests and live-fork acceptance on the repaired head.",
+    "Publish one exact repaired head and path/blob manifest for Worker 2 intake.",
+    "Worker 2 must not use the stale 20-path draft quarantine or freeze an assembled SHA before this reconciliation is accepted."
+  ]
+}
