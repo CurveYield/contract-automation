@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "stage_a_active_with_integration_blocker",
+  "state": "stage_a_active_with_integration_blockers",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -20,6 +20,19 @@
   "integrationProductionIntakeAuthorized": false,
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
+  "externalWorkstreams": [
+    {
+      "workstreamId": "live-fork-rpc-routing-pr126-v1",
+      "pullRequestNumber": 126,
+      "branch": "agent/live-fork-rpc-routing-design",
+      "state": "active-mutable-external-owner",
+      "observedHeadSha": "701ab96661cad9904e17df0d8559e79bc234335a",
+      "quarantineEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T095457Z_external-live-fork-workstream-quarantine_v1.json",
+      "round4InterferenceAuthorized": false,
+      "finalCandidateFreezeBlocked": true,
+      "requiredResolution": "Wait for James to declare PR 126 complete. Then pin one exact head, independently review and repair it if required, reconcile exact reviewed paths, and rerun every affected acceptance gate."
+    }
+  ],
   "blockers": [
     {
       "blockerId": "round4-worker2-premature-activation-v1",
@@ -28,9 +41,20 @@
       "description": "Worker 2 sequence 8 and its integration branch were activated before Stage A verdicts from issues 120, 121, 123, and 124, contrary to ACTIVATION_RUNBOOK_v1 Gate 4 and Gate 5. Worker 2 must remain limited to stage-0 preparation and must not intake subsystem production paths until all four Stage A outputs are complete and valid.",
       "requiredResolution": "Do not publish another Worker 2 assignment or authorize production intake. After all four Stage A verdicts are valid, reconcile whether sequence 8 may continue under its existing immutable staged assignment or must be superseded according to the runbook.",
       "detectedAt": "2026-08-02T09:34:47Z"
+    },
+    {
+      "blockerId": "round4-external-live-fork-pr126-v1",
+      "pullRequestNumber": 126,
+      "description": "A separate active agent owns the mutable BlockPI/live-fork simulation redesign. Its 17 changed paths are quarantined from all Round 4 workers and orchestrator integration activity.",
+      "requiredResolution": "Do not modify, restore, merge, intake, union, review, or repair PR 126 paths until James declares the separate work complete and authorizes independent review. No final assembled candidate may be frozen before reconciliation.",
+      "detectedAt": "2026-08-02T09:54:57Z"
     }
   ],
+  "productionTestTarget": {
+    "nonAwsFunctions": "ready-for-production-testing-after-final-worker-round",
+    "awsDependentHardenedExecutionPlane": "deferred-separate-workstream"
+  },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T09:34:47Z"
+  "updatedAt": "2026-08-02T09:54:57Z"
 }
