@@ -1,8 +1,8 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-1",
-  "state": "ready",
-  "lastConsumedSequence": 3,
+  "state": "working",
+  "lastConsumedSequence": 4,
   "activeSequence": 4,
   "activeMessageId": "worker-1-round3-api-gpt-auth-release-v1-000004",
   "issueNumber": 113,
@@ -10,9 +10,9 @@
   "startingSha": "d2d17ce80071f67cf5894c09d3a7291f5904cf43",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:113",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/113#issuecomment-5154712881",
   "blockers": [],
   "round": 3,
   "roundType": "penultimate-release-candidate",
-  "updatedAt": "2026-08-02T02:27:00Z"
+  "updatedAt": "2026-08-02T02:35:00Z"
 }
