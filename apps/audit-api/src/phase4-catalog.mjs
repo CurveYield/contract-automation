@@ -7,11 +7,14 @@ import {
 import { PARSER_VERSIONS } from '../../../packages/audit-tool-parsers/src/index.mjs';
 import {
   ApiContractError,
-  authenticateAuditRead,
   corsHeaders,
   createJsonResponse,
   errorResponse
 } from '../../../packages/audit-api-contracts/src/index.mjs';
+import {
+  AUDIT_ROUTE_SCOPES,
+  authorizeAuditReadRequest
+} from '../../../packages/audit-api-contracts/src/authorization.mjs';
 
 export const PHASE4_TOOL_PROFILE_LIST_PATH = '/audit/v1/tool-profiles';
 export const PHASE4_TOOL_PROFILE_ITEM_PREFIX = '/audit/v1/tool-profiles/';
@@ -33,7 +36,7 @@ function profileIdFromPath(pathname) {
   let decoded;
   try { decoded = decodeURIComponent(encoded); }
   catch { throw new ApiContractError('invalid_profile_id', 'Profile ID is invalid', '$.profileId'); }
-  if (!decoded || decoded.includes('/') || decoded.includes('\\')) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(decoded)) {
     throw new ApiContractError('invalid_profile_id', 'Profile ID is invalid', '$.profileId');
   }
   return decoded;
@@ -48,9 +51,7 @@ function route(pathname) {
 }
 
 function exactParserIdentity(catalog, parserVersions) {
-  if (!catalog || !Array.isArray(catalog.profiles) || !parserVersions || typeof parserVersions !== 'object') {
-    return false;
-  }
+  if (!catalog || !Array.isArray(catalog.profiles) || !parserVersions || typeof parserVersions !== 'object') return false;
   const profiles = [...catalog.profiles].sort((left, right) => left.profileId.localeCompare(right.profileId));
   const parserIds = Object.keys(parserVersions).sort();
   if (profiles.length !== parserIds.length) return false;
@@ -91,25 +92,17 @@ export async function handlePhase4CatalogRequest(request, env) {
     return new Response(null, { status: 204, headers: corsHeaders(env) });
   }
   try {
-    await authenticateAuditRead(request, env);
     if (request.method !== 'GET') {
-      throw new ApiContractError(
-        'method_not_allowed',
-        'Phase 4 profile catalog routes are read-only',
-        '$',
-        405
-      );
+      throw new ApiContractError('method_not_allowed', 'Phase 4 profile catalog routes are read-only', '$', 405);
     }
+    await authorizeAuditReadRequest(request, env, { routeScope: AUDIT_ROUTE_SCOPES.catalogRead });
     if (matched.kind === 'list') {
       return createJsonResponse({
-        schemaVersion: 'phase4-tool-profile-list-v1',
+        schemaVersion: 'phase4-tool-profile-list-v2',
         profiles: listPhase4Profiles(PHASE4_PROFILE_CATALOG)
       }, { env });
     }
-    return createJsonResponse(
-      getPhase4Profile(PHASE4_PROFILE_CATALOG, matched.profileId),
-      { env }
-    );
+    return createJsonResponse(getPhase4Profile(PHASE4_PROFILE_CATALOG, matched.profileId), { env });
   } catch (cause) {
     if (cause instanceof ValidationError) {
       return errorResponse(new ApiContractError(
