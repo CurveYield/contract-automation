@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "audit-round3-production-path-registry-v1",
+  "componentGroup": "integration",
+  "repository": "CurveYield/contract-automation",
+  "branch": "audit-round3/phases1-8-release-integration-v1",
+  "startingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+  "paths": [
+    {"path":"packages/audit-release-integration/package.json","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"42450b2d97c39e79c4f53f6c77492a1dca6f2afc","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/boundary.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"a86b705b83efaf2ce920454e56e31cad71eb8dbe","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/component-manifest.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"74c713d68e50364e8ba37d4d2e5e353a61cfd314","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/contracts.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"d7c085e268101dddb30e7e2184ca5d7fba8cf7f0","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/digest.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"c965484523aa314998cc0bd62beaf428f85f07b7","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/index.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"1170cc29ce8281b0aef229364d8d2e1dbd0e44ea","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/intake.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"2a5698b71728bfcdaca0fd24a32f37d8b1af1539","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/interface-lock.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"955690440caebe355edbfd2ac51e1c904d86510f","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/release-manifest.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"5d2ebb598c4bc82c579a8b06edad28d8508228b6","adaptationKind":"added","repairId":"round3-release-integration-v1"},
+    {"path":"packages/audit-release-integration/src/shared-union.mjs","sourceHead":"3156183698b4c39f32c70f3ae7dcaaea93c85c1d","sourceBlobSha":null,"destinationBlobSha":"c79febcbd29bb61e56236d27230a51f4d0e27fc2","adaptationKind":"added","repairId":"round3-release-integration-v1"}
+  ]
+}
