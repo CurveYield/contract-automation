@@ -1,0 +1,183 @@
+name: Temporary V27 Ganache Full Simulation v3
+
+on:
+  pull_request:
+    paths:
+      - 'packages/github-native-sim/src/local-state-journal.mjs'
+      - 'packages/github-native-sim/test/local-state-journal.test.mjs'
+      - 'github-native-sim/jobs/v27-ganache-full-v1/**'
+      - '.github/workflows/temp-v27-ganache-full-v3.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-v27-ganache-full-v3-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - name: Check out current upgraded suite and Ganache conversion
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Prepare partial-report directory
+        run: mkdir -p "$RUNNER_TEMP/v27-ganache-full-v3"
+
+      - name: Reconstruct and patch Ganache lifecycle runner
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          result_root="$RUNNER_TEMP/v27-ganache-full-v3"
+          runner_ref='50fa3bd16dc3988fc89d8412b87da65be449d417'
+          runner_path='github-native-sim/jobs/v27-ganache-full-v1/runner-payload-hex/run-v27-ganache-lifecycle.mjs.gz.hex.part'
+          git fetch --no-tags origin "$runner_ref"
+          mkdir -p "$job_root/scripts"
+          : > /tmp/v27-ganache-runner.hex
+          for part in 00 01 02 03; do
+            git show "$runner_ref:$runner_path-$part" >> /tmp/v27-ganache-runner.hex
+          done
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('/tmp/v27-ganache-runner.hex').read_text(encoding='utf-8')
+          Path('/tmp/v27-ganache-runner.mjs.gz').write_bytes(bytes.fromhex(''.join(source.split())))
+          PY
+          echo 'f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba  /tmp/v27-ganache-runner.mjs.gz' | sha256sum -c -
+          gzip -dc /tmp/v27-ganache-runner.mjs.gz > "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          echo 'fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe  github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
+          python - <<'PY'
+          from pathlib import Path
+          file = Path('github-native-sim/jobs/v27-ganache-full-v1/scripts/run-v27-ganache-lifecycle.mjs')
+          source = file.read_text(encoding='utf-8')
+          source = source.replace(
+              "    viaIR: config.viaIR,\n    expectedSourceHashes",
+              "    viaIR: config.viaIR,\n    evmVersion: config.evmVersion,\n    expectedSourceHashes"
+          )
+          source = source.replace(
+              "    settings: { optimizer: config.optimizer, viaIR: config.viaIR }",
+              "    settings: { optimizer: config.optimizer, viaIR: config.viaIR, evmVersion: config.evmVersion }"
+          )
+          file.write_text(source, encoding='utf-8')
+          PY
+          python "$job_root/scripts/patch-v27-runner-yb-compatibility.py" "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          patched_sha="$(sha256sum "$job_root/scripts/run-v27-ganache-lifecycle.mjs" | awk '{print $1}')"
+          node --check "$job_root/scripts/run-v27-ganache-lifecycle.mjs"
+          cat > "$result_root/runner-verification.json" <<JSON
+          {
+            "baseRunnerCommit": "$runner_ref",
+            "baseGzipSha256": "f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba",
+            "baseSourceSha256": "fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe",
+            "patchedSourceSha256": "$patched_sha",
+            "compilerEvmVersion": "shanghai",
+            "ybCompatibilityPatch": "verified source runtime replacement inside ephemeral Ganache",
+            "syntax": "passed"
+          }
+          JSON
+
+      - name: Run focused journal tests and syntax verification
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          node --test packages/github-native-sim/test/local-state-journal.test.mjs
+          node --check packages/github-native-sim/src/local-state-journal.mjs
+          node --check "$job_root/scripts/v27-observers.mjs"
+          node --check "$job_root/scripts/ganache-call-recorder.mjs"
+          python -m py_compile "$job_root/scripts/patch-v27-runner-yb-compatibility.py"
+          bash -n "$job_root/scripts/build-yb-shanghai-runtime-v3.sh"
+
+      - name: Reconstruct and verify exact V27 Solidity sources
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          result_root="$RUNNER_TEMP/v27-ganache-full-v3"
+          source_ref='origin/automation/v27-functional-smoke-v2'
+          source_root='github-native-sim/jobs/v27-functional-smoke-v2'
+          git fetch --no-tags origin 'automation/v27-functional-smoke-v2:refs/remotes/origin/automation/v27-functional-smoke-v2'
+          mkdir -p "$job_root/project"
+          : > /tmp/v27-sources.tar.gz.b64
+          for part in 01 02 03 04 05; do
+            git show "$source_ref:$source_root/source-payloads/archive/v27-sources.tar.gz.part-$part.b64" >> /tmp/v27-sources.tar.gz.b64
+          done
+          base64 -d /tmp/v27-sources.tar.gz.b64 > /tmp/v27-sources.tar.gz
+          echo '4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59  /tmp/v27-sources.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/v27-sources.tar.gz -C "$job_root/project"
+          git show "$source_ref:$source_root/project/CurveYieldSdYBRewardConverterV27.sol" > "$job_root/project/CurveYieldSdYBRewardConverterV27.sol"
+          echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
+          echo 'e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBRewardConverterV27.sol' | sha256sum -c -
+          echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-ganache-full-v1/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
+          cat > "$result_root/source-verification.json" <<JSON
+          {
+            "archiveSha256": "4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59",
+            "vaultSha256": "c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2",
+            "converterSha256": "e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e",
+            "strategySha256": "8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04"
+          }
+          JSON
+
+      - name: Build verified YB Shanghai runtime through standard JSON v3
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          compatibility_root="$RUNNER_TEMP/v27-ganache-full-v3/compatibility"
+          mkdir -p "$compatibility_root"
+          bash "$job_root/scripts/build-yb-shanghai-runtime-v3.sh" \
+            "$compatibility_root/yb-shanghai-runtime.hex" \
+            "$compatibility_root/yb-shanghai-runtime-report.json"
+          jq '{address, compilerVersion, compileInterface, selectedCompileMode, originalPc, originalByteAtPc, originalRuntimeBytes, compatibilityCompilerVersion, compatibilityRuntimeBytes, sourceBundleSha256, standardInputSha256, originalRuntimeSha256, compatibilityRuntimeSha256}' \
+            "$compatibility_root/yb-shanghai-runtime-report.json"
+
+      - name: Execute one-shot V27 Ganache full simulation
+        id: execute
+        env:
+          YB_SHANGHAI_RUNTIME_FILE: ${{ runner.temp }}/v27-ganache-full-v3/compatibility/yb-shanghai-runtime.hex
+          RESULT_ROOT: ${{ runner.temp }}/v27-ganache-full-v3
+        run: |
+          set -u
+          job_root='github-native-sim/jobs/v27-ganache-full-v1'
+          result_root="$RESULT_ROOT"
+          set +e
+          RESULT_ROOT="$result_root" node "$job_root/scripts/run-v27-ganache-lifecycle.mjs" \
+            > "$result_root/workflow-stdout.log" \
+            2> "$result_root/workflow-stderr.log"
+          status=$?
+          set -e
+          printf 'exit_code=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          if test "$status" -eq 0; then
+            printf 'success=1\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'success=0\n' >> "$GITHUB_OUTPUT"
+          fi
+          if test -f "$result_root/data-report.json"; then
+            jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), supplementalTestCount: (.supplementalTests | length), finalJournalHash, ybCompatibility: .execution.ybGanacheCompatibility}' "$result_root/data-report.json" || true
+          fi
+          exit 0
+
+      - name: Upload complete or partial V27 Ganache report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V27-Ganache-Full-Data-Report-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-ganache-full-v3
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Propagate simulation failure
+        if: steps.execute.outputs.success != '1'
+        run: |
+          echo "V27 Ganache simulation failed with exit code ${{ steps.execute.outputs.exit_code }}"
+          exit 1
