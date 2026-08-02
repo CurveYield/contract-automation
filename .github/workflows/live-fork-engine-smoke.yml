@@ -1,0 +1,84 @@
+name: Live Fork Engine Smoke
+
+on:
+  push:
+    branches:
+      - agent/live-fork-rpc-routing-design
+    paths:
+      - 'packages/runner/src/archive-rpc-pool.mjs'
+      - 'packages/runner/src/live-fork-proxy.mjs'
+      - 'packages/runner/src/fork-engine.mjs'
+      - 'packages/runner/src/hardhat-edr-engine.mjs'
+      - 'packages/runner/src/live-fork-runtime.mjs'
+      - 'packages/runner/src/live-fork-time.mjs'
+      - 'scripts/live-fork-engine-smoke.mjs'
+      - '.github/workflows/live-fork-engine-smoke.yml'
+  pull_request:
+    paths:
+      - 'packages/runner/src/archive-rpc-pool.mjs'
+      - 'packages/runner/src/live-fork-proxy.mjs'
+      - 'packages/runner/src/fork-engine.mjs'
+      - 'packages/runner/src/hardhat-edr-engine.mjs'
+      - 'packages/runner/src/live-fork-runtime.mjs'
+      - 'packages/runner/src/live-fork-time.mjs'
+      - 'scripts/live-fork-engine-smoke.mjs'
+      - '.github/workflows/live-fork-engine-smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-fork-engine-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_03 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_04 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_05 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_06 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_07 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
+      LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
+    steps:
+      - name: Check out trusted branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted dependencies and EDR
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
+
+      - name: Execute live Ethereum fork smoke
+        id: execute
+        continue-on-error: true
+        run: node scripts/live-fork-engine-smoke.mjs
+
+      - name: Upload live fork evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-fork-engine-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/live-fork-engine-smoke
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Propagate smoke failure
+        if: steps.execute.outcome == 'failure'
+        run: exit 1
