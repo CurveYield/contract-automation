@@ -1,0 +1,41 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_completed",
+  "workerId": "worker-3",
+  "sequence": 7,
+  "messageId": "worker-3-round3-github-direct-audit-release-v1-000007",
+  "assignmentBlobSha": "b5c2df3c528283eaafef30a1c618a994ca09d46d",
+  "issueNumber": 115,
+  "branch": "audit-round3/github-direct-audit-release-v1",
+  "startingSha": "66c3060da74ba79a780847eb86307d0b5641b20a",
+  "approvedCoreSha": "22c22dd9de0e21b066ac29c9e0d9422a73724a31",
+  "codeTestCandidateSha": "f6e3ce63b18aed898d6458685026d313feb47440",
+  "finalSha": "6d4dfde52be360d9e5ea33a763070384106dfb25",
+  "recommendation": "ACCEPT",
+  "reportCommentUrl": "https://github.com/CurveYield/contract-automation/issues/115#issuecomment-5155032544",
+  "reportCommentId": 5155032544,
+  "checkpointCommentIds": [5154788251,5154879475,5154952636,5154997453,5155009281],
+  "testSummary": {
+    "passed": 100,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "workflowYaml": "ok",
+    "productionSyntax": "ok",
+    "manifestValidation": "ok",
+    "whitespace": "clean"
+  },
+  "compatibilityManifest": {
+    "id": "direct-compatibility-e8531d139d52d144971221fb",
+    "digest": "sha256:e8531d139d52d144971221fb52d314ab9cc04afa785ec9a567a4885bbf9f1014"
+  },
+  "releaseManifest": {
+    "id": "direct-round3-release-ae675a34d7af7a028988c6a8",
+    "digest": "sha256:ae675a34d7af7a028988c6a87970b88fcd3c3bca2d6d63b45ecf281dca374f7a"
+  },
+  "protectedBlobDigest": "sha256:a0c0e54c48bda474c480d795f470de52bc5195f5eacc02cdf3f216ef744e8e16",
+  "changedFileCount": 30,
+  "submittedExecution": false,
+  "cloudflareFallback": false,
+  "completedAt": "2026-08-02T02:34:00Z"
+}
