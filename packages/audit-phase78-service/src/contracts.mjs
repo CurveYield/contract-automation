@@ -136,6 +136,23 @@ export function validateServiceResponse(input){
  return frozenClone({...core,responseDigest:digest(v.responseDigest,'$.responseDigest')});
 }
 
+function assertResponseIdentity(response,request,kind){
+ if(response.requestId!==request.requestId||response.operation!==request.operation)fail(`${kind}_identity_mismatch`,'$');
+ const requestV2=request.schemaVersion===SERVICE_REQUEST_SCHEMA_V2;
+ const expectedSchema=kind==='response'?(requestV2?SERVICE_RESPONSE_SCHEMA_V2:SERVICE_RESPONSE_SCHEMA_V1):(requestV2?SERVICE_ERROR_SCHEMA_V2:SERVICE_ERROR_SCHEMA_V1);
+ if(response.schemaVersion!==expectedSchema)fail(`${kind}_identity_mismatch`,'$.schemaVersion');
+ if(!requestV2)return;
+ for(const field of ['tenantId','workspaceId','campaignId','forkId','attemptId','mergeId']){
+  if(response[field]!==request[field])fail(`${kind}_identity_mismatch`, `$.${field}`);
+ }
+}
+
+export function validateServiceResponseForRequest(responseInput,requestInput){
+ const request=validateServiceRequest(requestInput),response=validateServiceResponse(responseInput);
+ assertResponseIdentity(response,request,'response');
+ return response;
+}
+
 export function createServiceError({request:requestInput,code,message,retryable,path,at}){
  const request=validateServiceRequest(requestInput),v2=request.schemaVersion===SERVICE_REQUEST_SCHEMA_V2;
  const core={
@@ -168,4 +185,10 @@ export function validateServiceError(input){
  };
  if(v.errorDigest!==sha256(core))fail('digest_mismatch','$.errorDigest');
  return frozenClone({...core,errorDigest:digest(v.errorDigest,'$.errorDigest')});
+}
+
+export function validateServiceErrorForRequest(errorInput,requestInput){
+ const request=validateServiceRequest(requestInput),error=validateServiceError(errorInput);
+ assertResponseIdentity(error,request,'error');
+ return error;
 }
