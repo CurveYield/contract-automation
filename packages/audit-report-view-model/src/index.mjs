@@ -14,7 +14,7 @@ function primitiveString(value) {
 export function toSafeText(value, max = MAX_TEXT) {
   const normalized = primitiveString(value)
     .normalize('NFKC')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/g, '')
     .replace(/[<>]/g, '')
     .trim();
   return normalized.slice(0, Math.max(0, Math.min(max, MAX_LONG_TEXT)));
