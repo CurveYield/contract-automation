@@ -17,6 +17,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Patch only the preflight evidence assertion. The unchanged live YB transaction
+# already succeeds against byte 0x5e; Hardhat's trace omits opcode enumeration.
+python "$job_root/patch-mcopy-preflight.py" "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
+node --check "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
+sha256sum "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" > "$result_root/patched-runner-sha256.txt"
+
 # Reconstruct and verify the exact V27 sources.
 git fetch --no-tags origin 'automation/v27-functional-smoke-v2:refs/remotes/origin/automation/v27-functional-smoke-v2'
 : > /tmp/v27-sources.tar.gz.b64
@@ -79,6 +85,6 @@ status=$?
 set -e
 printf '%s\n' "$status" > "$result_root/simulation-exit-code.txt"
 if test -f "$result_root/data-report.json"; then
-  jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), passedAssertions: ([.assertions[] | select(.passed == true)] | length), cycleCount: (.cycles | length), postMigrationCycleCount: (.postMigrationCycles | length), supplementalTestCount: (.supplementalTests | length), migration, finalJournalHash, mcopyPreflight: .execution.ybMcopyPreflight}' "$result_root/data-report.json" | tee "$result_root/compact-result.json"
+  jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), passedAssertions: ([.assertions[] | select(.passed == true)] | length), cycleCount: (.cycles | length), postMigrationCycleCount: (.postMigrationCycles | length), supplementalTestCount: (.supplementalTests | length), migration, finalJournalHash, mcopyPreflight: .preflight.ybMcopyExecutionProof}' "$result_root/data-report.json" | tee "$result_root/compact-result.json"
 fi
 exit "$status"
