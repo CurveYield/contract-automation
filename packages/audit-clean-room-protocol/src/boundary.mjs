@@ -22,6 +22,7 @@ export function identifier(value,path){return boundedString(value,path,128).matc
 export function digest(value,path){return typeof value==='string'&&/^sha256:[0-9a-f]{64}$/.test(value)?value:fail('invalid_digest',path);}
 export function timestamp(value,path){boundedString(value,path,40);const date=new Date(value);if(Number.isNaN(date.getTime())||date.toISOString()!==value)fail('invalid_timestamp',path);return value;}
 export function integer(value,path,minimum=0,maximum=Number.MAX_SAFE_INTEGER){if(!Number.isSafeInteger(value)||Object.is(value,-0)||value<minimum||value>maximum)fail('invalid_integer',path);return value;}
+export function boolean(value,path){if(typeof value!=='boolean')fail('invalid_boolean',path);return value;}
 export function enumValue(value,allowed,path){return allowed.includes(value)?value:fail('invalid_enum',path);}
 export function denseArray(value,path,maximum=10_000){if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||value.length>maximum)fail('invalid_array',path);for(let index=0;index<value.length;index+=1)if(!Object.hasOwn(value,index))fail('sparse_array',path);return value;}
 export function stringArray(value,path,{item=(x,p)=>boundedString(x,p),maximum=10_000}={}){const result=denseArray(value,path,maximum).map((x,index)=>item(x,`${path}[${index}]`));if(new Set(result).size!==result.length)fail('duplicate_item',path);return result.sort();}
