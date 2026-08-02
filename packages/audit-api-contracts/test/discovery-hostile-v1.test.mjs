@@ -158,6 +158,61 @@ test('read-scope and discovery boundaries reject accessors, proxies, cycles, spa
   );
 });
 
+test('hostile reflection is single-pass, normalized, and never reads array values through proxy get traps', () => {
+  let ownKeysCalls = 0;
+  const unstableKeys = new Proxy({}, {
+    ownKeys() {
+      ownKeysCalls += 1;
+      if (ownKeysCalls === 1) return [];
+      throw new Error('second reflection must not occur');
+    }
+  });
+  assert.deepEqual(validateExternalValue(unstableKeys), {});
+  assert.equal(ownKeysCalls, 1);
+
+  const badPrototype = new Proxy({}, {
+    ownKeys() { return []; },
+    getPrototypeOf() { throw new Error('prototype trap text'); }
+  });
+  assert.throws(
+    () => validateExternalValue(badPrototype),
+    (error) => error.code === 'hostile_object' && !error.message.includes('prototype trap text')
+  );
+
+  let getCalls = 0;
+  const arrayProxy = new Proxy(['a', 'b'], {
+    get(target, key, receiver) {
+      getCalls += 1;
+      return Reflect.get(target, key, receiver);
+    }
+  });
+  assert.deepEqual(validateExternalValue(arrayProxy), ['a', 'b']);
+  assert.equal(getCalls, 0);
+});
+
+test('external value bounds reject oversized strings, arrays, objects, and depth', () => {
+  assert.throws(
+    () => validateExternalValue('x'.repeat(8_193)),
+    (error) => error.code === 'invalid_string'
+  );
+  assert.throws(
+    () => validateExternalValue(Array.from({ length: 1_001 }, () => 0)),
+    (error) => error.code === 'collection_too_large'
+  );
+  assert.throws(
+    () => validateExternalValue(Object.fromEntries(
+      Array.from({ length: 1_001 }, (_, index) => [`k${index}`, index])
+    )),
+    (error) => error.code === 'collection_too_large'
+  );
+  let nested = null;
+  for (let index = 0; index < 26; index += 1) nested = { nested };
+  assert.throws(
+    () => validateExternalValue(nested),
+    (error) => error.code === 'value_too_deep'
+  );
+});
+
 test('accepted catalog snapshots are defensive, recursively frozen, and fresh per call', () => {
   for (const create of [createAcceptedPhase5Catalog, createAcceptedPhase6Catalog]) {
     const first = create();
