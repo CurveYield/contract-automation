@@ -62,7 +62,7 @@ test('authentication rejects duplicate configured credentials before identity ma
   }
 });
 
-test('authentication preserves exact distinct identity and rejects whitespace or mixed-case schemes', async () => {
+test('authentication preserves exact identities and rejects mixed-case or internal-whitespace schemes', async () => {
   const env = {
     AUDIT_CLIENT_API_KEY: 'client-secret',
     AUDIT_GPT_API_KEY: 'gpt-secret',
@@ -82,12 +82,17 @@ test('authentication preserves exact distinct identity and rejects whitespace or
     assert.equal((await authenticateAuditRead(request(`Bearer ${token}`), env)).identity, identity);
   }
   for (const header of [
-    'bearer client-secret', 'BEARER client-secret', 'Bearer  client-secret',
-    ' Bearer client-secret', 'Bearer client-secret ', 'Bearer\tclient-secret'
+    'bearer client-secret', 'BEARER client-secret', 'Bearer  client-secret', 'Bearer\tclient-secret'
   ]) {
     await assert.rejects(
       () => authenticateAuditRead(request(header), env),
       (error) => error.code === 'unauthorized'
+    );
+  }
+  for (const normalizedByWebHeaders of [' Bearer client-secret', 'Bearer client-secret ']) {
+    assert.equal(
+      (await authenticateAuditRead(request(normalizedByWebHeaders), env)).identity,
+      'client'
     );
   }
 });
