@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "round4-stage0-unresolved-candidates-v1",
+  "integrationStartingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "productionIntakeAuthorized": false,
+  "candidateIssues": [120, 121, 123, 124],
+  "candidateStates": [
+    {"candidateId": "phase1-6-reviewed", "workerId": "worker-0", "state": "working", "finalSha": null},
+    {"candidateId": "phase7-8-reviewed", "workerId": "worker-1", "state": "working", "finalSha": null},
+    {"candidateId": "api-auth-reviewed", "workerId": "worker-3", "state": "working", "finalSha": null},
+    {"candidateId": "web-direct-reviewed", "workerId": "worker-4", "state": "working", "finalSha": null}
+  ],
+  "expectedWaveStates": [
+    {"waveId": "phase1-8-core", "state": "waiting-for-stage-a"},
+    {"waveId": "api-auth", "state": "waiting-for-stage-a"},
+    {"waveId": "github-direct-web", "state": "waiting-for-stage-a"},
+    {"waveId": "protected-addon-final", "state": "waiting-for-stage-a"}
+  ],
+  "protectedBlobCount": 6
+}
