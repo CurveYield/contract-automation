@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "round3-exact-path-blob-addendum-v1",
+  "componentId": "web-operator-ui",
+  "workerId": "worker-4",
+  "issueNumber": 116,
+  "finalHead": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+  "baseManifest": "docs/audit/integration/2026-08-02-worker4-web-exact-path-blobs-v1.json",
+  "reason": "The changed-path manifest omitted package manifests and the original Phase 9 review, tests and inert fixtures from the accepted final component.",
+  "addedPathCount": 11,
+  "resultingComponentPathCount": 50,
+  "repairCommit": "3c8885d7fe6a44b30736584d2bc84bcdc71df43e",
+  "paths": [
+    {"path":"apps/audit-web/package.json","blobSha":"32e7039f0abce50746e2f80be30ae623a7512b75"},
+    {"path":"docs/audit/reviews/2026-08-01-audit-phase9-web-reports-operator-ui-v1.md","blobSha":"ade5dd30f5a08028355e748b7b2e03cc3606a429"},
+    {"path":"packages/audit-report-view-model/package.json","blobSha":"9df4822452c9ba94c48826c1c6db546cf04b2c4d"},
+    {"path":"packages/audit-ui-contracts/package.json","blobSha":"79faf8647949cea3e4a58b2cab2053851256ec7e"},
+    {"path":"test/audit-phase9-web-contracts-view-models.test.mjs","blobSha":"e9b0b9fa2189df1135a8764ffa27276c383e890b"},
+    {"path":"test/audit-phase9-web-diagnostics-accessibility-client.test.mjs","blobSha":"ab16e88dc94b8f41cf538437b960516910794bf9"},
+    {"path":"test/audit-phase9-web-e2e-adversarial-static.test.mjs","blobSha":"1de59232ca0cb9dbbc1755c8869feb583bcdb7b6"},
+    {"path":"test/audit-phase9-web-routes-lifecycle.test.mjs","blobSha":"ce384db0a4cc84f89a42d216d873a656b6b570f0"},
+    {"path":"test/fixtures/audit-phase9-web/adversarial-v1.mjs","blobSha":"e5b040410ed775bbf49cd84d52667ddf556a54cf"},
+    {"path":"test/fixtures/audit-phase9-web/dom-snapshots-v1.json","blobSha":"4845236eb04b0228bcc1118f560872b5f1398981"},
+    {"path":"test/fixtures/audit-phase9-web/inert-data-v1.json","blobSha":"39565c8b351a76f0888380a7d4ffd55b507ab5e6"}
+  ]
+}

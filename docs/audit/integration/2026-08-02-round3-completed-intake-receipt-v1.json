@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "round3-completed-intake-receipt-v1",
+  "repository": "CurveYield/contract-automation",
+  "branch": "orchestrator/round3-completed-intake-v1",
+  "baseSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "integratedCodeSnapshotSha": "0ab63530dbfd67a6a4d555dec7cc58f0b6937448",
+  "integratedComponents": [
+    {
+      "componentId": "api-gpt-auth",
+      "issueNumber": 113,
+      "candidateSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "reportCommentId": 5154958425,
+      "recommendation": "ACCEPT",
+      "pathCount": 50,
+      "initialManifest": "docs/audit/integration/2026-08-02-worker1-api-exact-path-blobs-v1.json",
+      "closureAddendum": "docs/audit/integration/2026-08-02-worker1-api-closure-addendum-v1.json"
+    },
+    {
+      "componentId": "github-direct-audit",
+      "issueNumber": 115,
+      "codeCandidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "documentationHead": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "reportCommentId": 5156758072,
+      "recommendation": "ACCEPT",
+      "pathCount": 90,
+      "initialManifest": "docs/audit/integration/2026-08-02-worker3-github-direct-exact-path-blobs-v1.json",
+      "runtimeClosureAddendum": "docs/audit/integration/2026-08-02-worker3-github-direct-runtime-closure-addendum-v1.json",
+      "evidenceTestClosureAddendum": "docs/audit/integration/2026-08-02-worker3-github-direct-evidence-tests-addendum-v1.json"
+    },
+    {
+      "componentId": "web-operator-ui",
+      "issueNumber": 116,
+      "implementationSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+      "finalHead": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "reportCommentId": 5154997216,
+      "recommendation": "ACCEPT",
+      "pathCount": 50,
+      "initialManifest": "docs/audit/integration/2026-08-02-worker4-web-exact-path-blobs-v1.json",
+      "closureAddendum": "docs/audit/integration/2026-08-02-worker4-web-closure-addendum-v1.json"
+    }
+  ],
+  "totalIntegratedComponentPaths": 190,
+  "commitSequence": [
+    {"sha":"87939ba26e322384d913c4f5a9f092d5d700b901","purpose":"initial exact changed-path transplant","pathCount":98},
+    {"sha":"46093bd3279717363305baedb55724ee9d03e47d","purpose":"API complete dependency and component closure","pathCount":24},
+    {"sha":"2936acfc1582169cd8fcdbda3dcab04ff6c53467","purpose":"GitHub Direct runtime dependency closure","pathCount":25},
+    {"sha":"3c8885d7fe6a44b30736584d2bc84bcdc71df43e","purpose":"web/UI package, review, test and fixture closure","pathCount":11},
+    {"sha":"0ab63530dbfd67a6a4d555dec7cc58f0b6937448","purpose":"GitHub Direct evidence and test closure","pathCount":32}
+  ],
+  "verification": {
+    "exactSourceBlobsUsed": true,
+    "broadBranchMergesUsed": false,
+    "activeRound4BranchesModified": false,
+    "pr126PathsModified": false,
+    "rootPackageUnionRequired": false,
+    "rootPackageReason": "The accepted base already uses apps/* and packages/* workspaces and node --test.",
+    "criticalImportPresence": [
+      "apps/audit-api/src/phase3.mjs",
+      "apps/audit-api/src/runtime.mjs",
+      "packages/audit-api-contracts/src/index.mjs",
+      "packages/audit-github-direct-protocol/src/index.mjs",
+      "packages/audit-github-direct-ledger/src/index.mjs",
+      "packages/audit-github-direct-adapter/src/index.mjs",
+      "packages/audit-github-direct-runner/src/index.mjs",
+      "packages/audit-github-direct-service/src/service.mjs",
+      "packages/audit-report-view-model/src/index.mjs",
+      "packages/audit-web-compat/src/index-v1.mjs"
+    ],
+    "newTestsExecuted": false,
+    "newCompilationPerformed": false,
+    "dependenciesDownloaded": false,
+    "note": "This receipt verifies Git object provenance, path closure and critical static import presence. Prior candidate test evidence remains bound to the cited final reports. Combined execution is deferred to the active Round 4 acceptance flow."
+  },
+  "notIntegrated": [
+    {
+      "componentId": "phase7-8-core-repair",
+      "reason": "Round 3 verdict was ACCEPT WITH REPAIR and the bounded service/report/publication repair is still owned by active Round 4 Worker 1."
+    },
+    {
+      "componentId": "external-live-fork-rpc-routing",
+      "reason": "Draft PR 126 is owned by a separate active agent and remains quarantined until James declares completion and authorizes independent review."
+    }
+  ],
+  "mergeToMainAuthorized": false,
+  "productionDeploymentAuthorized": false,
+  "awsHardenedPlaneDeferred": true
+}

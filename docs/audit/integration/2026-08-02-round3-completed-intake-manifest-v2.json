@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "round3-completed-intake-manifest-v2",
+  "repository": "CurveYield/contract-automation",
+  "branch": "orchestrator/round3-completed-intake-v1",
+  "base": {
+    "componentId": "phases1-6-integration-spine",
+    "issueNumber": 114,
+    "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+    "reportCommentId": 5156779012,
+    "recommendation": "ACCEPT_WITH_DOCUMENTED_REPAIR"
+  },
+  "state": "three-completed-components-integrated-static-verification-only",
+  "integratedCodeSnapshotSha": "0ab63530dbfd67a6a4d555dec7cc58f0b6937448",
+  "integrationReceipt": "docs/audit/integration/2026-08-02-round3-completed-intake-receipt-v1.json",
+  "components": [
+    {
+      "componentId": "api-gpt-auth",
+      "state": "integrated-complete-closure",
+      "pathCount": 50,
+      "sourceSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "manifests": [
+        "docs/audit/integration/2026-08-02-worker1-api-exact-path-blobs-v1.json",
+        "docs/audit/integration/2026-08-02-worker1-api-closure-addendum-v1.json"
+      ]
+    },
+    {
+      "componentId": "github-direct-audit",
+      "state": "integrated-complete-closure",
+      "pathCount": 90,
+      "codeSourceSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "documentationSourceSha": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "manifests": [
+        "docs/audit/integration/2026-08-02-worker3-github-direct-exact-path-blobs-v1.json",
+        "docs/audit/integration/2026-08-02-worker3-github-direct-runtime-closure-addendum-v1.json",
+        "docs/audit/integration/2026-08-02-worker3-github-direct-evidence-tests-addendum-v1.json"
+      ]
+    },
+    {
+      "componentId": "web-operator-ui",
+      "state": "integrated-complete-closure",
+      "pathCount": 50,
+      "sourceSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "manifests": [
+        "docs/audit/integration/2026-08-02-worker4-web-exact-path-blobs-v1.json",
+        "docs/audit/integration/2026-08-02-worker4-web-closure-addendum-v1.json"
+      ]
+    },
+    {
+      "componentId": "phase7-8-core-repair",
+      "state": "not-integrated-await-active-round4-repair",
+      "sourceSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+      "reason": "The completed Round 3 verdict requires six bounded compatibility repairs currently assigned to active Round 4 Worker 1."
+    },
+    {
+      "componentId": "external-live-fork-rpc-routing",
+      "state": "not-integrated-external-active-owner",
+      "pullRequestNumber": 126,
+      "reason": "The separate BlockPI/live-RPC agent remains active and its work is quarantined from this intake."
+    }
+  ],
+  "counts": {
+    "integratedCompletedComponents": 3,
+    "integratedComponentPaths": 190,
+    "blockedComponents": 2
+  },
+  "restrictions": {
+    "activeRound4BranchesReadOnly": true,
+    "broadBranchMergesForbidden": true,
+    "mainMergeAuthorized": false,
+    "productionDeploymentAuthorized": false,
+    "submittedProjectExecution": false,
+    "compilationPerformed": false,
+    "dependenciesDownloaded": false,
+    "walletSigningOrBroadcast": false,
+    "awsIntegration": false
+  },
+  "nextGates": [
+    "Wait for active Round 4 final reports and exact completed SHAs without interfering mid-progress.",
+    "Reconcile the repaired Phase 7-8 candidate and specialist findings onto this isolated integration lineage using exact paths/blobs only.",
+    "After James declares PR 126 complete, independently audit and repair one exact final head before any simulation-path reconciliation.",
+    "Freeze one exact assembled SHA and obtain all required independent specialist acceptances before any main merge or production testing decision."
+  ]
+}
