@@ -16,7 +16,7 @@
 Re-fetch every input before editing and reject any mismatch:
 
 - Worker 4 Round 3 web final head: `fdc55d684be2cd5053c1e617aa09399fdfcf60c2`, issue `#116`.
-- Worker 3 Round 3 GitHub Direct actual final branch head: `e70307b6c59d09b0d3094ca2513033e08be6b668`, issue `#115`.
+- Worker 3 Round 3 GitHub Direct final documentation head: `1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d`, issue `#115`, final report comment `5156758072`.
 - Worker 3 verified code/workflow candidate: `46873f805199e2212af3902c8525c0f3e4501721`.
 - Worker 3 public result schema: `github-direct-service-result-v2`.
 - Worker 0 reconciled Phase 7–8 head: `4d7513b7eabd2e2217b1e3fed43d999df828a93f`, recommendation `ACCEPT WITH REPAIR`, issue `#112`.
