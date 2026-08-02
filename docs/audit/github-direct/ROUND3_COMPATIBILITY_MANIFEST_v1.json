@@ -1,8 +1,8 @@
 {
   "schemaVersion": "github-direct-compatibility-manifest-v1",
   "modeId": "github-direct-audit-v1",
-  "candidateSha": "f6e3ce63b18aed898d6458685026d313feb47440",
-  "workflowSha": "f6e3ce63b18aed898d6458685026d313feb47440",
+  "candidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+  "workflowSha": "46873f805199e2212af3902c8525c0f3e4501721",
   "controlBranch": "audit-direct/control-v1",
   "ledgerRoot": ".audit-direct/v1",
   "commandSchema": "github-direct-service-command-v1",
@@ -29,7 +29,7 @@
   },
   "submittedExecution": false,
   "cloudflareFallback": false,
-  "publishedAt": "2026-08-02T03:34:00.000Z",
-  "manifestId": "direct-compatibility-6d2105b95a084de2c0111311",
-  "manifestDigest": "sha256:6d2105b95a084de2c011131172f14621a4212b196d527c96cd8816f017ff31cf"
+  "publishedAt": "2026-08-02T09:00:00.000Z",
+  "manifestId": "direct-compatibility-2a7b937fd31fac897e936414",
+  "manifestDigest": "sha256:2a7b937fd31fac897e93641457d79f15e367dffa5c1bd685398b92c2dcfca708"
 }
