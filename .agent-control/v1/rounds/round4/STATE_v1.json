@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "integration_successor_activated_reconstruction_pending",
+  "state": "integration_ownership_conflict_blocked",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -60,12 +60,12 @@
   "integrationWorkerActivated": true,
   "integrationWorkerSequence": 9,
   "integrationWorkerMessageId": "worker-2-round4-full-platform-integration-v2-000009",
-  "integrationWorkerStage": "successor-ready-reconstruction-pending",
+  "integrationWorkerStage": "ready-but-ownership-conflicted",
   "integrationWorkerBranch": "audit-round4/full-platform-integration-v2",
   "integrationWorkerBranchHead": "bbb4cac794865f84b65ee78a2fc78d391421c759",
   "integrationWorkerStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
   "integrationProductionIntakeAuthorized": false,
-  "integrationProductionIntakeCondition": "Authorize only after the 27 exact reconstruction blobs read back and the prescribed Stage 0 tests and syntax checks pass.",
+  "integrationProductionIntakeCondition": "Authorize only after integration ownership is durably reconciled, the 27 exact reconstruction blobs read back, the prescribed Stage 0 tests and syntax checks pass, and PR #126 security controls are independently accepted.",
   "integrationValidatorRepair": {
     "state": "assigned-for-successor-reconstruction",
     "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
@@ -87,6 +87,20 @@
     "pr126OverlapCount": 0,
     "activatedAt": "2026-08-02T16:32:58Z"
   },
+  "directIntegrationTakeover": {
+    "state": "conflicting-unreconciled",
+    "branch": "orchestrator/round4-final-integration-takeover-v1",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "observedRelationToBase": "10 commits ahead, 0 behind",
+    "declaredOnIssue122": true,
+    "conflictsWithWorkerSequence": 9,
+    "protectedOrQuarantinedPathsObserved": [
+      ".github/workflows/github-native-simulate.yml",
+      "packages/github-native-sim/**",
+      "packages/runner/src/run-job.mjs"
+    ],
+    "requiredResolution": "Durably supersede exactly one integration owner and independently reconcile every takeover path against accepted Stage A manifests, protected-addon rules and PR #126 security acceptance before intake or candidate freeze."
+  },
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
   "externalWorkstreams": [
@@ -103,11 +117,18 @@
   ],
   "blockers": [
     {
+      "blockerId": "integration-ownership-conflict-v1",
+      "workerId": "worker-2",
+      "issueNumber": 122,
+      "description": "Worker 2 sequence 9 remains published and ready on audit-round4/full-platform-integration-v2 while orchestrator/round4-final-integration-takeover-v1 concurrently performs integration from the same Gate 5 base and changes protected or quarantined paths.",
+      "requiredResolution": "Durably supersede exactly one integration path, reconcile CURRENT/STATUS/STATE and issue #122 ownership without fabricating worker-owned records, then independently validate takeover paths before authorizing intake."
+    },
+    {
       "blockerId": "stage0-successor-reconstruction-verification-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
       "description": "Sequence 9 is activated at the correct Gate 5 base, but production subsystem intake remains blocked until the 27 exact reconstruction paths and hardened validator blobs are verified and the required Stage 0 suites pass.",
-      "requiredResolution": "Worker 2 acknowledges sequence 9, reconstructs only the exact listed blobs, runs the prescribed tests and syntax checks, and publishes remote blob readback evidence."
+      "requiredResolution": "The authorized integration owner reconstructs only the exact listed blobs, runs the prescribed tests and syntax checks, and publishes remote blob readback evidence."
     },
     {
       "blockerId": "pr126-security-repair-acceptance-v1",
@@ -122,5 +143,6 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T16:32:58Z"
+  "lastBlockerEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T193426Z_round4-integration-ownership-conflict-blocker_v1.json",
+  "updatedAt": "2026-08-02T19:34:26Z"
 }
