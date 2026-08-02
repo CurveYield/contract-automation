@@ -1,143 +1,273 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
 import {
-  createDirectRequest,createCapabilityManifest
+  createDirectRequest,
+  createCapabilityManifest
 } from '../packages/audit-github-direct-protocol/src/index.mjs';
 import {
-  createPermissionManifest,normalizeGitHubError,createInjectedGitHubAdapter,
-  planCheckPublication,planCommentPublication,planStatusPublication,
-  reconcilePublication,createArtifactMetadata,validateArtifactMetadata
+  createPermissionManifest,
+  normalizeGitHubError,
+  createInjectedGitHubAdapter,
+  planCheckPublication,
+  planCommentPublication,
+  planStatusPublication,
+  validatePublicationPlan,
+  reconcilePublication,
+  createArtifactMetadata,
+  validateArtifactMetadata
 } from '../packages/audit-github-direct-adapter/src/index.mjs';
 import { planImmutableCreate } from '../packages/audit-github-direct-ledger/src/index.mjs';
 
-const ts='2026-08-01T18:00:00.000Z',later='2026-08-01T18:05:00.000Z';
-const sha='a'.repeat(40),blob='b'.repeat(40),d=(c)=>`sha256:${c.repeat(64)}`;
-const request=createDirectRequest({repositoryId:123,installationId:456,repositoryFullName:'curveyield/contract-automation',requesterId:'user-1',policyVersion:'direct-policy-v1',profileId:'hardhat-test-v1',parserVersion:'hardhat-test-parser-v1',resultContractVersion:'phase5-tool-result-v1',reportContractVersion:'audit-report-v1',targetCommitSha:sha,requestedAt:ts,idempotencyKey:'request-1'});
-const capability=createCapabilityManifest({request,authorizationKind:'github-token',capabilities:['read-source','write-control-ledger','publish-check','publish-comment','publish-status','read-artifact-metadata'],issuedAt:ts,expiresAt:later});
-const identity={repositoryId:123,installationId:456,repositoryFullName:'curveyield/contract-automation',targetCommitSha:sha};
+const ts = '2026-08-01T18:00:00.000Z';
+const later = '2026-08-01T18:05:00.000Z';
+const sha = 'a'.repeat(40);
+const blob = 'b'.repeat(40);
+const d = (character) => `sha256:${character.repeat(64)}`;
 
-function fakeTransport(){
-  const calls=[],publications=new Map();
+const request = createDirectRequest({
+  repositoryId: 123,
+  installationId: 456,
+  repositoryFullName: 'curveyield/contract-automation',
+  requesterId: 'user-1',
+  policyVersion: 'direct-policy-v1',
+  profileId: 'hardhat-test-v1',
+  parserVersion: 'hardhat-test-parser-v1',
+  resultContractVersion: 'phase5-tool-result-v1',
+  reportContractVersion: 'audit-report-v1',
+  targetCommitSha: sha,
+  requestedAt: ts,
+  idempotencyKey: 'request-1'
+});
+
+const capability = createCapabilityManifest({
+  request,
+  authorizationKind: 'github-token',
+  capabilities: [
+    'read-source',
+    'write-control-ledger',
+    'publish-check',
+    'publish-comment',
+    'publish-status',
+    'read-artifact-metadata'
+  ],
+  issuedAt: ts,
+  expiresAt: later
+});
+
+const identity = {
+  repositoryId: 123,
+  installationId: 456,
+  repositoryFullName: 'curveyield/contract-automation',
+  targetCommitSha: sha
+};
+
+function fakeTransport() {
+  const calls = [];
+  const publications = new Map();
   return {
-    calls,publications,
-    transport:{
-      async getRepository(input){calls.push(['getRepository',input]);return {repositoryId:123,fullName:'curveyield/contract-automation'};},
-      async getCommit(input){calls.push(['getCommit',input]);return {sha:input.targetCommitSha};},
-      async getBlob(input){calls.push(['getBlob',input]);return {blobSha:input.blobSha,sizeBytes:3};},
-      async getContents(input){calls.push(['getContents',input]);return {path:input.path,blobSha:blob};},
-      async applyLedgerMutation(input){calls.push(['applyLedgerMutation',input]);return {applied:true,nextBlobSha:input.mutation.nextContentBlobSha};},
-      async getPublication(input){calls.push(['getPublication',input]);return publications.get(`${input.kind}:${input.idempotencyKey}`)??null;},
-      async publish(input){calls.push(['publish',input]);publications.set(`${input.kind}:${input.idempotencyKey}`,input);return {published:true,publicationId:input.publicationId};},
-      async getArtifactMetadata(input){calls.push(['getArtifactMetadata',input]);return [{artifactId:'artifact-1',name:'results-json',sizeBytes:1024,digest:d('c'),expired:false,createdAt:ts,expiresAt:later}];}
+    calls,
+    publications,
+    transport: {
+      async getRepository(input) {
+        calls.push(['getRepository', input]);
+        return { repositoryId: 123, fullName: 'curveyield/contract-automation' };
+      },
+      async getCommit(input) {
+        calls.push(['getCommit', input]);
+        return { sha: input.targetCommitSha };
+      },
+      async getBlob(input) {
+        calls.push(['getBlob', input]);
+        return { blobSha: input.blobSha, sizeBytes: 3 };
+      },
+      async getContents(input) {
+        calls.push(['getContents', input]);
+        return { path: input.path, blobSha: blob };
+      },
+      async applyLedgerMutation(input) {
+        calls.push(['applyLedgerMutation', input]);
+        return { applied: true, nextBlobSha: input.mutation.nextContentBlobSha };
+      },
+      async getPublication(input) {
+        calls.push(['getPublication', input]);
+        return publications.get(`${input.kind}:${input.idempotencyKey}`) ?? null;
+      },
+      async publish(input) {
+        calls.push(['publish', input]);
+        publications.set(`${input.kind}:${input.idempotencyKey}`, input);
+        return { published: true, publicationId: input.publicationId };
+      },
+      async getArtifactMetadata(input) {
+        calls.push(['getArtifactMetadata', input]);
+        return [{
+          artifactId: 'artifact-1',
+          name: 'results-json',
+          sizeBytes: 1024,
+          digest: d('c'),
+          expired: false,
+          createdAt: ts,
+          expiresAt: later
+        }];
+      }
     }
   };
 }
 
-test('permission manifest is least privilege and operation-specific',()=>{
-  const manifest=createPermissionManifest({capabilityManifest:capability});
-  assert.deepEqual(manifest.permissions,[
-    {resource:'actions-artifact-metadata',access:'read'},
-    {resource:'checks',access:'write'},
-    {resource:'contents',access:'read'},
-    {resource:'contents',access:'write'},
-    {resource:'issues-comments',access:'write'},
-    {resource:'statuses',access:'write'}
+test('permission manifest is least privilege and operation-specific', () => {
+  const manifest = createPermissionManifest({ capabilityManifest: capability });
+  assert.deepEqual(manifest.permissions, [
+    { resource: 'actions-artifact-metadata', access: 'read' },
+    { resource: 'checks', access: 'write' },
+    { resource: 'contents', access: 'read' },
+    { resource: 'contents', access: 'write' },
+    { resource: 'issues-comments', access: 'write' },
+    { resource: 'statuses', access: 'write' }
   ]);
-  assert.doesNotMatch(JSON.stringify(manifest),/admin|secret|workflow|deployment|token/i);
+  assert.doesNotMatch(JSON.stringify(manifest), /admin|secret|workflow|deployment|token/i);
 });
 
-test('permission manifest rejects expired capabilities and unsupported broad fields',()=>{
-  assert.throws(()=>createPermissionManifest({capabilityManifest:capability,permissions:['admin']}),{code:'unknown_field'});
-  assert.throws(()=>createPermissionManifest({capabilityManifest:{...capability,expiresAt:ts}}),(error)=>typeof error.code==='string');
+test('permission manifest rejects expired capabilities and unsupported broad fields', () => {
+  assert.throws(
+    () => createPermissionManifest({ capabilityManifest: capability, permissions: ['admin'] }),
+    { code: 'unknown_field' }
+  );
+  assert.throws(
+    () => createPermissionManifest({ capabilityManifest: { ...capability, expiresAt: ts } }),
+    (error) => typeof error.code === 'string'
+  );
 });
 
-test('GitHub errors normalize to bounded stable redacted forms',()=>{
-  const raw={status:403,message:'Bearer ghs_secret failed at https://api.github.com/repos/private C:\\Users\\alice',response:{body:'token=secret'},request:{headers:{authorization:'Bearer ghs_secret'}}};
-  const normalized=normalizeGitHubError(raw);
-  assert.deepEqual(normalized,{schemaVersion:'github-direct-transport-error-v1',code:'permission_denied',status:403,retryable:false,message:'GitHub operation failed'});
-  assert.doesNotMatch(JSON.stringify(normalized),/ghs_|https?:|Users|authorization|secret/i);
-  const hostile=new Proxy({}, {ownKeys(){throw new Error('trap')},get(){throw new Error('trap')}});
-  assert.deepEqual(normalizeGitHubError(hostile),{schemaVersion:'github-direct-transport-error-v1',code:'transport_error',status:null,retryable:false,message:'GitHub operation failed'});
+test('GitHub errors normalize to bounded stable redacted forms', () => {
+  const raw = {
+    status: 403,
+    message: 'Bearer ghs_secret failed at https://api.github.com/repos/private C:\\Users\\alice',
+    response: { body: 'token=secret' },
+    request: { headers: { authorization: 'Bearer ghs_secret' } }
+  };
+  assert.deepEqual(normalizeGitHubError(raw), {
+    schemaVersion: 'github-direct-transport-error-v1',
+    code: 'permission_denied',
+    status: 403,
+    retryable: false,
+    message: 'GitHub operation failed'
+  });
+  const hostile = new Proxy({}, {
+    ownKeys() { throw new Error('trap'); },
+    get() { throw new Error('trap'); }
+  });
+  assert.deepEqual(normalizeGitHubError(hostile), {
+    schemaVersion: 'github-direct-transport-error-v1',
+    code: 'transport_error',
+    status: null,
+    retryable: false,
+    message: 'GitHub operation failed'
+  });
 });
 
-test('injected adapter binds repository/install/target SHA for reads',async()=>{
-  const fake=fakeTransport(),adapter=createInjectedGitHubAdapter({capabilityManifest:capability,transport:fake.transport});
-  await adapter.getRepository(identity);
-  await adapter.getCommit(identity);
-  await adapter.getBlob({...identity,blobSha:blob});
-  await adapter.getContents({...identity,path:'contracts/A.sol'});
-  assert.deepEqual(fake.calls.map((x)=>x[0]),['getRepository','getCommit','getBlob','getContents']);
-  assert.throws(()=>adapter.getCommit({...identity,targetCommitSha:'c'.repeat(40)}),{code:'identity_mismatch'});
-  assert.throws(()=>adapter.getContents({...identity,repositoryId:999,path:'contracts/A.sol'}),{code:'identity_mismatch'});
+test('injected adapter binds and validates repository/install/target SHA for reads', async () => {
+  const fake = fakeTransport();
+  const adapter = createInjectedGitHubAdapter({ capabilityManifest: capability, transport: fake.transport });
+  assert.deepEqual(await adapter.getRepository(identity), {
+    repositoryId: 123,
+    fullName: 'curveyield/contract-automation'
+  });
+  assert.deepEqual(await adapter.getCommit(identity), { sha });
+  assert.deepEqual(await adapter.getBlob({ ...identity, blobSha: blob }), { blobSha: blob, sizeBytes: 3 });
+  assert.deepEqual(await adapter.getContents({ ...identity, path: 'contracts/A.sol' }), {
+    path: 'contracts/A.sol',
+    blobSha: blob
+  });
+  assert.deepEqual(fake.calls.map((entry) => entry[0]), [
+    'getRepository', 'getCommit', 'getBlob', 'getContents'
+  ]);
+  assert.throws(() => adapter.getCommit({ ...identity, targetCommitSha: 'c'.repeat(40) }), { code: 'identity_mismatch' });
+  assert.throws(() => adapter.getContents({ ...identity, repositoryId: 999, path: 'contracts/A.sol' }), { code: 'identity_mismatch' });
 });
 
-test('injected adapter validates transport shape without invoking getters',()=>{
-  const transport={...fakeTransport().transport};Object.defineProperty(transport,'publish',{get(){throw new Error('must-not-run')},enumerable:true});
-  assert.throws(()=>createInjectedGitHubAdapter({capabilityManifest:capability,transport}),{code:'accessor_field'});
-  const {proxy,revoke}=Proxy.revocable(fakeTransport().transport,{});revoke();
-  assert.throws(()=>createInjectedGitHubAdapter({capabilityManifest:capability,transport:proxy}),{code:'hostile_reflection'});
+test('injected adapter validates transport shape without invoking getters', () => {
+  const transport = { ...fakeTransport().transport };
+  Object.defineProperty(transport, 'publish', {
+    enumerable: true,
+    get() { throw new Error('must-not-run'); }
+  });
+  assert.throws(
+    () => createInjectedGitHubAdapter({ capabilityManifest: capability, transport }),
+    { code: 'accessor_field' }
+  );
+  const { proxy, revoke } = Proxy.revocable(fakeTransport().transport, {});
+  revoke();
+  assert.throws(
+    () => createInjectedGitHubAdapter({ capabilityManifest: capability, transport: proxy }),
+    { code: 'hostile_reflection' }
+  );
 });
 
-test('ledger mutation dispatch requires capability and exact identity',async()=>{
-  const fake=fakeTransport(),adapter=createInjectedGitHubAdapter({capabilityManifest:capability,transport:fake.transport});
-  const mutation=planImmutableCreate({path:`.audit-direct/v1/requests/${request.jobId}.json`,content:request});
-  const result=await adapter.applyLedgerMutation({...identity,mutation});
-  assert.equal(result.applied,true);
-  assert.equal(fake.calls[0][0],'applyLedgerMutation');
-  assert.throws(()=>adapter.applyLedgerMutation({...identity,installationId:999,mutation}),{code:'identity_mismatch'});
+test('ledger mutation dispatch requires capability and exact identity', async () => {
+  const fake = fakeTransport();
+  const adapter = createInjectedGitHubAdapter({ capabilityManifest: capability, transport: fake.transport });
+  const mutation = planImmutableCreate({
+    path: `.audit-direct/v1/requests/${request.jobId}.json`,
+    content: request
+  });
+  const result = await adapter.applyLedgerMutation({ ...identity, mutation });
+  assert.deepEqual(result, { applied: true, nextBlobSha: mutation.nextContentBlobSha });
+  assert.equal(fake.calls[0][0], 'applyLedgerMutation');
+  assert.throws(
+    () => adapter.applyLedgerMutation({ ...identity, installationId: 999, mutation }),
+    { code: 'identity_mismatch' }
+  );
 });
 
-test('publication plans are deterministic, boundeK[™Ú[™\ÜXÚYšXÉË
+test('publication plans are deterministic, bounded, frozen, and replay validated', () => {
+  const check = planCheckPublication({ request, name: 'CurveYield Direct Audit', summary: 'summary', conclusion: 'neutral', at: later });
+  const comment = planCommentPublication({ request, body: 'report ready', at: later });
+  const status = planStatusPublication({ request, state: 'success', description: 'complete', context: 'curveyield/direct-audit', at: later });
+  for (const plan of [check, comment, status]) {
+    assert.deepEqual(validatePublicationPlan(plan), plan);
+    assert.equal(Object.isFrozen(plan), true);
+    assert.equal(reconcilePublication({ plan, observed: null }).action, 'create');
+    assert.equal(reconcilePublication({ plan, observed: plan }).action, 'noop');
+    assert.throws(
+      () => reconcilePublication({ plan, observed: { ...plan, publicationDigest: d('f') } }),
+      { code: 'publication_conflict' }
+    );
+  }
+});
 
-OOžÂˆÛÛœÝÚXÚÏ\[ÚXÚÔX›XØ][ÛŠÜ™\]Y\Ý˜[YN‰ÐÝ\™VZY[]Y]	ËÝ[[X\žN‰Ó›Èš[™[™ÜÉËÛÛ˜Û\Ú[ÛŽ‰ÜÝXØÙ\ÜÉË]›]\ŸJNÂˆÛÛœÝÛÛ[Y[\[ÛÛ[Y[X›XØ][ÛŠÜ™\]Y\Ý›ÙN‰Ð]Y]ÛÛ\]YÚ]š[™[™ÜË‰Ë]›]\ŸJNÂˆÛÛœÝÝ]\Ï\[”Ý]\ÔX›XØ][ÛŠÜ™\]Y\ÝÝ]N‰ÜÝXØÙ\ÜÉË\ØÜš\[ÛŽ‰Ð]Y]ÛÛ\]IËÛÛ^‰ØÝ\™^ZY[Ø]Y]	Ë]›]\ŸJNÂˆ\ÜÙ\›X]Ú
-ÚXÚËœX›XØ][Û’Y×™\™XÝXÚXÚËKÊNØ\ÜÙ\›X]Ú
-ÛÛ[Y[œX›XØ][Û’Y×™\™XÝXÛÛ[Y[KÊNØ\ÜÙ\›X]Ú
-Ý]\ËœX›XØ][Û’Y×™\™XÝ\Ý]\ËKÊNÂˆ\ÜÙ\™\]X[
-ÚXÚË\™Ù]ÛÛ[Z]ÚKÚJNØ\ÜÙ\™\]X[
-ÛÛ[Y[œ™\ÜÚ]ÜžRYLŒÊNØ\ÜÙ\™\]X[
-Ý]\Ëš[œÝ[][Û’YMŠNÂˆ\ÜÙ\›ÝÜÊ
+test('adapter publication is idempotent and rejects conflicting observed records', async () => {
+  const fake = fakeTransport();
+  const adapter = createInjectedGitHubAdapter({ capabilityManifest: capability, transport: fake.transport });
+  const plan = planCheckPublication({ request, name: 'CurveYield Direct Audit', summary: 'summary', conclusion: 'neutral', at: later });
+  const created = await adapter.publish({ ...identity, plan });
+  assert.equal(created.action, 'create');
+  assert.equal(created.result.publicationId, plan.publicationId);
+  const repeated = await adapter.publish({ ...identity, plan });
+  assert.equal(repeated.action, 'noop');
+  fake.publications.set(`check:${plan.idempotencyKey}`, { ...plan, publicationDigest: d('f') });
+  await assert.rejects(adapter.publish({ ...identity, plan }), { code: 'publication_conflict' });
+});
 
-OOœ[ÛÛ[Y[X›XØ][ÛŠÜ™\]Y\Ý›ÙN‰Þ	Ëœ™\X]
-WÍLÍŠK]›]\ŸJKØÛÙN‰Ú[˜[YÜÝš[™ÉßJNÂˆ\ÜÙ\›ÝÜÊ
-
-OOœ[”Ý]\ÔX›XØ][ÛŠÜ™\]Y\ÝÝ]N‰ÜÝXØÙ\ÜÉË\ØÜš\[ÛŽ‰ÛÚÉËÛÛ^‰ØÝ\™^ZY[Ø]Y]	Ë]›]\‹\›‰ÚÎ‹ËÙ]š[	ßJKØÛÙN‰Ý[šÛ›ÝÛ—ÙšY[	ßJNÂŸJNÂ‚\Ý
-	Ü™\X]YY[XØ[X›XØ][Ûˆ™XÛÛ˜Ú[\ÈÚ[HÛÛ™›XÝ[™È™\^H˜Z[ÉË
-
-OOžÂˆÛÛœÝ[\[ÚXÚÔX›XØ][ÛŠÜ™\]Y\Ý˜[YN‰ÐÝ\™VZY[]Y]	ËÝ[[X\žN‰Ó›Èš[™[™ÜÉËÛÛ˜Û\Ú[ÛŽ‰ÜÝXØÙ\ÜÉË]›]\ŸJNÂˆ\ÜÙ\™Y\\]X[
-™XÛÛ˜Ú[TX›XØ][ÛŠÜ[‹ØœÙ\™Y›[JKØXÝ[ÛŽ‰ØÜ™X]IË[ŸJNÂˆ\ÜÙ\™Y\\]X[
-™XÛÛ˜Ú[TX›XØ][ÛŠÜ[‹ØœÙ\™Yœ[ŸJKØXÝ[ÛŽ‰Û›ÛÜ	Ë[ŸJNÂˆ\ÜÙ\›ÝÜÊ
-
-OOœ™XÛÛ˜Ú[TX›XØ][ÛŠÜ[‹ØœÙ\™YžË‹‹œ[‹Ý[[X\žN‰ÙY™™\™[	ß_JKØÛÙN‰ÜX›XØ][Û—ØÛÛ™›XÝ	ßJNÂŸJNÂ‚\Ý
-	ØY\\ˆX›XØ][ÛˆØ[˜XÙ\ÈÜ™X]HÛ˜ÙH[ˆ™XÛÛ˜Ú[HÚ]Ý]\XØ]IË\Þ[˜Ê
-OOžÂˆÛÛœÝ˜ZÙOY˜ZÙU˜[œÜÜ
-
-KY\\XÜ™X]R[š™XÝYÚ]XY\\ŠØØ\Xš[]SX[šY™\Ý˜Ø\Xš[]K˜[œÜÜ™˜ZÙK˜[œÜÜJNÂˆÛÛœÝ[\[ÚXÚÔX›XØ][ÛŠÜ™\]Y\Ý˜[YN‰ÐÝ\™VZY[]Y]	ËÝ[[X\žN‰Ó›Èš[™[™ÜÉËÛÛ˜Û\Ú[ÛŽ‰ÜÝXØÙ\ÜÉË]›]\ŸJNÂˆÛÛœÝš\œÝX]ØZ]Y\\‹œX›\Ú
-Ë‹‹šY[]K[ŸJNÂˆÛÛœÝÙXÛÛ™X]ØZ]Y\\‹œX›\Ú
-Ë‹‹šY[]K[ŸJNÂˆ\ÜÙ\™\]X[
-š\œÝ˜XÝ[Û‹	ØÜ™X]IÊNØ\ÜÙ\™\]X[
-ÙXÛÛ™˜XÝ[Û‹	Û›ÛÜ	ÊNÂˆ\ÜÙ\™Y\\]X[
-˜ZÙK˜Ø[Ë›X\
-
-
-OOžÌJKÉÙÙ]X›XØ][Û‰Ë	ÜX›\Ú	Ë	ÙÙ]X›XØ][Û‰×JNÂŸJNÂ‚\Ý
-	Ø\Y˜XÝY]Y]H\È›Ý[™Y[™ÛÛZ[œÈ›Èž]\ÈÜˆT“ÉË\Þ[˜Ê
-OOžÂˆÛÛœÝY]Y]OXÜ™X]P\Y˜XÝY]Y]JØ\Y˜XÝY‰Ø\Y˜XÝLIË˜[YN‰Ü™\Ý[ËZœÛÛ‰ËÚ^™Pž]\ÎŒLYÙ\Ý™
-	ØÉÊK^\™Y™˜[ÙKÜ™X]Y]Ë^\™\Ð]›]\ŸJNÂˆ\ÜÙ\™Y\\]X[
-˜[Y]P\Y˜XÝY]Y]JY]Y]JKY]Y]JNÂˆ\ÜÙ\™Ù\Ó›ÝX]Ú
-”ÓÓ‹œÝš[™ÚYžJY]Y]JKÚÏÎŸÝÛ›ØY\Y˜XÝž]\ßÛÛ[›ÙKÚJNÂˆ\ÜÙ\›ÝÜÊ
-
-OO˜Ü™X]P\Y˜XÝY]Y]JØ\Y˜XÝY‰Ø\Y˜XÝLIË˜[YN‰Ü™\Ý[ËZœÛÛ‰ËÚ^™Pž]\ÎŒ—ÌÌÌKYÙ\Ý™
-	ØÉÊK^\™Y™˜[ÙKÜ™X]Y]Ë^\™\Ð]›]\ŸJKØÛÙN‰Ú[˜[YÚ[YÙ\‰ßJNÂˆÛÛœÝ˜ZÙOY˜ZÙU˜[œÜÜ
-
-KY\\XÜ™X]R[š™XÝYÚ]XY\\ŠØØ\Xš[]SX[šY™\Ý˜Ø\Xš[]K˜[œÜÜ™˜ZÙK˜[œÜÜJNÂˆÛÛœÝ\ÝX]ØZ]Y\\‹™Ù]\Y˜XÝY]Y]JY[]JNÂˆ\ÜÙ\™\]X[
-\Ý›[™ÝJNØ\ÜÙ\™Y\\]X[
-\ÝÌKY]Y]JNÂŸJNÂ‚\Ý
-	ØØ\Xš[]HÛZ\ÜÚ[ÛœÈ[žHY\\ˆÜ\˜][ÛœÈ™Y›Ü™H˜[œÜÜØ[ÉË\Þ[˜Ê
-OOžÂˆÛÛœÝ™XYÛ›OXÜ™X]PØ\Xš[]SX[šY™\Ý
-Ü™\]Y\Ý]]Üš^˜][Û’Ú[™‰ÙÚ]X‹]ÚÙ[‰ËØ\Xš[]Y\Î–ÉÜ™XY\ÛÝ\˜ÙI×K\ÜÝYY]Ë^\™\Ð]›]\ŸJNÂˆÛÛœÝ˜ZÙOY˜ZÙU˜[œÜÜ
-
-KY\\XÜ™X]R[š™XÝYÚ]XY\\ŠØØ\Xš[]SX[šY™\Ýœ™XYÛ›K˜[œÜÜ™˜ZÙK˜[œÜÜJNÂˆÛÛœÝ]]][Û\[’[[]]X›PÜ™X]JÜ]˜˜]Y]Y\™XÝÝŒKÜ™\]Y\ÝËÉÜ™\]Y\Ýš›Ø’YKšœÛÛ˜ÛÛ[œ™\]Y\ÝJNÂˆ\ÜÙ\›ÝÜÊ
-
-OO˜Y\\‹˜\SYÙ\“]]][ÛŠË‹‹šY[]K]]][ÛŸJKØÛÙN‰ØØ\Xš[]WÙ[šYY	ßJNÂˆ\ÜÙ\™\]X[
-˜ZÙK˜Ø[Ë›[™Ý
-NÂŸJNÂ
+test('artifact metadata is exact, frozen, and safely normalized', async () => {
+  const metadata = createArtifactMetadata({
+    artifactId: 'artifact-1',
+    name: 'results-json',
+    sizeBytes: 1024,
+    digest: d('c'),
+    expired: false,
+    createdAt: ts,
+    expiresAt: later
+  });
+  assert.deepEqual(validateArtifactMetadata(metadata), metadata);
+  assert.equal(Object.isFrozen(metadata), true);
+  assert.throws(
+    () => validateArtifactMetadata({ ...metadata, sizeBytes: -1 }),
+    (error) => typeof error.code === 'string'
+  );
+  const fake = fakeTransport();
+  const adapter = createInjectedGitHubAdapter({ capabilityManifest: capability, transport: fake.transport });
+  const results = await adapter.getArtifactMetadata(identity);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].artifactId, 'artifact-1');
+  assert.equal(Object.isFrozen(results[0]), true);
+});
