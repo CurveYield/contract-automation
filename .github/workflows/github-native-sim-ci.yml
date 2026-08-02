@@ -76,7 +76,6 @@ jobs:
       SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
       SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
       SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
-      LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -96,6 +95,8 @@ jobs:
       - name: Execute live Ethereum fork smoke
         id: execute
         continue-on-error: true
+        env:
+          LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
         run: node scripts/live-fork-engine-smoke.mjs
 
       - name: Upload live fork evidence
