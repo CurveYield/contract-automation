@@ -1,0 +1,25 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-worker2-premature-activation-blocker-20260802T093447Z",
+  "eventType": "activation_blocker_recorded",
+  "createdAt": "2026-08-02T09:34:47Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "masterIssueNumber": 119,
+  "workerId": "worker-2",
+  "workerIssueNumber": 122,
+  "currentSequence": 8,
+  "currentBranch": "audit-round4/full-platform-integration-v1",
+  "currentStartingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "observedStatusState": "working",
+  "observedStage": "stage-0-preparation",
+  "productionIntakeAuthorized": false,
+  "blocker": "Worker 2 was activated before Stage A verdicts from issues 120, 121, 123, and 124, contrary to ACTIVATION_RUNBOOK_v1 Gate 4 and Gate 5.",
+  "containment": [
+    "Do not authorize subsystem production-path intake.",
+    "Do not publish another Worker 2 assignment.",
+    "Keep Worker 2 limited to stage-0 preparation.",
+    "Reconcile sequence 8 only after all four Stage A verdicts are complete and valid."
+  ],
+  "round4StateCommit": "63779f58c8b1041dcdef713396d8ab53cb3645c2"
+}
