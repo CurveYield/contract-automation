@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-worker0-stage-a-accepted-20260802T113657Z",
+  "eventType": "round4_stage_a_output_accepted",
+  "createdAt": "2026-08-02T11:36:57Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-0",
+  "issueNumber": 120,
+  "branch": "audit-round4/review-integration-spine-v1",
+  "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "reviewedProductionSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "documentationSha": "2ca9e70fb1e34cb1fb1b163844169cae510a7f52",
+  "recommendation": "ACCEPT WITH REPAIR",
+  "reportCommentId": 5157224221,
+  "intakeManifestPath": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json",
+  "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105",
+  "validation": {
+    "branchHeadMatchesDocumentationSha": true,
+    "changedPathCount": 15,
+    "ownedProductionPathsOnly": true,
+    "observedRedTests": 9,
+    "greenTests": 40,
+    "protectedBlobsChanged": 0,
+    "secretValuesExposed": false
+  },
+  "worker2ProductionIntakeAuthorized": false,
+  "remainingRequiredStageAIssues": [121, 123],
+  "externalQuarantinePullRequest": 126
+}
