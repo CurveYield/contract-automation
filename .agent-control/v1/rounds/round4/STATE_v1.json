@@ -66,6 +66,18 @@
   "integrationWorkerBranchHead": "8bddd31232f14597afba63ffba13f3b96069610b",
   "integrationCheckpoint1CommentId": 5158815848,
   "integrationProductionIntakeAuthorized": false,
+  "integrationValidatorRepair": {
+    "state": "receipt-published-await-worker2-intake-verification",
+    "repairBranch": "orchestrator/worker2-stage0-validator-repair-v1",
+    "validatedCodeHeadSha": "9bea7dd735541149e88b3773b31ffe03cd051838",
+    "evidenceReceiptHeadSha": "353f662336b647c554df8ac1dc0ff435fa0e946c",
+    "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
+    "receiptBlobSha": "b2fdde334f8f0c5381121175ec456d7d4bdf7580",
+    "issueCommentId": 5159019450,
+    "controlEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T155455Z_worker2-stage0-validator-receipt-published_v1.json",
+    "exactIntakePathCount": 3,
+    "freshCombinedSuiteRequired": true
+  },
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
   "externalWorkstreams": [
@@ -101,12 +113,13 @@
       "detectedAt": "2026-08-02T15:29:10Z"
     },
     {
-      "blockerId": "stage0-direct-takeover-validator-repair-receipt-v1",
+      "blockerId": "stage0-direct-takeover-validator-intake-verification-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
-      "description": "Checkpoint 1 reports that direct-takeover validator repair code exists on an orchestrator-owned repair branch, but no exact durable acceptance receipt has been published on issue #122.",
-      "requiredResolution": "Publish and independently verify the exact accepted repair receipt, branch head, changed paths/blobs and test evidence before relying on takeover evidence for production intake.",
-      "detectedAt": "2026-08-02T15:29:10Z"
+      "description": "The exact direct-takeover validator repair receipt is now durable on issue #122 at comment 5159019450, but Worker 2 has not yet exact-transplanted the three listed blobs or published a fresh combined Stage 0 test result and remote blob readback.",
+      "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T155455Z_worker2-stage0-validator-receipt-published_v1.json",
+      "requiredResolution": "After acknowledging sequence 8, Worker 2 must exact-transplant the three receipt path/blob pairs, run the two-file Stage 0 Node test command, publish exact pass/fail counts and verify the resulting remote blobs before production intake relies on direct-takeover evidence.",
+      "detectedAt": "2026-08-02T15:54:55Z"
     },
     {
       "blockerId": "pr126-security-repair-acceptance-v1",
@@ -122,5 +135,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T15:29:10Z"
+  "updatedAt": "2026-08-02T15:54:55Z"
 }
