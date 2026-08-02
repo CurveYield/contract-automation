@@ -1,0 +1,39 @@
+{
+  "protocolVersion": 1,
+  "eventType": "stage_a_completed_waiting_stage_b",
+  "workerId": "worker-1",
+  "sequence": 5,
+  "messageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
+  "issueNumber": 121,
+  "assignedBranch": "audit-round4/review-phase78-api-compat-v1",
+  "takeoverBranch": "orchestrator/worker1-round4-takeover-v1",
+  "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+  "reviewedCodeSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+  "stageAEvidenceSha": "df983ab905266ddd2dad39866f0e0341aaa0f100",
+  "recommendation": "ACCEPT_WITH_REPAIR",
+  "stageAReportCommentId": 5157596912,
+  "masterGateAcceptanceCommentId": 5157601186,
+  "worker2IntakeCommentId": 5157599483,
+  "verification": {
+    "total": 108,
+    "passed": 108,
+    "failed": 0,
+    "changedPaths": 27,
+    "productionPaths": 17,
+    "testPaths": 6,
+    "fixturePaths": 2,
+    "protectedPathsChanged": 0
+  },
+  "stageB": {
+    "status": "waiting_for_frozen_assembled_sha",
+    "assembledSha": null,
+    "masterGateIssue": 119,
+    "integrationIssue": 122
+  },
+  "blockers": [
+    "worker2_sequence9_not_completed",
+    "assembled_sha_not_frozen",
+    "pr126_security_reconciliation_pending"
+  ],
+  "recordedAt": "2026-08-02T17:56:09Z"
+}
