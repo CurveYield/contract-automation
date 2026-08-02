@@ -71,10 +71,28 @@ export function createResultViewModel(input) {
 }
 export function createGitHubDirectStatusViewModel(input) {
   const data = readUiEntityData('githubDirectStatus', input);
-  return deepFreeze({
+  const legacy = {
     id: toSafeIdentifier(data.id), status: statusText(data.status), repository: toSafeText(data.repository, 240),
     targetSha: toSafeIdentifier(data.targetSha), checkStatus: statusText(data.checkStatus), reportId: toSafeIdentifier(data.reportId),
     updatedAt: dateText(data.updatedAt), reason: redactDiagnosticText(data.reason, MAX_LONG_TEXT), executionAvailable: false
+  };
+  const round4 = [
+    'sourceSchema', 'commandKind', 'serviceState', 'resultId', 'resultDigest',
+    'executionState', 'outcome', 'reportDigest', 'retryable', 'errorCode'
+  ].some((key) => Object.hasOwn(data, key));
+  if (!round4) return deepFreeze(legacy);
+  return deepFreeze({
+    ...legacy,
+    sourceSchema: toSafeText(data.sourceSchema, 120),
+    commandKind: statusText(data.commandKind),
+    serviceState: statusText(data.serviceState),
+    resultId: toSafeIdentifier(data.resultId),
+    resultDigest: toSafeIdentifier(data.resultDigest),
+    executionState: statusText(data.executionState, 'not-executed'),
+    outcome: statusText(data.outcome),
+    reportDigest: toSafeIdentifier(data.reportDigest),
+    retryable: data.retryable === true,
+    errorCode: statusText(data.errorCode)
   });
 }
 export function createReleaseProvenanceViewModel(input) {
