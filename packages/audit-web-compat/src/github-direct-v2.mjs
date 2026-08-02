@@ -8,6 +8,7 @@ const COMMAND_STATES = Object.freeze({
   cancel: ['cancelled'], report: ['completed', 'cancelled', 'execution_plane_unavailable'],
   capabilities: ['completed'], 'verify-fixture': ['completed', 'execution_plane_unavailable']
 });
+const DIRECT_STATES = ['requested', 'validating', 'admitted', 'awaiting_executor', 'fixture_running', 'publishing', 'completed', 'failed', 'cancelled', 'policy_rejected', 'execution_plane_unavailable'];
 const ERROR_CODES = ['invalid_command', 'authorization_denied', 'transport_failure', 'stale_state', 'publication_conflict', 'execution_plane_unavailable', 'internal_error'];
 
 function descriptors(value) { if (value === null || typeof value !== 'object') return null; try { return Object.getOwnPropertyDescriptors(value); } catch { return null; } }
@@ -54,7 +55,7 @@ function identity(value, context, label, ErrorClass) {
 }
 function projection(data, context, ErrorClass) {
   const current = own(data, 'currentState') == null ? null : identity(own(data, 'currentState'), context, 'currentState', ErrorClass);
-  const currentState = current ? text(own(current, 'state'), 'currentState.state', 80, ErrorClass) : null;
+  const currentState = current ? enumValue(own(current, 'state'), DIRECT_STATES, 'currentState.state', ErrorClass) : null;
   const repository = current && typeof own(current, 'repositoryFullName') === 'string' ? own(current, 'repositoryFullName') : '';
   const bundle = own(data, 'bundle') == null ? null : identity(own(data, 'bundle'), context, 'bundle', ErrorClass);
   const manifest = bundle && own(bundle, 'resultManifest') ? identity(own(bundle, 'resultManifest'), context, 'resultManifest', ErrorClass) : null;
