@@ -6,6 +6,9 @@ on:
       - agent/live-fork-rpc-routing-design
     paths:
       - '.github/workflows/export-v27-hardhat-harness.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/export-v27-hardhat-harness.yml'
 
 permissions:
   contents: read
