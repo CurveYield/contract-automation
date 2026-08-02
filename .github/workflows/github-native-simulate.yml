@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      PUSH_BEFORE: ${{ github.event.before || '' }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       RPC_BASE: ${{ secrets.RPC_BASE }}
       RPC_KATANA: ${{ secrets.RPC_KATANA }}
@@ -126,8 +126,16 @@ jobs:
         env:
           MANUAL_JOB_PATH: ${{ inputs.job_path || '' }}
         run: |
-          git fetch --no-tags origin "$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
-          changed_paths="$(git diff --name-only "origin/$DEFAULT_BRANCH...$GITHUB_SHA")"
+          set -euo pipefail
+          changed_paths=''
+          if test "$GITHUB_EVENT_NAME" = 'push'; then
+            test -n "$PUSH_BEFORE"
+            if printf '%s' "$PUSH_BEFORE" | grep -Eq '^0+$'; then
+              changed_paths="$(git show --pretty='' --name-only "$GITHUB_SHA")"
+            else
+              changed_paths="$(git diff --name-only "$PUSH_BEFORE...$GITHUB_SHA")"
+            fi
+          fi
           selection="$(CHANGED_PATHS="$changed_paths" node packages/github-native-sim/src/select-job.mjs)"
           job_id="$(printf '%s' "$selection" | jq -r '.jobId')"
           job_root="$(printf '%s' "$selection" | jq -r '.jobRoot')"
