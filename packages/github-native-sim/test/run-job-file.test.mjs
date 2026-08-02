@@ -51,7 +51,7 @@ test('compile mode writes the complete artifact bundle', async () => {
   }
 });
 
-test('missing RPC writes a failure report before rejecting', async () => {
+test('missing archive RPC pool writes a failure report before rejecting', async () => {
   const temporary = await temporaryOutput('github-native-missing-rpc-');
   try {
     const jobFile = path.join(testDirectory, 'fixtures', 'missing-rpc', 'job.json');
@@ -61,14 +61,14 @@ test('missing RPC writes a failure report before rejecting', async () => {
         outputDir: temporary.output,
         environment: {}
       }),
-      /RPC_ETHEREUM/
+      /archive RPC/i
     );
 
     const persisted = await readJson(path.join(temporary.output, 'result.json'));
     assert.equal(persisted.status, 'failed');
     assert.equal(persisted.mode, 'simulate');
     assert.equal(persisted.chain, 'ethereum');
-    assert.match(persisted.error.message, /RPC_ETHEREUM/);
+    assert.match(persisted.error.message, /archive RPC/i);
     await fs.access(path.join(temporary.output, 'report.html'));
     await fs.access(path.join(temporary.output, 'compiler-input.json'));
     await fs.access(path.join(temporary.output, 'compiler-output.json'));
@@ -77,47 +77,52 @@ test('missing RPC writes a failure report before rejecting', async () => {
   }
 });
 
-test('simulation routes Ganache through the retrying fork proxy and closes both resources', async () => {
-  const temporary = await temporaryOutput('github-native-proxy-routing-');
+test('simulation routes configured slots through the shared proxy and selected engine', async () => {
+  const temporary = await temporaryOutput('github-native-live-fork-routing-');
   let proxyClosed = false;
   let engineClosed = false;
-  const deterministicAccounts = [
-    '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1',
-    '0xffcf8fdee72ac11b5c542428b35eef5769c409f0'
-  ];
   try {
     const jobFile = path.join(testDirectory, 'fixtures', 'missing-rpc', 'job.json');
     const result = await runGitHubNativeJob({
       jobFile,
       outputDir: temporary.output,
-      environment: { RPC_ETHEREUM: 'http://127.0.0.1:1/private-rpc' },
+      environment: {
+        SIM_ARCHIVE_PRIMARY_ETHEREUM_01: 'http://127.0.0.1:1/primary-secret',
+        SIM_ARCHIVE_SECONDARY_ETHEREUM_01: 'http://127.0.0.1:2/secondary-secret'
+      },
       services: {
-        getDeterministicGanacheAccounts: async (totalAccounts) => {
-          assert.equal(totalAccounts, 20);
-          return deterministicAccounts;
-        },
-        startForkRpcProxy: async ({ upstreamUrl, block, localAccounts }) => {
-          assert.equal(upstreamUrl, 'http://127.0.0.1:1/private-rpc');
-          assert.equal(block, 'latest');
-          assert.deepEqual(localAccounts, deterministicAccounts);
+        startLiveForkProxy: async ({ slots, blockPolicy, chainId, routing, healthPolicy }) => {
+          assert.equal(chainId, 1);
+          assert.deepEqual(slots.map(({ id, pool }) => ({ id, pool })), [
+            { id: 'primary-01', pool: 'primary' },
+            { id: 'secondary-01', pool: 'secondary' }
+          ]);
+          assert.equal(slots[0].url, 'http://127.0.0.1:1/primary-secret');
+          assert.equal(slots[1].url, 'http://127.0.0.1:2/secondary-secret');
+          assert.deepEqual(blockPolicy, { mode: 'latest-at-start' });
+          assert.equal(routing.distribution.strategy, 'round-robin');
+          assert.equal(healthPolicy.sessionFailureThreshold, 3);
           return {
             url: 'http://127.0.0.1:8547',
             blockNumber: 123,
+            blockHash: `0x${'ab'.repeat(32)}`,
+            blockTimestamp: 100,
             diagnostics: {
+              assurance: 'continuous-archive-backed-local-fork',
               resolvedBlock: 123,
-              blockNumberAttempts: 1,
-              prefetchAttempts: 2,
-              localAccountHits: 4,
-              cacheHits: 0,
-              forwardedRequests: 0
+              blockHash: `0x${'ab'.repeat(32)}`,
+              rpc: { slots: [] }
             },
             async close() { proxyClosed = true; }
           };
         },
-        startGanacheEngine: async ({ forkUrl, block }) => {
+        startForkEngine: async ({ mode, forkUrl, block }) => {
+          assert.equal(mode, 'hardhat-edr');
           assert.equal(forkUrl, 'http://127.0.0.1:8547');
           assert.equal(block, 123);
           return {
+            name: 'hardhat-edr',
+            version: '3.12.0',
             aliases: { account0: '0x0000000000000000000000000000000000000001' },
             runtime: {
               async execute(step) {
@@ -133,8 +138,9 @@ test('simulation routes Ganache through the retrying fork proxy and closes both 
 
     assert.equal(result.status, 'completed');
     assert.equal(result.resolvedBlock, 123);
-    assert.equal(result.forkTransport.prefetchAttempts, 2);
-    assert.equal(result.forkTransport.localAccountHits, 4);
+    assert.equal(result.resolvedBlockHash, `0x${'ab'.repeat(32)}`);
+    assert.equal(result.engine.name, 'hardhat-edr');
+    assert.equal(result.forkTransport.assurance, 'continuous-archive-backed-local-fork');
     assert.equal(result.steps.length, 1);
     assert.equal(proxyClosed, true);
     assert.equal(engineClosed, true);
