@@ -1,4 +1,4 @@
-import { ValidationError, assertAuditId, assertProfileId, createOperationBudget, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
+import { ValidationError, assertAuditId, assertProfileId, createOperationBudget, deepFreezeAuditValue, scanAuditForbiddenFields } from '../../audit-protocol/src/index.mjs';
 
 export const JOB_STATES = Object.freeze(['submitted','validating','admitted','queued','awaiting_executor','provisioning','running','collecting_evidence','completed','failed','cancelled','timed_out','policy_rejected']);
 export const TERMINAL_JOB_STATES = Object.freeze(['completed','failed','cancelled','timed_out','policy_rejected']);
@@ -33,6 +33,7 @@ function instant(value, path) { string(value, path, 40); const date = new Date(v
 function count(value, path, max = Number.MAX_SAFE_INTEGER) { if (!Number.isSafeInteger(value) || value < 0 || value > max) throw new ValidationError('invalid_integer', `${path} is invalid`, path); return value; }
 function batchId(value, path = '$.batchId') { if (typeof value !== 'string' || !/^[0-9]{8}$/.test(value)) throw new ValidationError('invalid_batch_id', `${path} must be eight digits`, path); return value; }
 function sequence(value, path = '$.sequence') { count(value, path, 99_999_999); return String(value).padStart(8, '0'); }
+function frozen(value) { return deepFreezeAuditValue(structuredClone(value)); }
 
 export function assertJobState(value, path = '$.state') { if (!JOB_STATES.includes(value)) throw new ValidationError('invalid_job_state', `${path} is invalid`, path); return value; }
 export function assertJobTransition(from, to, options = {}) {
@@ -48,7 +49,7 @@ export function validateCampaignCreation(value) {
   if (value.schemaVersion !== 'campaign-creation-v1') throw new ValidationError('invalid_schema_version', '$.schemaVersion must be campaign-creation-v1', '$.schemaVersion');
   assertAuditId(value.campaignId, 'campaign', '$.campaignId'); assertAuditId(value.workspaceId, 'workspace', '$.workspaceId'); string(value.name, '$.name', 160); instant(value.createdAt, '$.createdAt');
   if (!['free-development','extended-90d','archive-365d'].includes(value.retentionPolicy)) throw new ValidationError('invalid_retention', '$.retentionPolicy is invalid', '$.retentionPolicy');
-  return structuredClone(value);
+  return frozen(value);
 }
 
 export function validateJobRequest(value) {
@@ -56,7 +57,8 @@ export function validateJobRequest(value) {
   if (value.schemaVersion !== 'audit-job-request-v1') throw new ValidationError('invalid_schema_version', '$.schemaVersion must be audit-job-request-v1', '$.schemaVersion');
   assertAuditId(value.jobId, 'job', '$.jobId'); assertAuditId(value.campaignId, 'campaign', '$.campaignId'); assertAuditId(value.workspaceId, 'workspace', '$.workspaceId'); assertProfileId(value.profileId, '$.profileId'); string(value.tool, '$.tool', 80); object(value.configuration, '$.configuration'); string(value.resourceClass, '$.resourceClass', 80); count(value.timeoutSeconds, '$.timeoutSeconds', 86_400); if (value.timeoutSeconds < 1) throw new ValidationError('invalid_timeout', '$.timeoutSeconds is invalid', '$.timeoutSeconds');
   if (!Array.isArray(value.expectedEvidence) || value.expectedEvidence.length > 64 || value.expectedEvidence.some((item) => typeof item !== 'string' || item.length < 1 || item.length > 160)) throw new ValidationError('invalid_evidence', '$.expectedEvidence is invalid', '$.expectedEvidence');
-  string(value.idempotencyKey, '$.idempotencyKey', 160); instant(value.submittedAt, '$.submittedAt'); return structuredClone(value);
+  if (new Set(value.expectedEvidence).size !== value.expectedEvidence.length) throw new ValidationError('duplicate_evidence', '$.expectedEvidence contains duplicates', '$.expectedEvidence');
+  string(value.idempotencyKey, '$.idempotencyKey', 160); instant(value.submittedAt, '$.submittedAt'); return frozen(value);
 }
 
 export function validateJobStatus(value) {
@@ -64,7 +66,7 @@ export function validateJobStatus(value) {
   if (value.schemaVersion !== 'audit-job-status-v1') throw new ValidationError('invalid_schema_version', '$.schemaVersion must be audit-job-status-v1', '$.schemaVersion');
   assertAuditId(value.jobId, 'job', '$.jobId'); assertAuditId(value.campaignId, 'campaign', '$.campaignId'); assertJobState(value.state); count(value.revision, '$.revision'); count(value.highestLogSequence, '$.highestLogSequence', MAX_LOG_CHUNKS_PER_ATTEMPT); instant(value.updatedAt, '$.updatedAt');
   if (value.executionEnabled !== false) throw new ValidationError('execution_disabled', '$.executionEnabled must remain false', '$.executionEnabled');
-  if (value.attemptId !== undefined) assertAuditId(value.attemptId, 'attempt', '$.attemptId'); if (value.reason !== undefined) string(value.reason, '$.reason', 512); return structuredClone(value);
+  if (value.attemptId !== undefined) assertAuditId(value.attemptId, 'attempt', '$.attemptId'); if (value.reason !== undefined) string(value.reason, '$.reason', 512); return frozen(value);
 }
 
 export function validateEventBatch(value) {
@@ -72,7 +74,7 @@ export function validateEventBatch(value) {
   if (value.schemaVersion !== 'audit-event-batch-v1') throw new ValidationError('invalid_schema_version', '$.schemaVersion must be audit-event-batch-v1', '$.schemaVersion');
   assertAuditId(value.jobId, 'job', '$.jobId'); batchId(value.batchId); instant(value.createdAt, '$.createdAt');
   if (!Array.isArray(value.events) || value.events.length < 1 || value.events.length > MAX_EVENT_BATCH_EVENTS) throw new ValidationError('invalid_event_batch', `$.events must contain 1 to ${MAX_EVENT_BATCH_EVENTS} events`, '$.events');
-  value.events.forEach((event, index) => { object(event, `$.events[${index}]`); scanAuditForbiddenFields(event, `$.events[${index}]`); string(event.type, `$.events[${index}].type`, 80); instant(event.at, `$.events[${index}].at`); }); return structuredClone(value);
+  value.events.forEach((event, index) => { object(event, `$.events[${index}]`); scanAuditForbiddenFields(event, `$.events[${index}]`); string(event.type, `$.events[${index}].type`, 80); instant(event.at, `$.events[${index}].at`); }); return frozen(value);
 }
 
 const id = (value, kind, path) => assertAuditId(value, kind, path);
