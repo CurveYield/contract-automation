@@ -1,10 +1,9 @@
-name: Remote Anvil Capability Probe
+name: Remote Anvil Pool Capability Probe
 
 on:
   push:
     branches:
       - fix/remote-mutable-fork-simulation-v1
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,17 +11,28 @@ permissions:
   issues: write
   pull-requests: write
 
-concurrency:
-  group: remote-anvil-probe-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   remote-anvil-capability:
+    name: remote-anvil-${{ matrix.slot }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        slot: [1, 2, 3, 4, 5]
+    concurrency:
+      group: remote-anvil-fork-${{ matrix.slot }}
+      cancel-in-progress: false
     env:
+      ANVIL_FORK_SLOT: ${{ matrix.slot }}
+      ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
       RPC_ANVIL_ETHEREUM1: ${{ secrets.RPC_ANVIL_ETHEREUM1 }}
-      PROOF_PATH: /tmp/remote-anvil-proof.json
+      RPC_ANVIL_ETHEREUM2: ${{ secrets.RPC_ANVIL_ETHEREUM2 }}
+      RPC_ANVIL_ETHEREUM3: ${{ secrets.RPC_ANVIL_ETHEREUM3 }}
+      RPC_ANVIL_ETHEREUM4: ${{ secrets.RPC_ANVIL_ETHEREUM4 }}
+      RPC_ANVIL_ETHEREUM5: ${{ secrets.RPC_ANVIL_ETHEREUM5 }}
+      PROOF_PATH: /tmp/remote-anvil-proof-${{ matrix.slot }}.json
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -37,48 +47,77 @@ jobs:
       - name: Install trusted dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Probe the persistent ethui Anvil RPC
+      - name: Select the assigned persistent fork
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$ANVIL_FORK_SLOT" in
+            1) selected="$RPC_ANVIL_ETHEREUM1" ;;
+            2) selected="$RPC_ANVIL_ETHEREUM2" ;;
+            3) selected="$RPC_ANVIL_ETHEREUM3" ;;
+            4) selected="$RPC_ANVIL_ETHEREUM4" ;;
+            5) selected="$RPC_ANVIL_ETHEREUM5" ;;
+            *) echo "Unsupported fork slot: $ANVIL_FORK_SLOT" >&2; exit 1 ;;
+          esac
+          if test -z "$selected"; then
+            echo "RPC_ANVIL_ETHEREUM${ANVIL_FORK_SLOT} is not configured" >&2
+            exit 1
+          fi
+          printf 'REMOTE_RPC_URL=%s\n' "$selected" >> "$GITHUB_ENV"
+
+      - name: Probe fork state, mutations, signer accounts, and cleanup
         id: probe
         continue-on-error: true
         run: node scripts/probe-remote-anvil.mjs
 
-      - name: Publish redacted result to PR 136
+      - name: Publish redacted slot result to PR 136
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if test -f "$PROOF_PATH"; then
             body=$(jq -r '
-              "### Remote Anvil capability probe: **" + (.status | ascii_upcase) + "**\n\n" +
+              "### Remote Anvil slot " + (.slot | tostring) + ": **" + (.status | ascii_upcase) + "**\n\n" +
               (if .chainId then "- Chain ID: `" + (.chainId | tostring) + "`\n" else "" end) +
               (if .clientVersion then "- Client: `" + .clientVersion + "`\n" else "" end) +
+              (if .baseline then "- Fork block: `" + (.baseline.blockNumber | tostring) + "`\n" else "" end) +
+              (if .mnemonicAccounts then
+                "- Mnemonic accounts matched: `" + (.mnemonicAccounts.matchedLoadedAccounts | tostring) + "/" + (.mnemonicAccounts.expected | tostring) + "`\n" +
+                "- Mnemonic signer funded: `" + (.mnemonicAccounts.signerFunded | tostring) + "`\n"
+              else "" end) +
               (if .capabilities then
                 "- Snapshot/revert: `" + (.capabilities.snapshot | tostring) + "`\n" +
                 "- Account impersonation: `" + (.capabilities.impersonation | tostring) + "`\n" +
-                "- Remote contract deployment: `" + (.capabilities.contractDeployment | tostring) + "`\n" +
-                "- Remote contract mutation: `" + (.capabilities.contractMutation | tostring) + "`\n" +
-                "- Same-RPC call readback: `" + (.capabilities.sameRpcCallReadBack | tostring) + "`\n" +
-                "- Same-RPC storage readback: `" + (.capabilities.sameRpcStorageReadBack | tostring) + "`\n" +
-                "- Impersonated native transfer: `" + (.capabilities.nativeTransfer | tostring) + "`\n" +
+                "- Remote deployment/mutation: `" + ((.capabilities.contractDeployment and .capabilities.contractMutation) | tostring) + "`\n" +
+                "- Same-RPC state readback: `" + ((.capabilities.sameRpcCallReadBack and .capabilities.sameRpcStorageReadBack) | tostring) + "`\n" +
+                "- Raw mnemonic-signed transaction: `" + (.capabilities.rawSignedTransaction | tostring) + "`\n" +
                 "- Time advancement: `" + (.capabilities.timeAdvance | tostring) + "`\n" +
                 "- debug_traceTransaction: `" + (.capabilities.debugTraceTransaction.supported | tostring) + "`\n"
               else "" end) +
               (if .revertProof then
-                "- Baseline restored: `" + ((.revertProof.reverted and .revertProof.actorBalanceMatchesBaseline and .revertProof.recipientBalanceMatchesBaseline and .revertProof.deployedCodeRemoved) | tostring) + "`\n"
+                "- Baseline fully restored: `" + ((
+                  .revertProof.reverted and
+                  .revertProof.actorBalanceMatchesBaseline and
+                  .revertProof.impersonatedRecipientMatchesBaseline and
+                  .revertProof.signedRecipientMatchesBaseline and
+                  .revertProof.signerBalanceMatchesBaseline and
+                  .revertProof.signerNonceMatchesBaseline and
+                  .revertProof.deployedCodeRemoved
+                ) | tostring) + "`\n"
               else "" end) +
               (if .error then "\nError: `" + .error.message + "`" else "" end)
             ' "$PROOF_PATH")
             gh pr comment 136 --repo CurveYield/contract-automation --body "$body"
           else
-            gh pr comment 136 --repo CurveYield/contract-automation --body '### Remote Anvil capability probe: **FAILED**\n\nThe probe exited before producing a redacted proof file.'
+            gh pr comment 136 --repo CurveYield/contract-automation --body "### Remote Anvil slot ${ANVIL_FORK_SLOT}: **FAILED**\n\nThe probe exited before producing a redacted proof file."
           fi
 
-      - name: Upload proof artifact
+      - name: Upload redacted slot proof
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: remote-anvil-capability-${{ github.run_id }}
-          path: /tmp/remote-anvil-proof.json
+          name: remote-anvil-capability-slot-${{ matrix.slot }}-${{ github.run_id }}
+          path: ${{ env.PROOF_PATH }}
           if-no-files-found: warn
           retention-days: 30
 
