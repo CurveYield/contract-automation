@@ -15,15 +15,15 @@ function deferred() {
 }
 
 test('Round 3 strict contracts cover complete compatibility and operator entities', async () => {
-  const { UI_ENTITY_KINDS, UI_CONTRACTS } = await load('packages/audit-ui-contracts/src/index.mjs');
+  const { UI_ENTITY_KINDS_V2, UI_CONTRACTS_V2 } = await load('packages/audit-ui-contracts/src/index.mjs');
   const required = [
     'capability', 'catalogTool', 'workspace', 'campaign', 'job', 'evidence', 'report',
     'fork', 'checkpoint', 'export', 'cleanRoomCampaign', 'merge', 'provenance',
     'quota', 'retention', 'operationBudget', 'profile', 'parser', 'result',
     'githubDirectStatus', 'releaseProvenance', 'diagnostic'
   ];
-  assert.deepEqual(UI_ENTITY_KINDS, required);
-  assert.deepEqual(Object.keys(UI_CONTRACTS), required);
+  assert.deepEqual(UI_ENTITY_KINDS_V2, required);
+  assert.deepEqual(Object.keys(UI_CONTRACTS_V2), required);
 });
 
 test('contract and view-model boundaries convert revoked proxies to bounded safe failures', async () => {
@@ -46,8 +46,8 @@ test('safe URL policy rejects fragments while retaining bounded prior http compa
 });
 
 test('route registry accepts query state, never throws on malformed encoding, and covers Round 3 pages', async () => {
-  const { AUDIT_ROUTES, resolveAuditRoute } = await load('apps/audit-web/src/routes.mjs');
-  const names = AUDIT_ROUTES.map((entry) => entry.name);
+  const { AUDIT_ROUTES_V2, resolveAuditRoute } = await load('apps/audit-web/src/routes.mjs');
+  const names = AUDIT_ROUTES_V2.map((entry) => entry.name);
   for (const name of ['profiles', 'profileDetail', 'parserDetail', 'resultDetail', 'githubDirectStatus', 'operations', 'releaseProvenance']) {
     assert.ok(names.includes(name), name);
   }
@@ -67,7 +67,9 @@ test('lifecycle registry names every Round 3 state without invented progress', a
     restored: 'Restored',
     tombstoned: 'Tombstoned'
   };
-  for (const [status, label] of Object.entries(expected)) assert.deepEqual(lifecycleState(status).label, label);
+  for (const [status, label] of Object.entries(expected)) {
+    assert.deepEqual(lifecycleState(status).label, label);
+  }
 });
 
 test('clean-room view model requires explicit visible-resource membership and leaks no hidden counts', async () => {
@@ -94,7 +96,9 @@ test('diagnostic redaction removes root paths, stack traces, URLs, and attacker 
     details: '<img onerror=alert(1)> token=secret'
   });
   const text = `${model.message} ${model.details}`;
-  for (const forbidden of ['/root/private', 'attacker', 'https://private.test', 'token=secret', '<img']) assert.equal(text.includes(forbidden), false, forbidden);
+  for (const forbidden of ['/root/private', 'attacker', 'https://private.test', 'token=secret', '<img']) {
+    assert.equal(text.includes(forbidden), false, forbidden);
+  }
 });
 
 test('safe client handles revoked proxies and prevents __proto__ pollution', async () => {
