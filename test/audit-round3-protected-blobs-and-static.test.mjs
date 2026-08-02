@@ -11,7 +11,7 @@ const protectedBlobs = Object.freeze({
   'packages/runner/src/fork-rpc-guard.mjs': '73690f16b506baa50ca471ce5b5566ccb601e765',
   'packages/runner/src/run-job.mjs': '6c61203ce69fa4c2f317807ea477cc27e1d2df81',
   'packages/github-native-sim/src/fork-rpc-proxy.mjs': '4d7e2bd1114f5a37914b26447c9c79a1e40a58e6',
-  'packages/github-native-sim/src/run-job-file.mjs': '8c4c82d76e249b74efc630c8cbf0d7707d25b5f2'
+  'packages/github-native-sim/src/run-job-file.mjs': '1c8285295d3c5efaebcfbae87fe5968de7f6c56f'
 });
 const auditRoots = [
   'audit-protocol','audit-r2-store','audit-profile-registry','audit-workspace-protocol','audit-workspaces',
