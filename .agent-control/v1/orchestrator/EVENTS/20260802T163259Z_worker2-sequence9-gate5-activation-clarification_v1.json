@@ -1,0 +1,15 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker2-sequence9-gate5-activation-clarification-20260802T163259Z",
+  "eventType": "assignment_activation_boundary_clarified",
+  "createdAt": "2026-08-02T16:32:59Z",
+  "createdBy": "orchestrator",
+  "workerId": "worker-2",
+  "sequence": 9,
+  "supersedesEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T163258Z_worker2-sequence9-gate5-activated_v1.json",
+  "assignmentActivated": true,
+  "productionIntakeAuthorized": false,
+  "productionIntakeAuthorizationCondition": "All 27 exact reconstruction blobs must read back and the prescribed Stage 0 tests and syntax checks must pass first.",
+  "finalCandidateFreezeAuthorized": false,
+  "remainingFreezeBlocker": "pr126-security-repair-acceptance-v1"
+}
