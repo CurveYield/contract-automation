@@ -116,6 +116,7 @@ async function listen(server) {
 
 async function closeServer(server) {
   if (!server.listening) return;
+  server.closeAllConnections?.();
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
@@ -137,7 +138,7 @@ async function resolveForkBlock(router, blockPolicy) {
     }
     return blockTag(policy.block);
   }
-  if (policy.mode === 'latest-at-start') {
+  if (policy.mode === 'latest-at-start' || policy.mode === 'latest-at-action') {
     const latest = await router.request({ jsonrpc: '2.0', id: 'resolve-block', method: 'eth_blockNumber', params: [] });
     return blockTag(latest.result);
   }
@@ -153,6 +154,27 @@ async function resolveForkBlock(router, blockPolicy) {
     return blockTag(block.result.number);
   }
   throw new Error(`Unsupported fork start mode: ${policy.mode}`);
+}
+
+async function blockDescriptor(router, policy) {
+  const tag = await resolveForkBlock(router, policy);
+  const response = await router.request({
+    jsonrpc: '2.0',
+    id: 'describe-block',
+    method: 'eth_getBlockByNumber',
+    params: [tag, false]
+  });
+  const block = response.result;
+  if (!block || block.number?.toLowerCase() !== tag.toLowerCase()) {
+    throw new Error('Archive RPC returned the wrong refork block');
+  }
+  if (!/^0x[0-9a-f]{64}$/i.test(block.hash ?? '')) throw new Error('Archive RPC returned an invalid refork block hash');
+  return {
+    blockNumber: parseBlockNumber(block.number),
+    blockHash: block.hash,
+    blockTimestamp: parseBlockNumber(block.timestamp),
+    blockTag: tag
+  };
 }
 
 export async function startLiveForkProxy({
@@ -216,6 +238,7 @@ export async function startLiveForkProxy({
     forwardedRequests: 0,
     terminated: false,
     unsupportedMethod: null,
+    reforkResolutions: [],
     get rpc() {
       return router.diagnostics;
     }
@@ -297,6 +320,11 @@ export async function startLiveForkProxy({
     diagnostics,
     termination: policy.termination,
     signal: policy.signal,
+    async resolveBlock(target) {
+      const descriptor = await blockDescriptor(router, target);
+      diagnostics.reforkResolutions.push({ ...descriptor, requested: structuredClone(target) });
+      return descriptor;
+    },
     close: () => closeServer(server)
   };
 }
