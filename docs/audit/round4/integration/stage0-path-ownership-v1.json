@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "round4-preliminary-path-ownership-v1",
+  "domains": [
+    {
+      "domain": "api",
+      "candidateId": "api-auth-reviewed",
+      "ownedPrefixes": ["apps/audit-api", "packages/audit-api-", "packages/audit-auth-", "packages/audit-gpt-"],
+      "ownedFiles": [],
+      "sharedFiles": ["package.json"]
+    },
+    {
+      "domain": "github-direct",
+      "candidateId": "web-direct-reviewed",
+      "ownedPrefixes": ["packages/audit-github-direct", "packages/github-direct-"],
+      "ownedFiles": [".github/workflows/audit-direct-v1.yml"],
+      "sharedFiles": ["package.json"]
+    },
+    {
+      "domain": "phase1-6-integration",
+      "candidateId": "phase1-6-reviewed",
+      "ownedPrefixes": [
+        "packages/audit-protocol",
+        "packages/audit-r2-store",
+        "packages/audit-profile-registry",
+        "packages/audit-workspace-protocol",
+        "packages/audit-workspaces",
+        "packages/audit-campaign-protocol",
+        "packages/audit-campaigns",
+        "packages/audit-evidence",
+        "packages/audit-tool-",
+        "packages/audit-executor-adapters",
+        "packages/audit-phase5-",
+        "packages/audit-phase6-",
+        "packages/audit-release-integration",
+        "packages/audit-integration-round4"
+      ],
+      "ownedFiles": [],
+      "sharedFiles": ["package.json"]
+    },
+    {
+      "domain": "phase7-8",
+      "candidateId": "phase7-8-reviewed",
+      "ownedPrefixes": [
+        "packages/audit-fork-",
+        "packages/audit-forks",
+        "packages/audit-clean-room-",
+        "packages/audit-controlled-merge",
+        "packages/audit-provenance"
+      ],
+      "ownedFiles": [],
+      "sharedFiles": ["package.json"]
+    },
+    {
+      "domain": "web",
+      "candidateId": "web-direct-reviewed",
+      "ownedPrefixes": ["apps/audit-web", "packages/audit-web-", "packages/audit-ui-", "packages/audit-report-view-"],
+      "ownedFiles": [],
+      "sharedFiles": ["package.json"]
+    }
+  ],
+  "protectedPaths": [
+    ".github/workflows/github-native-simulate.yml",
+    "packages/github-native-sim/src/fork-rpc-proxy.mjs",
+    "packages/github-native-sim/src/run-job-file.mjs",
+    "packages/runner/src/fork-rpc-guard.mjs",
+    "packages/runner/src/rpc-method-policy.mjs",
+    "packages/runner/src/run-job.mjs"
+  ],
+  "sharedFiles": ["package.json"],
+  "rules": [
+    "no candidate may own a protected path or a parent/child of a protected path",
+    "exact or nested overlap between domains is rejected",
+    "a shared file requires a committed field-owned union manifest",
+    "whole-side conflict resolution is forbidden",
+    "unregistered paths and undocumented adaptations block intake",
+    "the final ownership registry must be regenerated from the accepted Stage A manifests"
+  ]
+}
