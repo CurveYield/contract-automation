@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "audit-round4-worker1-phase78-public-compatibility-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "workerId": "worker-1",
+  "issueNumber": 121,
+  "sequence": 5,
+  "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+  "reviewedCodeCandidateSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+  "sourceCandidates": {
+    "worker0RepairedCoreSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+    "worker0ReconciledSourceSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+    "worker0ReportCommentId": 5156777973,
+    "worker1Round3ApiSha": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+    "worker1Round3ReportCommentId": 5154958425
+  },
+  "contractVersions": {
+    "serviceRequest": ["audit-phase9-service-request-v1", "audit-phase9-service-request-v2"],
+    "serviceResponse": ["audit-phase9-service-response-v1", "audit-phase9-service-response-v2"],
+    "serviceError": ["audit-phase9-service-error-v1", "audit-phase9-service-error-v2"],
+    "authorizationDecision": "audit-phase9-authorization-decision-v2",
+    "orchestrationPlan": "audit-phase9-orchestration-plan-v2",
+    "retryPlan": "audit-phase9-retry-plan-v2",
+    "pageCursor": ["audit-phase9-page-cursor-v1", "audit-phase9-page-cursor-v2"],
+    "page": ["audit-phase9-page-v1", "audit-phase9-page-v2"],
+    "scopedCacheMetadata": "audit-phase9-scoped-cache-metadata-v1",
+    "normalizedError": "audit-phase9-normalized-error-v1",
+    "forkReports": "audit-phase9-*-report-v2",
+    "cleanRoomReports": "audit-phase9-*-report-v2",
+    "immutablePublicationPlan": ["audit-phase9-immutable-publication-plan-v1", "audit-phase9-immutable-publication-plan-v2"],
+    "mutablePublicationPlan": ["audit-phase9-mutable-pointer-publication-plan-v1", "audit-phase9-mutable-pointer-publication-plan-v2"],
+    "publicationRecovery": ["audit-phase9-publication-recovery-v1", "audit-phase9-publication-recovery-v2"],
+    "scopedPublicationRecovery": "audit-phase9-scoped-publication-recovery-v1"
+  },
+  "publicExports": {
+    "auditPhase78Service": [
+      "createServiceRequest",
+      "validateServiceRequest",
+      "createServiceResponse",
+      "validateServiceResponse",
+      "validateServiceResponseForRequest",
+      "createServiceError",
+      "validateServiceError",
+      "validateServiceErrorForRequest",
+      "authorizePhase78Operation",
+      "planPhase78Operation",
+      "createRetryPlan",
+      "createPageCursor",
+      "validatePageCursor",
+      "paginateDeterministically",
+      "createScopedCacheMetadata",
+      "normalizePhase78ServiceError"
+    ],
+    "auditForkReporting": [
+      "createForkReportProjection",
+      "createAwaitingExecutorProjection",
+      "createCheckpointReportProjection",
+      "createExportReportProjection",
+      "createDeleteReportProjection"
+    ],
+    "auditCleanRoomReporting": [
+      "createHiddenReportProjection",
+      "createCampaignReportProjection",
+      "createMergeReportProjection",
+      "createRelationSummary",
+      "createProvenanceReportProjection"
+    ],
+    "auditPhase78Publication": [
+      "enforcePublicationQuota",
+      "planImmutablePublication",
+      "planMutablePointerPublication",
+      "validatePublicationPlan",
+      "planPublicationRecovery",
+      "planScopedPublicationRecovery"
+    ]
+  },
+  "identityScope": [
+    "tenantId",
+    "workspaceId",
+    "campaignId",
+    "forkId",
+    "attemptId",
+    "mergeId",
+    "requesterId",
+    "requestId",
+    "requestDigest",
+    "idempotencyKey"
+  ],
+  "operationTruth": {
+    "fork.checkpoint": {"lifecycle": ["ready", "checkpointing", "ready"], "classA": 9, "classB": 10},
+    "fork.export": {"lifecycle": ["ready", "exporting", "ready"], "classA": 8, "classB": 12},
+    "fork.restore": {"lifecycle": ["ready", "restoring", "ready"], "classA": 7, "classB": 11},
+    "fork.delete": {"lifecycle": ["ready-or-transient", "deleting", "deleted"], "classA": 7, "classB": 9}
+  },
+  "nonInterference": {
+    "forkAuthorization": "absent, cross-tenant and cross-attempt resources return the same resource_hidden decision",
+    "pageV2": "omits total and binds cursor/cache identity to tenant/workspace/campaign/fork/attempt/merge/resource/index/visible-view",
+    "relations": "partially hidden duplicate or conflict groups are omitted in full",
+    "provenance": "report and visible-index digests are derived only from validated visible nodes and edges",
+    "hiddenProjection": "hidden and absent resources use one byte-identical count-invariant projection",
+    "errors": "provider text, getters, URLs, host paths, stacks and tokens are not inspected or reflected"
+  },
+  "publicationTruth": {
+    "keys": "deterministic exact-scope keys include campaign/fork/attempt/merge identity where present",
+    "immutable": "HEAD precondition plus if-none-match create; exact-content retries only",
+    "mutable": "exact ETag/version CAS and pointer-last",
+    "recovery": "typed immutable -> index-cas -> pointer-last replay with conflicting completion rejection",
+    "prefixListing": false
+  },
+  "executionBoundary": {
+    "executionEnabled": false,
+    "submittedProjectExecution": false,
+    "networkClient": false,
+    "rpc": false,
+    "walletOrSigner": false,
+    "transactionOrBroadcast": false,
+    "deployment": false,
+    "storageInternalImport": false
+  },
+  "verification": {
+    "tests": 108,
+    "passed": 108,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "productionAndTestSyntaxChecks": 29,
+    "jsonFixturesChecked": 2,
+    "multiTenantScenarios": 12,
+    "sourceReviewRedCases": 10,
+    "serviceCases": 21,
+    "reportCases": 20,
+    "publicationCases": 23,
+    "e2eCases": 21,
+    "staticCases": 13
+  },
+  "productionPrerequisites": [
+    "Worker 2 must intake exact registered blobs rather than merge stale branch history.",
+    "The integrated API must select v2 service, page and publication contracts for attempt-scoped Phase 7–8 routes.",
+    "Injected providers must expose only tenant/attempt-scoped repaired public readers and validated records.",
+    "Visible-view and source-index digests must be supplied by the trusted server-side projection layer.",
+    "Cloudflare/R2 bindings, credentials and live provider behavior remain Round 5 production-test inputs; no secret value is present here.",
+    "The combined branch must rerun these tests against the exact repaired core modules without harness stubs.",
+    "Protected GitHub-native simulation/App/RPC-addon blobs must be restored from the approved lineage unchanged."
+  ],
+  "residualRisks": [
+    "The no-download Stage A harness used clearly identified test-only stubs for repaired core builders and validators; exact-core combined tests are mandatory after deterministic intake.",
+    "Legacy v1 page compatibility retains its historical total field; Phase 7–8 API consumers must use page v2 for hidden-resource-safe discovery.",
+    "Cursor digests are deterministic integrity checks, not secret signatures; untrusted transport acceptance must remain behind the authenticated API boundary.",
+    "No live Cloudflare Worker, R2 object store, provider, deployment, network or production credential was exercised in Stage A.",
+    "Stage B acceptance is pending one frozen assembled SHA from issue #119."
+  ],
+  "stageAVerdict": "ACCEPT_WITH_REPAIR",
+  "stageBStatus": "WAITING_FOR_FROZEN_ASSEMBLED_SHA"
+}
