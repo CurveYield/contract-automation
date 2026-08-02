@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "audit-round3-production-path-registry-v1",
+  "componentGroup": "phase1-3",
+  "repository": "CurveYield/contract-automation",
+  "branch": "audit-round3/phases1-8-release-integration-v1",
+  "startingSha": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+  "paths": [
+    {
+      "path": "packages/audit-campaign-protocol/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "dcec04705fec51aa8d90aad87868acf2d3b72a68",
+      "destinationBlobSha": "10c68d81d147bed98a62af02278a2bbf60b5a3f8",
+      "adaptationKind": "repaired",
+      "repairId": "phase3-campaign-contract-hardening-v1"
+    },
+    {
+      "path": "packages/audit-campaigns/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "58c1eeb7f76c3278ff18c8e8de51ceea3a35456e",
+      "destinationBlobSha": "8054bd1a5ad781e15b2e5b692ada87c3d4e804a9",
+      "adaptationKind": "repaired",
+      "repairId": "phase3-campaign-public-wrapper-v1"
+    },
+    {
+      "path": "packages/audit-campaigns/src/service.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": null,
+      "destinationBlobSha": "2ae4cf35a0bc9d287e51ccd6350735986d2e5aa3",
+      "adaptationKind": "added",
+      "repairId": "phase3-campaign-recovery-service-v1"
+    },
+    {
+      "path": "packages/audit-evidence/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "00c93b286e652f60744cbc098cb9f517aaeabc5e",
+      "destinationBlobSha": "5d8dbfe39a5611ed25192c6610af059bcac16c1e",
+      "adaptationKind": "repaired",
+      "repairId": "phase3-evidence-recovery-v1"
+    },
+    {
+      "path": "packages/audit-profile-registry/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "9cb1e7de80053b18d33843c2768aadd4bd90e2f0",
+      "destinationBlobSha": "77d25f00bcf07fd20ef4ce85077d1334990642d5",
+      "adaptationKind": "repaired",
+      "repairId": "phase2-profile-registry-hardening-v1"
+    },
+    {
+      "path": "packages/audit-protocol/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "df523319004e025c7c5c99d645ea6d7607639a0f",
+      "destinationBlobSha": "e0c30659615e68b5262ccded0ef95a258c2ebdd2",
+      "adaptationKind": "repaired",
+      "repairId": "phase1-hostile-boundary-v1"
+    },
+    {
+      "path": "packages/audit-r2-store/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "8393645bb56bef92fcd7745f970763ca850b1632",
+      "destinationBlobSha": "c2360ba7fc5e465cbb9460d63506a6bbcb2de247",
+      "adaptationKind": "repaired",
+      "repairId": "phase1-r2-cas-hardening-v1"
+    },
+    {
+      "path": "packages/audit-workspace-protocol/src/index.mjs",
+      "sourceHead": "5f834d9702a4d28061222a64cfa9d870c97a4978",
+      "sourceBlobSha": "104ca5528f367536a2c1fd87dc60fed601e98a6f",
+      "destinationBlobSha": "e13b7148aecdcdaa6a89df3ac74341f47de2f0bb",
+      "adaptationKind": "repaired",
+      "repairId": "phase2-workspace-identity-hardening-v1"
+    }
+  ]
+}
