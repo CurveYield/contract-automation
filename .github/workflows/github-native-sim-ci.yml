@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: v27-remote-anvil-slot2-${{ github.ref }}
+  group: v27-remote-anvil-slot3-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -19,10 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
+      RPC_ANVIL_ETHEREUM1: ${{ secrets.RPC_ANVIL_ETHEREUM1 }}
       RPC_ANVIL_ETHEREUM2: ${{ secrets.RPC_ANVIL_ETHEREUM2 }}
-      V27_RPC_SLOT_SECRET: RPC_ANVIL_ETHEREUM2
+      RPC_ANVIL_ETHEREUM3: ${{ secrets.RPC_ANVIL_ETHEREUM3 }}
+      V27_RPC_SLOT_SECRET: RPC_ANVIL_ETHEREUM3
       ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
       RESULT_ROOT: /tmp/v27-remote-anvil-result
+      V27_CONTROL_ROOT: /tmp/v27-remote-anvil-control-slot3
+      V27_RECOVERY_ROOT: /tmp/v27-remote-anvil-recovery
     steps:
       - name: Check out source and reviewed harness history
         uses: actions/checkout@v4
@@ -38,7 +42,13 @@ jobs:
       - name: Install trusted runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Create workflow-level remote snapshot
+      - name: Recover interrupted remote fork slot 1
+        run: node github-native-sim/jobs/live-fork-v27-v1/recover-oldest-active-snapshot.mjs RPC_ANVIL_ETHEREUM1
+
+      - name: Recover interrupted remote fork slot 2
+        run: node github-native-sim/jobs/live-fork-v27-v1/recover-oldest-active-snapshot.mjs RPC_ANVIL_ETHEREUM2
+
+      - name: Create workflow-level remote snapshot on slot 3
         run: node github-native-sim/jobs/live-fork-v27-v1/remote-snapshot-guard.mjs begin
 
       - name: Execute complete V27 deposit, harvest, withdrawal, and migration lifecycle
@@ -47,9 +57,9 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p "$RESULT_ROOT"
-          date +%s > "$RESULT_ROOT/.last-progress-epoch"
-          date +%s > "$RESULT_ROOT/.last-heartbeat-epoch"
+          mkdir -p "$RESULT_ROOT" "$V27_CONTROL_ROOT"
+          date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+          date +%s > "$V27_CONTROL_ROOT/last-heartbeat-epoch"
 
           notice() {
             local message="$1"
@@ -62,15 +72,15 @@ jobs:
             local file="$1"
             local base label marker
             base="$(basename "$file")"
-            marker="$RESULT_ROOT/.reported-start-${base}"
+            marker="$V27_CONTROL_ROOT/reported-start-${base}"
             [[ -e "$marker" ]] && return
             touch "$marker"
             label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
             label="${label%:before}"
             [[ -z "$label" ]] && label="$base"
-            printf '%s\n' "$label" > "$RESULT_ROOT/.current-action"
-            date +%s > "$RESULT_ROOT/.last-progress-epoch"
-            touch "$RESULT_ROOT/.evidence-seen"
+            printf '%s\n' "$label" > "$V27_CONTROL_ROOT/current-action"
+            date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+            touch "$V27_CONTROL_ROOT/evidence-seen"
             notice "Started: ${label}"
           }
 
@@ -78,15 +88,15 @@ jobs:
             local file="$1"
             local base label marker
             base="$(basename "$file")"
-            marker="$RESULT_ROOT/.reported-complete-${base}"
+            marker="$V27_CONTROL_ROOT/reported-complete-${base}"
             [[ -e "$marker" ]] && return
             touch "$marker"
             label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
             [[ -z "$label" ]] && label="$base"
-            printf '%s\n' "$label" > "$RESULT_ROOT/.last-completed-action"
-            printf '%s\n' 'Waiting for the next operation' > "$RESULT_ROOT/.current-action"
-            date +%s > "$RESULT_ROOT/.last-progress-epoch"
-            touch "$RESULT_ROOT/.evidence-seen"
+            printf '%s\n' "$label" > "$V27_CONTROL_ROOT/last-completed-action"
+            printf '%s\n' 'Waiting for the next operation' > "$V27_CONTROL_ROOT/current-action"
+            date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+            touch "$V27_CONTROL_ROOT/evidence-seen"
             echo "[v27-complete] ${label}"
             printf -- '- `%s` Completed: %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$label" >> "$GITHUB_STEP_SUMMARY"
           }
@@ -103,7 +113,7 @@ jobs:
           }
 
           printf '## V27 remote-Anvil simulation progress\n\n' >> "$GITHUB_STEP_SUMMARY"
-          notice 'Simulation started on persistent remote Anvil slot 2.'
+          notice 'Simulation started on persistent remote Anvil slot 3.'
 
           setsid bash github-native-sim/jobs/live-fork-v27-v1/run-ci-selected-slot.sh &
           simulation_pid=$!
@@ -111,22 +121,22 @@ jobs:
           while kill -0 "$simulation_pid" 2>/dev/null; do
             scan_progress
             now="$(date +%s)"
-            last_progress="$(cat "$RESULT_ROOT/.last-progress-epoch")"
-            last_heartbeat="$(cat "$RESULT_ROOT/.last-heartbeat-epoch")"
+            last_progress="$(cat "$V27_CONTROL_ROOT/last-progress-epoch")"
+            last_heartbeat="$(cat "$V27_CONTROL_ROOT/last-heartbeat-epoch")"
             stalled_for=$((now - last_progress))
 
-            if [[ -e "$RESULT_ROOT/.evidence-seen" ]]; then
+            if [[ -e "$V27_CONTROL_ROOT/evidence-seen" ]]; then
               stall_limit=300
             else
               stall_limit=600
             fi
 
             if (( stalled_for >= stall_limit )); then
-              current="$(cat "$RESULT_ROOT/.current-action" 2>/dev/null || echo 'preparing first contract action')"
-              completed="$(cat "$RESULT_ROOT/.last-completed-action" 2>/dev/null || echo 'none')"
+              current="$(cat "$V27_CONTROL_ROOT/current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$V27_CONTROL_ROOT/last-completed-action" 2>/dev/null || echo 'none')"
               notice "STALL DETECTED after ${stalled_for}s. Active operation: ${current}. Last completed: ${completed}."
               printf '%s\n' "$current" > "$RESULT_ROOT/watchdog-blocked-operation.txt"
-              touch "$RESULT_ROOT/.watchdog-timeout"
+              touch "$V27_CONTROL_ROOT/watchdog-timeout"
               kill -TERM -- "-$simulation_pid" 2>/dev/null || true
               for _ in $(seq 1 30); do
                 kill -0 "$simulation_pid" 2>/dev/null || break
@@ -137,10 +147,10 @@ jobs:
             fi
 
             if (( now - last_heartbeat >= 120 )); then
-              current="$(cat "$RESULT_ROOT/.current-action" 2>/dev/null || echo 'preparing first contract action')"
-              completed="$(cat "$RESULT_ROOT/.last-completed-action" 2>/dev/null || echo 'none')"
+              current="$(cat "$V27_CONTROL_ROOT/current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$V27_CONTROL_ROOT/last-completed-action" 2>/dev/null || echo 'none')"
               notice "Heartbeat: active operation is ${current}; last completed is ${completed}."
-              date +%s > "$RESULT_ROOT/.last-heartbeat-epoch"
+              date +%s > "$V27_CONTROL_ROOT/last-heartbeat-epoch"
             fi
             sleep 10
           done
@@ -149,7 +159,7 @@ jobs:
           simulation_status=$?
           scan_progress
 
-          if [[ -e "$RESULT_ROOT/.watchdog-timeout" ]]; then
+          if [[ -e "$V27_CONTROL_ROOT/watchdog-timeout" ]]; then
             simulation_status=124
           fi
 
@@ -161,7 +171,7 @@ jobs:
           fi
           exit "$simulation_status"
 
-      - name: Restore workflow-level remote snapshot
+      - name: Restore workflow-level remote snapshot on slot 3
         id: cleanup
         if: always()
         continue-on-error: true
@@ -178,7 +188,7 @@ jobs:
             body=$(jq -r --arg outer "$outer_cleanup" '
               "### V27 remote-Anvil contract-stack simulation: **" +
               (if .validatedSuccess then "PASSED" else "FAILED" end) + "**\n\n" +
-              "- RPC slot: `RPC_ANVIL_ETHEREUM2`\n" +
+              "- RPC slot: `RPC_ANVIL_ETHEREUM3`\n" +
               "- Assurance: `" + (.assurance // "unknown") + "`\n" +
               "- RPC chain ID: `" + ((.rpcChainId // 0) | tostring) + "`\n" +
               "- Calls: `" + ((.callCount // 0) | tostring) + "`\n" +
@@ -193,18 +203,22 @@ jobs:
           else
             blocked=$(cat "$RESULT_ROOT/watchdog-blocked-operation.txt" 2>/dev/null || echo unknown)
             tail_text=$(tail -n 30 "$RESULT_ROOT/wrapper-stderr.log" 2>/dev/null | sed 's/`/\\`/g' || true)
-            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\n- RPC slot: \`RPC_ANVIL_ETHEREUM2\`\n- Blocked operation: \`${blocked}\`\n- Workflow-level fork restoration: \`${outer_cleanup}\`\n\n\`\`\`\n${tail_text}\n\`\`\`"
+            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\n- RPC slot: \`RPC_ANVIL_ETHEREUM3\`\n- Blocked operation: \`${blocked}\`\n- Workflow-level fork restoration: \`${outer_cleanup}\`\n\n\`\`\`\n${tail_text}\n\`\`\`"
           fi
 
-      - name: Upload complete simulation evidence
+      - name: Upload complete simulation and recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: v27-remote-anvil-contract-stack-${{ github.run_id }}
-          path: ${{ env.RESULT_ROOT }}
+          path: |
+            ${{ env.RESULT_ROOT }}
+            ${{ env.V27_CONTROL_ROOT }}
+            ${{ env.V27_RECOVERY_ROOT }}
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
+          include-hidden-files: true
 
       - name: Propagate simulation or cleanup failure
         if: steps.simulation.outcome == 'failure' || steps.cleanup.outcome == 'failure'
