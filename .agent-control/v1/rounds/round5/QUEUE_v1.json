@@ -17,51 +17,12 @@
     "rule": "No Round 5 assignment may become CURRENT and no Round 5 branch may be created until every activation field is resolved and independently verified by the orchestrator."
   },
   "workers": [
-    {
-      "workerId": "worker-0",
-      "nextSequence": 7,
-      "issueNumber": 128,
-      "plannedBranch": "audit-round5/production-recovery-acceptance-v1",
-      "template": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000007_worker-0-round5-production-recovery-acceptance-v1.md",
-      "state": "queued"
-    },
-    {
-      "workerId": "worker-1",
-      "nextSequence": 6,
-      "issueNumber": 129,
-      "plannedBranch": "audit-round5/live-api-auth-gpt-r2-v1",
-      "template": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000006_worker-1-round5-live-api-auth-gpt-r2-v1.md",
-      "state": "queued"
-    },
-    {
-      "workerId": "worker-2",
-      "nextSequence": 9,
-      "issueNumber": 130,
-      "plannedBranch": "audit-round5/production-deployment-integration-v1",
-      "template": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-2-round5-production-deployment-integration-v1.md",
-      "state": "queued"
-    },
-    {
-      "workerId": "worker-3",
-      "nextSequence": 9,
-      "issueNumber": 131,
-      "plannedBranch": "audit-round5/github-direct-actions-security-v1",
-      "template": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-3-round5-github-direct-actions-security-v1.md",
-      "state": "queued"
-    },
-    {
-      "workerId": "worker-4",
-      "nextSequence": 4,
-      "issueNumber": 132,
-      "plannedBranch": "audit-round5/web-operator-live-e2e-v1",
-      "template": ".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000004_worker-4-round5-web-operator-live-e2e-v1.md",
-      "state": "queued"
-    }
+    {"workerId":"worker-0","nextSequence":7,"issueNumber":128,"plannedBranch":"audit-round5/production-recovery-acceptance-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000007_worker-0-round5-production-recovery-acceptance-v1.md","state":"queued"},
+    {"workerId":"worker-1","nextSequence":6,"issueNumber":129,"plannedBranch":"audit-round5/live-api-auth-gpt-r2-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000006_worker-1-round5-live-api-auth-gpt-r2-v1.md","state":"queued","executionOwner":"orchestrator-direct-takeover","workerRuntimeEligible":false,"replacementAgentRequired":false},
+    {"workerId":"worker-2","nextSequence":9,"issueNumber":130,"plannedBranch":"audit-round5/production-deployment-integration-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-2-round5-production-deployment-integration-v1.md","state":"queued"},
+    {"workerId":"worker-3","nextSequence":9,"issueNumber":131,"plannedBranch":"audit-round5/github-direct-actions-security-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-3-round5-github-direct-actions-security-v1.md","state":"queued"},
+    {"workerId":"worker-4","nextSequence":4,"issueNumber":132,"plannedBranch":"audit-round5/web-operator-live-e2e-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000004_worker-4-round5-web-operator-live-e2e-v1.md","state":"queued"}
   ],
-  "nonOverlap": {
-    "currentPointersModified": false,
-    "workerStatusesModified": false,
-    "round5BranchesCreated": false,
-    "liveWorkAuthorized": false
-  }
+  "nonOverlap": {"currentPointersModified":false,"workerStatusesModified":false,"round5BranchesCreated":false,"liveWorkAuthorized":false},
+  "updatedAt": "2026-08-02T11:42:40Z"
 }
