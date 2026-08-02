@@ -7,8 +7,7 @@ import {
 export const AUDIT_CATALOG_COMPOSITION_VERSION = 'audit-catalog-composition-v2';
 export const ACCEPTED_SOURCE_COMMITS = Object.freeze({
   phase5: '2982614879f1f6d252a7630eb5331031d5934b4e',
-  phase6: '1b20f634b6d3c5f1261d490e545415c81d7488f2',
-  phase78: '13af0c6c6c3d74ceacdc1894d6f3146460884fb4'
+  phase6: '1b20f634b6d3c5f1261d490e545415c81d7488f2'
 });
 
 function freeze(value) {
@@ -143,7 +142,7 @@ export const ACCEPTED_PHASE78_INTERFACE = freeze({
   schemaVersion: 'audit-phase78-service-compatibility-v1',
   servicePackage: '@curveyield/audit-phase78-service',
   serviceVersion: '0.1.0',
-  sourceCommit: ACCEPTED_SOURCE_COMMITS.phase78,
+  sourceCommit: '13af0c6c6c3d74ceacdc1894d6f3146460884fb4',
   indexBlobSha: 'd23b4922f8209b5829618b4d9a4174f3b5849be9',
   constantsBlobSha: '8f8ae95fb8a6b582aa8d91af3183bf5fbbadc79a',
   operationCount: 15,
