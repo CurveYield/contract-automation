@@ -1,0 +1,15 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_acknowledged",
+  "workerId": "worker-1",
+  "sequence": 5,
+  "messageId": "worker-1-round4-phase78-api-compat-review-v1-000005",
+  "assignmentPath": ".agent-control/v1/workers/worker-1/ASSIGNMENTS/000005_worker-1-round4-phase78-api-compat-review-v1.md",
+  "assignmentBlobSha": "a584ab7e0f1839badc586b73dc58ab7ebca08e72",
+  "issueNumber": 121,
+  "branch": "audit-round4/review-phase78-api-compat-v1",
+  "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+  "acknowledgedAt": "2026-08-02T10:49:21Z",
+  "runtime": "ChatGPT web worker runtime",
+  "executionMode": "single-runtime"
+}
