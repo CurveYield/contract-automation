@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 1,
+  "eventType": "assignment_acknowledged",
+  "workerId": "worker-3",
+  "sequence": 7,
+  "messageId": "worker-3-round3-github-direct-audit-release-v1-000007",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000007_worker-3-round3-github-direct-audit-release-v1.md",
+  "assignmentBlobSha": "b5c2df3c528283eaafef30a1c618a994ca09d46d",
+  "issueNumber": 115,
+  "branch": "audit-round3/github-direct-audit-release-v1",
+  "startingSha": "66c3060da74ba79a780847eb86307d0b5641b20a",
+  "acknowledgedAt": "2026-08-02T02:34:00Z"
+}
