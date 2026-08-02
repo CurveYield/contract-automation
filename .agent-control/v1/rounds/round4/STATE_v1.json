@@ -14,8 +14,19 @@
   "activeRound3Issues": [112, 113, 114, 115, 116],
   "completedRound3Workers": ["worker-0", "worker-1", "worker-2", "worker-3", "worker-4"],
   "stageAActivatedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
-  "stageACompletedWorkers": ["worker-4"],
+  "stageACompletedWorkers": ["worker-0", "worker-4"],
   "stageAOutputs": {
+    "worker-0": {
+      "issueNumber": 120,
+      "branch": "audit-round4/review-integration-spine-v1",
+      "candidateSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+      "documentationSha": "2ca9e70fb1e34cb1fb1b163844169cae510a7f52",
+      "recommendation": "ACCEPT WITH REPAIR",
+      "reportCommentId": 5157224221,
+      "intakeManifestPath": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json",
+      "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105",
+      "acceptedAt": "2026-08-02T11:36:57Z"
+    },
     "worker-4": {
       "issueNumber": 124,
       "branch": "audit-round4/review-web-direct-e2e-v1",
@@ -52,7 +63,7 @@
       "workerId": "worker-2",
       "issueNumber": 122,
       "description": "Worker 2 sequence 8 and its integration branch were activated before Stage A verdicts from issues 120, 121, 123, and 124, contrary to ACTIVATION_RUNBOOK_v1 Gate 4 and Gate 5. Worker 2 must remain limited to stage-0 preparation and must not intake subsystem production paths until all four Stage A outputs are complete and valid.",
-      "requiredResolution": "Do not publish another Worker 2 assignment or authorize production intake. After all four Stage A verdicts are valid, reconcile whether sequence 8 may continue under its existing immutable staged assignment or must be superseded according to the runbook.",
+      "requiredResolution": "Do not publish another Worker 2 assignment or authorize production intake. Issues 120 and 124 are now accepted. Continue holding production intake until issues 121 and 123 are also complete and valid, then reconcile whether sequence 8 may continue under its existing immutable staged assignment or must be superseded according to the runbook.",
       "detectedAt": "2026-08-02T09:34:47Z"
     },
     {
@@ -69,5 +80,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T10:35:25Z"
+  "updatedAt": "2026-08-02T11:36:57Z"
 }
