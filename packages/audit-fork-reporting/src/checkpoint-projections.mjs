@@ -1,3 +1,25 @@
-import {finalize,identifier,rawDigest,integer,timestamp,secondsBetween,objectKey,fail} from './common.mjs';
-export function createCheckpointReportProjection({manifest,reportedAt}){if(!manifest||typeof manifest!=='object')fail('invalid_manifest','$.manifest');const retentionSeconds=secondsBetween(manifest.createdAt,manifest.expiresAt);if(retentionSeconds>86400)fail('invalid_retention','$.manifest.expiresAt');return finalize('checkpoint',{checkpointId:identifier(manifest.checkpointId,'$.manifest.checkpointId'),forkId:identifier(manifest.forkId,'$.manifest.forkId'),tenantId:identifier(manifest.tenantId,'$.manifest.tenantId'),attemptId:identifier(manifest.attemptId,'$.manifest.attemptId'),objectKey:objectKey(manifest.objectKey,'$.manifest.objectKey'),sha256:rawDigest(manifest.sha256,'$.manifest.sha256'),bytes:integer(manifest.bytes,'$.manifest.bytes',1,1_000_000_000),createdAt:timestamp(manifest.createdAt,'$.manifest.createdAt'),expiresAt:timestamp(manifest.expiresAt,'$.manifest.expiresAt'),retentionSeconds,opaque:true,reportedAt:timestamp(reportedAt,'$.reportedAt')});}
-export function createExportReportProjection({manifest,reportedAt}){if(!manifest||typeof manifest!=='object')fail('invalid_manifest','$.manifest');const retentionSeconds=secondsBetween(manifest.createdAt,manifest.expiresAt);if(retentionSeconds>604800)fail('invalid_retention','$.manifest.expiresAt');return finalize('export',{exportId:identifier(manifest.exportId,'$.manifest.exportId'),forkId:identifier(manifest.forkId,'$.manifest.forkId'),tenantId:identifier(manifest.tenantId,'$.manifest.tenantId'),checkpointId:identifier(manifest.checkpointId,'$.manifest.checkpointId'),sourceObjectKey:objectKey(manifest.sourceObjectKey,'$.manifest.sourceObjectKey'),sourceSha256:rawDigest(manifest.sourceSha256,'$.manifest.sourceSha256'),createdAt:timestamp(manifest.createdAt,'$.manifest.createdAt'),expiresAt:timestamp(manifest.expiresAt,'$.manifest.expiresAt'),retentionSeconds,copiesBytes:false,reportedAt:timestamp(reportedAt,'$.reportedAt')});}
+import {validateCheckpointManifest,validateExportManifest} from '../../audit-fork-protocol/src/index.mjs';
+import {finalize,timestamp,secondsBetween} from './common.mjs';
+
+export function createCheckpointReportProjection({manifest,reportedAt}){
+ const normalized=validateCheckpointManifest(manifest);
+ const retentionSeconds=secondsBetween(normalized.createdAt,normalized.expiresAt);
+ return finalize('checkpoint',{
+  checkpointId:normalized.checkpointId,forkId:normalized.forkId,tenantId:normalized.tenantId,
+  attemptId:normalized.attemptId,chainId:normalized.chainId,blockNumber:normalized.blockNumber,
+  blockHash:normalized.blockHash??null,objectKey:normalized.objectKey,sha256:normalized.sha256,
+  bytes:normalized.bytes,contentType:normalized.contentType,createdAt:normalized.createdAt,
+  expiresAt:normalized.expiresAt,retentionSeconds,opaque:normalized.opaque,
+  reportedAt:timestamp(reportedAt,'$.reportedAt')
+ });
+}
+export function createExportReportProjection({manifest,reportedAt}){
+ const normalized=validateExportManifest(manifest);
+ const retentionSeconds=secondsBetween(normalized.createdAt,normalized.expiresAt);
+ return finalize('export',{
+  exportId:normalized.exportId,forkId:normalized.forkId,tenantId:normalized.tenantId,
+  checkpointId:normalized.checkpointId,sourceObjectKey:normalized.sourceObjectKey,
+  sourceSha256:normalized.sourceSha256,createdAt:normalized.createdAt,expiresAt:normalized.expiresAt,
+  retentionSeconds,copiesBytes:false,reportedAt:timestamp(reportedAt,'$.reportedAt')
+ });
+}
