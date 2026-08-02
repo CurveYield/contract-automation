@@ -121,6 +121,11 @@ export function sanitizeAuditValue(value, path = '$', seen = new WeakSet(), dept
   }
   if (typeof value !== 'object') fail('invalid_type', path, `${path} contains an unsupported value`);
   if (isProxy(value)) fail('hostile_object', path, `${path} cannot be a proxy`);
+  if (value instanceof Uint8Array) {
+    if (Object.getPrototypeOf(value) !== Uint8Array.prototype) fail('invalid_byte_array', path, `${path} must be an ordinary Uint8Array`);
+    return new Uint8Array(value);
+  }
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) fail('invalid_byte_array', path, `${path} must be an ordinary Uint8Array`);
   if (seen.has(value)) fail('cyclic_value', path, `${path} must be acyclic`);
   seen.add(value);
 
