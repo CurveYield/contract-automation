@@ -1,0 +1,54 @@
+{
+  "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
+  "eventId": "external-live-fork-workstream-quarantine-20260802T095457Z",
+  "eventType": "external_workstream_quarantined",
+  "createdAt": "2026-08-02T09:54:57Z",
+  "createdBy": "replacement-orchestrator",
+  "userDirective": "A separate agent is actively replacing the botched local Ganache simulation path with live BlockPI-backed RPC routing. Do not interfere; independently review and repair only after the user declares that work complete.",
+  "repository": "CurveYield/contract-automation",
+  "externalWorkstream": {
+    "pullRequestNumber": 126,
+    "branch": "agent/live-fork-rpc-routing-design",
+    "baseBranch": "main",
+    "baseShaAtObservation": "3f68cc1b12cc7f9a84e4cb04b768c049138814c6",
+    "observedHeadSha": "701ab96661cad9904e17df0d8559e79bc234335a",
+    "headIsMutable": true,
+    "stateAtObservation": "open-draft-active",
+    "ownerRuntime": "separate-agent-runtime-not-controlled-by-round4-orchestrator"
+  },
+  "quarantinedPaths": [
+    ".github/workflows/export-v27-hardhat-harness.yml",
+    ".github/workflows/live-fork-upgrade-ci.yml",
+    "docs/superpowers/plans/2026-08-02-live-fork-multi-rpc-routing.md",
+    "docs/superpowers/specs/2026-08-02-live-fork-multi-rpc-routing-design.md",
+    "packages/github-native-sim/src/run-job-file.mjs",
+    "packages/github-native-sim/src/schema.mjs",
+    "packages/github-native-sim/test/run-job-file.test.mjs",
+    "packages/protocol/src/index.mjs",
+    "packages/protocol/src/simulation-config.mjs",
+    "packages/runner/src/archive-rpc-pool.mjs",
+    "packages/runner/src/fork-engine.mjs",
+    "packages/runner/src/live-fork-proxy.mjs",
+    "packages/runner/src/run-job.mjs",
+    "packages/runner/test/archive-rpc-pool.test.mjs",
+    "packages/runner/test/live-fork-config.test.mjs",
+    "packages/runner/test/live-fork-proxy.test.mjs",
+    "packages/runner/test/run-job-live-fork.test.mjs"
+  ],
+  "containment": [
+    "Do not modify, cherry-pick, merge, restore, overwrite, rebase, review, or repair PR 126 or its changed paths while the external agent is active.",
+    "Do not assign any quarantined path to Worker 0, 1, 2, 3, or 4.",
+    "Worker 2 must not perform the prior byte-for-byte main restoration step on any quarantined path while PR 126 remains active.",
+    "Round 4 subsystem integration may continue only on disjoint paths.",
+    "Do not freeze a final assembled production-test candidate until PR 126 is complete and the user authorizes independent review and reconciliation.",
+    "After completion, pin one exact PR head, independently audit and repair it if required, then integrate only reviewed exact paths and rerun every affected acceptance gate."
+  ],
+  "hardenedPlaneBoundary": {
+    "awsIntegrationDeferred": true,
+    "targetAfterFinalWorkerRound": "production-test readiness for every non-AWS function",
+    "excludedUntilSeparateAuthorization": "AWS-dependent hardened execution-plane functions"
+  },
+  "overlappingAssignmentPublished": false,
+  "integrationAuthorized": false
+}
