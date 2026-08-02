@@ -10,6 +10,17 @@ import {
 
 const worker1Slot = () => ROUND4_CANDIDATE_SLOTS.find((item) => item.workerId === 'worker-1');
 const worker3Slot = () => ROUND4_CANDIDATE_SLOTS.find((item) => item.workerId === 'worker-3');
+const TRUSTED_PURPOSE = 'Provide deterministic completed Stage A evidence when the assigned worker runtime is retired or never starts and the orchestrator completes the work on an isolated branch.';
+const TRUSTED_RULES = [
+  'The original assignment pointer, issue, sequence and starting SHA must match the takeover entry.',
+  'The orchestrator must prove the original worker branch was untouched at takeover or freeze the newest inherited head before creating the isolated takeover branch.',
+  'The takeover branch head must equal evidenceHeadSha and reviewed code/test blobs must match the exact manifest.',
+  'Only ACCEPT or ACCEPT WITH REPAIR recommendations are intake-eligible.',
+  'The final issue comment must bind the reviewed code snapshot, evidence head, recommendation and exact manifest paths.',
+  'A retired worker-owned STATUS_v1.json is not completion authority and must not be required or modified by the orchestrator.',
+  'Worker 2 must validate this attestation as an alternative evidence form rather than fabricating a completed worker status.',
+  'Traditional branch merges remain forbidden; intake is exact path/blob transplant only.'
+];
 
 function worker1TakeoverEntry() {
   return {
@@ -99,9 +110,9 @@ function attestation() {
     recordedAt: '2026-08-02T12:47:46Z',
     masterIssue: 119,
     integrationIssue: 122,
-    purpose: 'Deterministic direct-takeover evidence.',
+    purpose: TRUSTED_PURPOSE,
     takeovers: [worker1TakeoverEntry(), worker3TakeoverEntry()],
-    validationRules: ['Bind exact assignment and evidence.'],
+    validationRules: [...TRUSTED_RULES],
     safety: {
       workerOwnedStatusesModified: false,
       originalWorkerBranchesModifiedByOrchestrator: false,
@@ -159,6 +170,26 @@ test('rejects forged takeover branch, code snapshot, evidence head, report, mani
     (value) => { value.attestation.takeovers[0].report.commentId = 1; },
     (value) => { value.attestation.takeovers[0].manifests[0].blobSha = '2'.repeat(40); },
     (value) => { value.attestationBlobSha = '3'.repeat(40); }
+  ];
+  for (const mutate of mutations) {
+    const value = structuredClone(worker1Evidence());
+    mutate(value);
+    assert.throws(() => validateCompletedCandidateEvidence(worker1Slot(), value));
+  }
+});
+
+test('requires the complete inline attestation to equal the trusted blob contents', () => {
+  const mutations = [
+    (value) => { value.attestation.takeovers.pop(); },
+    (value) => {
+      const injected = structuredClone(worker3TakeoverEntry());
+      injected.workerId = 'worker-9';
+      injected.issueNumber = 999;
+      value.attestation.takeovers.push(injected);
+    },
+    (value) => { value.attestation.purpose = 'Changed purpose'; },
+    (value) => { value.attestation.recordedAt = '2026-08-02T12:47:47Z'; },
+    (value) => { value.attestation.validationRules[0] = 'Changed rule'; }
   ];
   for (const mutate of mutations) {
     const value = structuredClone(worker1Evidence());
