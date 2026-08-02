@@ -38,22 +38,17 @@ function serializeError(cause, environment) {
   };
 }
 
-function normalizedEngineEvidence(engine, requestedMode) {
+function normalizedEngineEvidence(engine, requestedMode, runtimeEvidence) {
   if (!engine) return undefined;
   return {
     requestedMode,
     name: engine.name ?? requestedMode,
-    version: engine.version
+    version: engine.version,
+    runtime: runtimeEvidence
   };
 }
 
-export async function runJob({
-  jobId,
-  apiUrl,
-  runnerApiKey,
-  environment = process.env,
-  services = {}
-}) {
+export async function runJob({ jobId, apiUrl, runnerApiKey, environment = process.env, services = {} }) {
   const api = services.apiClient ?? new RunnerApiClient({ baseUrl: apiUrl, apiKey: runnerApiKey });
   const startProxy = services.startLiveForkProxy ?? startLiveForkProxy;
   const startEngine = services.startForkEngine ?? startForkEngine;
@@ -62,7 +57,6 @@ export async function runJob({
   let engine;
   let forkProxy;
   let forkTransport;
-  let engineEvidence;
   let request;
   let compilerDiagnostics = [];
   let steps = [];
@@ -71,6 +65,7 @@ export async function runJob({
   let resolvedBlock;
   let resolvedBlockHash;
   let resolvedBlockTimestamp;
+  let runtimeEvidence;
   try {
     await api.updateStatus(jobId, { status: 'running', stage: 'fetching_project' });
     const rawJob = await api.getJob(jobId);
@@ -82,16 +77,11 @@ export async function runJob({
     await api.updateStatus(jobId, { status: 'running', stage: 'resolving_dependencies' });
     const openZeppelinRoot = await materializeOpenZeppelin(request.openZeppelinVersion, root);
     const sources = await collectSoliditySources(projectRoot);
-
     await api.updateStatus(jobId, { status: 'running', stage: 'compiling' });
     const compilation = await compileProject({
       sources,
       compilerVersion: request.compilerVersion,
-      settings: {
-        optimizer: request.optimizer,
-        viaIR: request.viaIR,
-        evmVersion: request.evmVersion
-      },
+      settings: { optimizer: request.optimizer, viaIR: request.viaIR, evmVersion: request.evmVersion },
       openZeppelinRoot
     });
     compilerDiagnostics = compilation.diagnostics;
@@ -165,17 +155,13 @@ export async function runJob({
         workflow: request.workflow,
         chainId: chain.chainId,
         forkUrl: forkProxy.url,
+        forkControl: forkProxy,
         block: resolvedBlock,
         configuration: request.simulation
       }),
       forkProxy.termination,
-      {
-        async onLateValue(lateEngine) {
-          await Promise.resolve(lateEngine?.close?.()).catch(() => {});
-        }
-      }
+      { async onLateValue(lateEngine) { await Promise.resolve(lateEngine?.close?.()).catch(() => {}); } }
     );
-    engineEvidence = normalizedEngineEvidence(engine, request.simulation.engine.mode);
 
     await api.updateStatus(jobId, { status: 'running', stage: 'executing_workflow' });
     const execution = await raceWithRpcPolicyTermination(
@@ -184,6 +170,7 @@ export async function runJob({
     );
     steps = execution.steps;
     deployments = execution.context.deployments;
+    runtimeEvidence = typeof engine.getEvidence === 'function' ? await engine.getEvidence() : undefined;
 
     const result = {
       jobId,
@@ -196,7 +183,7 @@ export async function runJob({
       resolvedBlock,
       resolvedBlockHash,
       resolvedBlockTimestamp,
-      engine: engineEvidence,
+      engine: normalizedEngineEvidence(engine, request.simulation.engine.mode, runtimeEvidence),
       forkTransport,
       compilerVersion: request.compilerVersion,
       compilerDiagnostics,
@@ -222,7 +209,7 @@ export async function runJob({
       resolvedBlock,
       resolvedBlockHash,
       resolvedBlockTimestamp,
-      engine: engineEvidence,
+      engine: normalizedEngineEvidence(engine, request?.simulation?.engine?.mode, runtimeEvidence),
       forkTransport,
       compilerVersion: request?.compilerVersion,
       compilerDiagnostics,
@@ -243,8 +230,8 @@ export async function runJob({
     }
     throw cause;
   } finally {
-    if (engine) await engine.close().catch(() => {});
-    if (forkProxy) await forkProxy.close().catch(() => {});
+    if (engine) await Promise.resolve(engine.close()).catch(() => {});
+    if (forkProxy) await Promise.resolve(forkProxy.close()).catch(() => {});
     await fs.rm(root, { recursive: true, force: true });
   }
 }
