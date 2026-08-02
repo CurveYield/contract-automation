@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "waiting_for_round3_completion",
+  "state": "stage_a_active_with_integration_blocker",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -12,14 +12,25 @@
   },
   "productionAcceptanceIssueNumber": 125,
   "activeRound3Issues": [112, 113, 114, 115, 116],
-  "completedRound3Workers": [],
-  "stageAActivatedWorkers": [],
+  "completedRound3Workers": ["worker-0", "worker-1", "worker-2", "worker-3", "worker-4"],
+  "stageAActivatedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
   "stageACompletedWorkers": [],
-  "integrationWorkerActivated": false,
+  "integrationWorkerActivated": true,
+  "integrationWorkerStage": "stage-0-preparation",
+  "integrationProductionIntakeAuthorized": false,
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
-  "blockers": [],
+  "blockers": [
+    {
+      "blockerId": "round4-worker2-premature-activation-v1",
+      "workerId": "worker-2",
+      "issueNumber": 122,
+      "description": "Worker 2 sequence 8 and its integration branch were activated before Stage A verdicts from issues 120, 121, 123, and 124, contrary to ACTIVATION_RUNBOOK_v1 Gate 4 and Gate 5. Worker 2 must remain limited to stage-0 preparation and must not intake subsystem production paths until all four Stage A outputs are complete and valid.",
+      "requiredResolution": "Do not publish another Worker 2 assignment or authorize production intake. After all four Stage A verdicts are valid, reconcile whether sequence 8 may continue under its existing immutable staged assignment or must be superseded according to the runbook.",
+      "detectedAt": "2026-08-02T09:34:47Z"
+    }
+  ],
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T03:29:00Z"
+  "updatedAt": "2026-08-02T09:34:47Z"
 }
