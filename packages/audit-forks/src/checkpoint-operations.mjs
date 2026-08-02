@@ -15,9 +15,63 @@ import {
 } from '../../audit-fork-protocol/src/index.mjs';
 import { ForkStateError, bytesOf } from './storage.mjs';
 
+function operationConflict(kind) {
+  return new ForkStateError(`${kind}_conflict`, `${kind} retry metadata conflicts with the persisted operation`);
+}
+
+function operationIds(kind, identity) {
+  return {
+    start: `tr_${kind}_start_${identity}`,
+    done: `tr_${kind}_done_${identity}`
+  };
+}
+
+async function enterTransient(service, current, input) {
+  const ids = operationIds(input.kind, input.identity);
+  if (current.state === 'ready' && current.lastTransitionId === ids.done) {
+    if (current.updatedAt !== input.at) throw operationConflict(input.kind);
+    return { current, ids };
+  }
+  if (current.state === input.state) {
+    if (current.lastTransitionId !== ids.start || current.updatedAt !== input.at || current.lastFromState !== 'ready') {
+      throw operationConflict(input.kind);
+    }
+    return { current, ids };
+  }
+  if (current.state !== 'ready') {
+    throw new ForkStateError('invalid_state', `Fork cannot enter ${input.state} from ${current.state}`);
+  }
+  const transitioned = await service.transitionFork({
+    forkId: current.forkId,
+    tenantId: input.tenantId,
+    attemptId: input.attemptId,
+    from: 'ready',
+    to: input.state,
+    expectedEtag: current.etag,
+    transitionId: ids.start,
+    occurredAt: input.at
+  });
+  return { current: transitioned, ids };
+}
+
+async function finishTransient(service, current, input) {
+  return service.transitionFork({
+    forkId: current.forkId,
+    tenantId: input.tenantId,
+    attemptId: input.attemptId,
+    from: input.state,
+    to: 'ready',
+    expectedEtag: current.etag,
+    transitionId: input.doneId,
+    occurredAt: input.at,
+    ...(input.blockNumber === undefined ? {} : { blockNumber: input.blockNumber }),
+    ...(input.blockHash === undefined ? {} : { blockHash: input.blockHash })
+  });
+}
+
 export async function publishCheckpointOperation(service, { manifest: manifestInput, bytes }) {
   const manifest = validateCheckpointManifest(manifestInput);
-  const current = await service.readFork(manifest.forkId);
+  let current = await service.readFork(manifest.forkId);
   if (current.tenantId !== manifest.tenantId) throw new ForkStateError('unauthorized_tenant', 'Tenant does not own this fork');
   if (current.attemptId !== manifest.attemptId) throw new ForkStateError('attempt_mismatch', 'Attempt does not own this fork');
   if (!['ready', 'checkpointing'].includes(current.state)) throw new ForkStateError('invalid_state', 'Fork cannot publish a checkpoint in its current state');
@@ -38,6 +92,16 @@ export async function publishCheckpointOperation(service, { manifest: manifestIn
     throw new ForkStateError('checkpoint_quota_exceeded', 'Fork already has eight active checkpoints');
   }
 
+  const entered = await enterTransient(service, current, {
+    kind: 'checkpoint',
+    identity: manifest.checkpointId,
+    state: 'checkpointing',
+    tenantId: manifest.tenantId,
+    attemptId: manifest.attemptId,
+    at: manifest.createdAt
+  });
+  current = entered.current;
+
   await service.storage.putImmutable(manifest.objectKey, payload);
   await service.storage.putImmutable(checkpointManifestKey(manifest.forkId, manifest.checkpointId), manifest);
   await service.storage.mergeIndex(
@@ -56,6 +120,13 @@ export async function publishCheckpointOperation(service, { manifest: manifestIn
     },
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.checkpointId.localeCompare(b.checkpointId)
   );
+  await finishTransient(service, current, {
+    state: 'checkpointing',
+    tenantId: manifest.tenantId,
+    attemptId: manifest.attemptId,
+    doneId: entered.ids.done,
+    at: manifest.createdAt
+  });
   return manifest;
 }
 
@@ -67,13 +138,26 @@ export async function readCheckpointOperation(service, forkId, checkpointId) {
 
 export async function exportCheckpointOperation(service, input) {
   const manifest = validateExportManifest(input);
+  let current = await service.readFork(manifest.forkId);
+  if (current.tenantId !== manifest.tenantId) throw new ForkStateError('unauthorized_tenant', 'Tenant does not own this fork');
   const checkpoint = await service.readCheckpoint(manifest.forkId, manifest.checkpointId);
   if (checkpoint.tenantId !== manifest.tenantId) throw new ForkStateError('unauthorized_tenant', 'Tenant does not own this checkpoint');
+  if (checkpoint.attemptId !== current.attemptId) throw new ForkStateError('attempt_mismatch', 'Checkpoint attempt does not own this fork');
   if (checkpoint.objectKey !== manifest.sourceObjectKey || checkpoint.sha256 !== manifest.sourceSha256) {
     throw new ForkStateError('checkpoint_reference_mismatch', 'Export must reference the exact checkpoint object');
   }
   const source = await service.storage.head(checkpoint.objectKey);
   if (!source || source.size !== checkpoint.bytes) throw new ForkStateError('checkpoint_object_missing', 'Checkpoint object is missing');
+
+  const entered = await enterTransient(service, current, {
+    kind: 'export',
+    identity: manifest.exportId,
+    state: 'exporting',
+    tenantId: manifest.tenantId,
+    attemptId: current.attemptId,
+    at: manifest.createdAt
+  });
+  current = entered.current;
 
   await service.storage.putImmutable(exportManifestKey(manifest.forkId, manifest.exportId), manifest);
   await service.storage.mergeIndex(
@@ -91,21 +175,51 @@ export async function exportCheckpointOperation(service, input) {
     },
     (a, b) => a.createdAt.localeCompare(b.createdAt) || a.exportId.localeCompare(b.exportId)
   );
+  await finishTransient(service, current, {
+    state: 'exporting',
+    tenantId: manifest.tenantId,
+    attemptId: current.attemptId,
+    doneId: entered.ids.done,
+    at: manifest.createdAt
+  });
   return manifest;
 }
 
 export async function restoreCheckpointOperation(service, input) {
   const restore = validateRestoreManifest(input);
-  const current = await service.readFork(restore.forkId);
+  let current = await service.readFork(restore.forkId);
   if (current.tenantId !== restore.tenantId) throw new ForkStateError('unauthorized_tenant', 'Tenant does not own this fork');
   if (current.attemptId !== restore.attemptId) throw new ForkStateError('attempt_mismatch', 'Attempt does not own this fork');
   const checkpoint = await service.readCheckpoint(restore.forkId, restore.checkpointId);
+  if (checkpoint.tenantId !== restore.tenantId || checkpoint.attemptId !== restore.attemptId) {
+    throw new ForkStateError('checkpoint_not_found', 'Checkpoint manifest does not exist');
+  }
   if (checkpoint.objectKey !== restore.sourceObjectKey || checkpoint.sha256 !== restore.sourceSha256) {
     throw new ForkStateError('checkpoint_reference_mismatch', 'Restore must reference the exact checkpoint object');
   }
   const object = await service.storage.head(checkpoint.objectKey);
   if (!object || object.size !== checkpoint.bytes) throw new ForkStateError('checkpoint_object_missing', 'Checkpoint object is missing');
+
+  const entered = await enterTransient(service, current, {
+    kind: 'restore',
+    identity: restore.restoreId,
+    state: 'restoring',
+    tenantId: restore.tenantId,
+    attemptId: restore.attemptId,
+    at: restore.requestedAt
+  });
+  current = entered.current;
+
   await service.storage.putImmutable(forkRestoreManifestKey(restore.forkId, restore.restoreId), restore);
+  await finishTransient(service, current, {
+    state: 'restoring',
+    tenantId: restore.tenantId,
+    attemptId: restore.attemptId,
+    doneId: entered.ids.done,
+    at: restore.requestedAt,
+    blockNumber: checkpoint.blockNumber,
+    blockHash: checkpoint.blockHash
+  });
   return restore;
 }
 
