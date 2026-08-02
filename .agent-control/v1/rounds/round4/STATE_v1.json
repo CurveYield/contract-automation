@@ -14,7 +14,20 @@
   "activeRound3Issues": [112, 113, 114, 115, 116],
   "completedRound3Workers": ["worker-0", "worker-1", "worker-2", "worker-3", "worker-4"],
   "stageAActivatedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
-  "stageACompletedWorkers": [],
+  "stageACompletedWorkers": ["worker-4"],
+  "stageAOutputs": {
+    "worker-4": {
+      "issueNumber": 124,
+      "branch": "audit-round4/review-web-direct-e2e-v1",
+      "candidateSha": "11823bb8150debcf65b87aec27a20325546f864e",
+      "documentationSha": "8e3b66fea86fa574384699a07988eda23cf8bdc3",
+      "recommendation": "ACCEPT",
+      "reportCommentId": 5157176317,
+      "intakeManifestPath": "test/fixtures/audit-round4/worker4/stage-a-intake-v1.json",
+      "intakeManifestBlobSha": "f4aefc7deac3efabbbf6bd3e1d3b8a664c9157d0",
+      "acceptedAt": "2026-08-02T10:35:25Z"
+    }
+  },
   "integrationWorkerActivated": true,
   "integrationWorkerStage": "stage-0-preparation",
   "integrationProductionIntakeAuthorized": false,
@@ -56,5 +69,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T09:54:57Z"
+  "updatedAt": "2026-08-02T10:35:25Z"
 }
