@@ -42,3 +42,9 @@ Terminal replays use the stored outcome timestamp, so a later report invocation 
 ## Artifact boundary
 
 Artifact ingestion accepts at most 100 metadata entries. Each entry is limited to ID, bounded name, byte size, digest, expiry flag and timestamps. Artifact bytes, download URLs, signed URLs, archives and executable content are never fetched by this package.
+
+## Exact transport response contracts
+
+Every injected transport response is validated before it is returned to service code. Repository and commit responses must repeat the exact repository ID/full name or target SHA. Blob and contents responses must repeat the requested blob/path and, when supplied, the exact source or control ref. Ledger mutation responses are limited to an applied flag, a valid Git blob SHA, and an optional commit SHA. Publication responses must repeat the validated publication ID. Hostile getters, revoked proxies, unknown fields, malformed identities, and under-specified responses reject with bounded errors.
+
+The planner's deterministic `nextContentBlobSha` is a content fingerprint used for retry modeling; it is not asserted equal to GitHub's repository blob SHA. The transport validates both domains independently.

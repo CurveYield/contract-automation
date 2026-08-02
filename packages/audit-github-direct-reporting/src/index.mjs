@@ -132,16 +132,19 @@ export function ingestArtifactMetadata(input){
   const v=exactKeys(input,['request','items'],'$');
   const request=validateDirectRequest(v.request);
   const items=denseArray(v.items,'$.items',100).map((item,index)=>{
-    const x=exactKeys(item,['artifactId','name','sizeBytes','digest','expired','createdAt','expiresAt'],`$.items[${index}]`);
-    return createArtifactMetadata({
-      artifactId:identifier(x.artifactId,`$.items[${index}].artifactId`),
-      name:boundedString(x.name,`$.items[${index}].name`,256),
-      sizeBytes:integer(x.sizeBytes,`$.items[${index}].sizeBytes`,0,2_000_000_000),
-      digest:digest(x.digest,`$.items[${index}].digest`),
-      expired:booleanValue(x.expired,`$.items[${index}].expired`),
-      createdAt:timestamp(x.createdAt,`$.items[${index}].createdAt`),
-      expiresAt:timestamp(x.expiresAt,`$.items[${index}].expiresAt`)
-    });
+    try{return validateArtifactMetadata(item);}catch(error){
+      if(error?.code!=='missing_field')throw error;
+      const x=exactKeys(item,['artifactId','name','sizeBytes','digest','expired','createdAt','expiresAt'],`$.items[${index}]`);
+      return createArtifactMetadata({
+        artifactId:identifier(x.artifactId,`$.items[${index}].artifactId`),
+        name:boundedString(x.name,`$.items[${index}].name`,256),
+        sizeBytes:integer(x.sizeBytes,`$.items[${index}].sizeBytes`,0,2_000_000_000),
+        digest:digest(x.digest,`$.items[${index}].digest`),
+        expired:booleanValue(x.expired,`$.items[${index}].expired`),
+        createdAt:timestamp(x.createdAt,`$.items[${index}].createdAt`),
+        expiresAt:timestamp(x.expiresAt,`$.items[${index}].expiresAt`)
+      });
+    }
   });
   return frozenClone({
     schemaVersion:'github-direct-artifact-metadata-index-v1',

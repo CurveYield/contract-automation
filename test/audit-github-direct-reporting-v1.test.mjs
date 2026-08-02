@@ -7,7 +7,7 @@ import { createReportingBundle,createSubmissionReportingBundle,createTerminalRep
 const at='2026-08-01T23:40:00.000Z',later='2026-08-01T23:45:00.000Z';
 function make(target='a'.repeat(40)){
   const request=createDirectRequest({repositoryId:123,installationId:456,repositoryFullName:'curveyield/contract-automation',requesterId:'user-1',policyVersion:'direct-policy-v1',profileId:'hardhat-test-v1',parserVersion:'hardhat-test-parser-v1',resultContractVersion:'phase5-tool-result-v1',reportContractVersion:'audit-report-v1',targetCommitSha:target,requestedAt:at,idempotencyKey:`request-${target[0]}`});
-  const capability=createCapabilityManifest({request,authorizationKind:'github-token',capabilities:['read-source'],issuedAt:at,expiresAt:later});
+  const capability=createCapabilityManifest({request,authorizationKind:'github-token',capabilities:['read-source','write-control-ledger','publish-check','publish-status'],issuedAt:at,expiresAt:later});
   const admission=admitDirectJob({request,capabilityManifest:capability,sourceCommitSha:target,admittedAt:later});
   return {request,outcome:orchestrateDirectJob({request,admission,producedAt:later})};
 }
@@ -39,7 +39,6 @@ test('artifact ingestion is metadata-only, bounded, and rejects extra bytes/URLs
   assert.throws(()=>ingestArtifactMetadata({request,items:[{...item,url:'https://evil.test'}]}),{code:'unknown_field'});
   assert.throws(()=>ingestArtifactMetadata({request,items:[{...item,sizeBytes:2_000_000_001}]}),{code:'invalid_integer'});
 });
-
 
 test('awaiting-executor submission publishes only one neutral Check',()=>{
   const {request}=make();

@@ -11,9 +11,9 @@ function requestFor(target='a'.repeat(40),key=`request-${target[0]}`){return cre
 function harness(){
   const calls=[],store=new Map(),publications=new Map();
   const transport={
-    async getRepository(args){calls.push(['getRepository',args]);return {id:args.repositoryId}},
+    async getRepository(args){calls.push(['getRepository',args]);return {repositoryId:args.repositoryId,fullName:args.repositoryFullName}},
     async getCommit(args){calls.push(['getCommit',args]);return {sha:args.targetCommitSha}},
-    async getBlob(args){calls.push(['getBlob',args]);return {sha:args.blobSha}},
+    async getBlob(args){calls.push(['getBlob',args]);return {blobSha:args.blobSha,sizeBytes:0}},
     async getContents(args){calls.push(['getContents',args.path]);return store.get(args.path)??null},
     async applyLedgerMutation(args){
       const mutation=args.mutation;calls.push(['applyLedgerMutation',mutation.operation,mutation.path]);
@@ -22,7 +22,7 @@ function harness(){
         if(sha256(existing.content)!==mutation.contentDigest){const e=new Error('immutable_conflict');e.code='immutable_conflict';throw e;}
         return {applied:false,nextBlobSha:existing.blobSha};
       }
-      if(mutation.operation==='update-cas'&&(!existing||existing.blobSha!==mutation.expectedBlobSha)){const e=new Error('stale_blob_sha');e.code='stale_blob_sha';throw e;}
+      if(mutation.operation==='update-cas'&&((!existing&&mutation.expectedBlobSha!=='0'.repeat(40))||(existing&&existing.blobSha!==mutation.expectedBlobSha))){const e=new Error('stale_blob_sha');e.code='stale_blob_sha';throw e;}
       const nextBlobSha=(store.size+1+calls.length).toString(16).padStart(40,'0');
       store.set(mutation.path,{content:mutation.content,blobSha:nextBlobSha});
       return {applied:true,nextBlobSha};
@@ -34,7 +34,7 @@ function harness(){
       const prior=publications.get(key);
       if(prior&&JSON.stringify(prior)!==JSON.stringify(plan)){const e=new Error('publication_conflict');e.code='publication_conflict';throw e;}
       if(prior)return {action:'noop',publicationId:plan.publicationId};
-      publications.set(key,plan);return {action:'create',publicationId:plan.publicationId};
+      publications.set(key,plan);return {published:true,publicationId:plan.publicationId};
     },
     async getArtifactMetadata(args){calls.push(['getArtifactMetadata',args.targetCommitSha]);return [{artifactId:'artifact-1',name:'result-json',sizeBytes:100,digest:`sha256:${'c'.repeat(64)}`,expired:false,createdAt:at,expiresAt:later}]}
   };
@@ -107,17 +107,14 @@ test('cancel from awaiting_executor publishes cancellation result, status, and c
 
 test('capabilities and fixture verification use fixed service paths',async()=>{
   const h=harness(),request=requestFor();
-  const caps=await h.service.execute(createServiceCommand({kind:'capabilities',request,at:later}));
-  assert.equal(caps.state,'completed');
-  const verify=await h.service.execute(createServiceCommand({kind:'verify-fixture',request,at:later,sourceCommitSha:request.targetCommitSha}));
-  assert.equal(verify.state,'execution_plane_unavailable');
+  assert.equal((await h.service.execute(createServiceCommand({kind:'capabilities',request,at:later}))).state,'completed');
+  assert.equal((await h.service.execute(createServiceCommand({kind:'verify-fixture',request,at:later,sourceCommitSha:request.targetCommitSha}))).state,'execution_plane_unavailable');
 });
 
 test('terminal report replay is time-stable while changed content conflicts',async()=>{
   const h=harness(),request=requestFor();
   await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'Submitted.'}));
-  const first=await h.service.execute(createServiceCommand({kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'Same.'}));
-  assert.equal(first.state,'execution_plane_unavailable');
+  assert.equal((await h.service.execute(createServiceCommand({kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'Same.'}))).state,'execution_plane_unavailable');
   const second=await h.service.execute(createServiceCommand({kind:'report',request,at:later2,resultId:'result-1',reportId:'report-1',commentBody:'Same.'}));
   assert.ok(second.data.publications.every(x=>x.action==='noop'));
   const conflict=await h.service.execute(createServiceCommand({kind:'report',request,at:later2,resultId:'result-1',reportId:'report-1',commentBody:'Different.'}));

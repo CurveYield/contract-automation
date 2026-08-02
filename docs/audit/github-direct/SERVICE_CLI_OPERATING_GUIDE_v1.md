@@ -66,3 +66,11 @@ Output is one deterministic JSON object followed by one newline. Errors never in
 - The workflow must be dispatched from the protected default branch.
 - The GitHub token or injected installation capability must match the repository and installation in the request.
 - Follow-up commands must use the same authenticated requester and exact target identity as submission.
+
+## First jobs-index initialization
+
+The jobs index is a mutable server-owned record and therefore never uses an immutable-create mutation. First initialization uses the same CAS operation class as later updates with the all-zero 40-character SHA as an explicit "absent" precondition. The trusted transport accepts that sentinel only when the index path is absent and creates the first version without supplying a GitHub contents SHA. If the path already exists, the normal exact blob-SHA CAS rule applies.
+
+## Upstream repair lineage
+
+This package incorporates the accepted protocol validation repair from issue #106 and the accepted closed-ledger/recovery repair from issue #108. Adapter and runner boundaries are additionally hardened so malformed publication plans cannot reach the transport, transport responses are exact and identity-bound, and admission/outcome/publication records must agree across fixture truth, result truth, ledger content, paths, Checks, and statuses.

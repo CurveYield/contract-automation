@@ -4,6 +4,7 @@ import {
 
 const API_BASE='https://api.github.com';
 const CONTROL_BRANCH='audit-direct/control-v1';
+const ABSENT_BLOB_SHA='0'.repeat(40);
 
 function encodePath(path){return path.split('/').map(encodeURIComponent).join('/');}
 function encodeContent(value){return Buffer.from(JSON.stringify(value),'utf8').toString('base64');}
@@ -43,9 +44,9 @@ export function createGitHubActionsTransport(input){
   }
   const publicationPath=(plan)=>`.audit-direct/v1/publications/${plan.kind}/${plan.idempotencyKey}.json`;
   return Object.freeze({
-    getRepository(args){return request('GET',repoPath(args));},
-    getCommit(args){return request('GET',`${repoPath(args)}/commits/${args.targetCommitSha}`);},
-    getBlob(args){commitSha(args.blobSha,'$.blobSha');return request('GET',`${repoPath(args)}/git/blobs/${args.blobSha}`);},
+    async getRepository(args){const data=await request('GET',repoPath(args));return {repositoryId:data.id,fullName:data.full_name};},
+    async getCommit(args){const data=await request('GET',`${repoPath(args)}/commits/${args.targetCommitSha}`);return {sha:data.sha};},
+    async getBlob(args){commitSha(args.blobSha,'$.blobSha');const data=await request('GET',`${repoPath(args)}/git/blobs/${args.blobSha}`);return {blobSha:data.sha,sizeBytes:data.size};},
     getContents(args){
       const path=boundedString(args.path,'$.path',512);
       if(path.includes('..')||path.startsWith('/')||path.includes('\\'))fail('unsafe_path','$.path');
@@ -62,7 +63,11 @@ export function createGitHubActionsTransport(input){
         }
         return writeContents(args,mutation.path,mutation.branch,mutation.content,null);
       }
-      if(existing===null||existing.blobSha!==mutation.expectedBlobSha){const error=new Error('stale_blob_sha');error.code='stale_blob_sha';error.status=409;throw error;}
+      if(existing===null){
+        if(mutation.expectedBlobSha!==ABSENT_BLOB_SHA){const error=new Error('stale_blob_sha');error.code='stale_blob_sha';error.status=409;throw error;}
+        return writeContents(args,mutation.path,mutation.branch,mutation.content,null);
+      }
+      if(existing.blobSha!==mutation.expectedBlobSha){const error=new Error('stale_blob_sha');error.code='stale_blob_sha';error.status=409;throw error;}
       return writeContents(args,mutation.path,mutation.branch,mutation.content,mutation.expectedBlobSha);
     },
     async getPublication(args){
@@ -80,7 +85,7 @@ export function createGitHubActionsTransport(input){
       else if(plan.kind==='status')published=await request('POST',`${repoPath(plan)}/statuses/${plan.targetCommitSha}`,{state:plan.state,description:plan.description,context:plan.context});
       else published=await request('POST',`${repoPath(plan)}/issues/${issueNumber}/comments`,{body:plan.body});
       await writeContents(plan,publicationPath(plan),CONTROL_BRANCH,plan,null);
-      return frozenClone({action:'create',publicationId:plan.publicationId,githubId:published?.id??null});
+      return frozenClone({published:true,publicationId:plan.publicationId});
     },
     async getArtifactMetadata(args){
       const data=await request('GET',`${repoPath(args)}/actions/artifacts?per_page=100`);

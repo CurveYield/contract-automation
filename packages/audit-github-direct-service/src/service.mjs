@@ -2,13 +2,13 @@ import {
   exactKeys, validateDirectRequest, frozenClone, fail
 } from '../../audit-github-direct-protocol/src/index.mjs';
 import {
-  planRequestPublication, transitionLedgerState, planImmutableCreate, createJobIndex
+  planRequestPublication, transitionLedgerState, planImmutableCreate, planCasUpdate, createJobIndex
 } from '../../audit-github-direct-ledger/src/index.mjs';
 import {
   createInjectedGitHubAdapter, createPermissionManifest
 } from '../../audit-github-direct-adapter/src/index.mjs';
 import {
-  admitDirectJob, orchestrateDirectJob, validateRunnerAdmission, validateRunnerOutcome
+  admitDirectJob, orchestrateDirectJob, validateRunnerAdmission, validateRunnerOutcome, matchRepositoryFixture
 } from '../../audit-github-direct-runner/src/index.mjs';
 import {
   createReportingBundle, createSubmissionReportingBundle, createTerminalReportingBundle,
@@ -28,6 +28,7 @@ const CAPS=Object.freeze({
 const identity=(request)=>({repositoryId:request.repositoryId,installationId:request.installationId,repositoryFullName:request.repositoryFullName,targetCommitSha:request.targetCommitSha});
 const admissionPath=(request)=>`.audit-direct/v1/manifests/${request.jobId}-admission.json`;
 const outcomePath=(request)=>`.audit-direct/v1/manifests/${request.jobId}.json`;
+const ABSENT_BLOB_SHA='0'.repeat(40);
 
 async function applyAll(adapter,request,operations){
   const results=[];
@@ -57,6 +58,7 @@ async function applyTransition(adapter,request,snapshot,to,reasonCode,at){
   });
   const results=await applyAll(adapter,request,transition.operations);
   return {
+    ...snapshot,
     currentState:transition.nextState,
     currentBlobSha:results[1].nextBlobSha,
     currentIndex:transition.operations[2].content,
@@ -84,7 +86,7 @@ async function initializeLedger(adapter,request,snapshot,at){
   if(indexBlobSha===null){
     if(snapshot.currentState!==null)fail('stale_blob_sha','$.indexBlobSha');
     currentIndex=createJobIndex({entries:[],updatedAt:at});
-    const bootstrap=planImmutableCreate({path:'.audit-direct/v1/indexes/jobs-v1.json',content:currentIndex});
+    const bootstrap=planCasUpdate({path:'.audit-direct/v1/indexes/jobs-v1.json',content:currentIndex,currentBlobSha:ABSENT_BLOB_SHA,expectedBlobSha:ABSENT_BLOB_SHA});
     const applied=await adapter.applyLedgerMutation({...identity(request),mutation:bootstrap});
     indexBlobSha=applied.nextBlobSha;
     bootstrapOperations.push(bootstrap);
@@ -155,9 +157,9 @@ export function createDirectService(input){
           return createServiceResult({command,state:'completed',data:frozenClone(snapshot),completedAt:command.at});
         }
         if(command.kind==='verify-fixture'){
-          const admission=admitDirectJob({request,capabilityManifest:session.capabilityManifest,sourceCommitSha:command.sourceCommitSha,admittedAt:command.at});
-          const outcome=orchestrateDirectJob({request,admission,producedAt:command.at});
-          return createServiceResult({command,state:outcome.terminalState==='completed'?'completed':'execution_plane_unavailable',data:{admission,outcome},completedAt:command.at});
+          if(command.sourceCommitSha!==request.targetCommitSha)fail('source_sha_mismatch','$.sourceCommitSha');
+          const fixture=matchRepositoryFixture(request);
+          return createServiceResult({command,state:fixture?'completed':'execution_plane_unavailable',data:frozenClone({sourceCommitSha:command.sourceCommitSha,fixtureId:fixture?.fixtureId??null,modeledResultDigest:fixture?.modeledResultDigest??null,executionPerformed:false}),completedAt:command.at});
         }
         if(command.kind==='cancel'){
           const snapshot=await v.snapshotReader({kind:'cancel',request,adapter});

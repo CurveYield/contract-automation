@@ -1,5 +1,5 @@
 import {
-  DIRECT_MODE_ID,exactKeys,validateDirectRequest,boundedString,enumValue,timestamp,sha256,
+  DIRECT_MODE_ID,exactKeys,plainObject,validateDirectRequest,boundedString,enumValue,timestamp,sha256,
   frozenClone,canonicalJson,fail,integer,fullName,commitSha,identifier,digest
 } from '../../audit-github-direct-protocol/src/index.mjs';
 function base(requestInput,kind,at){const request=validateDirectRequest(requestInput);return {request,base:{schemaVersion:'github-direct-publication-plan-v1',modeId:request.modeId,kind,repositoryId:request.repositoryId,installationId:request.installationId,repositoryFullName:request.repositoryFullName,targetCommitSha:request.targetCommitSha,jobId:request.jobId,idempotencyKey:`${kind}-${request.jobId}`,at:timestamp(at,'$.at')}};}
@@ -9,7 +9,8 @@ export function planCommentPublication(input){const v=exactKeys(input,['request'
 export function planStatusPublication(input){const v=exactKeys(input,['request','state','description','context','at'],'$'),{base:b}=base(v.request,'status',v.at);return finish({...b,state:enumValue(v.state,['error','failure','pending','success'],'$.state'),description:boundedString(v.description,'$.description',140),context:boundedString(v.context,'$.context',100)});}
 export function validatePublicationPlan(input){
   const common=['schemaVersion','modeId','kind','repositoryId','installationId','repositoryFullName','targetCommitSha','jobId','idempotencyKey','at'];
-  const kind=enumValue(input?.kind,['check','comment','status'],'$.kind');
+  const desc=plainObject(input,'$');if(!desc.kind)fail('missing_field','$.kind');
+  const kind=enumValue(desc.kind.value,['check','comment','status'],'$.kind');
   const extra=kind==='check'?['name','summary','conclusion']:kind==='comment'?['body']:['state','description','context'];
   const v=exactKeys(input,[...common,...extra,'publicationId','publicationDigest'],'$');
   if(v.schemaVersion!=='github-direct-publication-plan-v1')fail('invalid_schema','$.schemaVersion');

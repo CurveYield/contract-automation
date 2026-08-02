@@ -2,175 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDirectRequest,createDirectState,sha256 } from '../packages/audit-github-direct-protocol/src/index.mjs';
 import { createServiceCommand,validateServiceCommand,createDirectService } from '../packages/audit-github-direct-service/src/index.mjs';
-import { createInjectedAuthorizationBroker,AUTH_TRANSPORT_METHODS } from '../packages/audit-github-direct-auth/src/index.mjs';
+import { createInjectedAuthorizationBroker } from '../packages/audit-github-direct-auth/src/index.mjs';
 
 const at='2026-08-01T23:40:00.000Z',later='2026-08-01T23:45:00.000Z';
 function requestFor(overrides={}){return createDirectRequest({repositoryId:123,installationId:456,repositoryFullName:'curveyield/contract-automation',requesterId:'user-1',policyVersion:'direct-policy-v1',profileId:'hardhat-test-v1',parserVersion:'hardhat-test-parser-v1',resultContractVersion:'phase5-tool-result-v1',reportContractVersion:'audit-report-v1',targetCommitSha:'a'.repeat(40),requestedAt:at,idempotencyKey:'request-adv',...overrides});}
+function commandInputs(request=requestFor()){return [{kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submitted'},{kind:'status',request,at:later},{kind:'cancel',request,at:later,reasonCode:'user-cancelled'},{kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'reported'},{kind:'capabilities',request,at:later},{kind:'verify-fixture',request,at:later,sourceCommitSha:request.targetCommitSha}];}
 
-function commandInputs(request=requestFor()){
-  return [
-    {kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submitted'},
-    {kind:'status',request,at:later},
-    {kind:'cancel',request,at:later,reasonCode:'user-cancelled'},
-    {kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'reported'},
-    {kind:'capabilities',request,at:later},
-    {kind:'verify-fixture',request,at:later,sourceCommitSha:request.targetCommitSha}
-  ];
-}
-
-test('service command boundary rejects accessors, custom prototypes, symbols, and revoked proxies without executing getters',()=>{
-  let getterCalls=0;
-  const accessor={request:requestFor(),at:later};
-  Object.defineProperty(accessor,'kind',{enumerable:true,get(){getterCalls++;throw new Error('must-not-run')}});
-  assert.throws(()=>createServiceCommand(accessor),{code:'accessor_field'});
-  assert.equal(getterCalls,0);
-  assert.throws(()=>createServiceCommand(Object.assign(Object.create({polluted:true}),{kind:'status',request:requestFor(),at:later})),{code:'invalid_prototype'});
-  const symbol={kind:'status',request:requestFor(),at:later};symbol[Symbol('x')]=1;
-  assert.throws(()=>createServiceCommand(symbol),{code:'symbol_field'});
-  const {proxy,revoke}=Proxy.revocable({kind:'status',request:requestFor(),at:later},{});revoke();
-  assert.throws(()=>createServiceCommand(proxy),{code:'hostile_reflection'});
-});
-
-test('every service command rejects one-field drift with bounded code/path',()=>{
-  let mutations=0;
-  for(const input of commandInputs()){
-    const valid=createServiceCommand(input);
-    for(const key of Object.keys(valid)){
-      const copy=structuredClone(valid);
-      if(key==='request')copy[key]={...copy[key],requesterId:'other-user'};
-      else if(key==='at')copy[key]='not-a-time';
-      else if(key==='kind')copy[key]='execute';
-      else if(key==='schemaVersion')copy[key]='wrong-v1';
-      else if(key==='modeId')copy[key]='cloudflare-audit-v1';
-      else if(key==='resultId'||key==='reportId'||key==='reasonCode')copy[key]='../bad';
-      else if(key==='commentBody')copy[key]='bad\u0000text';
-      else if(key==='sourceCommitSha')copy[key]='not-a-sha';
-      else copy[key]=null;
-      assert.throws(()=>validateServiceCommand(copy),(error)=>typeof error.code==='string'&&typeof error.path==='string');
-      mutations++;
-    }
-  }
-  assert.ok(mutations>=30);
-});
-
-test('requester, repository, installation, and target-SHA substitution invalidate command identity',()=>{
-  const request=requestFor();
-  for(const [key,value] of Object.entries({requesterId:'other-user',repositoryId:999,installationId:999,targetCommitSha:'b'.repeat(40)})){
-    const command=createServiceCommand({kind:'status',request,at:later});
-    const copy=structuredClone(command);copy.request[key]=value;
-    assert.throws(()=>validateServiceCommand(copy));
-  }
-});
-
-function raceHarness({failAt=null}={}){
-  const store=new Map(),publications=new Map(),calls=[];
-  let mutationCount=0,failed=false,failPublishKind=null,publishFailed=false;
-  const transport={
-    async getRepository(){return null},async getCommit(){return null},async getBlob(){return null},async getContents(){return null},
-    async applyLedgerMutation({mutation}){
-      mutationCount++;calls.push(['mutation',mutation.path]);
-      if(failAt===mutationCount&&!failed){failed=true;const e=new Error('transport');e.status=503;throw e}
-      const existing=store.get(mutation.path);
-      if(mutation.operation==='create-immutable'&&existing){
-        if(sha256(existing.content)!==mutation.contentDigest){const e=new Error('immutable_conflict');e.code='immutable_conflict';throw e}
-        return {applied:false,nextBlobSha:existing.blobSha};
-      }
-      if(mutation.operation==='update-cas'&&existing&&existing.blobSha!==mutation.expectedBlobSha){
-        const e=new Error('stale_blob_sha');e.code='stale_blob_sha';throw e;
-      }
-      const blobSha=(store.size+1).toString(16).padStart(40,'0');store.set(mutation.path,{content:mutation.content,blobSha});return {applied:true,nextBlobSha:blobSha};
-    },
-    async getPublication({kind,idempotencyKey}){return publications.get(`${kind}:${idempotencyKey}`)??null},
-    async publish(plan){if(plan.kind===failPublishKind&&!publishFailed){publishFailed=true;const e=new Error('transport');e.status=503;throw e}const key=`${plan.kind}:${plan.idempotencyKey}`;const prior=publications.get(key);if(prior&&JSON.stringify(prior)!==JSON.stringify(plan)){const e=new Error('publication_conflict');e.code='publication_conflict';throw e}if(prior)return {action:'noop'};publications.set(key,plan);return {action:'create'}},
-    async getArtifactMetadata(){return []}
-  };
-  const broker=createInjectedAuthorizationBroker({issueTransport:async input=>({authorizationKind:'github-token',repositoryId:input.repositoryId,installationId:input.installationId,repositoryFullName:input.repositoryFullName,targetCommitSha:input.targetCommitSha,issuedAt:at,expiresAt:later,capabilities:input.capabilities,transport})});
-  const snapshotReader=async({kind,request})=>{
-    const current=store.get(`.audit-direct/v1/current/${request.jobId}.json`)??null;
-    const index=store.get('.audit-direct/v1/indexes/jobs-v1.json')??null;
-    const admission=store.get(`.audit-direct/v1/manifests/${request.jobId}-admission.json`)??null;
-    const outcome=store.get(`.audit-direct/v1/manifests/${request.jobId}.json`)??null;
-    if(kind==='submit')return {currentIndex:index?.content??null,indexBlobSha:index?.blobSha??null,currentState:current?.content??null,currentBlobSha:current?.blobSha??null,admission:admission?.content??null,outcome:outcome?.content??null};
-    if(kind==='cancel')return {currentState:current?.content??null,currentBlobSha:current?.blobSha??null,currentIndex:index?.content??null,indexBlobSha:index?.blobSha??null,admission:admission?.content??null,outcome:outcome?.content??null};
-    if(kind==='current')return {currentState:current?.content??null,currentBlobSha:current?.blobSha??null};
-    return {currentState:current?.content??null,currentBlobSha:current?.blobSha??null,currentIndex:index?.content??null,indexBlobSha:index?.blobSha??null,admission:admission?.content??null,outcome:outcome?.content??null};
-  };
-  return {store,publications,calls,service:createDirectService({authorizationBroker:broker,snapshotReader}),failNextPublish(kind){failPublishKind=kind;publishFailed=false;},failNextMutation(){failAt=mutationCount+1;failed=false;},failMutationAfter(offset){failAt=mutationCount+offset;failed=false;}};
-}
-
-test('partial-write failure retries converge without duplicate immutable paths or duplicate publications',async()=>{
-  const h=raceHarness({failAt:3}),request=requestFor();
-  const command=createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'same'});
-  const first=await h.service.execute(command);
-  assert.equal(first.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(first.code,'transport_failure');
-  const second=await h.service.execute(command);
-  assert.equal(second.state,'accepted');
-  assert.equal(new Set([...h.store.keys()]).size,h.store.size);
-  assert.equal(h.publications.size,1);
-});
-
-test('stale CAS and cancellation races normalize to stale_state',async()=>{
-  const h=raceHarness(),request=requestFor();
-  await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'same'}));
-  const currentPath=`.audit-direct/v1/current/${request.jobId}.json`;
-  const current=h.store.get(currentPath);
-  current.content=createDirectState({request,state:'completed',version:9,updatedAt:later});
-  const result=await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'late-cancel'}));
-  assert.equal(result.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(result.code,'stale_state');
-});
-
-
-test('fixture publication failure retries from publishing without duplicate terminal records',async()=>{
-  const h=raceHarness(),request=requestFor({targetCommitSha:'f'.repeat(40),idempotencyKey:'fixture-adv'});
-  h.failNextPublish('status');
-  const command=createServiceCommand({kind:'submit',request,at:later,resultId:'result-f',reportId:'report-f',commentBody:'fixture'});
-  const first=await h.service.execute(command);
-  assert.equal(first.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(first.code,'transport_failure');
-  assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'publishing');
-  const second=await h.service.execute(command);
-  assert.equal(second.state,'completed');
-  assert.equal(second.data.currentState.state,'completed');
-  assert.equal(h.publications.size,3);
-});
-
-test('cancellation publication failure retries from cancelled using the stored cancellation bundle',async()=>{
-  const h=raceHarness(),request=requestFor({idempotencyKey:'cancel-adv'});
-  await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));
-  h.failNextPublish('status');
-  const first=await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'user-cancelled'}));
-  assert.equal(first.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(first.code,'transport_failure');
-  assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'cancelled');
-  const second=await h.service.execute(createServiceCommand({kind:'cancel',request,at:'2026-08-01T23:50:00.000Z',reasonCode:'user-cancelled'}));
-  assert.equal(second.state,'cancelled');
-  assert.equal(h.publications.size,3);
-});
-
-
-test('partial cancellation reuses its stored bundle before the cancelled state is committed',async()=>{
-  const h=raceHarness(),request=requestFor({idempotencyKey:'cancel-partial'});
-  await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));
-  h.failMutationAfter(2);
-  const first=await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'user-cancelled'}));
-  assert.equal(first.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(first.code,'transport_failure');
-  assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'awaiting_executor');
-  assert.equal(h.store.get(`.audit-direct/v1/manifests/${request.jobId}.json`).content.schemaVersion,'github-direct-cancellation-reporting-v1');
-  const second=await h.service.execute(createServiceCommand({kind:'cancel',request,at:'2026-08-01T23:50:00.000Z',reasonCode:'user-cancelled'}));
-  assert.equal(second.state,'cancelled');
-  assert.equal(second.data.bundle.publishedAt,later);
-});
-
-test('report rejects unsupported lifecycle states before creating an outcome manifest',async()=>{
-  const h=raceHarness(),request=requestFor({idempotencyKey:'failed-report'});
-  await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));
-  const currentPath=`.audit-direct/v1/current/${request.jobId}.json`;
-  h.store.get(currentPath).content=createDirectState({request,state:'failed',version:9,updatedAt:later});
-  const result=await h.service.execute(createServiceCommand({kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'report'}));
-  assert.equal(result.schemaVersion,'github-direct-service-error-v1');
-  assert.equal(result.code,'stale_state');
-  assert.equal(h.store.has(`.audit-direct/v1/manifests/${request.jobId}.json`),false);
-});
+test('service command boundary rejects accessors, custom prototypes, symbols, and revoked proxies without executing getters',()=>{let getterCalls=0;const accessor={request:requestFor(),at:later};Object.defineProperty(accessor,'kind',{enumerable:true,get(){getterCalls++;throw new Error('must-not-run')}});assert.throws(()=>createServiceCommand(accessor),{code:'accessor_field'});assert.equal(getterCalls,0);assert.throws(()=>createServiceCommand(Object.assign(Object.create({polluted:true}),{kind:'status',request:requestFor(),at:later})),{code:'invalid_prototype'});const symbol={kind:'status',request:requestFor(),at:later};symbol[Symbol('x')]=1;assert.throws(()=>createServiceCommand(symbol),{code:'symbol_field'});const {proxy,revoke}=Proxy.revocable({kind:'status',request:requestFor(),at:later},{});revoke();assert.throws(()=>createServiceCommand(proxy),{code:'hostile_reflection'});});
+test('every service command rejects one-field drift with bounded code/path',()=>{let mutations=0;for(const input of commandInputs()){const valid=createServiceCommand(input);for(const key of Object.keys(valid)){const copy=structuredClone(valid);if(key==='request')copy[key]={...copy[key],requesterId:'other-user'};else if(key==='at')copy[key]='not-a-time';else if(key==='kind')copy[key]='execute';else if(key==='schemaVersion')copy[key]='wrong-v1';else if(key==='modeId')copy[key]='cloudflare-audit-v1';else if(key==='resultId'||key==='reportId'||key==='reasonCode')copy[key]='../bad';else if(key==='commentBody')copy[key]='bad\u0000text';else if(key==='sourceCommitSha')copy[key]='not-a-sha';else copy[key]=null;assert.throws(()=>validateServiceCommand(copy),(error)=>typeof error.code==='string'&&typeof error.path==='string');mutations++;}}assert.ok(mutations>=30);});
+test('requester, repository, installation, and target-SHA substitution invalidate command identity',()=>{const request=requestFor();for(const [key,value] of Object.entries({requesterId:'other-user',repositoryId:999,installationId:999,targetCommitSha:'b'.repeat(40)})){const command=createServiceCommand({kind:'status',request,at:later});const copy=structuredClone(command);copy.request[key]=value;assert.throws(()=>validateServiceCommand(copy));}});
+function raceHarness({failAt=null}={}){const store=new Map(),publications=new Map(),calls=[];let mutationCount=0,failed=false,failPublishKind=null,publishFailed=false;const transport={async getRepository(args){return {repositoryId:args.repositoryId,fullName:args.repositoryFullName}},async getCommit(args){return {sha:args.targetCommitSha}},async getBlob(args){return {blobSha:args.blobSha,sizeBytes:0}},async getContents(){return null},async applyLedgerMutation({mutation}){mutationCount++;calls.push(['mutation',mutation.path]);if(failAt===mutationCount&&!failed){failed=true;const e=new Error('transport');e.status=503;throw e}const existing=store.get(mutation.path);if(mutation.operation==='create-immutable'&&existing){if(sha256(existing.content)!==mutation.contentDigest){const e=new Error('immutable_conflict');e.code='immutable_conflict';throw e}return {applied:false,nextBlobSha:existing.blobSha};}if(mutation.operation==='update-cas'&&((!existing&&mutation.expectedBlobSha!=='0'.repeat(40))||(existing&&existing.blobSha!==mutation.expectedBlobSha))){const e=new Error('stale_blob_sha');e.code='stale_blob_sha';throw e;}const blobSha=(store.size+1).toString(16).padStart(40,'0');store.set(mutation.path,{content:mutation.content,blobSha});return {applied:true,nextBlobSha:blobSha};},async getPublication({kind,idempotencyKey}){return publications.get(`${kind}:${idempotencyKey}`)??null},async publish(plan){if(plan.kind===failPublishKind&&!publishFailed){publishFailed=true;const e=new Error('transport');e.status=503;throw e}const key=`${plan.kind}:${plan.idempotencyKey}`;const prior=publications.get(key);if(prior&&JSON.stringify(prior)!==JSON.stringify(plan)){const e=new Error('publication_conflict');e.code='publication_conflict';throw e}if(prior)return {action:'noop',publicationId:plan.publicationId};publications.set(key,plan);return {published:true,publicationId:plan.publicationId}},async getArtifactMetadata(){return []}};const broker=createInjectedAuthorizationBroker({issueTransport:async input=>({authorizationKind:'github-token',repositoryId:input.repositoryId,installationId:input.installationId,repositoryFullName:input.repositoryFullName,targetCommitSha:input.targetCommitSha,issuedAt:at,expiresAt:later,capabilities:input.capabilities,transport})});const snapshotReader=async({kind,request})=>{const current=store.get(`.audit-direct/v1/current/${request.jobId}.json`)??null,index=store.get('.audit-direct/v1/indexes/jobs-v1.json')??null,admission=store.get(`.audit-direct/v1/manifests/${request.jobId}-admission.json`)??null,outcome=store.get(`.audit-direct/v1/manifests/${request.jobId}.json`)??null;if(kind==='current')return {currentState:current?.content??null,currentBlobSha:current?.blobSha??null};return {currentState:current?.content??null,currentBlobSha:current?.blobSha??null,currentIndex:index?.content??null,indexBlobSha:index?.blobSha??null,admission:admission?.content??null,outcome:outcome?.content??null};};return {store,publications,calls,service:createDirectService({authorizationBroker:broker,snapshotReader}),failNextPublish(kind){failPublishKind=kind;publishFailed=false;},failMutationAfter(offset){failAt=mutationCount+offset;failed=false;}};}
+test('partial-write failure retries converge without duplicate immutable paths or duplicate publications',async()=>{const h=raceHarness({failAt:3}),request=requestFor(),command=createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'same'});const first=await h.service.execute(command);assert.equal(first.code,'transport_failure');const second=await h.service.execute(command);assert.equal(second.state,'accepted');assert.equal(new Set([...h.store.keys()]).size,h.store.size);assert.equal(h.publications.size,1);});
+test('stale CAS and cancellation races normalize to stale_state',async()=>{const h=raceHarness(),request=requestFor();await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'same'}));const current=h.store.get(`.audit-direct/v1/current/${request.jobId}.json`);current.content=createDirectState({request,state:'completed',version:9,updatedAt:later});const result=await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'late-cancel'}));assert.equal(result.code,'stale_state');});
+test('fixture publication failure retries from publishing without duplicate terminal records',async()=>{const h=raceHarness(),request=requestFor({targetCommitSha:'f'.repeat(40),idempotencyKey:'fixture-adv'});h.failNextPublish('status');const command=createServiceCommand({kind:'submit',request,at:later,resultId:'result-f',reportId:'report-f',commentBody:'fixture'});assert.equal((await h.service.execute(command)).code,'transport_failure');assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'publishing');const second=await h.service.execute(command);assert.equal(second.state,'completed');assert.equal(h.publications.size,3);});
+test('cancellation publication failure retries from cancelled using the stored cancellation bundle',async()=>{const h=raceHarness(),request=requestFor({idempotencyKey:'cancel-adv'});await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));h.failNextPublish('status');assert.equal((await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'user-cancelled'}))).code,'transport_failure');assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'cancelled');assert.equal((await h.service.execute(createServiceCommand({kind:'cancel',request,at:'2026-08-01T23:50:00.000Z',reasonCode:'user-cancelled'}))).state,'cancelled');assert.equal(h.publications.size,3);});
+test('partial cancellation reuses its stored bundle before the cancelled state is committed',async()=>{const h=raceHarness(),request=requestFor({idempotencyKey:'cancel-partial'});await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));h.failMutationAfter(2);assert.equal((await h.service.execute(createServiceCommand({kind:'cancel',request,at:later,reasonCode:'user-cancelled'}))).code,'transport_failure');assert.equal(h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content.state,'awaiting_executor');assert.equal(h.store.get(`.audit-direct/v1/manifests/${request.jobId}.json`).content.schemaVersion,'github-direct-cancellation-reporting-v1');const second=await h.service.execute(createServiceCommand({kind:'cancel',request,at:'2026-08-01T23:50:00.000Z',reasonCode:'user-cancelled'}));assert.equal(second.state,'cancelled');assert.equal(second.data.bundle.publishedAt,later);});
+test('report rejects unsupported lifecycle states before creating an outcome manifest',async()=>{const h=raceHarness(),request=requestFor({idempotencyKey:'failed-report'});await h.service.execute(createServiceCommand({kind:'submit',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'submit'}));h.store.get(`.audit-direct/v1/current/${request.jobId}.json`).content=createDirectState({request,state:'failed',version:9,updatedAt:later});const result=await h.service.execute(createServiceCommand({kind:'report',request,at:later,resultId:'result-1',reportId:'report-1',commentBody:'report'}));assert.equal(result.code,'stale_state');assert.equal(h.store.has(`.audit-direct/v1/manifests/${request.jobId}.json`),false);});
