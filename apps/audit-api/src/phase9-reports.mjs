@@ -6,8 +6,7 @@ import {
   decodePageCursor,
   encodePageCursor,
   errorResponse,
-  parsePageLimit,
-  validateExternalValue
+  parsePageLimit
 } from '../../../packages/audit-api-contracts/src/index.mjs';
 import {
   AUDIT_ROUTE_SCOPES,
@@ -77,30 +76,75 @@ function codeUnitCompare(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
+function inspectContainer(value) {
+  if (!value || typeof value !== 'object') providerFailure();
+  try {
+    return {
+      descriptors: Object.getOwnPropertyDescriptors(value),
+      isArray: Array.isArray(value),
+      prototype: Object.getPrototypeOf(value)
+    };
+  } catch { providerFailure(); }
+}
+
+function providerArray(value) {
+  const { descriptors, isArray, prototype } = inspectContainer(value);
+  if (!isArray || prototype !== Array.prototype) providerFailure();
+  const length = descriptors.length?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > MAX_PROVIDER_RECORDS) providerFailure();
+  const expected = new Set([...Array.from({ length }, (_, index) => String(index)), 'length']);
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key !== 'string' || !expected.has(key)) providerFailure();
+  }
+  const items = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !Object.hasOwn(descriptor, 'value') || descriptor.enumerable !== true) providerFailure();
+    items.push(descriptor.value);
+  }
+  return items;
+}
+
 function providerItems(value) {
-  let safe;
-  try { safe = validateExternalValue(value, '$.providerResult'); }
-  catch { providerFailure(); }
-  if (Array.isArray(safe)) return safe;
-  const keys = Object.keys(safe).sort().join('\0');
+  const inspected = inspectContainer(value);
+  if (inspected.isArray) return providerArray(value);
+  if (inspected.prototype !== Object.prototype && inspected.prototype !== null) providerFailure();
+  const keys = Reflect.ownKeys(inspected.descriptors).sort().join('\0');
   if (keys !== 'items\0schemaVersion\0snapshotVersion') providerFailure();
+  const schema = inspected.descriptors.schemaVersion;
+  const snapshot = inspected.descriptors.snapshotVersion;
+  const items = inspected.descriptors.items;
   if (
-    safe.schemaVersion !== 'audit-report-provider-page-v1' ||
-    !Array.isArray(safe.items) ||
-    typeof safe.snapshotVersion !== 'string' ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(safe.snapshotVersion)
+    !schema || !Object.hasOwn(schema, 'value') || schema.value !== 'audit-report-provider-page-v1' ||
+    !snapshot || !Object.hasOwn(snapshot, 'value') || typeof snapshot.value !== 'string' ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(snapshot.value) ||
+    !items || !Object.hasOwn(items, 'value')
   ) providerFailure();
-  return safe.items;
+  return providerArray(items.value);
+}
+
+function reportScope(value) {
+  const { descriptors, isArray, prototype } = inspectContainer(value);
+  if (isArray || (prototype !== Object.prototype && prototype !== null)) providerFailure();
+  const tenant = descriptors.tenantId;
+  const workspace = descriptors.workspaceId;
+  if (
+    !tenant || !Object.hasOwn(tenant, 'value') || typeof tenant.value !== 'string' ||
+    !workspace || !Object.hasOwn(workspace, 'value') || typeof workspace.value !== 'string' ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(tenant.value) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/u.test(workspace.value)
+  ) providerFailure();
+  return { tenantId: tenant.value, workspaceId: workspace.value };
 }
 
 function canonicalVisibleReports(rawItems, scope) {
-  if (rawItems.length > MAX_PROVIDER_RECORDS) providerFailure();
   const byId = new Map();
   for (let index = 0; index < rawItems.length; index += 1) {
+    const identity = reportScope(rawItems[index]);
+    if (identity.tenantId !== scope.tenantId || identity.workspaceId !== scope.workspaceId) continue;
     let report;
     try { report = validateReportReference(rawItems[index], `$.reports[${index}]`); }
     catch { providerFailure(); }
-    if (report.tenantId !== scope.tenantId || report.workspaceId !== scope.workspaceId) continue;
     const existing = byId.get(report.reportId);
     if (existing && canonicalJson(existing) !== canonicalJson(report)) providerFailure();
     if (!existing) byId.set(report.reportId, report);
