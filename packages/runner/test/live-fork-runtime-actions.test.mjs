@@ -10,6 +10,13 @@ function runtimeWithProvider({ blockNumber = 100, timestamp = 1_000, reforkHandl
   const provider = {
     async send(method, params) {
       calls.push({ method, params });
+      if (method === 'eth_getBlockByNumber') {
+        return {
+          number: `0x${currentBlock.toString(16)}`,
+          timestamp: `0x${currentTimestamp.toString(16)}`
+        };
+      }
+      if (method === 'eth_blockNumber') return `0x${currentBlock.toString(16)}`;
       if (method === 'evm_setNextBlockTimestamp') currentTimestamp = Number(params[0]);
       if (method === 'evm_increaseTime') currentTimestamp += Number(params[0]);
       if (method === 'evm_mine') currentBlock += 1;
@@ -34,6 +41,7 @@ test('mines arbitrary blocks with configurable timestamp intervals', async () =>
   const output = await runtime.execute({ action: 'mine', blocks: 3, intervalSeconds: 12 }, context);
   assert.deepEqual(output, { blocks: 3, intervalSeconds: 12 });
   assert.deepEqual(calls, [
+    { method: 'eth_getBlockByNumber', params: ['latest', false] },
     { method: 'evm_setNextBlockTimestamp', params: [1012] },
     { method: 'evm_mine', params: [] },
     { method: 'evm_setNextBlockTimestamp', params: [1024] },
