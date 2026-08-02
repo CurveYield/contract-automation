@@ -62,7 +62,9 @@
     }
   },
   "integrationWorkerActivated": true,
-  "integrationWorkerStage": "stage-0-preparation",
+  "integrationWorkerStage": "checkpoint-1-prepared-not-transplanted",
+  "integrationWorkerBranchHead": "8bddd31232f14597afba63ffba13f3b96069610b",
+  "integrationCheckpoint1CommentId": 5158815848,
   "integrationProductionIntakeAuthorized": false,
   "assembledCandidateSha": null,
   "specialistAcceptances": {},
@@ -71,13 +73,13 @@
       "workstreamId": "live-fork-rpc-routing-pr126-v1",
       "pullRequestNumber": 126,
       "branch": "agent/live-fork-rpc-routing-design",
-      "state": "merged-awaiting-independent-round4-reconciliation",
+      "state": "merged-security-repair-required",
       "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
       "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
       "quarantineEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T095457Z_external-live-fork-workstream-quarantine_v1.json",
       "round4InterferenceAuthorized": false,
       "finalCandidateFreezeBlocked": true,
-      "requiredResolution": "Independently review the exact merged PR 126 head and changed paths, publish an authorized immutable reconciliation manifest, regenerate affected protected baselines and intake manifests, and rerun affected gates before final candidate freeze."
+      "requiredResolution": "Complete and independently accept the test-first PR 126 security repair with one exact head and path/blob manifest, then regenerate affected protected baselines and rerun affected gates."
     }
   ],
   "blockers": [
@@ -85,16 +87,33 @@
       "blockerId": "worker2-existing-sequence8-wrong-base-v1",
       "workerId": "worker-2",
       "issueNumber": 122,
-      "description": "All four Stage A outputs are now valid, but Worker 2 sequence 8 is already active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759. Creating a second active assignment is forbidden and the immutable sequence 8 assignment cannot be rewritten.",
-      "requiredResolution": "Preserve the existing Stage 0 branch and assignment. Do not authorize production intake until a control-plane-approved supersession/reconstruction procedure establishes one exact Gate 5 branch/assignment without overlapping active ownership or losing accepted Stage 0 artifacts.",
+      "description": "All four Stage A outputs are valid, but Worker 2 sequence 8 remains active on audit-round4/full-platform-integration-v1 with starting SHA 5914b03382422ea714346625a601b5dbda3aa0cd. ACTIVATION_RUNBOOK_v1 Gate 5 requires instantiation from accepted/repaired issue #120 base bbb4cac794865f84b65ee78a2fc78d391421c759.",
+      "requiredResolution": "Define and execute a control-plane-approved supersession/reconstruction procedure that preserves accepted Stage 0/Checkpoint 1 artifacts without a second active assignment, silent immutable-assignment rewrite, overlapping ownership or stale ancestry.",
       "detectedAt": "2026-08-02T13:34:04Z"
     },
     {
-      "blockerId": "pr126-merged-awaiting-independent-reconciliation-v1",
+      "blockerId": "worker2-sequence8-ack-status-inconsistent-v1",
+      "workerId": "worker-2",
+      "issueNumber": 122,
+      "description": "The branch is at verified Checkpoint 1 head 8bddd31232f14597afba63ffba13f3b96069610b, 35 commits ahead of the sequence-8 start, while worker-owned STATUS still records lastConsumedSequence 7 and the expected sequence-8 ACK artifact is absent.",
+      "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T152910Z_worker2-sequence8-ack-status-blocker_v1.json",
+      "requiredResolution": "Worker 2 must acknowledge sequence 8 exactly once and reconcile its worker-owned status before any further integration action.",
+      "detectedAt": "2026-08-02T15:29:10Z"
+    },
+    {
+      "blockerId": "stage0-direct-takeover-validator-repair-receipt-v1",
+      "workerId": "worker-2",
+      "issueNumber": 122,
+      "description": "Checkpoint 1 reports that direct-takeover validator repair code exists on an orchestrator-owned repair branch, but no exact durable acceptance receipt has been published on issue #122.",
+      "requiredResolution": "Publish and independently verify the exact accepted repair receipt, branch head, changed paths/blobs and test evidence before relying on takeover evidence for production intake.",
+      "detectedAt": "2026-08-02T15:29:10Z"
+    },
+    {
+      "blockerId": "pr126-security-repair-acceptance-v1",
       "pullRequestNumber": 126,
-      "description": "PR #126 is merged at exact head df2e51824d257669dac204de5bf869c80ed6e844 and merge commit 500de7b8752e926f7478feafb81b92586d6364ea, but its quarantined live-fork/simulation paths have not yet been independently reviewed and converted into an authorized immutable Round 4 completion manifest.",
-      "requiredResolution": "Pin and independently review the exact merged PR #126 head and changed paths, publish an authorized reconciliation manifest, regenerate affected protected baselines and intake manifests, then rerun affected gates before any final assembled-candidate freeze.",
-      "detectedAt": "2026-08-02T13:34:04Z"
+      "description": "PR #126 is merged, but four independently identified security blockers remain and no accepted security-repair head/path-blob manifest is durable.",
+      "requiredResolution": "Complete and independently accept the test-first security repair before ingesting, adapting or freezing any of the 41 PR #126 paths.",
+      "detectedAt": "2026-08-02T15:29:10Z"
     }
   ],
   "productionTestTarget": {
@@ -103,5 +122,5 @@
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "updatedAt": "2026-08-02T13:34:04Z"
+  "updatedAt": "2026-08-02T15:29:10Z"
 }
