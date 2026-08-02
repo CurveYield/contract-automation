@@ -129,7 +129,6 @@ jobs:
       SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
       SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
       SIM_RPC_HEALTH_GITHUB_TOKEN: ${{ github.token }}
-      RESULT_ROOT: ${{ runner.temp }}/v27-full-live-fork
     steps:
       - name: Check out trusted source and migration job
         uses: actions/checkout@v4
@@ -150,6 +149,8 @@ jobs:
       - name: Execute full V27 shared live-fork lifecycle
         id: execute
         continue-on-error: true
+        env:
+          RESULT_ROOT: ${{ runner.temp }}/v27-full-live-fork
         run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
 
       - name: Upload complete or partial V27 report
