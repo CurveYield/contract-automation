@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "round3-completed-intake-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "branch": "orchestrator/round3-completed-intake-v1",
+  "base": {
+    "component": "phases1-6-integration-spine",
+    "issueNumber": 114,
+    "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+    "reportCommentId": 5156779012,
+    "recommendation": "ACCEPT_WITH_DOCUMENTED_REPAIR"
+  },
+  "rules": {
+    "activeRound4BranchesReadOnly": true,
+    "broadBranchMergesForbidden": true,
+    "exactOwnedPathTransplantsOnly": true,
+    "submittedProjectExecution": false,
+    "compilation": false,
+    "dependencyInstallation": false,
+    "mainMergeAuthorized": false
+  },
+  "externalQuarantine": {
+    "pullRequestNumber": 126,
+    "branch": "agent/live-fork-rpc-routing-design",
+    "state": "active-mutable-external-owner",
+    "integrationAuthorized": false,
+    "rule": "No simulation, live-fork, RPC-routing or PR 126 changed path may be modified or imported until James declares the external work complete and an exact final head is independently reviewed."
+  },
+  "candidates": [
+    {
+      "componentId": "phase7-8-core-repair",
+      "workerId": "worker-0",
+      "issueNumber": 112,
+      "documentationHead": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+      "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
+      "reportCommentId": 5156777973,
+      "recommendation": "ACCEPT_WITH_REPAIR",
+      "intakeState": "blocked-pending-bounded-service-report-publication-repair",
+      "changedPathCount": 27,
+      "ownedPrefixes": [
+        "packages/audit-controlled-merge/",
+        "packages/audit-fork-protocol/",
+        "packages/audit-forks/",
+        "packages/audit-provenance/",
+        "test/audit-phase7-",
+        "test/audit-round3-phase78-",
+        "test/fixtures/audit-round3-phase78/"
+      ]
+    },
+    {
+      "componentId": "api-gpt-auth",
+      "workerId": "worker-1",
+      "issueNumber": 113,
+      "finalHead": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+      "codeCandidateSha": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+      "reportCommentId": 5154958425,
+      "recommendation": "ACCEPT",
+      "intakeState": "eligible-for-exact-path-transplant",
+      "changedPathCount": 26,
+      "ownedPrefixes": [
+        "apps/audit-api/",
+        "packages/audit-api-contracts/",
+        "packages/audit-catalog-composition/",
+        "docs/audit/round3/",
+        "packages/audit-api-contracts/test/",
+        "packages/audit-catalog-composition/test/"
+      ]
+    },
+    {
+      "componentId": "github-direct-audit",
+      "workerId": "worker-3",
+      "issueNumber": 115,
+      "documentationHead": "1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d",
+      "codeCandidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+      "reportCommentId": 5156758072,
+      "compatibilityManifestId": "direct-compatibility-2a7b937fd31fac897e936414",
+      "releaseManifestId": "direct-round3-release-418edd6cf9b65dbd77032a08",
+      "recommendation": "ACCEPT",
+      "intakeState": "eligible-for-exact-path-transplant",
+      "changedPathCount": 33,
+      "ownedPrefixes": [
+        ".github/workflows/audit-direct-v1.yml",
+        "apps/audit-github-direct-cli/",
+        "packages/audit-github-direct-adapter/",
+        "packages/audit-github-direct-ledger/",
+        "packages/audit-github-direct-protocol/",
+        "packages/audit-github-direct-reporting/",
+        "packages/audit-github-direct-service/",
+        "docs/audit/github-direct/",
+        "test/audit-round3-github-direct-"
+      ]
+    },
+    {
+      "componentId": "web-operator-ui",
+      "workerId": "worker-4",
+      "issueNumber": 116,
+      "finalHead": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+      "codeCandidateSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+      "reportCommentId": 5154997216,
+      "recommendation": "ACCEPT",
+      "intakeState": "eligible-for-exact-path-transplant",
+      "changedPathCount": 37,
+      "ownedPrefixes": [
+        "apps/audit-web/",
+        "packages/audit-report-view-model/",
+        "packages/audit-ui-contracts/",
+        "packages/audit-web-compat/",
+        "docs/audit/web/",
+        "test/audit-round3-web-",
+        "test/fixtures/audit-round3-web/"
+      ]
+    }
+  ],
+  "overlapAssessment": {
+    "candidateOwnedPathOverlap": false,
+    "rootPackageJsonUnionRequiredByTheseCodeCandidates": false,
+    "pr126Overlap": false,
+    "result": "PASS"
+  },
+  "assembly": {
+    "state": "metadata-registered-code-transplants-pending",
+    "assembledCodeSha": null,
+    "eligibleNow": ["api-gpt-auth", "github-direct-audit", "web-operator-ui"],
+    "blocked": ["phase7-8-core-repair", "external-live-fork-rpc-routing"],
+    "nextRequiredAction": "Create exact path/blob manifests for eligible candidates, transplant only those blobs onto this branch, then run static and inert cross-component verification without touching active Round 4 branches."
+  }
+}
