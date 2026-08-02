@@ -13,10 +13,20 @@ const PUBLIC_ERRORS=Object.freeze({
  internal_error:Object.freeze({message:'Request failed',retryable:false})
 });
 const KNOWN=new Set(Object.keys(PUBLIC_ERRORS));
+const HIDDEN_CODES=new Set(['tenant_mismatch','workspace_mismatch','attempt_mismatch','fork_not_found','fork_request_not_found','checkpoint_not_found','resource_hidden']);
+
+function ownDataString(value,key){
+ if(value===null||(typeof value!=='object'&&typeof value!=='function'))return null;
+ try{
+  const descriptor=Object.getOwnPropertyDescriptors(value)[key];
+  if(!descriptor||!Object.hasOwn(descriptor,'value')||typeof descriptor.value!=='string')return null;
+  return descriptor.value;
+ }catch{return null;}
+}
 
 export function normalizePhase78ServiceError(error,{requestId,operation,at}){
- const sourceCode=typeof error?.code==='string'&&KNOWN.has(error.code)?error.code:'internal_error';
- const publicCode=['tenant_mismatch','workspace_mismatch','attempt_mismatch','fork_not_found','checkpoint_not_found'].includes(error?.code)?'resource_not_found':sourceCode;
+ const internalCode=ownDataString(error,'code');
+ const publicCode=HIDDEN_CODES.has(internalCode)?'resource_not_found':KNOWN.has(internalCode)?internalCode:'internal_error';
  const spec=PUBLIC_ERRORS[publicCode]??PUBLIC_ERRORS.internal_error;
  const core={
   schemaVersion:'audit-phase9-normalized-error-v1',
