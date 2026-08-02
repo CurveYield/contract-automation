@@ -1,0 +1,32 @@
+{
+  "protocolVersion": 1,
+  "eventId": "worker2-sequence8-ack-status-blocker-20260802T152910Z",
+  "eventType": "round4_integration_blocker",
+  "createdAt": "2026-08-02T15:29:10Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "workerId": "worker-2",
+  "issueNumber": 122,
+  "branch": "audit-round4/full-platform-integration-v1",
+  "observedBranchHead": "8bddd31232f14597afba63ffba13f3b96069610b",
+  "currentSequence": 8,
+  "currentMessageId": "worker-2-round4-full-platform-integration-v1-000008",
+  "statusState": "working",
+  "statusLastConsumedSequence": 7,
+  "statusActiveSequence": 8,
+  "expectedAckPath": ".agent-control/v1/workers/worker-2/ACKS/000008_worker-2-round4-full-platform-integration-v1-000008_accepted_v1.json",
+  "ackPresent": false,
+  "finding": "The integration branch is 35 commits ahead of its pinned sequence-8 start and Checkpoint 1 is posted, but the worker-owned status still records lastConsumedSequence 7 and the sequence-8 acknowledgement artifact is absent. The assignment therefore has not been durably consumed according to the mailbox protocol.",
+  "containment": {
+    "newAssignmentAuthorized": false,
+    "productionPathIntakeAuthorized": false,
+    "assembledCandidateFreezeAuthorized": false,
+    "branchRewriteAuthorized": false
+  },
+  "additionalBlockers": [
+    "sequence-8 branch was instantiated from 5914b03382422ea714346625a601b5dbda3aa0cd instead of Gate 5 accepted base bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "Stage 0 direct-takeover validator repair lacks a durable accepted receipt on issue 122",
+    "PR 126 security repair has no accepted exact head and path/blob manifest"
+  ],
+  "requiredResolution": "Worker 2 must durably acknowledge sequence 8 exactly once and reconcile its worker-owned status before any further integration action. The control plane must then establish an explicit safe Gate 5 supersession/reconstruction procedure for the wrong-base assignment. No PR 126 path or final assembled candidate may be accepted until its security repair is independently accepted."
+}
