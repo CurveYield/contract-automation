@@ -65,7 +65,7 @@ class RemoteRpcWorkflowRuntime extends LiveForkWorkflowRuntime {
 
 export async function startRemoteRpcEngine({
   rpcUrl,
-  chainId,
+  chainId: sourceChainId,
   workflow,
   artifacts,
   proofAccount = DEFAULT_PROOF_ACCOUNT
@@ -75,30 +75,28 @@ export async function startRemoteRpcEngine({
   }
 
   const ethers = await import('ethers');
-  const provider = new ethers.JsonRpcProvider(rpcUrl, chainId, {
-    staticNetwork: true,
-    batchMaxCount: 1
-  });
+  const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, { batchMaxCount: 1 });
   let sessionSnapshot;
+  let closeEvidence;
   const impersonatedActors = collectLiteralActors(workflow);
 
   try {
     const actualChainId = BigInt(await provider.send('eth_chainId', []));
-    if (actualChainId !== BigInt(chainId)) {
-      throw new Error(`Remote RPC chain ID mismatch: expected ${chainId}, received ${actualChainId}`);
+    const accounts = await provider.send('eth_accounts', []);
+    const blockNumberHex = await provider.send('eth_blockNumber', []);
+    const block = await provider.send('eth_getBlockByNumber', [blockNumberHex, false]);
+    if (!block?.hash || !block?.timestamp) {
+      throw new Error('Remote RPC did not return complete initial block metadata');
     }
 
-    const accounts = await provider.send('eth_accounts', []);
     sessionSnapshot = await provider.send('evm_snapshot', []);
     const capabilityProof = await proveRemoteMutation(provider, proofAccount);
 
     for (const actor of impersonatedActors) {
       const enabled = await provider.send('anvil_impersonateAccount', [actor]);
-      if (enabled !== true) throw new Error(`Remote RPC could not impersonate ${actor}`);
+      if (enabled === false) throw new Error(`Remote RPC could not impersonate ${actor}`);
     }
 
-    const blockNumberHex = await provider.send('eth_blockNumber', []);
-    const block = await provider.send('eth_getBlockByNumber', [blockNumberHex, false]);
     const aliases = Object.fromEntries((accounts ?? []).map((account, index) => [`account${index}`, account]));
     if (!aliases.account0 && impersonatedActors[0]) aliases.account0 = impersonatedActors[0];
 
@@ -110,7 +108,7 @@ export async function startRemoteRpcEngine({
     });
     let closed = false;
 
-    return {
+    const engine = {
       name: 'remote-rpc',
       version: 'anvil-json-rpc',
       provider,
@@ -120,27 +118,52 @@ export async function startRemoteRpcEngine({
       async getEvidence() {
         return {
           assurance: 'remote-mutable-rpc',
+          sourceChainId,
           chainId: Number(actualChainId),
+          rpcChainId: Number(actualChainId),
           initialBlockNumber: Number(BigInt(blockNumberHex)),
-          initialBlockHash: block?.hash ?? null,
+          initialBlockHash: block.hash,
+          initialBlockTimestamp: Number(BigInt(block.timestamp)),
           capabilityProof,
           impersonatedActorCount: impersonatedActors.length,
-          persistentForkRestoredOnClose: true
+          persistentForkRestoredOnClose: closeEvidence?.restored === true,
+          closeEvidence
         };
       },
       async close() {
-        if (closed) return;
+        if (closed) return closeEvidence;
         closed = true;
-        for (const actor of impersonatedActors) {
-          await provider.send('anvil_stopImpersonatingAccount', [actor]).catch(() => {});
+        try {
+          for (const actor of impersonatedActors) {
+            await provider.send('anvil_stopImpersonatingAccount', [actor]).catch(() => {});
+          }
+          const reverted = sessionSnapshot
+            ? await provider.send('evm_revert', [sessionSnapshot])
+            : false;
+          const restoredBlockNumberHex = await provider.send('eth_blockNumber', []);
+          const restoredBlock = await provider.send('eth_getBlockByNumber', [restoredBlockNumberHex, false]);
+          const restoredProofBalance = BigInt(await provider.send('eth_getBalance', [proofAccount, 'latest']));
+          closeEvidence = {
+            reverted: reverted === true,
+            blockNumberRestored: restoredBlockNumberHex === blockNumberHex,
+            blockHashRestored: restoredBlock?.hash === block.hash,
+            proofBalanceRestored: restoredProofBalance.toString() === capabilityProof.before,
+            restored: reverted === true
+              && restoredBlockNumberHex === blockNumberHex
+              && restoredBlock?.hash === block.hash
+              && restoredProofBalance.toString() === capabilityProof.before
+          };
+          if (!closeEvidence.restored) {
+            throw new Error(`Persistent remote fork cleanup verification failed: ${JSON.stringify(closeEvidence)}`);
+          }
+          return closeEvidence;
+        } finally {
+          await provider.destroy().catch(() => {});
         }
-        if (sessionSnapshot) {
-          const reverted = await provider.send('evm_revert', [sessionSnapshot]);
-          if (reverted !== true) throw new Error('Persistent remote fork could not be restored to its pre-run snapshot');
-        }
-        await provider.destroy();
       }
     };
+
+    return engine;
   } catch (error) {
     if (sessionSnapshot) await provider.send('evm_revert', [sessionSnapshot]).catch(() => {});
     await provider.destroy().catch(() => {});
