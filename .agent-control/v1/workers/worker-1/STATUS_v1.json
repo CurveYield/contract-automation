@@ -10,8 +10,12 @@
   "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "issue:121",
-  "blockers": [],
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/121#issuecomment-5157596912",
+  "blockers": [
+    "worker2_sequence9_not_completed",
+    "assembled_sha_not_frozen",
+    "pr126_security_reconciliation_pending"
+  ],
   "round": 4,
   "roundType": "final-static-integration-and-acceptance",
   "acknowledgement": {
@@ -21,16 +25,41 @@
     "acknowledgedAt": "2026-08-02T10:49:21Z"
   },
   "stageA": {
-    "status": "working",
+    "status": "completed",
     "sourceSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
-    "codeCandidateSha": "dc77c51eb02d6f07b6ce9d582d8629b9c9932788",
-    "reportCommentId": 5156777973
+    "reviewedCodeSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+    "evidenceSha": "df983ab905266ddd2dad39866f0e0341aaa0f100",
+    "takeoverBranch": "orchestrator/worker1-round4-takeover-v1",
+    "recommendation": "ACCEPT_WITH_REPAIR",
+    "checkpoint1CommentId": 5157367178,
+    "checkpoint2CommentId": 5157494990,
+    "finalReportCommentId": 5157596912,
+    "masterGateAcceptanceCommentId": 5157601186,
+    "worker2IntakeCommentId": 5157599483,
+    "verification": {
+      "total": 108,
+      "passed": 108,
+      "failed": 0,
+      "changedPaths": 27,
+      "productionPaths": 17,
+      "testPaths": 6,
+      "fixturePaths": 2,
+      "protectedPathsChanged": 0
+    },
+    "completionEvent": {
+      "path": ".agent-control/v1/workers/worker-1/EVENTS/20260802T175609Z_stage-a-completed-waiting-stage-b_v1.json",
+      "blobSha": "61ea88a2817d3166e2372c187465b7709fa32c02",
+      "commitSha": "a810b92ce47ddbc6a691f30974626bf4eb82edd7"
+    }
   },
   "stageB": {
     "status": "waiting_for_frozen_assembled_sha",
     "assembledSha": null,
     "masterGateIssue": 119,
-    "integrationIssue": 122
+    "integrationIssue": 122,
+    "worker2Sequence": 9,
+    "worker2Branch": "audit-round4/full-platform-integration-v2",
+    "worker2StartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759"
   },
   "previousRound": {
     "issueNumber": 113,
@@ -39,5 +68,5 @@
     "recommendation": "ACCEPT",
     "reportCommentId": 5154958425
   },
-  "updatedAt": "2026-08-02T10:50:00Z"
+  "updatedAt": "2026-08-02T17:56:09Z"
 }
