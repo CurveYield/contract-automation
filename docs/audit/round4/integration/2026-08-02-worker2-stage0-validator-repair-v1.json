@@ -4,7 +4,8 @@
   "issueNumber": 122,
   "baseSha": "07fd060216cab0fb0d84b42bc80a43813fdf4612",
   "repairBranch": "orchestrator/worker2-stage0-validator-repair-v1",
-  "validatedCodeHeadSha": "9bea7dd735541149e88b3773b31ffe03cd051838",
+  "validatedCodeHeadSha": "bcf2c930bdbae0efb40c009485914bead6820d72",
+  "supersedesValidatedCodeHeadSha": "9bea7dd735541149e88b3773b31ffe03cd051838",
   "intakeMode": "exact-path-blob-transplant-only",
   "paths": [
     {
@@ -14,19 +15,20 @@
     },
     {
       "path": "packages/audit-integration-round4/src/index.mjs",
-      "blobSha": "b788d6a37015a1245ac680279b0cb9eb30eef79a",
-      "purpose": "Compatibility wrapper adding exact orchestrator direct-takeover evidence validation and complete Phase 7-8 ownership prefixes while delegating legacy evidence unchanged."
+      "blobSha": "1d50a117fd216edc4678645b9cc27e4bef01bd73",
+      "purpose": "Compatibility wrapper adding exact worker-status/direct-takeover evidence validation, complete semantic binding to the trusted attestation blob contents, and complete Phase 7-8 ownership prefixes while delegating legacy evidence unchanged."
     },
     {
       "path": "test/audit-round4-integration-stage0-takeover-red.test.mjs",
-      "blobSha": "f6408462d32f97e7e8eb312a30cdfebc378d0a55",
-      "purpose": "Regression coverage for Worker 1 and Worker 3 takeovers, exact durable timestamp form, forgery rejection, evidence-mode exclusivity, safety flags and ownership overlap."
+      "blobSha": "2ef7a0e9f8f0fcca5ba9e383537827c9379171e9",
+      "purpose": "Regression coverage for Worker 1 and Worker 3 takeovers, exact durable timestamp, complete inline attestation binding, unknown or missing takeover rejection, forgery rejection, evidence-mode exclusivity, safety flags and ownership overlap."
     }
   ],
   "trustedAttestation": {
     "path": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-round4-direct-takeover-evidence-v1.json",
     "blobSha": "2a0c85ca831bf30b042b057adb643c0d2d001435",
-    "recordedAt": "2026-08-02T12:47:46Z"
+    "recordedAt": "2026-08-02T12:47:46Z",
+    "completeSemanticEqualityRequired": true
   },
   "takeovers": [
     {
@@ -44,14 +46,18 @@
   ],
   "redGreenEvidence": {
     "originalTakeoverAndOwnershipSuite": {
-      "result": "5/5 pass before final timestamp regression extension"
+      "result": "5/5 pass before the final timestamp and complete-attestation regression extensions"
     },
     "originalStage0PlusTakeoverSuites": {
-      "result": "14/14 pass before final timestamp regression extension"
+      "result": "14/14 pass before the final timestamp and complete-attestation regression extensions"
     },
     "timestampRegression": {
       "red": "The former exact-toISOString comparison rejected the durable 2026-08-02T12:47:46Z attestation timestamp.",
-      "green": "The repaired validator accepted three canonical UTC forms and rejected four malformed or noncanonical forms."
+      "green": "The repaired timestamp validator accepted three canonical UTC forms and rejected four malformed or noncanonical forms."
+    },
+    "completeAttestationRegression": {
+      "red": "The previous wrapper validated only the selected takeover and would accept a missing second takeover, an injected unknown takeover, or changed purpose, timestamp or validation rules while carrying the trusted blob SHA.",
+      "implementation": "The wrapper now requires exact trusted purpose, recordedAt value, ordered validation rules, false-only safety values, and exactly the complete Worker 1 and Worker 3 takeover set."
     },
     "freshCombinedSuite": {
       "status": "required-after-intake",
@@ -68,8 +74,9 @@
   },
   "integrationInstructions": [
     "Do not merge or cherry-pick the repair branch.",
-    "Transplant or reproduce only the three listed path/blob pairs onto the current Worker 2 branch.",
-    "Preserve Worker 2's disjoint Stage 1 live-evidence modules and documents.",
+    "The earlier index blob b788d6a37015a1245ac680279b0cb9eb30eef79a and test blob f6408462d32f97e7e8eb312a30cdfebc378d0a55 are superseded and must not be imported.",
+    "Transplant or reproduce only the three current listed path/blob pairs onto the current Worker 2 branch or its control-plane-approved successor.",
+    "Preserve Worker 2's disjoint Stage 0 and Checkpoint 1 live-evidence modules and documents.",
     "Run the two-file Stage 0 Node test command after intake and publish the exact count and resulting branch head."
   ]
 }
