@@ -1,2 +1,18 @@
-import {denseArray,identifier,integer,frozenClone} from '../../audit-phase78-service/src/index.mjs';
-export function createRelationSummary({duplicateRelations,conflictRelations,visibleCampaignIds}){const visible=new Set(denseArray(visibleCampaignIds,'$.visibleCampaignIds',10000).map((x,i)=>identifier(x,`$.visibleCampaignIds[${i}]`)));let visibleMembers=0,hidden=false;const duplicates=denseArray(duplicateRelations,'$.duplicateRelations',100000);for(const relation of duplicates){for(const member of relation.members??[]){if(visible.has(member.campaignId))visibleMembers++;else hidden=true;}}const conflicts=denseArray(conflictRelations,'$.conflictRelations',100000);for(const relation of conflicts){for(const member of relation.values??[]){if(visible.has(member.campaignId))visibleMembers++;else hidden=true;}}return frozenClone({schemaVersion:'audit-phase9-relation-summary-v1',duplicateGroups:integer(duplicates.length,'$.duplicateGroups'),conflictGroups:integer(conflicts.length,'$.conflictGroups'),visibleMembers,hiddenMembersPresent:hidden});}
+import {validateDuplicateRelation,validateConflictRelation} from '../../audit-controlled-merge/src/index.mjs';
+import {denseArray,identifier,frozenClone} from '../../audit-phase78-service/src/index.mjs';
+
+function fullyVisible(members,visible){
+ return members.every(member=>visible.has(member.campaignId));
+}
+export function createRelationSummary({duplicateRelations,conflictRelations,visibleCampaignIds}){
+ const visible=new Set(denseArray(visibleCampaignIds,'$.visibleCampaignIds',10000).map((x,i)=>identifier(x,`$.visibleCampaignIds[${i}]`)));
+ const duplicates=denseArray(duplicateRelations,'$.duplicateRelations',100000).map((relation)=>validateDuplicateRelation(relation));
+ const conflicts=denseArray(conflictRelations,'$.conflictRelations',100000).map((relation)=>validateConflictRelation(relation));
+ const visibleDuplicates=duplicates.filter(relation=>fullyVisible(relation.members,visible));
+ const visibleConflicts=conflicts.filter(relation=>fullyVisible(relation.values,visible));
+ const visibleMembers=visibleDuplicates.reduce((sum,relation)=>sum+relation.members.length,0)+visibleConflicts.reduce((sum,relation)=>sum+relation.values.length,0);
+ return frozenClone({
+  schemaVersion:'audit-phase9-relation-summary-v2',
+  duplicateGroups:visibleDuplicates.length,conflictGroups:visibleConflicts.length,visibleMembers
+ });
+}
