@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "audit-round4-worker3-public-trust-compatibility-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "issueNumber": 123,
+  "reviewedCodeSnapshotSha": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
+  "authoritativeApiHead": "6d877e2d87f1a91380a6c5d1efc47550527d8729",
+  "authoritativeApiImplementation": "f02840ee3fc0c59759c5034dc5c40e0c154bdab5",
+  "apiContractVersion": "audit-api-contracts-v2",
+  "catalogCompositionVersion": "audit-catalog-composition-v2",
+  "trustAssertions": {
+    "bearerForm": "exact single Bearer token with no whitespace and a 4096-character bound",
+    "duplicateConfiguredCredentials": "fail closed with credential_configuration_conflict",
+    "routeAuthorization": "centralized route-scope and resource-binding authorization",
+    "serviceGrant": "tenant/workspace/scopes/resourceBindings/expiresAt/revoked exact contract",
+    "providerArguments": "server-owned tenant/workspace/resource identifiers only",
+    "cursor": "checksum plus tenant/workspace scope and route kind",
+    "cache": "tenant/workspace/route/query plus canonical visible body",
+    "errors": "bounded normalized public code/message/path without provider text reflection",
+    "portability": "Web APIs only in reviewed API/auth/report boundary",
+    "execution": "read-only public routes; no submitted-project or credential-derived execution authority"
+  },
+  "observedDefect": {
+    "code": "hidden_provider_row_deep_validation_before_scope_filter",
+    "impact": "A malformed, accessor-bearing, cyclic, or oversized cross-tenant report row could change an authorized tenant's empty 200 response to a provider-contract 500.",
+    "repair": "Hostile-safe shallow container and tenant/workspace descriptor inspection now filters cross-scope rows before authoritative full report validation.",
+    "visibleRowsRemainFailClosed": true
+  },
+  "routeScopes": [
+    "catalog.read",
+    "capabilities.read",
+    "reports.list",
+    "reports.read",
+    "workspace.status.read",
+    "campaign.status.read",
+    "job.status.read",
+    "evidence.summary.read",
+    "fork.status.read",
+    "clean-room.status.read"
+  ],
+  "residualRisks": [
+    "Stage B has not tested an assembled candidate.",
+    "Provider snapshotVersion is validated but is not currently incorporated into report cursor identity; Worker 2 must test snapshot drift in the assembled integration.",
+    "A hidden record whose tenant/workspace identity itself is malformed remains a provider-contract failure because its scope cannot be safely determined; this is deliberate fail-closed behavior.",
+    "Full dependency-backed repository and Cloudflare runtime tests remain Worker 2/Round 5 gates."
+  ]
+}
