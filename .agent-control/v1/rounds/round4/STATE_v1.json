@@ -1,0 +1,25 @@
+{
+  "protocolVersion": 1,
+  "round": 4,
+  "state": "waiting_for_round3_completion",
+  "masterIssueNumber": 119,
+  "workerIssues": {
+    "worker-0": 120,
+    "worker-1": 121,
+    "worker-2": 122,
+    "worker-3": 123,
+    "worker-4": 124
+  },
+  "productionAcceptanceIssueNumber": 125,
+  "activeRound3Issues": [112, 113, 114, 115, 116],
+  "completedRound3Workers": [],
+  "stageAActivatedWorkers": [],
+  "stageACompletedWorkers": [],
+  "integrationWorkerActivated": false,
+  "assembledCandidateSha": null,
+  "specialistAcceptances": {},
+  "blockers": [],
+  "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
+  "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
+  "updatedAt": "2026-08-02T03:29:00Z"
+}
