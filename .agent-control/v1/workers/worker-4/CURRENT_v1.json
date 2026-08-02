@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-4",
-  "sequence": 1,
-  "messageId": "worker-4-phase9-web-reports-operator-ui-v1-000001",
-  "assignmentPath": ".agent-control/v1/workers/worker-4/ASSIGNMENTS/000001_worker-4-phase9-web-reports-operator-ui-v1_v1.md",
-  "assignmentBlobSha": "37ed559b309d006af99706ad8ce5fd5d10b362ee",
-  "issuedAt": "2026-08-01T23:36:00Z"
+  "sequence": 2,
+  "messageId": "worker-4-round3-web-operator-release-v1-000002",
+  "assignmentPath": ".agent-control/v1/workers/worker-4/ASSIGNMENTS/000002_worker-4-round3-web-operator-release-v1.md",
+  "assignmentBlobSha": "c0f5ac138f0ba6468d289a098423b8074a708d10",
+  "issuedAt": "2026-08-02T02:29:00Z"
 }
