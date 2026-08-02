@@ -73,3 +73,11 @@ The output, binding record and bounded file index are retained for one day. No t
 ## Concurrency and failure behavior
 
 Concurrency is scoped by repository ID and target SHA with cancellation enabled. The trusted job has a ten-minute timeout, strict shell error propagation and exact CLI exit propagation.
+
+## Trusted transport return validation
+
+The workflow host does not trust successful HTTP status alone. The adapter validates the exact repository, commit, blob, contents, ledger-mutation, publication, and artifact response shapes before service orchestration consumes them. A response that names a different repository, target SHA, path, blob, publication ID, or unsupported field is rejected before lifecycle state is advanced.
+
+## Native Git SHA and planner fingerprint separation
+
+Control-ledger CAS uses the deterministic canonical-content fingerprint defined by the accepted ledger. The trusted transport separately retains GitHub's native blob SHA for the `sha` field required by the Contents API. Snapshot reads return the planner fingerprint; native Git object IDs are not written into protocol or ledger records.
