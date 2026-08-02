@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-3",
-  "sequence": 7,
-  "messageId": "worker-3-round3-github-direct-audit-release-v1-000007",
-  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000007_worker-3-round3-github-direct-audit-release-v1.md",
-  "assignmentBlobSha": "b5c2df3c528283eaafef30a1c618a994ca09d46d",
-  "issuedAt": "2026-08-02T02:28:00Z"
+  "sequence": 8,
+  "messageId": "worker-3-round4-api-auth-security-review-v1-000008",
+  "assignmentPath": ".agent-control/v1/workers/worker-3/ASSIGNMENTS/000008_worker-3-round4-api-auth-security-review-v1.md",
+  "assignmentBlobSha": "bc0c800a635587cb450d17caaf57ba35e22db2f8",
+  "issuedAt": "2026-08-02T09:24:00Z"
 }
