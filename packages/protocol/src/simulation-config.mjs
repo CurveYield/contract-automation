@@ -4,8 +4,8 @@ const FORBIDDEN_KEYS = new Set([
   'script', 'npmScript', 'broadcast'
 ]);
 
-const ENGINE_MODES = new Set(['hardhat-edr', 'ganache', 'auto', 'differential']);
-const ENGINE_NAMES = new Set(['hardhat-edr', 'ganache']);
+const ENGINE_MODES = new Set(['hardhat-edr', 'ganache', 'remote-rpc', 'auto', 'differential']);
+const ENGINE_NAMES = new Set(['hardhat-edr', 'ganache', 'remote-rpc']);
 const START_MODES = new Set(['explicit', 'latest-at-start', 'tag', 'legacy-block']);
 const TAGS = new Set(['latest', 'safe', 'finalized']);
 const PROGRESSION_MODES = new Set([
@@ -126,7 +126,8 @@ function validateEngine(value) {
   plainObject(input, '$.simulation.engine');
   rejectUnknown(input, new Set(['mode', 'preference', 'fallbackOn', 'engines', 'comparison', 'options']), '$.simulation.engine');
   const mode = enumValue(input.mode, ENGINE_MODES, 'hardhat-edr', '$.simulation.engine.mode');
-  const preference = stringArray(input.preference, ['hardhat-edr', 'ganache'], '$.simulation.engine.preference', ENGINE_NAMES);
+  const defaultPreference = mode === 'remote-rpc' ? ['remote-rpc'] : ['hardhat-edr', 'ganache'];
+  const preference = stringArray(input.preference, defaultPreference, '$.simulation.engine.preference', ENGINE_NAMES);
   const engines = stringArray(input.engines, mode === 'differential' ? ['hardhat-edr', 'ganache'] : [], '$.simulation.engine.engines', ENGINE_NAMES);
   const fallbackOn = stringArray(input.fallbackOn, [], '$.simulation.engine.fallbackOn');
   const comparison = input.comparison ?? {};

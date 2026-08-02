@@ -10,7 +10,7 @@ source_root='github-native-sim/jobs/v27-functional-smoke-v2'
 
 mkdir -p "$result_root" "$job_root/project" "$job_root/scripts" "$job_root/config"
 
-# Reconstruct the exact reviewed V27 Hardhat harness from an immutable commit.
+# Reconstruct the exact reviewed V27 lifecycle from its immutable commit.
 git fetch --no-tags origin "$harness_commit" "$source_commit"
 rm -rf /tmp/v27-reviewed-harness
 mkdir -p /tmp/v27-reviewed-harness
@@ -25,29 +25,39 @@ PY
 echo 'aef1382bfbf9bc9c78872d1e5e7f3ac850f66bc308852f6c12e4dd50c7baaa24  /tmp/v27-hardhat-job.tar.gz' | sha256sum -c -
 tar -xzf /tmp/v27-hardhat-job.tar.gz -C "$job_root"
 
-# Patch only transport wording and unsafe cleanup assumptions. The lifecycle logic,
-# economic checks, call journal, and assertions remain unchanged.
+# Preserve the reviewed lifecycle and economic assertions. Only adapt the RPC
+# transport vocabulary from local Hardhat EDR to the persistent remote Anvil RPC.
 python - "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" <<'PY'
 from pathlib import Path
 import sys
 p = Path(sys.argv[1])
 s = p.read_text(encoding='utf-8')
-s = s.replace(
-    "upstream observations use RPC_ETHEREUM directly; state-changing calls use the local Hardhat node only",
-    "upstream observations use the shared capability-aware live-fork proxy; state-changing calls use the local Hardhat EDR node only"
-)
-s = s.replace(
-    "if (upstreamProvider) await upstreamProvider.destroy().catch(() => {});",
-    "if (upstreamProvider) await Promise.resolve(upstreamProvider.destroy()).catch(() => {});"
-)
-s = s.replace(
-    "if (engine) await engine.close().catch(() => {});",
-    "if (engine) await Promise.resolve(engine.close()).catch(() => {});"
-)
+replacements = {
+    'upstream observations use RPC_ETHEREUM directly; state-changing calls use the local Hardhat node only':
+        'all observations and state-changing calls use the same persistent remote Anvil RPC',
+    'upstream observations use the shared capability-aware live-fork proxy; state-changing calls use the local Hardhat EDR node only':
+        'all observations and state-changing calls use the same persistent remote Anvil RPC',
+    'hardhat_impersonateAccount': 'anvil_impersonateAccount',
+    'hardhat_stopImpersonatingAccount': 'anvil_stopImpersonatingAccount',
+    'hardhat_setBalance': 'anvil_setBalance',
+    'hardhat_setCode': 'anvil_setCode',
+    'hardhat_setStorageAt': 'anvil_setStorageAt',
+    'hardhat_mine': 'anvil_mine',
+    'if (upstreamProvider) await upstreamProvider.destroy().catch(() => {});':
+        'if (upstreamProvider) await Promise.resolve(upstreamProvider.destroy()).catch(() => {});',
+    'if (engine) await engine.close().catch(() => {});':
+        'if (engine) await Promise.resolve(engine.close()).catch(() => {});'
+}
+for old, new in replacements.items():
+    s = s.replace(old, new)
 p.write_text(s, encoding='utf-8')
 PY
+
+# Keep the previously reviewed economic and migration corrections unchanged.
+python "$job_root/patch-reviewed-v27-harness.py" "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
 node --check "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
 sha256sum "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" > "$result_root/patched-lifecycle-sha256.txt"
+cp "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" "$result_root/effective-lifecycle-pre-wrapper.mjs"
 
 # Materialize and verify the exact V27 Solidity sources from their immutable commit.
 rm -rf /tmp/v27-reviewed-sources
@@ -111,44 +121,54 @@ if test -f "$result_root/data-report.json" \
     and (.finalJournalHash | length) == 66
   ' "$result_root/data-report.json" >/dev/null \
   && jq -e '
-    .status == "completed"
-    and .assurance == "continuous-archive-backed-local-fork"
+    .assurance == "persistent-remote-anvil-fork"
     and .broadcastTransactions == false
-    and .forkIdentity.numberMatches == true
-    and .forkIdentity.hashMatches == true
-    and .transport.terminated == false
-    and (.transport.rpc.failures // 0) == 0
+    and .sourceChainId == 1
+    and .transport.type == "authenticated-remote-json-rpc"
+    and .transport.slotSecret == "RPC_ANVIL_ETHEREUM1"
+    and .transport.stickyForWholeRun == true
+    and .transport.localExecutionEngine == false
+    and .cleanup.reverted == true
+    and .cleanup.baselineFullyRestored == true
   ' "$result_root/live-fork-wrapper-report.json" >/dev/null; then
   validated=1
 fi
 
-jq --slurpfile wrapper "$result_root/live-fork-wrapper-report.json" \
-   --argjson wrapperExitCode "$wrapper_status" \
-   --argjson validated "$validated" '
-  {
-    reportStatus: .status,
-    reportError: .error,
-    wrapperExitCode: $wrapperExitCode,
-    validatedSuccess: ($validated == 1),
-    assurance: $wrapper[0].assurance,
-    forkIdentity: $wrapper[0].forkIdentity,
-    rpcTransport: $wrapper[0].transport.rpc,
-    engine: $wrapper[0].engine,
-    rpcHealth: $wrapper[0].rpcHealth,
-    callCount: (.calls | length),
-    successfulTransactionCount: ([.calls[] | select(.method == "eth_sendTransaction" and .receiptStatus == 1)] | length),
-    expectedRevertTransactionCount: ([.calls[] | select(.method == "eth_sendTransaction" and .receiptStatus == null)] | length),
-    assertionCount: (.assertions | length),
-    passedAssertionCount: ([.assertions[] | select(.passed == true)] | length),
-    cycleCount: (.cycles | length),
-    postMigrationCycleCount: (.postMigrationCycles | length),
-    supplementalTestCount: (.supplementalTests | length),
-    passedSupplementalTestCount: ([.supplementalTests[] | select(.status == "passed")] | length),
-    migration: .migration,
-    finalJournalHash: .finalJournalHash,
-    mcopyPreflight: .preflight.ybMcopyExecutionProof
-  }
-' "$result_root/data-report.json" | tee "$result_root/final-validation.json"
+if test -f "$result_root/data-report.json"; then
+  jq --slurpfile wrapper "$result_root/live-fork-wrapper-report.json" \
+     --argjson wrapperExitCode "$wrapper_status" \
+     --argjson validated "$validated" '
+    {
+      reportStatus: .status,
+      reportError: .error,
+      wrapperExitCode: $wrapperExitCode,
+      validatedSuccess: ($validated == 1),
+      assurance: $wrapper[0].assurance,
+      rpcChainId: $wrapper[0].rpcChainId,
+      forkIdentity: $wrapper[0].forkIdentity,
+      cleanup: $wrapper[0].cleanup,
+      callCount: (.calls | length),
+      successfulTransactionCount: ([.calls[] | select(.method == "eth_sendTransaction" and .receiptStatus == 1)] | length),
+      expectedRevertTransactionCount: ([.calls[] | select(.method == "eth_sendTransaction" and .receiptStatus == null)] | length),
+      assertionCount: (.assertions | length),
+      passedAssertionCount: ([.assertions[] | select(.passed == true)] | length),
+      cycleCount: (.cycles | length),
+      cycles: .cycles,
+      postMigrationCycleCount: (.postMigrationCycles | length),
+      postMigrationCycles: .postMigrationCycles,
+      supplementalTestCount: (.supplementalTests | length),
+      passedSupplementalTestCount: ([.supplementalTests[] | select(.status == "passed")] | length),
+      migration: .migration,
+      finalJournalHash: .finalJournalHash,
+      mcopyPreflight: .preflight.ybMcopyExecutionProof
+    }
+  ' "$result_root/data-report.json" | tee "$result_root/final-validation.json"
+else
+  jq -n --slurpfile wrapper "$result_root/live-fork-wrapper-report.json" \
+    --argjson wrapperExitCode "$wrapper_status" \
+    '{reportStatus:"missing",wrapperExitCode:$wrapperExitCode,validatedSuccess:false,wrapper:$wrapper[0]}' \
+    | tee "$result_root/final-validation.json"
+fi
 
 if test "$validated" -eq 1; then
   exit 0

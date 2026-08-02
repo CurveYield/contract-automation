@@ -1,114 +1,142 @@
 import crypto from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { loadArchiveRpcSlots } from '../../../packages/runner/src/archive-rpc-pool.mjs';
-import { startForkEngine } from '../../../packages/runner/src/fork-engine.mjs';
-import { startLiveForkProxy } from '../../../packages/runner/src/live-fork-proxy.mjs';
-import {
-  closeRpcHealthSession,
-  filterDisabledRpcSlots,
-  openRpcHealthSession
-} from '../../../packages/runner/src/rpc-health-session.mjs';
-
 const execFileAsync = promisify(execFile);
 const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+const SOURCE_CHAIN_ID = 1;
+const SLOT_SECRET = 'RPC_ANVIL_ETHEREUM1';
+const rpcUrl = process.env[SLOT_SECRET];
 const jobRoot = path.resolve(process.env.V27_JOB_ROOT ?? 'github-native-sim/jobs/live-fork-v27-v1');
 const resultRoot = path.resolve(process.env.RESULT_ROOT ?? path.join(jobRoot, 'result'));
 const lifecycle = path.join(jobRoot, 'scripts/run-v27-hardhat-lifecycle.mjs');
 const reviewedHarnessPatch = path.join(jobRoot, 'patch-reviewed-v27-harness.py');
+const fixtureSeed = path.join(jobRoot, 'seed-sdyb-fixture.mjs');
 const startedAt = new Date().toISOString();
 await fs.mkdir(resultRoot, { recursive: true });
+
+if (!rpcUrl) throw new Error(`${SLOT_SECRET} is required`);
 
 function json(value) {
   return `${JSON.stringify(value, (_key, item) => typeof item === 'bigint' ? item.toString() : item, 2)}\n`;
 }
 
-function childResult(child, stdout, stderr) {
+function redact(value) {
+  if (typeof value !== 'string') return value;
+  return value.replaceAll(rpcUrl, `[redacted:${SLOT_SECRET}]`);
+}
+
+function childResult(child) {
   return new Promise((resolve, reject) => {
     child.once('error', reject);
-    child.once('exit', (code, signal) => resolve({ code, signal, stdout, stderr }));
+    child.once('exit', (code, signal) => resolve({ code, signal }));
   });
 }
 
-async function rpc(url, method, params) {
-  const response = await fetch(url, {
+function closeWriteStream(stream) {
+  return new Promise((resolve, reject) => {
+    stream.once('error', reject);
+    stream.end(resolve);
+  });
+}
+
+function progressSummary(report) {
+  const cycles = Array.isArray(report?.cycles) ? report.cycles : [];
+  const postMigrationCycles = Array.isArray(report?.postMigrationCycles) ? report.postMigrationCycles : [];
+  const allCycles = [...cycles, ...postMigrationCycles];
+  const latestCycle = allCycles.at(-1);
+  const latestHarvest = latestCycle?.reconciliations?.harvestEvents?.at(-1) ?? null;
+  const assertions = Array.isArray(report?.assertions) ? report.assertions : [];
+  const calls = Array.isArray(report?.calls) ? report.calls : [];
+  return {
+    status: report?.status ?? 'running',
+    calls: calls.length,
+    successfulTransactions: calls.filter((entry) => entry?.method === 'eth_sendTransaction' && entry?.receiptStatus === 1).length,
+    assertionsPassed: assertions.filter((entry) => entry?.passed === true).length,
+    assertionCount: assertions.length,
+    harvestCycles: cycles.length,
+    postMigrationCycles: postMigrationCycles.length,
+    latestCycle: latestCycle?.cycle ?? null,
+    latestHarvest: latestHarvest && {
+      grossSdYB: latestHarvest.grossSdYB ?? '0',
+      feeSdYB: latestHarvest.feeSdYB ?? '0',
+      retainedSdYB: latestHarvest.retainedSdYB ?? '0',
+      complete: latestHarvest.complete === true
+    }
+  };
+}
+
+function startProgressReporter(reportPath) {
+  let stopped = false;
+  let lastSummary = '';
+  const check = async () => {
+    if (stopped) return;
+    try {
+      const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+      const summary = JSON.stringify(progressSummary(report));
+      if (summary !== lastSummary) {
+        process.stdout.write(`[v27-progress] ${summary}\n`);
+        lastSummary = summary;
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+        process.stderr.write(`[v27-progress] report read warning: ${redact(error?.message ?? String(error))}\n`);
+      }
+    }
+  };
+  const timer = setInterval(check, 10_000);
+  void check();
+  return async () => {
+    await check();
+    stopped = true;
+    clearInterval(timer);
+  };
+}
+
+let requestId = 0;
+async function rpc(method, params = []) {
+  const response = await fetch(rpcUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: `${method}-${Date.now()}`, method, params })
+    body: JSON.stringify({ jsonrpc: '2.0', id: ++requestId, method, params })
   });
-  const payload = await response.json();
+  const text = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error(`${method} returned invalid JSON`);
+  }
   if (!response.ok || payload.error) {
-    throw new Error(`${method} failed: ${payload.error?.message ?? response.statusText}`);
+    const code = payload.error?.code ?? response.status;
+    const message = payload.error?.message ?? response.statusText;
+    throw new Error(`${method} failed (${code}): ${message}`);
   }
   return payload.result;
 }
 
-async function waitForReceipt(provider, transactionHash) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    const receipt = await provider.send('eth_getTransactionReceipt', [transactionHash]);
-    if (receipt) return receipt;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`Timed out waiting for local receipt ${transactionHash}`);
-}
-
-async function proveArchiveBackedLocalOverlay({ proxy, engine }) {
-  const recipient = engine.aliases.account0;
-  if (!recipient) throw new Error('Hardhat EDR did not expose a local recipient account');
-  const snapshot = await engine.provider.send('evm_snapshot', []);
-  try {
-    const upstreamBeforeHex = await rpc(proxy.url, 'eth_getBalance', [WETH, 'latest']);
-    const localBefore = await engine.provider.getBalance(WETH);
-    const recipientBefore = await engine.provider.getBalance(recipient);
-    if (localBefore !== BigInt(upstreamBeforeHex)) {
-      throw new Error('Local fork did not begin from the pinned upstream WETH balance');
-    }
-
-    await engine.provider.send('hardhat_impersonateAccount', [WETH]);
-    const transactionHash = await engine.provider.send('eth_sendTransaction', [{
-      from: WETH,
-      to: recipient,
-      value: '0x1',
-      gas: '0x5208'
-    }]);
-    const receipt = await waitForReceipt(engine.provider, transactionHash);
-    const localAfter = await engine.provider.getBalance(WETH);
-    const recipientAfter = await engine.provider.getBalance(recipient);
-    const upstreamAfterHex = await rpc(proxy.url, 'eth_getBalance', [WETH, 'latest']);
-
-    const proof = {
-      source: WETH,
-      recipient,
-      transactionHash,
-      receiptStatus: receipt.status,
-      upstreamBefore: upstreamBeforeHex,
-      upstreamAfter: upstreamAfterHex,
-      localBefore: localBefore.toString(),
-      localAfter: localAfter.toString(),
-      recipientBefore: recipientBefore.toString(),
-      recipientAfter: recipientAfter.toString(),
-      upstreamStayedCanonical: upstreamBeforeHex === upstreamAfterHex,
-      localOverlayChanged: localAfter < localBefore && recipientAfter === recipientBefore + 1n
-    };
-    if (receipt.status !== '0x1' || !proof.upstreamStayedCanonical || !proof.localOverlayChanged) {
-      throw new Error(`Archive-backed local overlay proof failed: ${JSON.stringify(proof)}`);
-    }
-    return proof;
-  } finally {
-    await engine.provider.send('hardhat_stopImpersonatingAccount', [WETH]).catch(() => {});
-    await engine.provider.send('evm_revert', [snapshot]).catch(() => {});
-  }
-}
-
-let proxy;
-let engine;
-let healthSession;
-let healthPersist;
+let snapshotId;
+let baseline;
 let childExit;
-let localOverlayProof;
+let failure;
+let wrapperReport = {
+  version: 'v27-persistent-remote-anvil-wrapper/v1',
+  status: 'running',
+  startedAt,
+  assurance: 'persistent-remote-anvil-fork',
+  sourceChainId: SOURCE_CHAIN_ID,
+  transport: {
+    type: 'authenticated-remote-json-rpc',
+    slotSecret: SLOT_SECRET,
+    stickyForWholeRun: true,
+    localExecutionEngine: false
+  },
+  broadcastTransactions: false
+};
+
 try {
   await execFileAsync('python', [reviewedHarnessPatch, lifecycle], {
     cwd: process.cwd(),
@@ -119,159 +147,141 @@ try {
     path.join(resultRoot, 'effective-lifecycle-sha256.txt'),
     `${crypto.createHash('sha256').update(effectiveLifecycle).digest('hex')}  ${lifecycle}\n`
   );
+  await fs.copyFile(lifecycle, path.join(resultRoot, 'effective-lifecycle.mjs'));
 
-  healthSession = await openRpcHealthSession({
-    environment: process.env,
-    chain: 'ethereum',
-    crossSessionFailureThreshold: 4
-  });
-  const configuredSlots = loadArchiveRpcSlots({
-    chainName: 'ethereum',
-    legacyEnv: 'RPC_ETHEREUM',
-    environment: process.env,
-    allowLegacyFallback: true
-  });
-  const slots = filterDisabledRpcSlots(configuredSlots, healthSession.disabledSlotIds);
-  if (slots.length === 0) throw new Error('No healthy Ethereum archive RPC slots are configured');
+  const clientVersion = await rpc('web3_clientVersion');
+  const rpcChainId = Number(BigInt(await rpc('eth_chainId')));
+  const baselineBlockHex = await rpc('eth_blockNumber');
+  const baselineBlock = await rpc('eth_getBlockByNumber', [baselineBlockHex, false]);
+  if (!baselineBlock?.hash) throw new Error('Remote Anvil did not return a baseline block hash');
 
-  proxy = await startLiveForkProxy({
-    slots,
-    chainId: 1,
-    blockPolicy: { mode: 'latest-at-start' },
-    routing: {
-      distribution: { strategy: 'round-robin' },
-      methodRoutes: {
-        'debug_*': 'primary',
-        'trace_*': 'primary',
-        eth_getCode: 'secondary',
-        eth_getStorageAt: 'secondary',
-        eth_getBalance: 'secondary',
-        eth_call: 'secondary',
-        eth_getLogs: 'secondary'
-      },
-      allowPrimaryForSecondaryFailure: true,
-      allowSecondaryForPrimaryFailure: false,
-      retryDelaysMs: [0, 250, 1_000, 2_500],
-      requestTimeoutMs: 30_000
-    },
-    healthPolicy: {
-      sessionFailureThreshold: 3,
-      crossSessionFailureThreshold: 4
-    },
-    consistency: {
-      requireChainIdMatch: true,
-      requireForkBlockHashMatch: true,
-      crossCheckProviders: 1,
-      onDisagreement: 'fail'
-    }
-  });
+  const wethCode = await rpc('eth_getCode', [WETH, 'latest']);
+  if (wethCode === '0x') throw new Error('Canonical Ethereum WETH code is absent from the remote fork');
 
-  engine = await startForkEngine({
-    mode: 'hardhat-edr',
-    artifacts: { get() { throw new Error('V27 lifecycle owns its compiled artifacts'); } },
-    workflow: { steps: [] },
-    chainId: 1,
-    forkUrl: proxy.url,
-    forkControl: proxy,
-    block: proxy.blockNumber,
-    configuration: {
-      engine: { mode: 'hardhat-edr' },
-      fork: { start: { mode: 'latest-at-start' } }
-    },
-    options: { startupTimeoutMs: 60_000 }
-  });
+  baseline = {
+    blockNumber: Number(BigInt(baselineBlockHex)),
+    blockHash: baselineBlock.hash,
+    blockTimestamp: Number(BigInt(baselineBlock.timestamp))
+  };
+  wrapperReport.rpcChainId = rpcChainId;
+  wrapperReport.clientVersion = clientVersion;
+  wrapperReport.forkIdentity = {
+    sourceChain: 'ethereum',
+    sourceChainId: SOURCE_CHAIN_ID,
+    ...baseline,
+    canonicalWethPresent: true,
+    canonicalWethCodeBytes: (wethCode.length - 2) / 2
+  };
 
-  localOverlayProof = await proveArchiveBackedLocalOverlay({ proxy, engine });
-  await fs.writeFile(path.join(resultRoot, 'archive-backed-local-overlay-proof.json'), json(localOverlayProof));
+  snapshotId = await rpc('evm_snapshot');
+  if (snapshotId == null) throw new Error('Remote Anvil did not create the outer simulation snapshot');
+
+  const fixtureResult = await execFileAsync(process.execPath, [fixtureSeed], {
+    cwd: process.cwd(),
+    env: { ...process.env, [SLOT_SECRET]: rpcUrl },
+    maxBuffer: 1_000_000
+  });
+  wrapperReport.fixtureFunding = JSON.parse(fixtureResult.stdout);
+  process.stdout.write(`[v27-progress] ${JSON.stringify({
+    status: 'fixture-seeded',
+    balanceSlot: wrapperReport.fixtureFunding.balanceSlot,
+    accounts: wrapperReport.fixtureFunding.seeded.length
+  })}\n`);
 
   const stdoutFile = path.join(resultRoot, 'workflow-stdout.log');
   const stderrFile = path.join(resultRoot, 'workflow-stderr.log');
-  const stdoutHandle = await fs.open(stdoutFile, 'w');
-  const stderrHandle = await fs.open(stderrFile, 'w');
+  const stdoutStream = createWriteStream(stdoutFile, { flags: 'w' });
+  const stderrStream = createWriteStream(stderrFile, { flags: 'w' });
+  const stopProgressReporter = startProgressReporter(path.join(resultRoot, 'data-report.json'));
+  process.stdout.write(`[v27-progress] ${JSON.stringify({
+    status: 'starting',
+    rpcChainId,
+    sourceChainId: SOURCE_CHAIN_ID,
+    forkBlock: baseline.blockNumber
+  })}\n`);
+
   try {
     const child = spawn(process.execPath, [lifecycle], {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        HARDHAT_RPC_URL: engine.url,
-        RPC_ETHEREUM: proxy.url,
+        HARDHAT_RPC_URL: rpcUrl,
+        RPC_ETHEREUM: rpcUrl,
         RESULT_ROOT: resultRoot,
-        V27_SHARED_PROXY_BLOCK: String(proxy.blockNumber),
-        V27_SHARED_PROXY_HASH: proxy.blockHash
+        V27_SHARED_PROXY_BLOCK: String(baseline.blockNumber),
+        V27_SHARED_PROXY_HASH: baseline.blockHash,
+        V27_REMOTE_ANVIL_CHAIN_ID: String(rpcChainId),
+        V27_SOURCE_CHAIN_ID: String(SOURCE_CHAIN_ID)
       },
-      stdio: ['ignore', stdoutHandle.fd, stderrHandle.fd]
+      stdio: ['ignore', 'pipe', 'pipe']
     });
-    childExit = await childResult(child, stdoutFile, stderrFile);
+    child.stdout.on('data', (chunk) => {
+      stdoutStream.write(chunk);
+      process.stdout.write(chunk);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderrStream.write(chunk);
+      process.stderr.write(chunk);
+    });
+    childExit = await childResult(child);
   } finally {
-    await stdoutHandle.close();
-    await stderrHandle.close();
+    await stopProgressReporter();
+    await Promise.all([closeWriteStream(stdoutStream), closeWriteStream(stderrStream)]);
   }
 
-  const engineEvidence = await engine.getEvidence();
-  healthPersist = await closeRpcHealthSession({
-    session: healthSession,
-    environment: process.env,
-    diagnostics: proxy.diagnostics.rpc,
-    runId: process.env.GITHUB_RUN_ID ?? 'v27-live-fork'
-  });
-  const equality = {
-    proxyBlockNumber: proxy.blockNumber,
-    proxyBlockHash: proxy.blockHash,
-    edrForkBlockNumber: Number(engineEvidence.metadata?.forkedNetwork?.forkBlockNumber),
-    edrForkBlockHash: engineEvidence.metadata?.forkedNetwork?.forkBlockHash,
-    numberMatches: Number(engineEvidence.metadata?.forkedNetwork?.forkBlockNumber) === proxy.blockNumber,
-    hashMatches: String(engineEvidence.metadata?.forkedNetwork?.forkBlockHash).toLowerCase() === String(proxy.blockHash).toLowerCase()
-  };
-  if (!equality.numberMatches || !equality.hashMatches) {
-    throw new Error(`V27 fork identity mismatch: ${JSON.stringify(equality)}`);
+  wrapperReport.childExit = childExit;
+  wrapperReport.status = childExit.code === 0 ? 'completed' : 'failed';
+  if (childExit.code !== 0) {
+    throw new Error(`V27 lifecycle exited with code ${childExit.code ?? 'null'}${childExit.signal ? ` signal ${childExit.signal}` : ''}`);
   }
-  const wrapperReport = {
-    version: 'v27-shared-live-fork-wrapper/v1',
-    status: 'completed',
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    childExit,
-    assurance: proxy.diagnostics.assurance,
-    forkIdentity: equality,
-    localOverlayProof,
-    engine: { name: engine.name, version: engine.version, evidence: engineEvidence },
-    transport: proxy.diagnostics,
-    rpcHealth: { load: healthSession.load, persist: healthPersist },
-    broadcastTransactions: false
+} catch (error) {
+  failure = error;
+  wrapperReport.status = 'failed';
+  wrapperReport.error = {
+    name: error?.name ?? 'Error',
+    message: redact(error?.message ?? String(error)),
+    code: error?.code
   };
+} finally {
+  if (snapshotId != null && baseline) {
+    try {
+      const reverted = await rpc('evm_revert', [snapshotId]);
+      const restoredBlockHex = await rpc('eth_blockNumber');
+      const restoredBlock = await rpc('eth_getBlockByNumber', [restoredBlockHex, false]);
+      const cleanup = {
+        reverted: reverted === true,
+        restoredBlockNumber: Number(BigInt(restoredBlockHex)),
+        restoredBlockHash: restoredBlock?.hash ?? null,
+        blockNumberMatchesBaseline: Number(BigInt(restoredBlockHex)) === baseline.blockNumber,
+        blockHashMatchesBaseline: String(restoredBlock?.hash ?? '').toLowerCase() === baseline.blockHash.toLowerCase()
+      };
+      cleanup.baselineFullyRestored = cleanup.reverted
+        && cleanup.blockNumberMatchesBaseline
+        && cleanup.blockHashMatchesBaseline;
+      wrapperReport.cleanup = cleanup;
+      if (!cleanup.baselineFullyRestored && !failure) {
+        failure = new Error(`Remote Anvil cleanup verification failed: ${JSON.stringify(cleanup)}`);
+        wrapperReport.status = 'failed';
+        wrapperReport.error = { name: failure.name, message: failure.message };
+      }
+    } catch (cleanupError) {
+      wrapperReport.cleanup = {
+        reverted: false,
+        baselineFullyRestored: false,
+        error: redact(cleanupError?.message ?? String(cleanupError))
+      };
+      if (!failure) failure = cleanupError;
+      wrapperReport.status = 'failed';
+      wrapperReport.error ??= {
+        name: cleanupError?.name ?? 'Error',
+        message: redact(cleanupError?.message ?? String(cleanupError))
+      };
+    }
+  }
+
+  wrapperReport.finishedAt = new Date().toISOString();
   await fs.writeFile(path.join(resultRoot, 'live-fork-wrapper-report.json'), json(wrapperReport));
   process.stdout.write(json(wrapperReport));
-  process.exitCode = childExit.code ?? 1;
-} catch (error) {
-  try {
-    if (healthSession && !healthPersist) {
-      healthPersist = await closeRpcHealthSession({
-        session: healthSession,
-        environment: process.env,
-        diagnostics: proxy?.diagnostics?.rpc,
-        runId: process.env.GITHUB_RUN_ID ?? 'v27-live-fork'
-      });
-    }
-  } catch {}
-  const failure = {
-    version: 'v27-shared-live-fork-wrapper/v1',
-    status: 'failed',
-    startedAt,
-    finishedAt: new Date().toISOString(),
-    error: {
-      name: error?.name ?? 'Error',
-      message: error?.message ?? String(error),
-      code: error?.code,
-      hardhatLogTail: error?.hardhatLogTail
-    },
-    childExit,
-    localOverlayProof,
-    transport: proxy?.diagnostics,
-    rpcHealth: healthSession ? { load: healthSession.load, persist: healthPersist } : undefined
-  };
-  await fs.writeFile(path.join(resultRoot, 'live-fork-wrapper-report.json'), json(failure));
-  throw error;
-} finally {
-  await Promise.resolve(engine?.close?.()).catch(() => {});
-  await Promise.resolve(proxy?.close?.()).catch(() => {});
 }
+
+if (failure) throw failure;

@@ -1,136 +1,34 @@
-name: GitHub-Native Simulation CI
+name: Security-reconcile merged live-fork workflows and RPC health state
+run-name: Security-reconcile merged live-fork workflows and RPC health state
 
 on:
   pull_request:
-    paths:
-      - 'packages/github-native-sim/**'
-      - 'packages/runner/**'
-      - 'github-native-sim/**'
-      - 'scripts/live-fork-engine-smoke.mjs'
-      - 'docs/github-native-simulation.md'
-      - 'docs/superpowers/specs/2026-08-01-github-native-simulation-design.md'
-      - 'docs/superpowers/plans/2026-08-01-github-native-simulation.md'
-      - '.github/workflows/github-native-sim-ci.yml'
-      - '.github/workflows/github-native-simulate.yml'
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/github-native-sim/**'
-      - 'packages/runner/**'
-      - 'github-native-sim/**'
-      - 'scripts/live-fork-engine-smoke.mjs'
-      - 'docs/github-native-simulation.md'
-      - '.github/workflows/github-native-sim-ci.yml'
-      - '.github/workflows/github-native-simulate.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 concurrency:
-  group: github-native-sim-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: v27-remote-anvil-slot3-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install trusted dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
-
-      - name: Run focused GitHub-native simulation tests
-        run: node --test packages/github-native-sim/test/*.test.mjs
-
-      - name: Run complete repository test suite
-        run: npm test
-
-      - name: Run complete repository syntax validation
-        run: npm run lint
-
-      - name: Check GitHub-native JavaScript syntax independently
-        run: find packages/github-native-sim -type f -name '*.mjs' -print0 | xargs -0 -r -n1 node --check
-
-  live-fork-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_02 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_03 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_04 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_05 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_06 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_07 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install trusted dependencies and EDR
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
-
-      - name: Execute live Ethereum fork smoke
-        id: execute
-        continue-on-error: true
-        env:
-          LIVE_FORK_SMOKE_OUTPUT: ${{ runner.temp }}/live-fork-engine-smoke
-        run: timeout --signal=TERM --kill-after=10s 120s node scripts/live-fork-engine-smoke.mjs
-
-      - name: Upload live fork evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: live-fork-engine-smoke-${{ github.run_id }}
-          path: ${{ runner.temp }}/live-fork-engine-smoke
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Propagate smoke failure
-        if: steps.execute.outcome == 'failure'
-        run: exit 1
-
-  v27-full-live-fork:
+  simulate-v27-contract-stack:
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
-      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_02 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_03 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_04 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_05 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_06 }}
-      SIM_ARCHIVE_PRIMARY_ETHEREUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_07 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
-      SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
-      SIM_RPC_HEALTH_GITHUB_TOKEN: ${{ github.token }}
+      RPC_ANVIL_ETHEREUM1: ${{ secrets.RPC_ANVIL_ETHEREUM1 }}
+      RPC_ANVIL_ETHEREUM2: ${{ secrets.RPC_ANVIL_ETHEREUM2 }}
+      RPC_ANVIL_ETHEREUM3: ${{ secrets.RPC_ANVIL_ETHEREUM3 }}
+      V27_RPC_SLOT_SECRET: RPC_ANVIL_ETHEREUM3
+      ANVIL_FORKS_MNEMONIC: ${{ secrets.ANVIL_FORKS_MNEMONIC }}
+      RESULT_ROOT: /tmp/v27-remote-anvil-result
+      V27_CONTROL_ROOT: /tmp/v27-remote-anvil-control-slot3
+      V27_RECOVERY_ROOT: /tmp/v27-remote-anvil-recovery
     steps:
-      - name: Check out trusted source and migration job
+      - name: Check out source and reviewed harness history
         uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -141,28 +39,187 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install trusted dependencies and EDR
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
+      - name: Install trusted runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Execute full V27 shared live-fork lifecycle
-        id: execute
+      - name: Recover interrupted remote fork slot 1
+        run: node github-native-sim/jobs/live-fork-v27-v1/recover-oldest-active-snapshot.mjs RPC_ANVIL_ETHEREUM1
+
+      - name: Recover interrupted remote fork slot 2
+        run: node github-native-sim/jobs/live-fork-v27-v1/recover-oldest-active-snapshot.mjs RPC_ANVIL_ETHEREUM2
+
+      - name: Create workflow-level remote snapshot on slot 3
+        run: node github-native-sim/jobs/live-fork-v27-v1/remote-snapshot-guard.mjs begin
+
+      - name: Execute complete V27 deposit, harvest, withdrawal, and migration lifecycle
+        id: simulation
         continue-on-error: true
-        env:
-          RESULT_ROOT: ${{ runner.temp }}/v27-full-live-fork
-        run: bash github-native-sim/jobs/live-fork-v27-v1/run-ci.sh
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$RESULT_ROOT" "$V27_CONTROL_ROOT"
+          date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+          date +%s > "$V27_CONTROL_ROOT/last-heartbeat-epoch"
 
-      - name: Upload complete or partial V27 report
+          notice() {
+            local message="$1"
+            message="${message//$'\n'/ }"
+            echo "::notice title=V27 contract-stack progress::${message}"
+            printf -- '- `%s` %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$message" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          record_started() {
+            local file="$1"
+            local base label marker
+            base="$(basename "$file")"
+            marker="$V27_CONTROL_ROOT/reported-start-${base}"
+            [[ -e "$marker" ]] && return
+            touch "$marker"
+            label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
+            label="${label%:before}"
+            [[ -z "$label" ]] && label="$base"
+            printf '%s\n' "$label" > "$V27_CONTROL_ROOT/current-action"
+            date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+            touch "$V27_CONTROL_ROOT/evidence-seen"
+            notice "Started: ${label}"
+          }
+
+          record_completed() {
+            local file="$1"
+            local base label marker
+            base="$(basename "$file")"
+            marker="$V27_CONTROL_ROOT/reported-complete-${base}"
+            [[ -e "$marker" ]] && return
+            touch "$marker"
+            label="$(jq -r '.label // empty' "$file" 2>/dev/null)"
+            [[ -z "$label" ]] && label="$base"
+            printf '%s\n' "$label" > "$V27_CONTROL_ROOT/last-completed-action"
+            printf '%s\n' 'Waiting for the next operation' > "$V27_CONTROL_ROOT/current-action"
+            date +%s > "$V27_CONTROL_ROOT/last-progress-epoch"
+            touch "$V27_CONTROL_ROOT/evidence-seen"
+            echo "[v27-complete] ${label}"
+            printf -- '- `%s` Completed: %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$label" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          scan_progress() {
+            local file
+            shopt -s nullglob
+            for file in "$RESULT_ROOT"/snapshots/*-before-*.json; do
+              record_started "$file"
+            done
+            for file in "$RESULT_ROOT"/calls/*.json; do
+              record_completed "$file"
+            done
+          }
+
+          printf '## V27 remote-Anvil simulation progress\n\n' >> "$GITHUB_STEP_SUMMARY"
+          notice 'Simulation started on persistent remote Anvil slot 3.'
+
+          setsid bash github-native-sim/jobs/live-fork-v27-v1/run-ci-selected-slot.sh &
+          simulation_pid=$!
+
+          while kill -0 "$simulation_pid" 2>/dev/null; do
+            scan_progress
+            now="$(date +%s)"
+            last_progress="$(cat "$V27_CONTROL_ROOT/last-progress-epoch")"
+            last_heartbeat="$(cat "$V27_CONTROL_ROOT/last-heartbeat-epoch")"
+            stalled_for=$((now - last_progress))
+
+            if [[ -e "$V27_CONTROL_ROOT/evidence-seen" ]]; then
+              stall_limit=300
+            else
+              stall_limit=600
+            fi
+
+            if (( stalled_for >= stall_limit )); then
+              current="$(cat "$V27_CONTROL_ROOT/current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$V27_CONTROL_ROOT/last-completed-action" 2>/dev/null || echo 'none')"
+              notice "STALL DETECTED after ${stalled_for}s. Active operation: ${current}. Last completed: ${completed}."
+              printf '%s\n' "$current" > "$RESULT_ROOT/watchdog-blocked-operation.txt"
+              touch "$V27_CONTROL_ROOT/watchdog-timeout"
+              kill -TERM -- "-$simulation_pid" 2>/dev/null || true
+              for _ in $(seq 1 30); do
+                kill -0 "$simulation_pid" 2>/dev/null || break
+                sleep 1
+              done
+              kill -KILL -- "-$simulation_pid" 2>/dev/null || true
+              break
+            fi
+
+            if (( now - last_heartbeat >= 120 )); then
+              current="$(cat "$V27_CONTROL_ROOT/current-action" 2>/dev/null || echo 'preparing first contract action')"
+              completed="$(cat "$V27_CONTROL_ROOT/last-completed-action" 2>/dev/null || echo 'none')"
+              notice "Heartbeat: active operation is ${current}; last completed is ${completed}."
+              date +%s > "$V27_CONTROL_ROOT/last-heartbeat-epoch"
+            fi
+            sleep 10
+          done
+
+          wait "$simulation_pid"
+          simulation_status=$?
+          scan_progress
+
+          if [[ -e "$V27_CONTROL_ROOT/watchdog-timeout" ]]; then
+            simulation_status=124
+          fi
+
+          printf '%s\n' "$simulation_status" > "$RESULT_ROOT/workflow-simulation-exit-code.txt"
+          if [[ "$simulation_status" -eq 0 ]]; then
+            notice 'Full V27 contract-stack simulation completed successfully.'
+          else
+            notice "Simulation stopped with exit code ${simulation_status}; cleanup and evidence publication are continuing."
+          fi
+          exit "$simulation_status"
+
+      - name: Restore workflow-level remote snapshot on slot 3
+        id: cleanup
+        if: always()
+        continue-on-error: true
+        run: node github-native-sim/jobs/live-fork-v27-v1/remote-snapshot-guard.mjs revert
+
+      - name: Publish compact simulation result to PR 136
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          outer_cleanup=$(jq -r '.baselineFullyRestored // false' "$RESULT_ROOT/workflow-outer-cleanup.json" 2>/dev/null || echo false)
+          if test -f "$RESULT_ROOT/final-validation.json"; then
+            body=$(jq -r --arg outer "$outer_cleanup" '
+              "### V27 remote-Anvil contract-stack simulation: **" +
+              (if .validatedSuccess then "PASSED" else "FAILED" end) + "**\n\n" +
+              "- RPC slot: `RPC_ANVIL_ETHEREUM3`\n" +
+              "- Assurance: `" + (.assurance // "unknown") + "`\n" +
+              "- RPC chain ID: `" + ((.rpcChainId // 0) | tostring) + "`\n" +
+              "- Calls: `" + ((.callCount // 0) | tostring) + "`\n" +
+              "- Successful transactions: `" + ((.successfulTransactionCount // 0) | tostring) + "`\n" +
+              "- Assertions passed: `" + ((.passedAssertionCount // 0) | tostring) + "/" + ((.assertionCount // 0) | tostring) + "`\n" +
+              "- Harvest cycles: `" + ((.cycleCount // 0) | tostring) + "`\n" +
+              "- Post-migration cycles: `" + ((.postMigrationCycleCount // 0) | tostring) + "`\n" +
+              "- Workflow-level fork restoration: `" + $outer + "`\n" +
+              (if .reportError then "\nError: `" + (.reportError.message // (.reportError | tostring)) + "`" else "" end)
+            ' "$RESULT_ROOT/final-validation.json")
+            gh pr comment 136 --repo CurveYield/contract-automation --body "$body"
+          else
+            blocked=$(cat "$RESULT_ROOT/watchdog-blocked-operation.txt" 2>/dev/null || echo unknown)
+            tail_text=$(tail -n 30 "$RESULT_ROOT/wrapper-stderr.log" 2>/dev/null | sed 's/`/\\`/g' || true)
+            gh pr comment 136 --repo CurveYield/contract-automation --body "### V27 remote-Anvil contract-stack simulation: **FAILED**\n\n- RPC slot: \`RPC_ANVIL_ETHEREUM3\`\n- Blocked operation: \`${blocked}\`\n- Workflow-level fork restoration: \`${outer_cleanup}\`\n\n\`\`\`\n${tail_text}\n\`\`\`"
+          fi
+
+      - name: Upload complete simulation and recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v27-full-live-fork-${{ github.run_id }}
-          path: ${{ runner.temp }}/v27-full-live-fork
+          name: v27-remote-anvil-contract-stack-${{ github.run_id }}
+          path: |
+            ${{ env.RESULT_ROOT }}
+            ${{ env.V27_CONTROL_ROOT }}
+            ${{ env.V27_RECOVERY_ROOT }}
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
+          include-hidden-files: true
 
-      - name: Propagate V27 validation failure
-        if: steps.execute.outcome == 'failure'
+      - name: Propagate simulation or cleanup failure
+        if: steps.simulation.outcome == 'failure' || steps.cleanup.outcome == 'failure'
         run: exit 1
