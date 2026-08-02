@@ -20,15 +20,15 @@ const kinds = [
 ];
 
 test('strict Round 3 contracts have exact frozen required/optional registries and stable errors', async () => {
-  const { UI_ENTITY_KINDS, UI_CONTRACTS, UI_ERROR_CODES, parseUiEntity } = await load('packages/audit-ui-contracts/src/index.mjs');
-  assert.deepEqual(UI_ENTITY_KINDS, kinds);
-  assert.deepEqual(Object.keys(UI_CONTRACTS), kinds);
+  const { UI_ENTITY_KINDS_V2, UI_CONTRACTS_V2, UI_ERROR_CODES, parseUiEntity } = await load('packages/audit-ui-contracts/src/index.mjs');
+  assert.deepEqual(UI_ENTITY_KINDS_V2, kinds);
+  assert.deepEqual(Object.keys(UI_CONTRACTS_V2), kinds);
   assert.ok(UI_ERROR_CODES.includes('UI_COMPAT_VERSION'));
   assert.ok(UI_ERROR_CODES.includes('UI_CLIENT_UNAUTHORIZED'));
   for (const kind of kinds) {
-    assert.equal(Object.isFrozen(UI_CONTRACTS[kind]), true);
-    assert.equal(Object.isFrozen(UI_CONTRACTS[kind].required), true);
-    assert.equal(Object.isFrozen(UI_CONTRACTS[kind].optional), true);
+    assert.equal(Object.isFrozen(UI_CONTRACTS_V2[kind]), true);
+    assert.equal(Object.isFrozen(UI_CONTRACTS_V2[kind].required), true);
+    assert.equal(Object.isFrozen(UI_CONTRACTS_V2[kind].optional), true);
   }
   assert.throws(() => parseUiEntity('quota', { id: 'q', remaining: 1, attacker: true }), { code: 'UI_CONTRACT_UNKNOWN_KEY' });
 });
@@ -66,7 +66,9 @@ test('canonical Round 3 view-model exports are exact, recursively frozen, and ex
 test('version-locked compatibility adapter composes inert API and service fixtures without foreign imports', async () => {
   const compat = await load('packages/audit-web-compat/src/index-v1.mjs');
   assert.deepEqual(compat.COMPATIBILITY_VERSIONS, {
-    api: 'audit-api-public/v1', service: 'audit-service-reporting/v1', output: 'audit-web-compat/v1'
+    api: 'audit-api-public/v1',
+    service: 'audit-service-reporting/v1',
+    output: 'audit-web-compat/v1'
   });
   const output = compat.composeWebCompatibility({
     api: {
@@ -122,10 +124,10 @@ test('compatibility fixtures are versioned inert JSON and produce deterministic 
 });
 
 test('expanded routing and state rendering are deterministic, bounded, and execution-disabled', async () => {
-  const { AUDIT_ROUTES, resolveAuditRoute } = await load('apps/audit-web/src/routes.mjs');
+  const { AUDIT_ROUTES_V2, resolveAuditRoute } = await load('apps/audit-web/src/routes.mjs');
   const { renderState, renderShell } = await load('apps/audit-web/src/render.mjs');
-  assert.equal(AUDIT_ROUTES.length, 17);
-  for (const route of AUDIT_ROUTES) assert.equal(route.executionAvailable, false);
+  assert.equal(AUDIT_ROUTES_V2.length, 17);
+  for (const route of AUDIT_ROUTES_V2) assert.equal(route.executionAvailable, false);
   assert.equal(resolveAuditRoute('/profiles/profile-solidity').name, 'profileDetail');
   assert.equal(resolveAuditRoute('/release').name, 'releaseProvenance');
   assert.equal(resolveAuditRoute('/reports?token=secret').query.token, undefined);
