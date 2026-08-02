@@ -1,35 +1,26 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "state": "blocked",
+  "state": "ready",
   "lastConsumedSequence": 8,
   "activeSequence": null,
   "activeMessageId": null,
   "issueNumber": 122,
-  "branch": "audit-round4/full-platform-integration-v1",
-  "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "branch": "audit-round4/full-platform-integration-v2",
+  "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
   "finalSha": null,
   "recommendation": null,
-  "reportReference": "https://github.com/CurveYield/contract-automation/issues/122#issuecomment-5158815848",
-  "blockers": [
-    "gate5-wrong-base-ancestry"
-  ],
+  "reportReference": null,
+  "blockers": [],
   "round": 4,
   "roundType": "final-static-integration-and-acceptance",
-  "stage": "sequence-8-closed-blocked",
-  "closeout": {
-    "reasonCode": "gate5-wrong-base-ancestry",
-    "checkpointHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
-    "checkpointCommentId": 5158815848,
-    "checkpointUrl": "https://github.com/CurveYield/contract-automation/issues/122#issuecomment-5158815848",
-    "subsystemIntakePerformed": false,
-    "v1BranchFrozen": true
-  },
-  "previousRound": {
-    "issueNumber": 114,
-    "finalSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
-    "recommendation": "ACCEPT WITH DOCUMENTED REPAIR",
-    "reportCommentId": 5156779012
-  },
-  "updatedAt": "2026-08-02T16:23:37Z"
+  "stage": "sequence-9-ready",
+  "priorSequence": 8,
+  "priorState": "blocked",
+  "priorBranch": "audit-round4/full-platform-integration-v1",
+  "priorStartingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "priorCheckpointHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
+  "priorReasonCode": "gate5-wrong-base-ancestry",
+  "priorReportReference": "https://github.com/CurveYield/contract-automation/issues/122#issuecomment-5158815848",
+  "updatedAt": "2026-08-02T16:32:58Z"
 }
