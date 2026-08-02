@@ -53,6 +53,14 @@ function normalizeLabel(value, fallback) {
   return value.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 120) || fallback;
 }
 
+function normalizeCacheScope(value) {
+  const scope = normalizeLabel(value, 'public');
+  if (!/^[A-Za-z0-9._:-]+$/.test(scope) || /(?:api[_-]?key|authorization|password|secret|signature|token)/i.test(scope)) {
+    throw new AuditClientError('UI_CLIENT_UNSAFE_PATH', 'The audit cache scope is not allowed.');
+  }
+  return scope;
+}
+
 function normalizeEtag(value) {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_ETAG || /[\r\n]/.test(value)) return null;
   return value;
@@ -119,7 +127,7 @@ export function createAuditClient({ transport } = {}) {
   function request(path, { slot = 'default', cacheScope = 'public', allowStaleOnError = false } = {}) {
     const safePath = normalizePath(path);
     const safeSlot = normalizeLabel(slot, 'default');
-    const safeScope = normalizeLabel(cacheScope, 'public');
+    const safeScope = normalizeCacheScope(cacheScope);
     const key = cacheKey(safeScope, safePath);
     const requestKey = `${safeSlot}\u0000${key}`;
     const prior = active.get(safeSlot);
