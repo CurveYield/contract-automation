@@ -1,0 +1,32 @@
+{
+  "version": "v27-v3-run-result/v1",
+  "workflowRunId": 30725450917,
+  "workflowConclusion": "failure",
+  "headSha": "43cc6809c8870569d44d94308cc7fcb6b8fa2edb",
+  "createdAt": "2026-08-02T00:34:13Z",
+  "updatedAt": "2026-08-02T00:34:50Z",
+  "runUrl": "https://github.com/CurveYield/contract-automation/actions/runs/30725450917",
+  "artifact": {
+    "id": 8826162258,
+    "name": "CurveYield-V27-Ganache-Full-Data-Report-v3-30725450917",
+    "sizeBytes": 23551,
+    "digest": "sha256:dfb997dfa97c0e2781c63a8bfb8052377b3f1522d36138a96f1ceb93117bbb1a"
+  },
+  "reportFound": false,
+  "reportStatus": null,
+  "reportError": null,
+  "finishedAt": null,
+  "callCount": 0,
+  "snapshotCount": 0,
+  "assertionCount": 0,
+  "passedAssertionCount": 0,
+  "cycleCount": 0,
+  "postMigrationCycleCount": 0,
+  "supplementalTestCount": 0,
+  "deployments": null,
+  "migration": null,
+  "finalJournalHash": null,
+  "forkBlock": null,
+  "ybCompatibility": null,
+  "compatibilityBuild": null
+}
