@@ -46,7 +46,8 @@ test('GitHub Direct result adapter rejects schema skew, fallback and identity/st
     acceptedResult({ resultId: `direct-service-result-${'c'.repeat(24)}` }),
     acceptedResult({ data: { currentState: { jobId: 'other', targetCommitSha: sha, state: 'awaiting_executor' } } }),
     acceptedResult({ data: { currentState: { jobId: 'job-1', targetCommitSha: sha, state: 'completed' } } }),
-    acceptedResult({ token: 'secret' })
+    acceptedResult({ token: 'secret' }),
+    acceptedResult({ commandKind: 'status', state: 'completed', data: { currentState: { jobId: 'job-1', targetCommitSha: sha, state: 'attacker_state' } } })
   ];
   for (const input of invalid) assert.throws(() => adaptGitHubDirectResultV2(input), (error) => error instanceof AuditWebCompatibilityError);
 });
