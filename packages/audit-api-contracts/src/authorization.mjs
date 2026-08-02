@@ -81,7 +81,7 @@ function instant(value) {
   return parsed.getTime();
 }
 
-function readIdentityScope(env, identity) {
+function readIdentityScope(env, identity, optional = false) {
   const scopes = env?.AUDIT_READ_SCOPES;
   let descriptor;
   try {
@@ -91,7 +91,10 @@ function readIdentityScope(env, identity) {
   } catch {
     forbidden();
   }
-  if (!descriptor || !Object.hasOwn(descriptor, 'value') || descriptor.value === undefined) forbidden();
+  if (!descriptor || !Object.hasOwn(descriptor, 'value') || descriptor.value === undefined) {
+    if (optional) return null;
+    forbidden();
+  }
   try { return validateExternalValue(descriptor.value, '$.readScope'); }
   catch { forbidden(); }
 }
@@ -155,13 +158,21 @@ function assertResource(resourceType, resourceId) {
 export async function authorizeAuditReadRequest(request, env = {}, {
   routeScope,
   resourceType = null,
-  resourceId = null
+  resourceId = null,
+  allowedIdentities = null
 } = {}) {
   const requiredScope = assertRouteScope(routeScope);
   const binding = assertResource(resourceType, resourceId);
   const authenticated = await authenticateAuditRead(request, env);
   const identity = authenticated.identity;
-  const rawScope = readIdentityScope(env, identity);
+  if (allowedIdentities !== null) {
+    if (!Array.isArray(allowedIdentities) || !allowedIdentities.includes(identity)) forbidden();
+  }
+  const rawScope = readIdentityScope(
+    env,
+    identity,
+    identity !== 'service-read' && requiredScope === AUDIT_ROUTE_SCOPES.catalogRead
+  );
 
   if (identity === 'service-read') {
     const grant = serviceGrant(rawScope, env);
@@ -179,7 +190,9 @@ export async function authorizeAuditReadRequest(request, env = {}, {
 
   const allowed = DEFAULT_SCOPES[identity];
   if (!allowed || !allowed.includes(requiredScope)) forbidden();
-  const scope = baseScope(rawScope);
+  const scope = rawScope === null
+    ? { tenantId: 'global', workspaceId: 'global' }
+    : baseScope(rawScope);
   return freeze({
     identity,
     tenantId: scope.tenantId,
