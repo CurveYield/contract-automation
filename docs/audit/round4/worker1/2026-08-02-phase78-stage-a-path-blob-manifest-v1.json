@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "audit-round4-worker1-phase78-stage-a-path-blob-manifest-v1",
+  "repository": "CurveYield/contract-automation",
+  "workerId": "worker-1",
+  "issueNumber": 121,
+  "startingSha": "4d7513b7eabd2e2217b1e3fed43d999df828a93f",
+  "reviewedCodeCandidateSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
+  "manifestScope": "Every changed path present in the reviewed code/test candidate SHA. Documentation emitted after that SHA is intentionally referenced separately to avoid a self-referential blob manifest.",
+  "pathCount": 27,
+  "paths": [
+    {"path":"docs/audit/round4/worker1/2026-08-02-phase78-api-compat-review-plan-v1.md","blobSha":"4e01b6466bafa39e577c22d14516de6f36e52a83","kind":"review-plan"},
+    {"path":"docs/audit/round4/worker1/2026-08-02-phase78-api-route-export-compatibility-v1.md","blobSha":"032878fcc0d7beaecd02e6b1f130a19734b75cf9","kind":"compatibility-map"},
+    {"path":"packages/audit-phase78-service/src/constants.mjs","blobSha":"1a76f8059c5007ec774a9e2556a9b6189ece57e8","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/contracts.mjs","blobSha":"b6a51fb2111299b6646ce33e234a01a69eb70343","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/authorization.mjs","blobSha":"6e27c69f116b8b12b295f97144f9fdc26751143c","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/orchestration.mjs","blobSha":"893adb94200390718e669a37ead686500986a4c4","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/pagination.mjs","blobSha":"8335701213031e752aa9f5c5287183e7801ad70b","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/errors.mjs","blobSha":"e64ef5e5cae4b872f44eea186ce04a2f4894ff5f","kind":"production"},
+    {"path":"packages/audit-phase78-service/src/index.mjs","blobSha":"b25e209029be6a5852f49e2670e57f433277b6f3","kind":"production"},
+    {"path":"packages/audit-fork-reporting/src/common.mjs","blobSha":"6471bd3361199d19c26e1aac1829b3f1dd3503ab","kind":"production"},
+    {"path":"packages/audit-fork-reporting/src/fork-projections.mjs","blobSha":"7975305c5e0b2054012431cd6ade10a484c418ec","kind":"production"},
+    {"path":"packages/audit-fork-reporting/src/checkpoint-projections.mjs","blobSha":"b08a3f42fd24543e0620d3a30b3e2885e86d3046","kind":"production"},
+    {"path":"packages/audit-fork-reporting/src/delete-projection.mjs","blobSha":"dc1c36e64bd6551805bf43ecd6667c8cfb735336","kind":"production"},
+    {"path":"packages/audit-clean-room-reporting/src/campaign-merge.mjs","blobSha":"d9be6609e835cdd860ed58c528e08cfbe406393f","kind":"production"},
+    {"path":"packages/audit-clean-room-reporting/src/hidden.mjs","blobSha":"bc3ecbd7ea6e18e01da94c64fde4dcc5cc56a836","kind":"production"},
+    {"path":"packages/audit-clean-room-reporting/src/provenance.mjs","blobSha":"bde91d3e35b6d9031ed963d500de1a9c7f06c5f3","kind":"production"},
+    {"path":"packages/audit-clean-room-reporting/src/relations.mjs","blobSha":"7082f86aeb4ef1ab946660cf8569ecfd68b470e1","kind":"production"},
+    {"path":"packages/audit-phase78-publication/src/plans.mjs","blobSha":"4e0eb4b4a721ed888bffc676fabbaadbba6609da","kind":"production"},
+    {"path":"packages/audit-phase78-publication/src/recovery.mjs","blobSha":"13e6f9ca96f70188c5f4e4a0391b1d3daf882350","kind":"production"},
+    {"path":"test/audit-round4-worker1-source-review-red-v1.test.mjs","blobSha":"482068754b5209c40557c99700e59626c7661324","kind":"test"},
+    {"path":"test/audit-round4-worker1-service-compat-v1.test.mjs","blobSha":"6cb932840ecbec730ce067baf7bffcf955389ebe","kind":"test"},
+    {"path":"test/audit-round4-worker1-report-compat-v1.test.mjs","blobSha":"f071d762c665c126d54ba3bbadf5e99f720aa3b8","kind":"test"},
+    {"path":"test/audit-round4-worker1-publication-replay-v1.test.mjs","blobSha":"e3b8e953d00f033cf9419b86bffab55574000cfc","kind":"test"},
+    {"path":"test/audit-round4-worker1-phase78-e2e-v1.test.mjs","blobSha":"3bcd11ff46f2f8a864a8fbdce67d21790eb8e54d","kind":"test"},
+    {"path":"test/audit-round4-worker1-static-boundary-v1.test.mjs","blobSha":"ee9eacf2c18563c841b91b5a16f7cc16475132f0","kind":"test"},
+    {"path":"test/fixtures/audit-round4/worker1/source-verification-v1.json","blobSha":"0250bdb8ed58d22cdc694950a4194537924b9c26","kind":"fixture"},
+    {"path":"test/fixtures/audit-round4/worker1/multi-tenant-scenarios-v1.json","blobSha":"a7c33dc441e1dc1467acb853bf5d806cdfb305e2","kind":"fixture"}
+  ],
+  "counts": {
+    "production": 17,
+    "tests": 6,
+    "fixtures": 2,
+    "preCandidateDocumentation": 2,
+    "unowned": 0,
+    "frozen": 0
+  },
+  "protectedAddonProof": {
+    "baselinePath": "test/fixtures/audit-round3-phase78/protected-addon-baseline-v1.json",
+    "baselineBlobSha": "526971062e8049f9f85390a7863fe3c5e3085a33",
+    "presentPaths": 30,
+    "expectedAbsentPaths": 2,
+    "changedProtectedPathsFromStartingSha": 0,
+    "proof": "The exact starting SHA contains the recorded protected baseline; the reviewed candidate comparison has no protected path entry, therefore every protected blob is byte-identical to the starting source."
+  },
+  "frozenExternalOverlap": {
+    "pullRequest": 126,
+    "changedPaths": 0
+  },
+  "selfReferenceRule": {
+    "thisManifestIncludedInPaths": false,
+    "reason": "A file cannot truthfully include its own Git blob SHA. Its blob SHA and the later documentation head are recorded by the issue closeout and Worker 1 status."
+  }
+}
