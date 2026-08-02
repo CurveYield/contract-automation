@@ -1,134 +1,99 @@
 import {
-  createCampaignViewModel,
-  createCapabilityViewModel,
-  createCatalogToolViewModel,
-  createCleanRoomViewModel,
-  createDiagnosticViewModel,
-  createForkViewModel,
-  createGitHubDirectStatusViewModel,
-  createJobViewModel,
-  createOperationBudgetViewModel,
-  createParserViewModel,
-  createProfileViewModel,
-  createQuotaViewModel,
-  createReleaseProvenanceViewModel,
-  createReportViewModel,
-  createResultViewModel,
-  createRetentionViewModel,
-  createWorkspaceViewModel,
-  deepFreeze
+  createCampaignViewModel, createCapabilityViewModel, createCatalogToolViewModel,
+  createCleanRoomViewModel, createDiagnosticViewModel, createForkViewModel,
+  createGitHubDirectStatusViewModel, createJobViewModel, createOperationBudgetViewModel,
+  createParserViewModel, createProfileViewModel, createQuotaViewModel,
+  createReleaseProvenanceViewModel, createReportViewModel, createResultViewModel,
+  createRetentionViewModel, createWorkspaceViewModel, deepFreeze
 } from '../../audit-report-view-model/src/index.mjs';
+import {
+  DIRECT_ERROR_SCHEMA, DIRECT_MODE, DIRECT_RESULT_SCHEMA,
+  adaptDirectErrorV1, adaptDirectResultV2
+} from './github-direct-v2.mjs';
 
-export const COMPATIBILITY_VERSIONS = Object.freeze({
-  api: 'audit-api-public/v1',
-  service: 'audit-service-reporting/v1',
-  output: 'audit-web-compat/v1'
+export const COMPATIBILITY_VERSIONS = Object.freeze({ api: 'audit-api-public/v1', service: 'audit-service-reporting/v1', output: 'audit-web-compat/v1' });
+export const ROUND4_COMPATIBILITY_VERSIONS = Object.freeze({
+  api: COMPATIBILITY_VERSIONS.api, service: COMPATIBILITY_VERSIONS.service,
+  githubDirectMode: 'github-direct-audit-v1',
+  githubDirectResult: 'github-direct-service-result-v2',
+  githubDirectError: 'github-direct-service-error-v1',
+  output: 'audit-web-compat/v2'
 });
 
 export class AuditWebCompatibilityError extends TypeError {
-  constructor(code, message) {
-    super(message);
-    this.name = 'AuditWebCompatibilityError';
-    this.code = code;
-  }
+  constructor(code, message) { super(message); this.name = 'AuditWebCompatibilityError'; this.code = code; }
 }
-
-function descriptors(value) {
-  if (value === null || typeof value !== 'object') return null;
-  try { return Object.getOwnPropertyDescriptors(value); } catch { return null; }
-}
-
-function ownValue(value, key) {
-  const map = descriptors(value);
-  const descriptor = map?.[key];
-  return descriptor?.enumerable && Object.hasOwn(descriptor, 'value') ? descriptor.value : undefined;
-}
-
-function denseArray(value, limit = 500) {
+function descriptors(value) { if (value === null || typeof value !== 'object') return null; try { return Object.getOwnPropertyDescriptors(value); } catch { return null; } }
+function own(value, key) { const item = descriptors(value)?.[key]; return item?.enumerable && Object.hasOwn(item, 'value') ? item.value : undefined; }
+function keys(value) { const map = descriptors(value); return map ? Object.keys(map).filter((key) => map[key]?.enumerable && Object.hasOwn(map[key], 'value')) : null; }
+function fail(code, message) { throw new AuditWebCompatibilityError(code, message); }
+function dense(value, limit = 500) {
   try { if (!Array.isArray(value)) return []; } catch { return []; }
-  const map = descriptors(value);
-  if (!map) return [];
-  const output = [];
-  const keys = Object.keys(map).filter((key) => /^(?:0|[1-9]\d*)$/.test(key)).map(Number).sort((a, b) => a - b);
-  for (const key of keys) {
-    const descriptor = map[String(key)];
-    if (descriptor?.enumerable && Object.hasOwn(descriptor, 'value')) output.push(descriptor.value);
-    if (output.length >= limit) break;
-  }
-  return output;
+  const map = descriptors(value); if (!map) return [];
+  return Object.keys(map).filter((key) => /^(?:0|[1-9]\d*)$/.test(key)).map(Number).sort((a, b) => a - b)
+    .filter((key) => map[String(key)]?.enumerable && Object.hasOwn(map[String(key)], 'value')).slice(0, limit).map((key) => map[String(key)].value);
 }
-
-function requireFixture(value, expectedVersion, label) {
-  if (!descriptors(value)) throw new AuditWebCompatibilityError('UI_COMPAT_INPUT', `${label} compatibility fixture must be a readable record.`);
-  if (ownValue(value, 'version') !== expectedVersion) throw new AuditWebCompatibilityError('UI_COMPAT_VERSION', `${label} compatibility version is not supported.`);
+function fixture(value, version, label) {
+  if (!descriptors(value)) fail('UI_COMPAT_INPUT', `${label} fixture must be readable.`);
+  if (own(value, 'version') !== version) fail('UI_COMPAT_VERSION', `${label} fixture version is unsupported.`);
   return value;
 }
-
-function projectList(source, key, create) {
-  return denseArray(ownValue(source, key)).map(create).filter((item) => item.id).sort((a, b) => a.id.localeCompare(b.id));
+function project(source, key, create) { return dense(own(source, key)).map(create).filter((item) => item.id).sort((a, b) => a.id.localeCompare(b.id)); }
+function legacyDirect(input) {
+  const found = keys(input); if (!found) return null;
+  const required = ['id', 'status'], allowed = new Set([...required, 'repository', 'targetSha', 'checkStatus', 'reportId', 'updatedAt', 'reason']);
+  if (required.some((key) => !found.includes(key)) || found.some((key) => !allowed.has(key))) fail('UI_COMPAT_INPUT', 'Legacy GitHub Direct status has invalid fields.');
+  return createGitHubDirectStatusViewModel(Object.fromEntries(found.map((key) => [key, own(input, key)])));
+}
+export function adaptGitHubDirectResultV2(input) { return adaptDirectResultV2(input, AuditWebCompatibilityError); }
+export function adaptGitHubDirectErrorV1(input) { return adaptDirectErrorV1(input, AuditWebCompatibilityError); }
+export function adaptLegacyGitHubDirectStatusV1(input) { return legacyDirect(input); }
+function direct(input) {
+  if (!descriptors(input)) return null;
+  const schema = own(input, 'schemaVersion');
+  if (schema === DIRECT_RESULT_SCHEMA) return adaptGitHubDirectResultV2(input);
+  if (schema === DIRECT_ERROR_SCHEMA) return adaptGitHubDirectErrorV1(input);
+  if (schema !== undefined) fail('UI_COMPAT_VERSION', 'GitHub Direct schema is unsupported.');
+  return legacyDirect(input);
 }
 
 export function adaptApiFixture(input) {
-  const source = requireFixture(input, COMPATIBILITY_VERSIONS.api, 'API');
-  const githubDirectInput = ownValue(source, 'githubDirect');
+  const source = fixture(input, COMPATIBILITY_VERSIONS.api, 'API');
+  const githubDirectInput = own(source, 'githubDirect');
+  const githubDirect = descriptors(githubDirectInput)
+    ? (own(githubDirectInput, 'schemaVersion') === DIRECT_RESULT_SCHEMA ? adaptGitHubDirectResultV2(githubDirectInput) : direct(githubDirectInput))
+    : null;
   return deepFreeze({
     version: COMPATIBILITY_VERSIONS.api,
-    capabilities: projectList(source, 'capabilities', createCapabilityViewModel),
-    tools: projectList(source, 'tools', createCatalogToolViewModel),
-    profiles: projectList(source, 'profiles', createProfileViewModel),
-    parsers: projectList(source, 'parsers', createParserViewModel),
-    results: projectList(source, 'results', createResultViewModel),
-    githubDirect: descriptors(githubDirectInput) ? createGitHubDirectStatusViewModel(githubDirectInput) : null,
-    executionAvailable: false
+    capabilities: project(source, 'capabilities', createCapabilityViewModel), tools: project(source, 'tools', createCatalogToolViewModel),
+    profiles: project(source, 'profiles', createProfileViewModel), parsers: project(source, 'parsers', createParserViewModel),
+    results: project(source, 'results', createResultViewModel), githubDirect, executionAvailable: false
   });
 }
-
 export function adaptServiceFixture(input) {
-  const source = requireFixture(input, COMPATIBILITY_VERSIONS.service, 'Service');
-  const releaseInput = ownValue(source, 'release');
+  const source = fixture(input, COMPATIBILITY_VERSIONS.service, 'Service');
   return deepFreeze({
     version: COMPATIBILITY_VERSIONS.service,
-    reports: projectList(source, 'reports', createReportViewModel),
-    workspaces: projectList(source, 'workspaces', createWorkspaceViewModel),
-    campaigns: projectList(source, 'campaigns', createCampaignViewModel),
-    jobs: projectList(source, 'jobs', createJobViewModel),
-    forks: projectList(source, 'forks', createForkViewModel),
-    cleanRooms: projectList(source, 'cleanRooms', createCleanRoomViewModel),
-    quotas: projectList(source, 'quotas', createQuotaViewModel),
-    retention: projectList(source, 'retention', createRetentionViewModel),
-    operationBudgets: projectList(source, 'operationBudgets', createOperationBudgetViewModel),
-    diagnostics: denseArray(ownValue(source, 'diagnostics')).map(createDiagnosticViewModel).sort((a, b) => a.code.localeCompare(b.code)),
-    release: descriptors(releaseInput) ? createReleaseProvenanceViewModel(releaseInput) : null,
+    reports: project(source, 'reports', createReportViewModel), workspaces: project(source, 'workspaces', createWorkspaceViewModel),
+    campaigns: project(source, 'campaigns', createCampaignViewModel), jobs: project(source, 'jobs', createJobViewModel),
+    forks: project(source, 'forks', createForkViewModel), cleanRooms: project(source, 'cleanRooms', createCleanRoomViewModel),
+    quotas: project(source, 'quotas', createQuotaViewModel), retention: project(source, 'retention', createRetentionViewModel),
+    operationBudgets: project(source, 'operationBudgets', createOperationBudgetViewModel),
+    diagnostics: dense(own(source, 'diagnostics')).map(createDiagnosticViewModel).sort((a, b) => a.code.localeCompare(b.code)),
+    release: descriptors(own(source, 'release')) ? createReleaseProvenanceViewModel(own(source, 'release')) : null,
     executionAvailable: false
   });
 }
-
-export function composeWebCompatibility({ api, service } = {}) {
-  if (arguments.length === 0 || (api === undefined && service === undefined)) {
-    throw new AuditWebCompatibilityError('UI_COMPAT_INPUT', 'API and service compatibility fixtures are required.');
-  }
-  const apiModel = adaptApiFixture(api);
-  const serviceModel = adaptServiceFixture(service);
+function compose(apiModel, serviceModel, version) {
   return deepFreeze({
-    version: COMPATIBILITY_VERSIONS.output,
-    sourceVersions: Object.freeze({ api: apiModel.version, service: serviceModel.version }),
-    capabilities: apiModel.capabilities,
-    tools: apiModel.tools,
-    profiles: apiModel.profiles,
-    parsers: apiModel.parsers,
-    results: apiModel.results,
-    githubDirect: apiModel.githubDirect,
-    reports: serviceModel.reports,
-    workspaces: serviceModel.workspaces,
-    campaigns: serviceModel.campaigns,
-    jobs: serviceModel.jobs,
-    forks: serviceModel.forks,
-    cleanRooms: serviceModel.cleanRooms,
-    quotas: serviceModel.quotas,
-    retention: serviceModel.retention,
-    operationBudgets: serviceModel.operationBudgets,
-    diagnostics: serviceModel.diagnostics,
-    release: serviceModel.release,
-    executionAvailable: false
+    version, sourceVersions: Object.freeze({ api: apiModel.version, service: serviceModel.version, ...(apiModel.githubDirect?.sourceSchema ? { githubDirect: apiModel.githubDirect.sourceSchema } : {}) }),
+    capabilities: apiModel.capabilities, tools: apiModel.tools, profiles: apiModel.profiles, parsers: apiModel.parsers,
+    results: apiModel.results, githubDirect: apiModel.githubDirect, reports: serviceModel.reports, workspaces: serviceModel.workspaces,
+    campaigns: serviceModel.campaigns, jobs: serviceModel.jobs, forks: serviceModel.forks, cleanRooms: serviceModel.cleanRooms,
+    quotas: serviceModel.quotas, retention: serviceModel.retention, operationBudgets: serviceModel.operationBudgets,
+    diagnostics: serviceModel.diagnostics, release: serviceModel.release, executionAvailable: false
   });
 }
+export function composeWebCompatibility({ api, service } = {}) { return compose(adaptApiFixture(api), adaptServiceFixture(service), COMPATIBILITY_VERSIONS.output); }
+export function composeRound4WebCompatibility({ api, service } = {}) { return compose(adaptApiFixture(api), adaptServiceFixture(service), ROUND4_COMPATIBILITY_VERSIONS.output); }
+export { DIRECT_MODE, DIRECT_RESULT_SCHEMA, DIRECT_ERROR_SCHEMA };
