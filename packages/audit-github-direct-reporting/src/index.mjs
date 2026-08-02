@@ -1,0 +1,101 @@
+import { exactKeys,validateDirectRequest,validateResultManifest,validateReportIndex,identifier,timestamp,denseArray,integer,boundedString,digest,booleanValue,frozenClone,fail,createResultManifest,createReportIndex,commitSha,canonicalJson } from '../../audit-github-direct-protocol/src/index.mjs';
+import { planCheckPublication,planCommentPublication,planStatusPublication,createArtifactMetadata,validateArtifactMetadata,validatePublicationPlan } from '../../audit-github-direct-adapter/src/index.mjs';
+import { planRunnerPublication } from '../../audit-github-direct-runner/src/index.mjs';
+import { planImmutableCreate, validateLedgerMutation, ledgerPathInfo } from '../../audit-github-direct-ledger/src/index.mjs';
+function terminalParts(input){const v=exactKeys(input,['request','outcome','resultId','reportId','commentBody','publishedAt'],'$'),request=validateDirectRequest(v.request),resultId=identifier(v.resultId,'$.resultId'),reportId=identifier(v.reportId,'$.reportId'),commentBody=boundedString(v.commentBody,'$.commentBody',16_000),publishedAt=timestamp(v.publishedAt,'$.publishedAt'),runnerPlan=planRunnerPublication({request,outcome:v.outcome,resultId,reportId,publishedAt}),unavailable=runnerPlan.resultManifest.executionState==='execution_plane_unavailable',statusPlan=planStatusPublication({request,state:unavailable?'error':'success',description:unavailable?'Execution plane unavailable':'Modeled fixture result available',context:'curveyield/github-direct-audit',at:publishedAt}),commentPlan=planCommentPublication({request,body:commentBody,at:publishedAt});return {request,runnerPlan,publishedAt,unavailable,statusPlan,commentPlan};}
+export function createSubmissionReportingBundle(input){const v=exactKeys(input,['request','publishedAt'],'$'),request=validateDirectRequest(v.request),publishedAt=timestamp(v.publishedAt,'$.publishedAt'),checkPlan=planCheckPublication({request,name:'CurveYield GitHub Direct Audit',summary:'Awaiting executor; submitted source was not executed.',conclusion:'neutral',at:publishedAt});return frozenClone({schemaVersion:'github-direct-submission-reporting-v1',modeId:'github-direct-audit-v1',jobId:request.jobId,targetCommitSha:request.targetCommitSha,publications:[checkPlan],publishedAt});}
+export function createTerminalReportingBundle(input){const {request,runnerPlan,publishedAt,statusPlan,commentPlan}=terminalParts(input);return frozenClone({schemaVersion:'github-direct-terminal-reporting-v1',modeId:'github-direct-audit-v1',jobId:request.jobId,targetCommitSha:request.targetCommitSha,resultManifest:runnerPlan.resultManifest,reportIndex:runnerPlan.reportIndex,ledgerPlans:runnerPlan.ledgerPlans,publications:[statusPlan,commentPlan],publishedAt});}
+export function createReportingBundle(input){const {request,runnerPlan,publishedAt,unavailable,statusPlan,commentPlan}=terminalParts(input),checkPlan=planCheckPublication({request,name:'CurveYield GitHub Direct Audit',summary:unavailable?'Execution plane unavailable; submitted source was not executed':'Trusted inert fixture result published',conclusion:unavailable?'neutral':'success',at:publishedAt});return frozenClone({schemaVersion:'github-direct-reporting-bundle-v1',modeId:'github-direct-audit-v1',jobId:request.jobId,targetCommitSha:request.targetCommitSha,resultManifest:runnerPlan.resultManifest,reportIndex:runnerPlan.reportIndex,ledgerPlans:runnerPlan.ledgerPlans,publications:[checkPlan,statusPlan,commentPlan],publishedAt});}
+export function createCancellationReportingBundle(input){const v=exactKeys(input,['request','stateVersion','publishedAt'],'$'),request=validateDirectRequest(v.request),stateVersion=integer(v.stateVersion,'$.stateVersion',1,1_000_000),publishedAt=timestamp(v.publishedAt,'$.publishedAt'),resultId=`cancel-result-v${stateVersion}`,reportId=`cancel-report-v${stateVersion}`,resultManifest=createResultManifest({request,outcome:'cancelled',executionState:'not_executed',resultDigest:null,summary:{findingCount:0,evidenceCount:0,artifactCount:0,truncated:false},producedAt:publishedAt}),reportIndex=createReportIndex({request,entries:[{reportId,reportDigest:resultManifest.manifestDigest,kind:'machine-json'}],publishedAt}),statusPlan=planStatusPublication({request,state:'error',description:'GitHub Direct audit cancelled',context:'curveyield/github-direct-audit',at:publishedAt}),commentPlan=planCommentPublication({request,body:'GitHub Direct audit cancelled before submitted-project execution.',at:publishedAt});return frozenClone({schemaVersion:'github-direct-cancellation-reporting-v1',modeId:'github-direct-audit-v1',jobId:request.jobId,targetCommitSha:request.targetCommitSha,resultManifest,reportIndex,ledgerPlans:[planImmutableCreate({path:`.audit-direct/v1/results/${request.jobId}/${resultId}.json`,content:resultManifest}),planImmutableCreate({path:`.audit-direct/v1/reports/${request.jobId}/${reportId}.json`,content:reportIndex})],publications:[statusPlan,commentPlan],publishedAt});}
+export function ingestArtifactMetadata(input){const v=exactKeys(input,['request','items'],'$'),request=validateDirectRequest(v.request),items=denseArray(v.items,'$.items',100).map((item,index)=>{try{return validateArtifactMetadata(item);}catch(error){if(error?.code!=='missing_field')throw error;const x=exactKeys(item,['artifactId','name','sizeBytes','digest','expired','createdAt','expiresAt'],`$.items[${index}]`);return createArtifactMetadata({artifactId:identifier(x.artifactId,`$.items[${index}].artifactId`),name:boundedString(x.name,`$.items[${index}].name`,256),sizeBytes:integer(x.sizeBytes,`$.items[${index}].sizeBytes`,0,2_000_000_000),digest:digest(x.digest,`$.items[${index}].digest`),expired:booleanValue(x.expired,`$.items[${index}].expired`),createdAt:timestamp(x.createdAt,`$.items[${index}].createdAt`),expiresAt:timestamp(x.expiresAt,`$.items[${index}].expiresAt`)});}});return frozenClone({schemaVersion:'github-direct-artifact-metadata-index-v1',jobId:request.jobId,targetCommitSha:request.targetCommitSha,items});}
+export function validateReportingBundle(value){
+  const v=exactKeys(value,['schemaVersion','modeId','jobId','targetCommitSha','resultManifest','reportIndex','ledgerPlans','publications','publishedAt'],'$');
+  if(!['github-direct-reporting-bundle-v1','github-direct-terminal-reporting-v1'].includes(v.schemaVersion))fail('invalid_schema','$.schemaVersion');
+  if(v.modeId!=='github-direct-audit-v1')fail('invalid_mode','$.modeId');
+  const jobId=identifier(v.jobId,'$.jobId'),targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha'),resultManifest=validateResultManifest(v.resultManifest),reportIndex=validateReportIndex(v.reportIndex),publishedAt=timestamp(v.publishedAt,'$.publishedAt');
+  if(resultManifest.jobId!==jobId||resultManifest.targetCommitSha!==targetCommitSha||reportIndex.jobId!==jobId||reportIndex.targetCommitSha!==targetCommitSha||reportIndex.publishedAt!==publishedAt)fail('reporting_identity_mismatch','$.resultManifest');
+  const ledgerPlans=denseArray(v.ledgerPlans,'$.ledgerPlans',2).map(validateLedgerMutation);
+  if(ledgerPlans.length!==2||ledgerPlans.some((plan)=>plan.operation!=='create-immutable'))fail('invalid_ledger_plans','$.ledgerPlans');
+  const resultInfo=ledgerPathInfo(ledgerPlans[0].path,'$.ledgerPlans[0].path'),reportInfo=ledgerPathInfo(ledgerPlans[1].path,'$.ledgerPlans[1].path');
+  if(resultInfo.kind!=='result'||reportInfo.kind!=='report'||resultInfo.jobId!==jobId||reportInfo.jobId!==jobId||canonicalJson(ledgerPlans[0].content)!==canonicalJson(resultManifest)||canonicalJson(ledgerPlans[1].content)!==canonicalJson(reportIndex))fail('reporting_binding_mismatch','$.ledgerPlans');
+  if(reportIndex.entries.length!==1||reportIndex.entries[0].reportId!==reportInfo.reportId||reportIndex.entries[0].reportDigest!==resultManifest.manifestDigest)fail('reporting_binding_mismatch','$.reportIndex');
+  const publications=denseArray(v.publications,'$.publications',3).map(validatePublicationPlan),wanted=v.schemaVersion==='github-direct-reporting-bundle-v1'?['check','status','comment']:['status','comment'];
+  if(JSON.stringify(publications.map((plan)=>plan.kind))!==JSON.stringify(wanted))fail('invalid_publications','$.publications');
+  for(const plan of publications)if(plan.jobId!==jobId||plan.targetCommitSha!==targetCommitSha||plan.at!==publishedAt)fail('reporting_binding_mismatch','$.publications');
+  return frozenClone({schemaVersion:v.schemaVersion,modeId:v.modeId,jobId,targetCommitSha,resultManifest,reportIndex,ledgerPlans,publications,publishedAt});
+}
+
+export function validateArtifactMetadataIndex(value){
+  const v=exactKeys(value,['schemaVersion','jobId','targetCommitSha','items'],'$');
+  if(v.schemaVersion!=='github-direct-artifact-metadata-index-v1')fail('invalid_schema','$.schemaVersion');
+  const jobId=identifier(v.jobId,'$.jobId'),targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha'),items=denseArray(v.items,'$.items',100).map(validateArtifactMetadata);
+  if(new Set(items.map((item)=>item.artifactId)).size!==items.length)fail('duplicate_identity','$.items');
+  return frozenClone({schemaVersion:v.schemaVersion,jobId,targetCommitSha,items});
+}
+
+export function validateSubmissionReportingBundle(value){
+  const v=exactKeys(value,['schemaVersion','modeId','jobId','targetCommitSha','publications','publishedAt'],'$');
+  if(v.schemaVersion!=='github-direct-submission-reporting-v1')fail('invalid_schema','$.schemaVersion');
+  if(v.modeId!=='github-direct-audit-v1')fail('invalid_mode','$.modeId');
+  const jobId=identifier(v.jobId,'$.jobId');
+  const targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha');
+  const publishedAt=timestamp(v.publishedAt,'$.publishedAt');
+  const publications=denseArray(v.publications,'$.publications',1).map(validatePublicationPlan);
+  if(publications.length!==1)fail('invalid_publications','$.publications');
+  const check=publications[0];
+  if(
+    check.kind!=='check' || check.jobId!==jobId || check.targetCommitSha!==targetCommitSha ||
+    check.at!==publishedAt || check.name!=='CurveYield GitHub Direct Audit' ||
+    check.summary!=='Awaiting executor; submitted source was not executed.' ||
+    check.conclusion!=='neutral'
+  ) fail('reporting_binding_mismatch','$.publications');
+  return frozenClone({schemaVersion:v.schemaVersion,modeId:v.modeId,jobId,targetCommitSha,publications,publishedAt});
+}
+
+export function validateCancellationReportingBundle(value){
+  const v=exactKeys(value,['schemaVersion','modeId','jobId','targetCommitSha','resultManifest','reportIndex','ledgerPlans','publications','publishedAt'],'$');
+  if(v.schemaVersion!=='github-direct-cancellation-reporting-v1')fail('invalid_schema','$.schemaVersion');
+  if(v.modeId!=='github-direct-audit-v1')fail('invalid_mode','$.modeId');
+  const jobId=identifier(v.jobId,'$.jobId');
+  const targetCommitSha=commitSha(v.targetCommitSha,'$.targetCommitSha');
+  const publishedAt=timestamp(v.publishedAt,'$.publishedAt');
+  const resultManifest=validateResultManifest(v.resultManifest);
+  const reportIndex=validateReportIndex(v.reportIndex);
+  if(
+    resultManifest.jobId!==jobId || resultManifest.targetCommitSha!==targetCommitSha ||
+    resultManifest.outcome!=='cancelled' || resultManifest.executionState!=='not_executed' ||
+    resultManifest.resultDigest!==null || resultManifest.producedAt!==publishedAt ||
+    reportIndex.jobId!==jobId || reportIndex.targetCommitSha!==targetCommitSha ||
+    reportIndex.publishedAt!==publishedAt
+  ) fail('reporting_identity_mismatch','$.resultManifest');
+  const ledgerPlans=denseArray(v.ledgerPlans,'$.ledgerPlans',2).map(validateLedgerMutation);
+  if(ledgerPlans.length!==2||ledgerPlans.some((plan)=>plan.operation!=='create-immutable')){
+    fail('reporting_binding_mismatch','$.ledgerPlans');
+  }
+  const resultInfo=ledgerPathInfo(ledgerPlans[0].path,'$.ledgerPlans[0].path');
+  const reportInfo=ledgerPathInfo(ledgerPlans[1].path,'$.ledgerPlans[1].path');
+  if(
+    resultInfo.kind!=='result' || reportInfo.kind!=='report' ||
+    resultInfo.jobId!==jobId || reportInfo.jobId!==jobId ||
+    !resultInfo.resultId?.startsWith('cancel-result-v') ||
+    !reportInfo.reportId?.startsWith('cancel-report-v') ||
+    canonicalJson(ledgerPlans[0].content)!==canonicalJson(resultManifest) ||
+    canonicalJson(ledgerPlans[1].content)!==canonicalJson(reportIndex) ||
+    reportIndex.entries.length!==1 || reportIndex.entries[0].reportId!==reportInfo.reportId ||
+    reportIndex.entries[0].reportDigest!==resultManifest.manifestDigest
+  ) fail('reporting_binding_mismatch','$.ledgerPlans');
+  const publications=denseArray(v.publications,'$.publications',2).map(validatePublicationPlan);
+  if(publications.length!==2||publications[0].kind!=='status'||publications[1].kind!=='comment'){
+    fail('reporting_binding_mismatch','$.publications');
+  }
+  const [status,comment]=publications;
+  if(
+    status.jobId!==jobId || comment.jobId!==jobId ||
+    status.targetCommitSha!==targetCommitSha || comment.targetCommitSha!==targetCommitSha ||
+    status.at!==publishedAt || comment.at!==publishedAt ||
+    status.state!=='error' || status.description!=='GitHub Direct audit cancelled' ||
+    status.context!=='curveyield/github-direct-audit' ||
+    comment.body!=='GitHub Direct audit cancelled before submitted-project execution.'
+  ) fail('reporting_binding_mismatch','$.publications');
+  return frozenClone({schemaVersion:v.schemaVersion,modeId:v.modeId,jobId,targetCommitSha,resultManifest,reportIndex,ledgerPlans,publications,publishedAt});
+}

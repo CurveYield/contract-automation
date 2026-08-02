@@ -1,0 +1,7 @@
+{
+  "name": "@curveyield/audit-web-compat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index-v1.mjs"
+}

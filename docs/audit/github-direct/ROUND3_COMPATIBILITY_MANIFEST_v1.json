@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "github-direct-compatibility-manifest-v1",
+  "modeId": "github-direct-audit-v1",
+  "candidateSha": "46873f805199e2212af3902c8525c0f3e4501721",
+  "workflowSha": "46873f805199e2212af3902c8525c0f3e4501721",
+  "controlBranch": "audit-direct/control-v1",
+  "ledgerRoot": ".audit-direct/v1",
+  "commandSchema": "github-direct-service-command-v1",
+  "resultSchema": "github-direct-service-result-v2",
+  "errorSchema": "github-direct-service-error-v1",
+  "apiIntake": {
+    "worker": "worker-1",
+    "contract": "command-result-error",
+    "transportNeutral": true
+  },
+  "integrationIntake": {
+    "worker": "worker-2",
+    "order": [
+      "protocol",
+      "ledger",
+      "auth",
+      "adapter",
+      "runner",
+      "reporting",
+      "service",
+      "cli",
+      "workflow"
+    ]
+  },
+  "submittedExecution": false,
+  "cloudflareFallback": false,
+  "publishedAt": "2026-08-02T09:00:00.000Z",
+  "manifestId": "direct-compatibility-2a7b937fd31fac897e936414",
+  "manifestDigest": "sha256:2a7b937fd31fac897e93641457d79f15e367dffa5c1bd685398b92c2dcfca708"
+}

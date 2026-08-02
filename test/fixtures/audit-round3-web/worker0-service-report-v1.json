@@ -1,0 +1,27 @@
+{
+  "version": "audit-service-reporting/v1",
+  "reports": [
+    { "id": "report-compat-1", "title": "Compatibility report", "status": "published", "summary": "Inert service/report fixture." }
+  ],
+  "workspaces": [],
+  "campaigns": [],
+  "jobs": [],
+  "forks": [],
+  "cleanRooms": [],
+  "quotas": [
+    { "id": "quota-workspace", "remaining": 9, "limit": 10, "used": 1, "scope": "workspace-compat" }
+  ],
+  "retention": [
+    { "id": "retention-workspace", "days": 14, "scope": "workspace-compat" }
+  ],
+  "operationBudgets": [
+    { "id": "budget-workspace", "remaining": 4, "limit": 5, "used": 1, "operation": "report-read", "scope": "workspace-compat" }
+  ],
+  "diagnostics": [],
+  "release": {
+    "id": "release-compat",
+    "version": "v1",
+    "status": "candidate",
+    "compatibilityVersions": ["audit-api-public/v1", "audit-service-reporting/v1"]
+  }
+}

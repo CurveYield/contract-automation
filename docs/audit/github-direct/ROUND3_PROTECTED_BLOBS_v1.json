@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "github-direct-round3-protected-blobs-v1",
+  "startingSha": "66c3060da74ba79a780847eb86307d0b5641b20a",
+  "frozen": [
+    {
+      "path": ".github/workflows/github-native-simulate.yml",
+      "blobSha": "54e446d4a715ca9678ed4d7434f7ba90b2c67c96"
+    },
+    {
+      "path": "packages/github-native-sim/src/select-job.mjs",
+      "blobSha": "c0cc36e865d7cfd78464ce3e1ef9012f7194f173"
+    },
+    {
+      "path": "packages/github-native-sim/src/cli.mjs",
+      "blobSha": "17d3a5597bbd83ed155ef115efa2fd2528d2ff0b"
+    },
+    {
+      "path": "packages/github-native-sim/src/run-job-file.mjs",
+      "blobSha": "75ddc6b77b81ecd6d55e94c905e30bed47b34853"
+    },
+    {
+      "path": "packages/github-native-sim/src/chain-fixtures.mjs",
+      "blobSha": "6a7c9b0e7300765fe9f8485eed4cbdc0fe9ec9db"
+    }
+  ],
+  "requiredAbsentAtStartingSha": [
+    "packages/runner/src/rpc-method-policy.mjs",
+    "packages/runner/src/fork-rpc-guard.mjs",
+    "packages/runner/src/run-job.mjs"
+  ],
+  "verificationRule": "Every final changed path must be within issue #115 owned paths. Each listed frozen path must retain its exact blob SHA; each required-absent path must remain absent. No packages/github-native-sim/** or GitHub-native workflow path may appear in the final delta."
+}

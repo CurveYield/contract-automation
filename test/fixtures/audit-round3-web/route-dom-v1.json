@@ -1,0 +1,70 @@
+{
+  "reports": {
+    "length": 2043,
+    "sha256": "9c64121e76c4f601417180f537ec02becd8c8280fe2373d0fef5f8eb95dc7097"
+  },
+  "reportDetail": {
+    "length": 2378,
+    "sha256": "3ad119440a15de0640dbd3997d13bc4dba76617a34a63c893736383c54d9c73a"
+  },
+  "workspaces": {
+    "length": 923,
+    "sha256": "eafc4ea29b8722af6e0f2a7a3b429164cb98522e3d214eb45a82c9bceb7bc908"
+  },
+  "workspaceDetail": {
+    "length": 1428,
+    "sha256": "efdb57ce461b1437b2d1524051593e3e597c455e22f7b77b19c04214c21b84e2"
+  },
+  "campaignDetail": {
+    "length": 1930,
+    "sha256": "aea75a4e4b606464318844feeb25c3899ff271360cf54cc6a34676e38a9e0df6"
+  },
+  "jobDetail": {
+    "length": 1416,
+    "sha256": "2ace68a127a8d0da44006d3912e4cc6fe0342d221130e8ee89ac50cb1e5e521d"
+  },
+  "forkDetail": {
+    "length": 2997,
+    "sha256": "79b82776da070bc3d9a4ec750506bf66c1636937c76f032be207cdd5cd125cb5"
+  },
+  "cleanRoomDetail": {
+    "length": 2478,
+    "sha256": "c47af706994df1060109665ebf6c0142c503642fca4ce539aec080b70dec46fa"
+  },
+  "profiles": {
+    "length": 1241,
+    "sha256": "1b75ca758bb6a1542b0cecb2dbcda5631bfa33df981e87c7bf97e83e0f365edc"
+  },
+  "profileDetail": {
+    "length": 1505,
+    "sha256": "abadd4e024ab2724d9d167e9ffc8f873255cc9ff1aec9d481442d75ff62d4e78"
+  },
+  "parserDetail": {
+    "length": 1501,
+    "sha256": "fe3df4a26bfc4dc5df5f0859a7fd7cc3dccb55debc4b44d73556d8a5f1419c38"
+  },
+  "resultDetail": {
+    "length": 1573,
+    "sha256": "1098d250d4f4b4d4ce9bf3be1ba39c7cafccee1dab31e26cec4cc09464232b1d"
+  },
+  "catalog": {
+    "length": 1577,
+    "sha256": "38734b3de3c7f1715daa38f49e51456eae7d7c0d197b2368eb8d4efd41a13346"
+  },
+  "githubDirectStatus": {
+    "length": 1862,
+    "sha256": "4c70283c45acd3ae58b8d42fe2f81030cd06f55d3b0dd4f961916c73d8a9ab60"
+  },
+  "operations": {
+    "length": 2399,
+    "sha256": "e89d391c2584e6f0fd43451eaef2d78b1ef5a3c53ca24ac43737e9e960f92487"
+  },
+  "diagnostics": {
+    "length": 1614,
+    "sha256": "de6eaa768c81e51a8ed4f073d5bd295a7f0ae65dea9f158ef5fcaca2308aca4f"
+  },
+  "releaseProvenance": {
+    "length": 1959,
+    "sha256": "f13761b979e5588a3a1657e001381ecc949d252ea57975255f679a9dd12287c4"
+  }
+}
