@@ -1,0 +1,46 @@
+name: Temporary V27 Runner Export v1
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-v27-runner-export-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Reconstruct verified V27 lifecycle runner
+        run: |
+          set -euo pipefail
+          runner_ref='50fa3bd16dc3988fc89d8412b87da65be449d417'
+          runner_path='github-native-sim/jobs/v27-ganache-full-v1/runner-payload-hex/run-v27-ganache-lifecycle.mjs.gz.hex.part'
+          git fetch --no-tags origin "$runner_ref"
+          : > /tmp/v27-runner.hex
+          for part in 00 01 02 03; do
+            git show "$runner_ref:$runner_path-$part" >> /tmp/v27-runner.hex
+          done
+          python - <<'PY'
+          from pathlib import Path
+          compact = ''.join(Path('/tmp/v27-runner.hex').read_text().split())
+          Path('/tmp/v27-runner.mjs.gz').write_bytes(bytes.fromhex(compact))
+          PY
+          echo 'f9d503f9261c52fe05862916ec6dcb5bf13761ab18e6332042d8257d71e39bba  /tmp/v27-runner.mjs.gz' | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/v27-runner-export"
+          gzip -dc /tmp/v27-runner.mjs.gz > "$RUNNER_TEMP/v27-runner-export/run-v27-ganache-lifecycle.mjs"
+          echo 'fba3de2e1d97d448fd1f5bf2a7a3ccc7086b291ac94326d7c5b4f4ffac4953fe  '"$RUNNER_TEMP"'/v27-runner-export/run-v27-ganache-lifecycle.mjs' | sha256sum -c -
+          cp github-native-sim/jobs/v27-ganache-full-v1/scripts/v27-observers.mjs "$RUNNER_TEMP/v27-runner-export/"
+          cp github-native-sim/jobs/v27-ganache-full-v1/scripts/ganache-call-recorder.mjs "$RUNNER_TEMP/v27-runner-export/"
+          cp github-native-sim/jobs/v27-ganache-full-v1/config/simulation-config.json "$RUNNER_TEMP/v27-runner-export/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V27-Runner-Source-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-runner-export
+          retention-days: 7
