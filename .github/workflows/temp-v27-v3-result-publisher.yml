@@ -1,0 +1,133 @@
+name: Temporary V27 v3 Result Publisher
+
+on:
+  push:
+    branches:
+      - automation/v27-ganache-full-v2
+    paths:
+      - 'github-native-sim/jobs/v27-ganache-full-v1/publish-v3-result.txt'
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: temp-v27-v3-result-publisher
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_BRANCH: automation/v27-ganache-full-v2
+      TARGET_WORKFLOW: temp-v27-ganache-full-v3.yml
+      RESULT_FILE: github-native-sim/jobs/v27-ganache-full-v1/latest-v3-run-result.json
+    steps:
+      - name: Check out execution branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Locate completed v3 run and extract artifact
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          mkdir -p /tmp/v27-v3-artifact
+          selected=''
+          for attempt in $(seq 1 80); do
+            runs="$(gh api "/repos/$repo/actions/workflows/$TARGET_WORKFLOW/runs?branch=$TARGET_BRANCH&event=pull_request&per_page=30")"
+            selected="$(printf '%s' "$runs" | jq -c '[.workflow_runs[] | select(.name == "Temporary V27 Ganache Full Simulation v3")] | sort_by(.created_at) | last // empty')"
+            status="$(printf '%s' "$selected" | jq -r '.status // empty')"
+            if test -n "$selected" && test "$status" = 'completed'; then
+              break
+            fi
+            sleep 15
+          done
+          test -n "$selected"
+          test "$(printf '%s' "$selected" | jq -r '.status')" = 'completed'
+          run_id="$(printf '%s' "$selected" | jq -r '.id')"
+          conclusion="$(printf '%s' "$selected" | jq -r '.conclusion')"
+          head_sha="$(printf '%s' "$selected" | jq -r '.head_sha')"
+          created_at="$(printf '%s' "$selected" | jq -r '.created_at')"
+          updated_at="$(printf '%s' "$selected" | jq -r '.updated_at')"
+          run_url="$(printf '%s' "$selected" | jq -r '.html_url')"
+
+          artifacts="$(gh api "/repos/$repo/actions/runs/$run_id/artifacts?per_page=100")"
+          artifact_id="$(printf '%s' "$artifacts" | jq -r '[.artifacts[] | select(.name | startswith("CurveYield-V27-Ganache-Full-Data-Report-v3-"))] | first.id // empty')"
+          artifact_name="$(printf '%s' "$artifacts" | jq -r '[.artifacts[] | select(.name | startswith("CurveYield-V27-Ganache-Full-Data-Report-v3-"))] | first.name // empty')"
+          artifact_size="$(printf '%s' "$artifacts" | jq -r '[.artifacts[] | select(.name | startswith("CurveYield-V27-Ganache-Full-Data-Report-v3-"))] | first.size_in_bytes // 0')"
+          artifact_digest="$(printf '%s' "$artifacts" | jq -r '[.artifacts[] | select(.name | startswith("CurveYield-V27-Ganache-Full-Data-Report-v3-"))] | first.digest // empty')"
+
+          if test -n "$artifact_id"; then
+            gh run download "$run_id" --repo "$repo" --dir /tmp/v27-v3-artifact || true
+          fi
+          report_path="$(find /tmp/v27-v3-artifact -type f -name data-report.json | head -n 1 || true)"
+          compatibility_path="$(find /tmp/v27-v3-artifact -type f -name yb-shanghai-runtime-report.json | head -n 1 || true)"
+
+          RUN_ID="$run_id" CONCLUSION="$conclusion" HEAD_SHA="$head_sha" CREATED_AT="$created_at" UPDATED_AT="$updated_at" RUN_URL="$run_url" ARTIFACT_ID="$artifact_id" ARTIFACT_NAME="$artifact_name" ARTIFACT_SIZE="$artifact_size" ARTIFACT_DIGEST="$artifact_digest" REPORT_PATH="$report_path" COMPATIBILITY_PATH="$compatibility_path" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def load(path):
+              if not path:
+                  return None
+              candidate = Path(path)
+              if not candidate.is_file():
+                  return None
+              return json.loads(candidate.read_text(encoding='utf-8'))
+
+          report = load(os.environ.get('REPORT_PATH', ''))
+          compatibility = load(os.environ.get('COMPATIBILITY_PATH', ''))
+          summary = {
+              'version': 'v27-v3-run-result/v1',
+              'workflowRunId': int(os.environ['RUN_ID']),
+              'workflowConclusion': os.environ['CONCLUSION'],
+              'headSha': os.environ['HEAD_SHA'],
+              'createdAt': os.environ['CREATED_AT'],
+              'updatedAt': os.environ['UPDATED_AT'],
+              'runUrl': os.environ['RUN_URL'],
+              'artifact': {
+                  'id': int(os.environ['ARTIFACT_ID']) if os.environ.get('ARTIFACT_ID') else None,
+                  'name': os.environ.get('ARTIFACT_NAME') or None,
+                  'sizeBytes': int(os.environ.get('ARTIFACT_SIZE') or 0),
+                  'digest': os.environ.get('ARTIFACT_DIGEST') or None,
+              },
+              'reportFound': report is not None,
+              'reportStatus': report.get('status') if report else None,
+              'reportError': report.get('error') if report else None,
+              'finishedAt': report.get('finishedAt') if report else None,
+              'callCount': len(report.get('calls') or []) if report else 0,
+              'snapshotCount': len(report.get('snapshots') or []) if report else 0,
+              'assertionCount': len(report.get('assertions') or []) if report else 0,
+              'passedAssertionCount': sum(1 for item in (report.get('assertions') or []) if item.get('passed')) if report else 0,
+              'cycleCount': len(report.get('cycles') or []) if report else 0,
+              'postMigrationCycleCount': len(report.get('postMigrationCycles') or []) if report else 0,
+              'supplementalTestCount': len(report.get('supplementalTests') or []) if report else 0,
+              'deployments': report.get('deployments') if report else None,
+              'migration': report.get('migration') if report else None,
+              'finalJournalHash': report.get('finalJournalHash') if report else None,
+              'forkBlock': (report.get('preflight') or {}).get('resolvedForkBlock') if report else None,
+              'ybCompatibility': (report.get('execution') or {}).get('ybGanacheCompatibility') if report else compatibility,
+              'compatibilityBuild': compatibility,
+          }
+          target = Path(os.environ['RESULT_FILE'])
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Commit compact v3 result
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$RESULT_FILE"
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Record V27 Ganache v3 workflow result [skip ci]'
+          git push origin "HEAD:$TARGET_BRANCH"
