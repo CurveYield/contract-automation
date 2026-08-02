@@ -10,6 +10,7 @@ import { planImmutablePublication } from '../packages/audit-phase78-publication/
 
 const D = `sha256:${'1'.repeat(64)}`;
 const E = `sha256:${'2'.repeat(64)}`;
+const RAW = '1'.repeat(64);
 const AT = '2026-08-02T10:00:00.000Z';
 
 function request(overrides={}) {
@@ -19,6 +20,7 @@ function request(overrides={}) {
     workspaceId:'workspace-a',
     campaignId:'campaign-a',
     forkId:'fork-a',
+    attemptId:'attempt-a',
     mergeId:null,
     requesterId:'requester-a',
     scopes:['audit:submit'],
@@ -32,7 +34,7 @@ function request(overrides={}) {
 }
 
 test('service request carries immutable attempt identity for fork operations', () => {
-  const created = service.createServiceRequest({...request(), attemptId:'attempt-a'});
+  const created = service.createServiceRequest(request());
   assert.equal(created.attemptId, 'attempt-a');
 });
 
@@ -44,10 +46,7 @@ test('checkpoint orchestration exposes repaired transient lifecycle and every fa
     current:{version:3,etag:D,state:'ready'}
   });
   assert.deepEqual(plan.lifecycle, ['ready','checkpointing','ready']);
-  assert.deepEqual(
-    plan.failureBoundaries,
-    ['enter-transient','checkpoint-object','checkpoint-manifest','checkpoint-index','return-ready']
-  );
+  assert.deepEqual(plan.failureBoundaries,['enter-transient','checkpoint-object','checkpoint-manifest','checkpoint-index','return-ready']);
   assert.ok(plan.operationSummary.classA >= 5);
 });
 
@@ -61,11 +60,11 @@ test('hidden and cross-tenant fork authorization are byte-identical', () => {
 test('page cursor binds campaign fork attempt and visible view digest without exposing totals', () => {
   const cursor = service.createPageCursor({
     tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',
-    forkId:'fork-a',attemptId:'attempt-a',resourceKind:'checkpoint',
+    forkId:'fork-a',attemptId:'attempt-a',mergeId:null,resourceKind:'checkpoint',
     indexDigest:D,viewDigest:E,offset:0,pageSize:10,sortKey:'created-at-id'
   });
   assert.equal(cursor.attemptId,'attempt-a');
-  const page = service.paginateDeterministically([],{tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',forkId:'fork-a',attemptId:'attempt-a',resourceKind:'checkpoint',indexDigest:D,viewDigest:E,pageSize:10,cursor:null});
+  const page = service.paginateDeterministically([],{tenantId:'tenant-a',workspaceId:'workspace-a',campaignId:'campaign-a',forkId:'fork-a',attemptId:'attempt-a',mergeId:null,resourceKind:'checkpoint',indexDigest:D,viewDigest:E,pageSize:10,cursor:null});
   assert.equal(Object.hasOwn(page,'total'),false);
 });
 
@@ -84,7 +83,11 @@ test('visible provenance projection is invariant to hidden nodes and source inde
 });
 
 test('fork report rejects a deleted state that fails the repaired core validator', () => {
-  const invalidDeleted={forkId:'fork-a',tenantId:'tenant-a',attemptId:'attempt-a',requestDigest:D,state:'deleted',version:4,executionGate:'trusted_mock',adapterKind:'mock',chainId:1,blockNumber:1,blockHash:null};
+  const invalidDeleted={
+    schemaVersion:'fork-state-v1',forkId:'fork-a',tenantId:'tenant-a',attemptId:'attempt-a',requestDigest:RAW,
+    state:'deleted',version:4,executionGate:'trusted_mock',adapterKind:'mock',chainId:1,blockNumber:1,blockHash:null,
+    createdAt:AT,updatedAt:AT,lastTransitionId:'tr_delete_test',lastFromState:'deleting'
+  };
   assert.throws(()=>createForkReportProjection({state:invalidDeleted,requestedBy:'requester-a',reportedAt:AT}),error=>error?.code==='invalid_tombstone');
 });
 
