@@ -2,9 +2,9 @@
 
 ## Recommendation
 
-**ACCEPT — superseding the earlier completion candidate**
+**ACCEPT — superseding the earlier sequence-6 candidate and report**
 
-The sequence-6 branch now contains the trusted GitHub Direct service, CLI, authorization, reporting and workflow layer plus the complete accepted protocol and ledger repair lineage. It also contains the exact-equivalent adapter/runner trust-boundary repair required by issue #109.
+The sequence-6 branch implements the trusted GitHub Direct service, CLI, authorization, reporting, metadata-only artifact, and protected workflow layer on top of the only approved repaired core: `22c22dd9de0e21b066ac29c9e0d9422a73724a31` from issues #106, #108, and #109.
 
 ## Assignment and lineage
 
@@ -13,76 +13,76 @@ The sequence-6 branch now contains the trusted GitHub Direct service, CLI, autho
 - Mailbox sequence: `6`
 - Branch: `audit-phase9/github-direct-service-workflow-v1`
 - Starting SHA: `2df9cbfd534ab97da9aa26077879433a7fc4a8a4`
-- Accepted protocol/ledger repair merge: `9e7f9f4928272404786e701e0bde69cd9e75b98a`
+- Approved repaired core: `22c22dd9de0e21b066ac29c9e0d9422a73724a31`
+- Approved-core merge: `430fd250b790c5983406caf3a291b4af89281ef2`
 - Final SHA: recorded in the superseding issue report and mailbox completion event after publication.
 
-The merge incorporates issue #106's protocol validation repair and issue #108's closed ledger namespace, operation-class, observation-uniqueness and recovery-correlation repair.
+The earlier candidate `c55eb6dd9ca2b1f9b79e0a35d48723a7efc403e4` and issue comment `5154135020` predated the mandatory repaired-core lineage and are superseded.
 
-## Adapter/runner repair evidence
+## Service integration over the accepted core
 
-Issue #109's seven findings were reproduced against the merged source:
+The accepted adapter requires mutation responses to repeat the ledger planner's deterministic content fingerprint. GitHub's native contents blob SHA is a different value. The trusted transport therefore:
 
-```text
-7 tests
-0 passed
-7 failed
-```
+- computes and exposes the deterministic fingerprint to ledger/service CAS;
+- keeps the native Git blob SHA private for GitHub Contents API `sha` preconditions;
+- compares existing canonical content fingerprints to planner expectations;
+- returns only exact adapter-approved response shapes.
 
-After the minimal boundary repair:
+The accepted adapter intentionally exposes contents metadata, not decoded control records. A separate trusted ledger snapshot reader in the same fixed-host transport module reads only server-derived `.audit-direct/v1/**` paths, decodes JSON, and returns content plus the deterministic fingerprint. Request data cannot select snapshot paths.
 
-```text
-7 tests
-7 passed
-0 failed
-```
+The mutable jobs index is first-created through CAS-on-absence using the all-zero 40-character sentinel; it is never written with an immutable-create operation.
 
-Repairs include:
+## Lifecycle and reporting
 
-1. publication validation before any transport lookup;
-2. hostile-safe publication kind inspection;
-3. descriptor-safe artifact normalization;
-4. exact, bounded and identity-bound repository/commit/blob/contents/ledger/publication responses;
-5. complete fixture/unavailable admission correlations;
-6. complete outcome/result/fixture correlations;
-7. exact result/report ledger path/content binding and Check/status truth binding.
+- Normal submission reaches `awaiting_executor`, publishes one neutral Check, and remains cancellable.
+- `report` creates truthful execution-unavailable result/report records, advances terminally, and publishes status/comment without duplicating the Check.
+- `cancel` creates a `cancelled` / `not_executed` result/report and publishes status/comment.
+- An exact repository-owned inert fixture may complete with `executionPerformed:false`.
+- Identical retries converge; conflicting publication replay rejects.
 
-## Service integration corrections
+## Test-first and repair evidence
 
-- The mutable jobs index is initialized through CAS-on-absence using the all-zero SHA sentinel; immutable create is forbidden for this path.
-- GitHub's actual contents blob SHA is validated as a Git SHA but is not equated with the planner's deterministic content fingerprint.
-- Request-publication state survives transition composition.
-- Reporting accepts already-validated artifact metadata without weakening raw metadata validation.
-- Pure fixture verification uses the repository-owned allowlist directly and does not require write/publication capabilities.
+Preserved sequence-6 RED stages:
 
-## Final verification
+- package map: `0/5`;
+- initial integration: `22/25`;
+- workflow: `37/39`;
+- adversarial: `45/49`;
+- lifecycle correction: `1/6` focused behavior passed before implementation.
 
-The complete local combined suite covers core protocol, accepted protocol repair, core ledger, accepted ledger repair, adapter, runner, cross-mode, static security, service, CLI, reporting, workflow, transport and issue #109 boundaries.
+Accepted repaired-core evidence includes the #109 ten-test RED/GREEN boundary suite and the accepted #106/#108 repair suites.
+
+Fresh combined verification against the exact accepted core and final service integration:
 
 ```text
-130 tests
-130 passed
+133 tests
+133 passed
 0 failed
 0 skipped
 0 cancelled
 ```
 
-Additional completion gates require all production modules to pass `node --check`, workflow YAML parsing, whitespace checks, forbidden-capability scans and changed-path review before the superseding report is posted.
+Additional gates:
+
+- 36 production `.mjs` modules pass `node --check`;
+- workflow YAML parses successfully;
+- whitespace gate is clean;
+- all changed paths remain within issue #104 and accepted repair-lineage ownership.
 
 ## Security result
 
-- No submitted project, package script, command, workflow, runner image or target-controlled path is executed.
-- Trusted runner code is selected by `github.workflow_sha`; target code is checked out separately as inert data.
-- Tokens remain inside the trusted token-provider/request-header closure.
-- No credential enters requests, ledger records, results, reports or logs.
-- No Cloudflare/R2 fallback or shared state is introduced.
-- Adapter transport returns cannot substitute repository, target SHA, path, blob or publication identity.
-- Fixture results, unavailable results and publication truth are cross-record correlated.
+- Trusted implementation is selected by `github.workflow_sha`; target source is checked out separately as inert data.
+- No submitted project, script, command, workflow, runner image, RPC, wallet, transaction, deployment, or dynamic code is executed.
+- Tokens remain inside a trusted token-provider/request-header closure and never enter requests, ledger records, results, reports, comments, or logs.
+- No Cloudflare/R2 fallback or shared mutable state is introduced.
+- Adapter transport responses are exact and identity-bound.
+- Admission, outcome, result, ledger, Check, and status truth is cross-record correlated by the accepted core.
 
 ## Residual prerequisites
 
-- `audit-direct/control-v1` must exist before first control-ledger mutation.
-- Installed GitHub permissions must match the reviewed least-privilege table.
+- `audit-direct/control-v1` must exist before the first control-ledger mutation.
+- Installed GitHub workflow/App permissions must match the reviewed permission table.
 - No live GitHub API call, production token, or real Actions run was exercised by the isolated tests.
-- Artifact bytes remain intentionally outside the package.
+- Artifact bytes remain intentionally outside this package.
 
-No dependency installation, build, submitted execution, process/container/RPC, wallet/signing/transaction, deployment, workflow approval, PR or merge to `main` occurred.
+No dependency installation, build, submitted execution, process/container/RPC, wallet/signing/transaction, deployment, workflow approval, PR, or merge to `main` occurred.
