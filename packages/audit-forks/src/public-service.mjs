@@ -18,10 +18,27 @@ function safeInput(input, allowed, required = allowed) {
   return value;
 }
 
-export class ForkService extends InternalForkService {
-  async readForkForTenant(input) {
+export class ForkService {
+  #internal;
+
+  constructor(store) {
+    this.#internal = new InternalForkService(store);
+  }
+
+  operationTrace() { return this.#internal.operationTrace(); }
+  clearOperationTrace() { return this.#internal.clearOperationTrace(); }
+  createFork(input) { return this.#internal.createFork(input); }
+  transitionFork(input) { return this.#internal.transitionFork(input); }
+  publishActionResult(input) { return this.#internal.publishActionResult(input); }
+  publishCheckpoint(input) { return this.#internal.publishCheckpoint(input); }
+  exportCheckpoint(input) { return this.#internal.exportCheckpoint(input); }
+  restoreCheckpoint(input) { return this.#internal.restoreCheckpoint(input); }
+  deleteFork(input) { return this.#internal.deleteFork(input); }
+  capability() { return this.#internal.capability(); }
+
+  async readFork(input) {
     const value = safeInput(input, ['forkId', 'tenantId', 'attemptId'], ['forkId', 'tenantId']);
-    const current = await super.readFork(value.forkId);
+    const current = await this.#internal.readFork(value.forkId);
     if (
       current.tenantId !== value.tenantId ||
       (value.attemptId !== undefined && current.attemptId !== value.attemptId)
@@ -31,20 +48,24 @@ export class ForkService extends InternalForkService {
     return current;
   }
 
-  async readCheckpointForTenant(input) {
+  readForkForTenant(input) { return this.readFork(input); }
+
+  async readCheckpoint(input) {
     const value = safeInput(
       input,
       ['forkId', 'checkpointId', 'tenantId', 'attemptId'],
       ['forkId', 'checkpointId', 'tenantId', 'attemptId']
     );
-    const current = await super.readFork(value.forkId);
+    const current = await this.#internal.readFork(value.forkId);
     if (current.tenantId !== value.tenantId || current.attemptId !== value.attemptId) {
       throw new ForkStateError('checkpoint_not_found', 'Checkpoint manifest does not exist');
     }
-    const checkpoint = await super.readCheckpoint(value.forkId, value.checkpointId);
+    const checkpoint = await this.#internal.readCheckpoint(value.forkId, value.checkpointId);
     if (checkpoint.tenantId !== value.tenantId || checkpoint.attemptId !== value.attemptId) {
       throw new ForkStateError('checkpoint_not_found', 'Checkpoint manifest does not exist');
     }
     return checkpoint;
   }
+
+  readCheckpointForTenant(input) { return this.readCheckpoint(input); }
 }
