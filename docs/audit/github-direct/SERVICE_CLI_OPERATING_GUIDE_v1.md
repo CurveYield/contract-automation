@@ -74,3 +74,9 @@ The jobs index is a mutable server-owned record and therefore never uses an immu
 ## Upstream repair lineage
 
 This package incorporates the accepted protocol validation repair from issue #106 and the accepted closed-ledger/recovery repair from issue #108. Adapter and runner boundaries are additionally hardened so malformed publication plans cannot reach the transport, transport responses are exact and identity-bound, and admission/outcome/publication records must agree across fixture truth, result truth, ledger content, paths, Checks, and statuses.
+
+## Trusted control-ledger snapshots
+
+The accepted adapter returns bounded contents metadata only. The workflow host therefore uses a separate trusted snapshot reader implemented in the fixed-host GitHub transport module. It can read only server-derived `.audit-direct/v1/**` paths and returns decoded JSON plus the deterministic planner fingerprint. No CLI or workflow input can choose a snapshot path.
+
+The authoritative repaired-core input is `22c22dd9de0e21b066ac29c9e0d9422a73724a31`; earlier equivalent repair experiments are not part of the final lineage.
