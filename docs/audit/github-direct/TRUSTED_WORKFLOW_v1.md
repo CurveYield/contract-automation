@@ -2,82 +2,93 @@
 
 ## Trust model
 
+The workflow runs only trusted repository-owned code. The workflow implementation is checked out at:
+
 ```text
-protected default-branch workflow SHA
-            |
-            v
-checkout trusted-runner at github.workflow_sha
-            |
-            +---- validate fixed inputs
-            |
-            +---- checkout target SHA separately as inert data
-            |          |
-            |          +---- verify exact commit SHA
-            |          +---- record tree SHA and bounded file index
-            |          +---- never execute or use as working directory
-            |
-            v
-run trusted CLI with short-lived GITHUB_TOKEN
-            |
-            +---- repository ledger / Check / status / bounded issue comment
-            +---- metadata-only artifact listing
+github.workflow_sha
 ```
 
-The submitted target commit is data. It cannot modify the workflow implementation, CLI, validators, runner, policy, profile, command, runner label, image or credential selection.
+The submitted target commit is checked out separately under `target-source` with persisted credentials disabled. It is treated only as inert Git data and is never imported, sourced, built or executed.
 
-## Trigger and branch gate
+## Caller inputs
 
-The workflow has only `workflow_dispatch`. It has no `pull_request` or `pull_request_target` trigger. The job runs only when `github.ref` is the repository default branch and `github.ref_protected` is true.
+Only two caller inputs exist:
 
-## Inputs
+- a fixed operation from `submit`, `status`, `cancel`, `report`, `capabilities`, `verify-fixture`;
+- an exact 40-character target SHA.
 
-Only four workflow inputs exist:
+The caller cannot select installation ID, report issue, path, URL, command, runner, image, action version, workflow scope or execution mode.
 
-- fixed operation choice;
-- exact lowercase 40-character target SHA;
-- positive installation ID;
-- positive bounded report issue number.
+## Repository-owned configuration
 
-All command, profile, parser, result-contract and report-contract identifiers are fixed by trusted workflow code.
+```text
+GITHUB_DIRECT_INSTALLATION_ID
+GITHUB_DIRECT_REPORT_ISSUE
+```
 
-## Permissions
+Both values are validated as positive integers before CLI invocation.
 
-| Permission | Access | Purpose |
-|---|---|---|
-| `contents` | write | Read target data and mutate the control ledger |
-| `checks` | write | Publish the exact-SHA Check |
-| `statuses` | write | Publish terminal commit status |
-| `issues` | write | Publish bounded issue comments |
-| `actions` | read | Read bounded artifact metadata |
+## Permission isolation
 
-No workflow, id-token, package, deployment, administration or security-events permission is granted.
+The workflow has `permissions: {}` at the top level and fixed job-specific subsets:
 
-## Action pins
+| Job | Permissions |
+|---|---|
+| read-only | contents: read |
+| submit | contents/checks/statuses/issues write; actions read |
+| cancel | contents/statuses/issues write |
+| report | contents/statuses/issues write; actions read |
 
-- `actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955`
-- `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
+No workflow, deployment, package, administration, security-event, environment, secret or identity-token permission is requested.
 
-Both are full commit SHAs verified against their official repositories.
+## Concurrency
 
-## Source binding and artifacts
+All operations for one repository/target share one concurrency group:
 
-The target checkout is verified against the input SHA. The workflow records:
+```text
+audit-direct-v1-<repositoryId>-<targetSha>
+```
 
-- target commit SHA;
-- target tree SHA;
-- deterministic request timestamp;
-- at most 10,000 displayed file-index lines.
+`cancel-in-progress` is false. This prevents report/cancel/submission publication races from being hidden by automatic workflow cancellation.
 
-The output, binding record and bounded file index are retained for one day. No target artifact bytes are fetched by the service or executed.
+## Supply-chain controls
 
-## Concurrency and failure behavior
+- runner image: fixed `ubuntu-24.04`;
+- all actions: full 40-character commit SHAs;
+- trusted and target checkouts: separate directories;
+- persisted checkout credentials: disabled;
+- target SHA: checked against the actual inert checkout before service invocation;
+- no untrusted pull-request, workflow-run or repository-dispatch triggers.
 
-Concurrency is scoped by repository ID and target SHA with cancellation enabled. The trusted job has a ten-minute timeout, strict shell error propagation and exact CLI exit propagation.
+## Bounded artifacts
 
-## Trusted transport return validation
+Submit and report may upload:
 
-The workflow host does not trust successful HTTP status alone. The adapter validates the exact repository, commit, blob, contents, ledger-mutation, publication, and artifact response shapes before service orchestration consumes them. A response that names a different repository, target SHA, path, blob, publication ID, or unsupported field is rejected before lifecycle state is advanced.
+- validated machine result JSON;
+- target repository ID/commit/tree binding JSON;
+- at most 10,000 target file names.
 
-## Native Git SHA and planner fingerprint separation
+Retention is one day. Target source files and artifact bytes are not uploaded by this workflow.
 
-Control-ledger CAS uses the deterministic canonical-content fingerprint defined by the accepted ledger. The trusted transport separately retains GitHub's native blob SHA for the `sha` field required by the Contents API. Snapshot reads return the planner fingerprint; native Git object IDs are not written into protocol or ledger records.
+Artifact metadata ingestion later requests and filters the exact name:
+
+```text
+audit-direct-result-<repositoryId>-<targetSha>
+```
+
+## Publication recovery
+
+Checks, statuses and comments are reconciled before recreation when a journal is missing. Search is bounded to ten pages of 100 records. Existing exact side effects cause journal repair rather than duplicate publication.
+
+## Explicit exclusions
+
+This workflow does not enable submitted analysis execution, RPC simulation, Cloudflare/R2 mode, wallet/signing/transaction work, deployment, workflow approval or main-branch merge.
+
+## Pre-run checklist
+
+1. Confirm default-branch protection is active.
+2. Confirm both repository variables are present and correct.
+3. Confirm workflow/action SHAs match the reviewed release.
+4. Confirm Round 3 compatibility/release manifests validate.
+5. Confirm protected simulation/RPC blobs remain unchanged.
+6. Run an authorized inert fixture test before considering any broader integration.
