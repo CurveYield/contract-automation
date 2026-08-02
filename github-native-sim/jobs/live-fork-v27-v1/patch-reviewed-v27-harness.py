@@ -74,7 +74,7 @@ migration_new = """    await branchRecorder.contractCall({ label: 'branch deposi
       passed: migrationSpendable > 0n,
       detail: { retainedTokenState: plain(migrationReserve) }
     });
-    if (migrationSpendable == 0n) throw new Error('explicit migration reserve was not credited');
+    if (migrationSpendable === 0n) throw new Error('explicit migration reserve was not credited');
     const gauge = await staticCall(boost, 'balanceOf(address)', [strategy2Deployment.address]);
 """
 source = replace_once_or_already(source, migration_old, migration_new, 'explicit-migration branch seed')
