@@ -5,6 +5,7 @@ import * as legacy from './index-legacy.mjs';
 const SHA = /^[0-9a-f]{40}$/u;
 const SAFE_TEXT = /^[^\u0000-\u001f\u007f]+$/u;
 const SAFE_PATH = /^[A-Za-z0-9_.@+*/\/-]+$/u;
+const ISO_UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const TRUSTED_ATTESTATION_BLOB_SHA = '2a0c85ca831bf30b042b057adb643c0d2d001435';
 const ACCEPT = new Set(['ACCEPT', 'ACCEPT WITH REPAIR']);
 const WORKER_EVIDENCE_KEYS = Object.freeze(['manifests', 'report', 'resolvedBranchHead', 'status']);
@@ -218,8 +219,12 @@ function pathValue(value, path) {
 
 function timestamp(value, path) {
   const output = text(value, path, 64);
+  if (!ISO_UTC_TIMESTAMP.test(output)) fail('invalid_timestamp', path);
   const parsed = new Date(output);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString() !== output) fail('invalid_timestamp', path);
+  if (Number.isNaN(parsed.getTime())) fail('invalid_timestamp', path);
+  const normalized = parsed.toISOString();
+  const expected = output.includes('.') ? normalized : normalized.replace('.000Z', 'Z');
+  if (expected !== output) fail('invalid_timestamp', path);
   return output;
 }
 
