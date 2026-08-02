@@ -80,7 +80,15 @@ function validateEtag(value, field, allowStar = false) {
   return value;
 }
 
-function validateOptions(value) {
+function validateOpaqueEtag(value, field, allowStar = false) {
+  if (allowStar && value === '*') return value;
+  if (typeof value !== 'string' || value.length < 1 || value.length > 256 || CONTROL.test(value)) {
+    fail('invalid_precondition', `${field} must be a bounded opaque ETag${allowStar ? ' or *' : ''}`);
+  }
+  return value;
+}
+
+function validateOptionsWith(value, validateConditionEtag) {
   if (value === undefined) return {};
   const inspected = ordinaryObject(value, '$.options');
   for (const key of inspected.keys) if (key !== 'onlyIf') fail('unknown_option', `$.options.${key} is not allowed`);
@@ -95,9 +103,17 @@ function validateOptions(value) {
   if (condition.etagMatches !== undefined && condition.etagDoesNotMatch !== undefined) {
     fail('invalid_precondition', 'etagMatches and etagDoesNotMatch are mutually exclusive');
   }
-  if (condition.etagMatches !== undefined) validateEtag(condition.etagMatches, 'etagMatches');
-  if (condition.etagDoesNotMatch !== undefined) validateEtag(condition.etagDoesNotMatch, 'etagDoesNotMatch', true);
+  if (condition.etagMatches !== undefined) validateConditionEtag(condition.etagMatches, 'etagMatches');
+  if (condition.etagDoesNotMatch !== undefined) validateConditionEtag(condition.etagDoesNotMatch, 'etagDoesNotMatch', true);
   return Object.freeze({ onlyIf: Object.freeze(condition) });
+}
+
+function validateOptions(value) {
+  return validateOptionsWith(value, validateEtag);
+}
+
+function validateAdapterOptions(value) {
+  return validateOptionsWith(value, validateOpaqueEtag);
 }
 
 function toBytes(value) {
@@ -186,7 +202,7 @@ export class AuditR2Store {
 
   async put(key, value, options = undefined) {
     const checkedKey = safeKey(key);
-    const checkedOptions = validateOptions(options);
+    const checkedOptions = validateAdapterOptions(options);
     const previous = await this.backend.head(checkedKey);
     const condition = checkedOptions.onlyIf ?? {};
     if (condition.etagMatches !== undefined && previous?.etag !== condition.etagMatches) throw new ConditionalWriteError();
