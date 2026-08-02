@@ -2,25 +2,64 @@ import {
   disabledSlotIds,
   recoveryEvent,
   reduceRpcHealth,
-  sessionEventFromDiagnostics
+  sessionEventFromDiagnostics,
+  validateRpcHealthEvent
 } from './rpc-health-ledger.mjs';
 
 const EVENT_MARKER = '<!-- curveyield-rpc-health-event-v1 -->';
 const LEDGER_MARKER = '<!-- curveyield-rpc-health-ledger-v1 -->';
+const GITHUB_ACTIONS_BOT = Object.freeze({
+  login: 'github-actions[bot]',
+  id: 41898282,
+  type: 'Bot'
+});
+const TRUSTED_ADMIN_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
-function encodeEvent(event) {
-  return `${EVENT_MARKER}\n\`\`\`json\n${JSON.stringify(event, null, 2)}\n\`\`\``;
+function dataField(value, key) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  let descriptor;
+  try { descriptor = Object.getOwnPropertyDescriptor(value, key); }
+  catch { return undefined; }
+  if (!descriptor || !Object.hasOwn(descriptor, 'value')) return undefined;
+  return descriptor.value;
 }
 
-function decodeEvent(body) {
+function encodeEvent(event) {
+  const safe = validateRpcHealthEvent(event);
+  return `${EVENT_MARKER}\n\`\`\`json\n${JSON.stringify(safe, null, 2)}\n\`\`\``;
+}
+
+function decodeBody(body) {
   if (typeof body !== 'string' || !body.includes(EVENT_MARKER)) return null;
   const match = body.match(/```json\s*([\s\S]*?)\s*```/i);
   if (!match) return null;
   try {
-    return JSON.parse(match[1]);
+    return validateRpcHealthEvent(JSON.parse(match[1]));
   } catch {
     return null;
   }
+}
+
+function isActionsBot(comment) {
+  const user = dataField(comment, 'user');
+  return dataField(user, 'login') === GITHUB_ACTIONS_BOT.login
+    && dataField(user, 'id') === GITHUB_ACTIONS_BOT.id
+    && dataField(user, 'type') === GITHUB_ACTIONS_BOT.type;
+}
+
+function isTrustedAdministrator(comment) {
+  if (isActionsBot(comment)) return true;
+  return TRUSTED_ADMIN_ASSOCIATIONS.has(dataField(comment, 'author_association'));
+}
+
+function decodeComment(comment) {
+  const commentId = dataField(comment, 'id');
+  if (!Number.isSafeInteger(commentId) || commentId < 1) return null;
+  const event = decodeBody(dataField(comment, 'body'));
+  if (!event) return null;
+  if (event.type === 'session' && !isActionsBot(comment)) return null;
+  if (event.type !== 'session' && !isTrustedAdministrator(comment)) return null;
+  return { commentId, event };
 }
 
 function repositoryParts(repository) {
@@ -44,7 +83,7 @@ async function githubRequest({ token, url, method = 'GET', body, fetchImpl }) {
   let decoded;
   try { decoded = text ? JSON.parse(text) : null; } catch { decoded = null; }
   if (!response.ok) {
-    const error = new Error(decoded?.message ?? `GitHub RPC health request failed with HTTP ${response.status}`);
+    const error = new Error(`GitHub RPC health request failed with HTTP ${response.status}`);
     error.status = response.status;
     throw error;
   }
@@ -106,7 +145,15 @@ export function createGithubRpcHealthStore({
 
   async function events(issueNumber) {
     const comments = await listComments(issueNumber);
-    return comments.map((comment) => decodeEvent(comment.body)).filter(Boolean);
+    const seenCommentIds = new Set();
+    const output = [];
+    for (const comment of comments) {
+      const decoded = decodeComment(comment);
+      if (!decoded || seenCommentIds.has(decoded.commentId)) continue;
+      seenCommentIds.add(decoded.commentId);
+      output.push(decoded.event);
+    }
+    return output;
   }
 
   async function append(issueNumber, event) {
