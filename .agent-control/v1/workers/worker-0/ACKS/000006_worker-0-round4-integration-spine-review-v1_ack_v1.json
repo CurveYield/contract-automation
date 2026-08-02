@@ -1,0 +1,12 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-0",
+  "sequence": 6,
+  "messageId": "worker-0-round4-integration-spine-review-v1-000006",
+  "assignmentPath": ".agent-control/v1/workers/worker-0/ASSIGNMENTS/000006_worker-0-round4-integration-spine-review-v1.md",
+  "assignmentBlobSha": "d445f8e93ac6fdb364bfe195b6ebe701dec9caa0",
+  "issueNumber": 120,
+  "branch": "audit-round4/review-integration-spine-v1",
+  "startingSha": "5914b03382422ea714346625a601b5dbda3aa0cd",
+  "acknowledgedAt": "2026-08-02T10:04:00Z"
+}
