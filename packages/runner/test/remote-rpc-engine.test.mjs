@@ -34,7 +34,8 @@ function startFakeAnvil() {
       }; break;
       case 'eth_getBalance': result = `0x${(balances.get(String(payload.params[0]).toLowerCase()) ?? 0n).toString(16)}`; break;
       case 'evm_snapshot': {
-        const id = `0x${nextSnapshot++.toString(16)}`;
+        const id = `0x${nextSnapshot.toString(16)}`;
+        nextSnapshot += 1;
         snapshots.set(id, new Map(balances));
         result = id;
         break;
