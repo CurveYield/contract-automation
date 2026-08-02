@@ -36,7 +36,19 @@ export function renderResultPage(input) {
 
 export function renderGitHubDirectStatusPage(input) {
   const item = createGitHubDirectStatusViewModel(input);
-  return `${notice()}<section aria-labelledby="github-direct-summary"><h2 id="github-direct-summary">GitHub Direct Audit status</h2><dl><div><dt>Identifier</dt><dd>${identifier(item.id)}</dd></div><div><dt>Status</dt><dd>${badge(item.status, lifecycleState(item.status).label)}</dd></div><div><dt>Repository</dt><dd>${text(item.repository)}</dd></div><div><dt>Target revision</dt><dd>${identifier(item.targetSha)}</dd></div><div><dt>Check status</dt><dd>${badge(item.checkStatus)}</dd></div><div><dt>Report</dt><dd>${item.reportId ? `<a href="/reports/${encodeURIComponent(item.reportId)}">View report</a>` : '—'}</dd></div><div><dt>Updated</dt><dd>${text(item.updatedAt)}</dd></div></dl>${item.reason ? `<p>${escapeHtml(item.reason)}</p>` : ''}</section>`;
+  const round4 = item.sourceSchema ? [
+    ['Source schema', text(item.sourceSchema)],
+    ['Command', text(item.commandKind)],
+    ['Service result state', badge(item.serviceState, lifecycleState(item.serviceState).label)],
+    ['Result identifier', item.resultId ? identifier(item.resultId) : '—'],
+    ['Result digest', item.resultDigest ? identifier(item.resultDigest) : '—'],
+    ['Execution state', badge(item.executionState)],
+    ['Outcome', text(item.outcome)],
+    ['Report digest', item.reportDigest ? identifier(item.reportDigest) : '—'],
+    ['Retryable', item.retryable ? 'Yes' : 'No'],
+    ['Error code', text(item.errorCode)]
+  ].map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('') : '';
+  return `${notice()}<section aria-labelledby="github-direct-summary"><h2 id="github-direct-summary">GitHub Direct Audit status</h2><dl><div><dt>Identifier</dt><dd>${identifier(item.id)}</dd></div><div><dt>Status</dt><dd>${badge(item.status, lifecycleState(item.status).label)}</dd></div><div><dt>Repository</dt><dd>${text(item.repository)}</dd></div><div><dt>Target revision</dt><dd>${identifier(item.targetSha)}</dd></div><div><dt>Check status</dt><dd>${badge(item.checkStatus)}</dd></div><div><dt>Report</dt><dd>${item.reportId ? `<a href="/reports/${encodeURIComponent(item.reportId)}">View report</a>` : '—'}</dd></div><div><dt>Updated</dt><dd>${text(item.updatedAt)}</dd></div>${round4}</dl>${item.reason ? `<p>${escapeHtml(item.reason)}</p>` : ''}</section>`;
 }
 
 function quotaTable(items, title) {
