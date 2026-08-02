@@ -1,0 +1,79 @@
+{
+  "phase4": {
+    "compilerInput": {
+      "resultJson": "{\"contracts\":{\"contracts/A.sol\":{\"A\":{}}},\"errors\":[]}",
+      "stdout": "",
+      "stderr": "",
+      "exitCode": 0,
+      "durationMs": 1,
+      "terminationReason": "completed"
+    }
+  },
+  "phase5": {
+    "hardhatInput": {
+      "resultJson": "{\"records\":[{\"suite\":\"A\",\"name\":\"works\",\"status\":\"passed\"}]}",
+      "exitCode": 0,
+      "durationMs": 1,
+      "termination": "completed"
+    },
+    "resourceExhaustion": {
+      "resultJson": "{}",
+      "exitCode": 137,
+      "durationMs": 2,
+      "termination": "resource_exhaustion"
+    }
+  },
+  "phase6": {
+    "capture": {
+      "schemaVersion": "formal-obligations-capture-v1",
+      "trustedProducer": "curveyield-formal-capture-producer-v1",
+      "profileId": "formal-obligations-v1",
+      "toolVersion": "1.0.0",
+      "outcome": "proved",
+      "obligations": [{"id":"obl_1","kind":"invariant","expression":"balance >= 0","assertionIds":["assert_1"],"sourceReferenceIds":["src_1"]}],
+      "assertions": [{"id":"assert_1","expression":"balance >= 0","description":"balance remains nonnegative","sourceReferenceIds":["src_1"]}],
+      "models": [],
+      "traces": [],
+      "counterexamples": [],
+      "diagnostics": [],
+      "sourceReferences": [{"id":"src_1","sourceId":"contracts/Invariant.sol","startLine":1,"startColumn":0,"endLine":1,"endColumn":20}],
+      "parserWarnings": [],
+      "truncated": false
+    }
+  },
+  "phase7": {
+    "request": {
+      "schemaVersion": "fork-request-v1",
+      "tenantId": "ten_11111111111111111111111111111111",
+      "workspaceId": "ws_22222222222222222222222222222222",
+      "campaignId": "cmp_33333333333333333333333333333333",
+      "forkId": "fork_44444444444444444444444444444444",
+      "attemptId": "att_55555555555555555555555555555555",
+      "profileId": "free-development-v1",
+      "policyVersion": "fork-policy-v1",
+      "requesterId": "worker-2",
+      "scopes": ["audit:submit"],
+      "chainId": 1,
+      "blockNumber": 19000000,
+      "adapterKind": "mock",
+      "executionGate": "trusted_mock",
+      "createdAt": "2026-08-01T16:00:00.000Z",
+      "idempotencyKey": "round2-phase7"
+    }
+  },
+  "phase8": {
+    "policy": {
+      "tenantId": "tenant-1",
+      "workspaceId": "workspace-1",
+      "allowedScopes": ["campaign:merge","campaign:read","campaign:share-base","campaign:write"],
+      "maxCampaigns": 10,
+      "maxMergeInputs": 8,
+      "maxFindings": 100,
+      "maxEvidence": 100,
+      "maxRelations": 100,
+      "maxBytes": 1000000,
+      "retentionDays": 30,
+      "issuedAt": "2026-08-01T16:00:00.000Z"
+    }
+  }
+}
