@@ -1,0 +1,181 @@
+name: Temporary V27 Hardhat EDR Full Simulation v1
+
+on:
+  pull_request:
+    paths:
+      - 'github-native-sim/jobs/v27-hardhat-full-v1/**'
+      - '.github/workflows/temp-v27-hardhat-full-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temp-v27-hardhat-full-v1-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - name: Check out execution branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted repository and Hardhat dependencies
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund hardhat@3.12.0
+          npx hardhat --version
+
+      - name: Reconstruct and verify Hardhat simulation job
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-hardhat-full-v1'
+          result_root="$RUNNER_TEMP/v27-hardhat-full-v1"
+          mkdir -p "$job_root" "$result_root"
+          cat "$job_root"/payload/v27-hardhat-job.tar.gz.b64.part-* > /tmp/v27-hardhat-job.tar.gz.b64
+          base64 -d /tmp/v27-hardhat-job.tar.gz.b64 > /tmp/v27-hardhat-job.tar.gz
+          echo 'aef1382bfbf9bc9c78872d1e5e7f3ac850f66bc308852f6c12e4dd50c7baaa24  /tmp/v27-hardhat-job.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/v27-hardhat-job.tar.gz -C "$job_root"
+          echo 'a6f5282938608f2ce763ffbbc3ddbcae2e785601ac3174b099f7f5638b7d3aa3  github-native-sim/jobs/v27-hardhat-full-v1/config/funding-accounts.json' | sha256sum -c -
+          echo 'b1f147960f5141ae981aaadea8ae590c8b9126f566235a6b491994cb238862b8  github-native-sim/jobs/v27-hardhat-full-v1/config/simulation-config.json' | sha256sum -c -
+          echo '8bd54facf1040e9a3bce930d73c53ac3f9ea964eaeb74ac1cced6b957a18552a  github-native-sim/jobs/v27-hardhat-full-v1/scripts/hardhat-call-recorder.mjs' | sha256sum -c -
+          echo '3cce91a8959c5756cb7ff24d018f6d8a2ec4afebb0c14aa1bf75887135a6c518  github-native-sim/jobs/v27-hardhat-full-v1/scripts/hardhat-engine.mjs' | sha256sum -c -
+          echo '8ace71f65bc59b7cf261e53d22d82993ef8772d42f5580b5c1f0e16d1352e3b6  github-native-sim/jobs/v27-hardhat-full-v1/scripts/run-v27-hardhat-lifecycle.mjs' | sha256sum -c -
+          echo '1585b1b91a05b80b84c194871fc482ffcf5aef567319d9d0a03e7e46aeb03aca  github-native-sim/jobs/v27-hardhat-full-v1/scripts/v27-observers.mjs' | sha256sum -c -
+          echo 'b7393ad8ecc14b26f5d540584d6a0eab88e6faa44ed5737640c9e95ebcd8daf6  github-native-sim/jobs/v27-hardhat-full-v1/hardhat.config.mjs' | sha256sum -c -
+          node --check "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
+          node --check "$job_root/scripts/hardhat-engine.mjs"
+          node --check "$job_root/scripts/hardhat-call-recorder.mjs"
+          node --check "$job_root/scripts/v27-observers.mjs"
+          cat > "$result_root/job-verification.json" <<JSON
+          {
+            "payloadSha256": "aef1382bfbf9bc9c78872d1e5e7f3ac850f66bc308852f6c12e4dd50c7baaa24",
+            "runnerSha256": "8ace71f65bc59b7cf261e53d22d82993ef8772d42f5580b5c1f0e16d1352e3b6",
+            "engine": "Hardhat 3 EDR",
+            "syntax": "passed"
+          }
+          JSON
+
+      - name: Run focused journal regression tests
+        run: |
+          set -euo pipefail
+          node --test packages/github-native-sim/test/local-state-journal.test.mjs
+
+      - name: Reconstruct and verify exact V27 Solidity sources
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-hardhat-full-v1'
+          result_root="$RUNNER_TEMP/v27-hardhat-full-v1"
+          source_ref='origin/automation/v27-functional-smoke-v2'
+          source_root='github-native-sim/jobs/v27-functional-smoke-v2'
+          git fetch --no-tags origin 'automation/v27-functional-smoke-v2:refs/remotes/origin/automation/v27-functional-smoke-v2'
+          mkdir -p "$job_root/project"
+          : > /tmp/v27-sources.tar.gz.b64
+          for part in 01 02 03 04 05; do
+            git show "$source_ref:$source_root/source-payloads/archive/v27-sources.tar.gz.part-$part.b64" >> /tmp/v27-sources.tar.gz.b64
+          done
+          base64 -d /tmp/v27-sources.tar.gz.b64 > /tmp/v27-sources.tar.gz
+          echo '4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59  /tmp/v27-sources.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/v27-sources.tar.gz -C "$job_root/project"
+          git show "$source_ref:$source_root/project/CurveYieldSdYBRewardConverterV27.sol" > "$job_root/project/CurveYieldSdYBRewardConverterV27.sol"
+          echo 'c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2  github-native-sim/jobs/v27-hardhat-full-v1/project/CurveYieldSdYBHybridVaultV27.sol' | sha256sum -c -
+          echo 'e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e  github-native-sim/jobs/v27-hardhat-full-v1/project/CurveYieldSdYBRewardConverterV27.sol' | sha256sum -c -
+          echo '8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04  github-native-sim/jobs/v27-hardhat-full-v1/project/CurveYieldSdYBTwoDestinationStrategyV27.sol' | sha256sum -c -
+          cat > "$result_root/source-verification.json" <<JSON
+          {
+            "archiveSha256": "4ac83fac16a6005a9517775edc19f8997e2a6752f8ad94d2c7442eee0babbb59",
+            "vaultSha256": "c3c009179c53a9b5953f090ab8fd47528e392044b65c73006d229eeed8dd69c2",
+            "converterSha256": "e8c1cd62b55986400555ac8ccb682f189304577a9fb53f26bdafccf24c09f14e",
+            "strategySha256": "8d5db62b021d152c48fde77cb426d22e1948a3208f169586cf91d07f0ad89a04"
+          }
+          JSON
+
+      - name: Start Hardhat EDR mainnet fork
+        run: |
+          set -euo pipefail
+          job_root='github-native-sim/jobs/v27-hardhat-full-v1'
+          result_root="$RUNNER_TEMP/v27-hardhat-full-v1"
+          nohup npx hardhat node \
+            --config "$job_root/hardhat.config.mjs" \
+            --network v27Fork \
+            --hostname 127.0.0.1 \
+            --port 8545 \
+            > "$result_root/hardhat-node.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/v27-hardhat-node.pid"
+          ready=0
+          for attempt in $(seq 1 90); do
+            if curl --silent --fail \
+              --header 'content-type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"hardhat_metadata","params":[]}' \
+              http://127.0.0.1:8545 > "$result_root/hardhat-metadata.json"; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if test "$ready" -ne 1; then
+            cat "$result_root/hardhat-node.log" >&2
+            exit 1
+          fi
+          jq . "$result_root/hardhat-metadata.json"
+
+      - name: Execute complete V27 Hardhat lifecycle
+        id: execute
+        env:
+          HARDHAT_RPC_URL: http://127.0.0.1:8545
+          RESULT_ROOT: ${{ runner.temp }}/v27-hardhat-full-v1
+        run: |
+          set -u
+          job_root='github-native-sim/jobs/v27-hardhat-full-v1'
+          result_root="$RESULT_ROOT"
+          set +e
+          node "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" \
+            > "$result_root/workflow-stdout.log" \
+            2> "$result_root/workflow-stderr.log"
+          status=$?
+          set -e
+          printf 'exit_code=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          if test "$status" -eq 0; then
+            printf 'success=1\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'success=0\n' >> "$GITHUB_OUTPUT"
+          fi
+          if test -f "$result_root/data-report.json"; then
+            jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), passedAssertions: ([.assertions[] | select(.passed == true)] | length), cycleCount: (.cycles | length), postMigrationCycleCount: (.postMigrationCycles | length), supplementalTestCount: (.supplementalTests | length), migration, finalJournalHash, mcopyPreflight: .execution.ybMcopyPreflight}' "$result_root/data-report.json" || true
+          fi
+          exit 0
+
+      - name: Stop Hardhat node
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/v27-hardhat-node.pid"; then
+            kill "$(cat "$RUNNER_TEMP/v27-hardhat-node.pid")" 2>/dev/null || true
+          fi
+
+      - name: Upload complete or partial Hardhat report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CurveYield-V27-Hardhat-EDR-Full-Data-Report-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-hardhat-full-v1
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Propagate simulation failure
+        if: steps.execute.outputs.success != '1'
+        run: |
+          echo "V27 Hardhat EDR simulation failed with exit code ${{ steps.execute.outputs.exit_code }}"
+          exit 1
