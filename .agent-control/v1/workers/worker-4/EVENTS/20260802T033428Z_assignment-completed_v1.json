@@ -1,0 +1,49 @@
+{
+  "protocolVersion": 1,
+  "workerId": "worker-4",
+  "eventType": "assignment_completed",
+  "timestamp": "2026-08-02T03:34:28Z",
+  "sequence": 2,
+  "messageId": "worker-4-round3-web-operator-release-v1-000002",
+  "issueNumber": 116,
+  "branch": "audit-round3/web-operator-release-v1",
+  "startingSha": "79d86fe29baabc986f7a38aa8c048efb1379a106",
+  "implementationSha": "7243b26a23985efe866e4b3ea98c5d1189aca4c4",
+  "finalSha": "fdc55d684be2cd5053c1e617aa09399fdfcf60c2",
+  "recommendation": "ACCEPT",
+  "reportReference": "https://github.com/CurveYield/contract-automation/issues/116#issuecomment-5154997216",
+  "reportCommentId": 5154997216,
+  "checkpointCommentIds": [5154753350, 5154804189, 5154840009, 5154929838, 5154987914],
+  "tests": {
+    "total": 52,
+    "passed": 52,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "verification": {
+    "javascriptSyntaxChecks": 27,
+    "jsonFixtureChecks": 6,
+    "changedFiles": 39,
+    "unownedChangedFiles": 0,
+    "protectedBlobsChecked": 11,
+    "protectedBlobsChanged": 0,
+    "candidateBlobEntries": 37,
+    "candidateBlobEntriesVerified": 37,
+    "dependenciesInstalled": false,
+    "compiled": false
+  },
+  "publishedArtifacts": {
+    "sourceReview": "docs/audit/reviews/2026-08-01-audit-round3-web-operator-source-review-v1.md",
+    "releaseReview": "docs/audit/reviews/2026-08-01-audit-round3-web-operator-release-candidate-v1.md",
+    "accessibilityReview": "docs/audit/web/2026-08-01-audit-round3-accessibility-review-v1.md",
+    "round4Handoff": "test/fixtures/audit-round3-web/round4-handoff-v1.json",
+    "staticEntry": "apps/audit-web/index-v1.html"
+  },
+  "nextRound": {
+    "masterGateIssue": 119,
+    "workerAssignmentIssue": 124,
+    "productionAcceptanceIssue": 125
+  },
+  "blockers": []
+}
