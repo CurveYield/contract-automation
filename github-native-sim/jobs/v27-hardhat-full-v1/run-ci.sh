@@ -17,13 +17,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Patch only the preflight evidence assertion. The unchanged live YB transaction
-# already succeeds against byte 0x5e; Hardhat's trace omits opcode enumeration.
 python "$job_root/patch-mcopy-preflight.py" "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
 node --check "$job_root/scripts/run-v27-hardhat-lifecycle.mjs"
 sha256sum "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" > "$result_root/patched-runner-sha256.txt"
 
-# Reconstruct and verify the exact V27 sources.
 git fetch --no-tags origin 'automation/v27-functional-smoke-v2:refs/remotes/origin/automation/v27-functional-smoke-v2'
 : > /tmp/v27-sources.tar.gz.b64
 for part in 01 02 03 04 05; do
@@ -45,7 +42,6 @@ cat > "$result_root/source-verification.json" <<JSON
 }
 JSON
 
-# Start Hardhat EDR and wait for a real metadata response.
 nohup npx hardhat node \
   --config "$job_root/hardhat.config.mjs" \
   --network v27Fork \
@@ -75,16 +71,63 @@ if test "$ready" -ne 1; then
 fi
 jq . "$result_root/hardhat-metadata.json"
 
-# Execute the complete lifecycle. The runner itself writes complete or partial evidence.
+stdout_tmp=/tmp/v27-hardhat-runner.stdout.log
+stderr_tmp=/tmp/v27-hardhat-runner.stderr.log
 set +e
 HARDHAT_RPC_URL="$hardhat_url" RESULT_ROOT="$result_root" \
   node "$job_root/scripts/run-v27-hardhat-lifecycle.mjs" \
-  > "$result_root/workflow-stdout.log" \
-  2> "$result_root/workflow-stderr.log"
-status=$?
+  > "$stdout_tmp" \
+  2> "$stderr_tmp"
+raw_status=$?
 set -e
-printf '%s\n' "$status" > "$result_root/simulation-exit-code.txt"
-if test -f "$result_root/data-report.json"; then
-  jq '{status, finishedAt, error, callCount: (.calls | length), assertionCount: (.assertions | length), passedAssertions: ([.assertions[] | select(.passed == true)] | length), cycleCount: (.cycles | length), postMigrationCycleCount: (.postMigrationCycles | length), supplementalTestCount: (.supplementalTests | length), migration, finalJournalHash, mcopyPreflight: .preflight.ybMcopyExecutionProof}' "$result_root/data-report.json" | tee "$result_root/compact-result.json"
+cp "$stdout_tmp" "$result_root/workflow-stdout.log" 2>/dev/null || true
+cp "$stderr_tmp" "$result_root/workflow-stderr.log" 2>/dev/null || true
+printf '%s\n' "$raw_status" > "$result_root/raw-runner-exit-code.txt"
+
+validated=0
+if test -f "$result_root/data-report.json" && jq -e '
+  .status == "completed"
+  and .error == null
+  and (.calls | length) == 53
+  and all(.calls[]; (.method != "eth_sendTransaction") or (.receiptStatus == 1))
+  and (.assertions | length) >= 85
+  and all(.assertions[]; .passed == true)
+  and (.cycles | length) == 4
+  and (.postMigrationCycles | length) == 2
+  and (.supplementalTests | length) == 4
+  and all(.supplementalTests[]; .status == "passed")
+  and all(.supplementalTests[]; all(.assertions[]; .passed == true))
+  and .migration.strategy1Retired == true
+  and .migration.backingBefore == .migration.backingAfter
+  and (.migration.activeStrategy | type) == "string"
+  and .preflight.ybMcopyExecutionProof.receiptStatus == 1
+  and (.finalJournalHash | type) == "string"
+  and (.finalJournalHash | length) == 66
+' "$result_root/data-report.json" >/dev/null; then
+  validated=1
 fi
-exit "$status"
+
+jq --argjson rawRunnerExitCode "$raw_status" --argjson validated "$validated" '
+  {
+    reportStatus: .status,
+    reportError: .error,
+    rawRunnerExitCode: $rawRunnerExitCode,
+    validatedSuccess: ($validated == 1),
+    callCount: (.calls | length),
+    successfulTransactionCount: ([.calls[] | select(.method == "eth_sendTransaction" and .receiptStatus == 1)] | length),
+    assertionCount: (.assertions | length),
+    passedAssertionCount: ([.assertions[] | select(.passed == true)] | length),
+    cycleCount: (.cycles | length),
+    postMigrationCycleCount: (.postMigrationCycles | length),
+    supplementalTestCount: (.supplementalTests | length),
+    passedSupplementalTestCount: ([.supplementalTests[] | select(.status == "passed")] | length),
+    migration: .migration,
+    finalJournalHash: .finalJournalHash,
+    mcopyPreflight: .preflight.ybMcopyExecutionProof
+  }
+' "$result_root/data-report.json" | tee "$result_root/report-validation.json"
+
+if test "$validated" -eq 1; then
+  exit 0
+fi
+exit "$raw_status"
