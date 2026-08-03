@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "round5-pages-explicit-production-request-v6",
+  "requestId": "round5-pages-explicit-production-20260803T1240Z-v6",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "669591985d27a7c9e7a3dee8be1ff1ab8821d2e2",
+  "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "requestedAt": "2026-08-03T12:40:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "supersededRuns": [
+    30808377849,
+    30813209037,
+    30814064657
+  ],
+  "finding": "wrangler-inferred-detached-head-instead-of-configured-pages-production-branch",
+  "repair": "explicit-release-branch-and-application-commit-binding-for-static-pages-deployment",
+  "failedOrHistoricalWorkflowRerunAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false
+}
