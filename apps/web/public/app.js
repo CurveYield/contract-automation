@@ -46,6 +46,21 @@ function updateProjectFields() {
   elements['upload-project'].classList.toggle('hidden', type !== 'upload');
 }
 
+function syncChainOptions(chains) {
+  const entries = Object.entries(chains).filter(([name]) => name === 'ethereum' || name === 'base');
+  const current = elements.chain.value;
+  const preferred = entries.some(([name]) => name === current) ? current : 'base';
+  const preferredChain = preferred === 'base' ? 'base' : preferred;
+  const options = entries.map(([name]) => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name === 'ethereum' ? 'Ethereum' : 'Base';
+    option.selected = name === preferredChain;
+    return option;
+  });
+  elements.chain.replaceChildren(...options);
+}
+
 document.querySelectorAll('input[name="projectType"]').forEach((radio) => radio.addEventListener('change', updateProjectFields));
 
 async function projectPayload(api) {
@@ -90,6 +105,7 @@ elements['test-connection'].addEventListener('click', async () => {
   try {
     elements['service-state'].textContent = 'Testing…';
     const response = await client().getChains();
+    syncChainOptions(response.chains);
     elements['service-state'].textContent = `${Object.keys(response.chains).length} chains available`;
     setProgress('API connection succeeded.');
   } catch (error) {
