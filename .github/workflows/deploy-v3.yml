@@ -1,0 +1,306 @@
+name: Deploy CurveYield Preflight V3
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/DEPLOY_REQUEST_v3.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-deploy
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      DEPLOY_REQUEST_PATH: .agent-control/v1/orchestrator/DEPLOY_REQUEST_v3.json
+      DEPLOY_REQUEST_ID: round5-production-deploy-20260803T1035Z-v3
+      DEPLOY_EXPECTED_BEFORE_SHA: bb500321d084dfc9336304898f9cdd8b65bd9e1b
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_CLIENT_API_KEY }}
+      PREFLIGHTSIM_GPT_API_KEY: ${{ secrets.PREFLIGHTSIM_GPT_API_KEY }}
+      PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY: ${{ secrets.PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY }}
+      PREFLIGHTSIM_RUNNER_API_KEY: ${{ secrets.PREFLIGHTSIM_RUNNER_API_KEY }}
+      PREFLIGHTSIM_GITHUB_TOKEN: ${{ secrets.PREFLIGHTSIM_GITHUB_TOKEN }}
+      PREFLIGHTSIM_R2_ACCESS_KEY_ID: ${{ secrets.PREFLIGHTSIM_R2_ACCESS_KEY_ID }}
+      PREFLIGHTSIM_R2_SECRET_ACCESS_KEY: ${{ secrets.PREFLIGHTSIM_R2_SECRET_ACCESS_KEY }}
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      RPC_BASE: ${{ secrets.RPC_BASE }}
+      PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL }}
+      PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
+      PREFLIGHTSIM_ALLOWED_GITHUB_USERS: ${{ vars.PREFLIGHTSIM_ALLOWED_GITHUB_USERS }}
+      PAGES_DOMAIN: preflight.curveyield.online
+      R2_BUCKET_NAME: curveyield-preflight
+    steps:
+      - name: Check out exact trusted source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time deployment request v3
+        shell: bash
+        env:
+          DEPLOY_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_EVENT_BEFORE" = "$DEPLOY_EXPECTED_BEFORE_SHA"
+          test -f "$DEPLOY_REQUEST_PATH"
+          jq -e \
+            --arg request_id "$DEPLOY_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$DEPLOY_EXPECTED_BEFORE_SHA" \
+            '
+              .schemaVersion == "round5-trusted-deployment-request-v3" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .requestedAt == "2026-08-03T10:35:00Z" and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .accountOwnerAuthorization.deploymentAuthorized == true and
+              .accountOwnerAuthorization.liveProductionTestingAuthorized == true and
+              .accountOwnerAuthorization.activeNetworks == ["ethereum", "base"] and
+              .activeReadOnlyRpcNetworks == [
+                {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
+                {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
+              ] and
+              .deferredReadOnlyRpcNetworks == ["arbitrum", "fraxtal", "katana", "optimism", "polygon"] and
+              .remediation.sourceRun == 30805768611 and
+              .remediation.sourceJob == 91660666586 and
+              .remediation.failedStep == "Configure bounded R2 browser uploads and retention" and
+              .remediation.rootCause == "S3-style lifecycle JSON supplied to Wrangler native R2 lifecycle set command" and
+              .remediation.repair == "native Cloudflare R2 rules schema with age conditions expressed in seconds" and
+              .remediation.failedOrHistoricalWorkflowRerun == false and
+              .verifiedCloudflareState.tokenStatus == "active" and
+              .verifiedCloudflareState.accountScopeAccessible == true and
+              .verifiedCloudflareState.r2BucketPresent == true and
+              .verifiedCloudflareState.verificationIssue == 125 and
+              .verifiedCloudflareState.verificationCommentId == 5165156229 and
+              .safety.secretValuesIncluded == false and
+              .safety.walletSigningAllowed == false and
+              .safety.publicTransactionBroadcastAllowed == false and
+              .safety.failedOrHistoricalWorkflowRerunAllowed == false
+            ' "$DEPLOY_REQUEST_PATH" >/dev/null
+
+      - name: Verify exact source and active configuration names
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          missing=()
+          for name in \
+            CLOUDFLARE_API_TOKEN \
+            CLOUDFLARE_ACCOUNT_ID \
+            PREFLIGHTSIM_CLIENT_API_KEY \
+            PREFLIGHTSIM_GPT_API_KEY \
+            PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY \
+            PREFLIGHTSIM_RUNNER_API_KEY \
+            PREFLIGHTSIM_GITHUB_TOKEN \
+            PREFLIGHTSIM_R2_ACCESS_KEY_ID \
+            PREFLIGHTSIM_R2_SECRET_ACCESS_KEY \
+            RPC_ETHEREUM \
+            RPC_BASE \
+            PREFLIGHTSIM_API_URL \
+            PAGES_PROJECT_NAME \
+            PREFLIGHTSIM_ALLOWED_GITHUB_USERS; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required configuration name: %s\n' "${missing[@]}"
+            exit 1
+          fi
+          test "$PREFLIGHTSIM_API_URL" = "https://api.preflight.curveyield.online"
+          test "$PAGES_PROJECT_NAME" = "curveyield-preflight"
+
+      - name: Verify active Cloudflare token and existing R2 bucket
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          status=$(curl --silent --show-error \
+            --request GET \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/$R2_BUCKET_NAME")
+          success=$(jq -r 'if .success == true then "true" else "false" end' "$response_file" 2>/dev/null || printf 'false')
+          codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$response_file" 2>/dev/null || printf '[]')
+          if [[ "$status" != "200" || "$success" != "true" ]]; then
+            printf 'R2 bucket verification failed: HTTP %s, numeric error codes %s\n' "$status" "$codes"
+            exit 1
+          fi
+          echo "R2 bucket verification succeeded"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install pinned trusted dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run unit and security tests
+        run: npm test
+
+      - name: Check JavaScript syntax
+        run: npm run lint
+
+      - name: Build Pages assets
+        run: npm run build
+
+      - name: Configure bounded R2 browser uploads and retention
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '
+            keys == ["rules"] and
+            (.rules | type) == "array" and
+            (.rules | length) == 1 and
+            .rules[0].id == "delete-preflight-artifacts-after-30-days" and
+            .rules[0].enabled == true and
+            .rules[0].conditions == {"prefix":""} and
+            .rules[0].deleteObjectsTransition.condition == {"type":"Age","maxAge":2592000} and
+            .rules[0].abortMultipartUploadsTransition.condition == {"type":"Age","maxAge":86400}
+          ' infra/r2-lifecycle.json >/dev/null
+          npx --no-install wrangler r2 bucket cors set "$R2_BUCKET_NAME" --file infra/r2-cors.json
+          npx --no-install wrangler r2 bucket lifecycle set "$R2_BUCKET_NAME" --file infra/r2-lifecycle.json --force
+          npx --no-install wrangler r2 bucket lifecycle list "$R2_BUCKET_NAME" >/dev/null
+
+      - name: Create Worker before adding secrets
+        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+
+      - name: Upload Worker secrets without logging values
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          secrets_file=$(mktemp)
+          trap 'rm -f "$secrets_file"' EXIT
+          jq -n \
+            --arg CLIENT_API_KEY "$PREFLIGHTSIM_CLIENT_API_KEY" \
+            --arg GPT_API_KEY "$PREFLIGHTSIM_GPT_API_KEY" \
+            --arg GITHUB_BRIDGE_API_KEY "$PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY" \
+            --arg RUNNER_API_KEY "$PREFLIGHTSIM_RUNNER_API_KEY" \
+            --arg GITHUB_TOKEN "$PREFLIGHTSIM_GITHUB_TOKEN" \
+            --arg R2_ACCOUNT_ID "$CLOUDFLARE_ACCOUNT_ID" \
+            --arg R2_ACCESS_KEY_ID "$PREFLIGHTSIM_R2_ACCESS_KEY_ID" \
+            --arg R2_SECRET_ACCESS_KEY "$PREFLIGHTSIM_R2_SECRET_ACCESS_KEY" \
+            --arg ALLOWED_GITHUB_USERS "$PREFLIGHTSIM_ALLOWED_GITHUB_USERS" \
+            '{CLIENT_API_KEY:$CLIENT_API_KEY,GPT_API_KEY:$GPT_API_KEY,GITHUB_BRIDGE_API_KEY:$GITHUB_BRIDGE_API_KEY,RUNNER_API_KEY:$RUNNER_API_KEY,GITHUB_TOKEN:$GITHUB_TOKEN,R2_ACCOUNT_ID:$R2_ACCOUNT_ID,R2_ACCESS_KEY_ID:$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY:$R2_SECRET_ACCESS_KEY,ALLOWED_GITHUB_USERS:$ALLOWED_GITHUB_USERS}' \
+            > "$secrets_file"
+          npx --no-install wrangler secret bulk "$secrets_file" --config apps/api/wrangler.toml
+
+      - name: Redeploy Worker with API custom domain
+        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+
+      - name: Verify Worker health with bounded retries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 10 "$PREFLIGHTSIM_API_URL/api/v1/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Worker health verification did not succeed within the bounded retry window"
+          exit 1
+
+      - name: Create Pages project when missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          output=$(npx --no-install wrangler pages project create "$PAGES_PROJECT_NAME" --production-branch="$RELEASE_BRANCH" 2>&1)
+          status=$?
+          set -e
+          if (( status != 0 )) && ! grep -Eqi "already exists|already been taken" <<<"$output"; then
+            echo "Pages project provisioning failed"
+            exit 1
+          fi
+
+      - name: Deploy Cloudflare Pages from exact trusted source
+        run: npx --no-install wrangler pages deploy dist/web --project-name="$PAGES_PROJECT_NAME" --branch="$RELEASE_BRANCH"
+
+      - name: Attach Pages custom domain without exposing response bodies
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          status=$(curl --silent --output "$response_file" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN")
+          if [[ "$status" == "404" ]]; then
+            create_response=$(mktemp)
+            trap 'rm -f "$response_file" "$create_response"' EXIT
+            create_status=$(curl --silent --show-error \
+              --request POST \
+              --output "$create_response" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "{\"name\":\"$PAGES_DOMAIN\"}" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains")
+            if (( create_status >= 400 )); then
+              create_codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$create_response" 2>/dev/null || printf '[]')
+              printf 'Pages custom-domain creation failed: HTTP %s, numeric error codes %s\n' "$create_status" "$create_codes"
+              exit 1
+            fi
+          elif (( status >= 400 )); then
+            codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$response_file" 2>/dev/null || printf '[]')
+            printf 'Pages custom-domain verification failed: HTTP %s, numeric error codes %s\n' "$status" "$codes"
+            exit 1
+          fi
+
+      - name: Ensure required GitHub issue labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create preflightsim-campaign --description "Track a bounded CurveYield Preflight campaign" --color 5319E7 --force
+          gh label create preflightsim-job --description "Run a CurveYield Preflight contract job" --color 1D76DB --force
+          gh label create preflightsim-report --description "Publish a bounded CurveYield Preflight report" --color 0E8A16 --force
+
+      - name: Report Cloudflare deployment v3 result
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comment_file=$(mktemp)
+          trap 'rm -f "$comment_file"' EXIT
+          cat >"$comment_file" <<EOF
+          ## Cloudflare deployment v3 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$DEPLOYMENT_JOB_STATUS\`
+          - deployed source SHA: \`$GITHUB_SHA\`
+          - release branch: \`$RELEASE_BRANCH\`
+          - lifecycle remediation source run: \`30805768611\`
+          - active RPC networks: \`ethereum, base\`
+          - failed or historical workflow rerun: \`false\`
+          - secret values recorded: \`false\`
+          - wallet signing or transaction broadcasting: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
