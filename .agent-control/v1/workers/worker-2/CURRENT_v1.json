@@ -1,9 +1,9 @@
 {
   "protocolVersion": 1,
   "workerId": "worker-2",
-  "sequence": 9,
-  "messageId": "worker-2-round4-full-platform-integration-v2-000009",
-  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000009_worker-2-round4-full-platform-integration-v2-000009_v1.md",
-  "assignmentBlobSha": "cc735acf452edfb16319a9439bb3880dbfb01bbc",
-  "issuedAt": "2026-08-02T16:32:58Z"
+  "sequence": 10,
+  "messageId": "worker-2-round4-integration-ownership-revoked-v1-000010",
+  "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000010_worker-2-round4-integration-ownership-revoked-v1.md",
+  "assignmentBlobSha": "9f8154ed5371a9dea3348536450e885214e05418",
+  "issuedAt": "2026-08-03T05:24:00Z"
 }
