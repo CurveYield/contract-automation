@@ -3,26 +3,57 @@
   "schemaVersion": "agent-round5-queue-v1",
   "round": 5,
   "masterIssue": 125,
-  "state": "queued-inactive",
+  "state": "orchestrator-static-preparation",
   "createdAt": "2026-08-02T10:52:00Z",
-  "activation": {
-    "round4MasterIssue": 119,
-    "acceptedReleaseSha": null,
+  "updatedAt": "2026-08-03T06:05:25Z",
+  "authority": {
+    "executionOwner": "orchestrator",
+    "soleOrchestratorDirective": true,
+    "workerRuntimeActivationAllowed": false,
+    "replacementAgentsRequired": false,
+    "workerOwnedPointersOrStatusesModified": false
+  },
+  "round4Source": {
+    "pullRequest": 139,
+    "acceptedReleaseCandidateSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
     "approvedReleaseBranch": null,
+    "mergeAuthorized": false,
+    "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
+  },
+  "staticPreparation": {
+    "branch": "orchestrator/round5-production-test-prep-v1",
+    "startingSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "branchCreated": false,
     "productionTestManifest": null,
+    "releaseShaBindingManifest": null,
+    "secretNameBindingManifest": null,
+    "resourceManifest": null,
+    "deploymentPreflightManifest": null,
     "rollbackManifest": null,
     "observabilityManifest": null,
-    "secretNameReadinessConfirmed": false,
-    "externalRpcWorkReconciled": false,
-    "rule": "No Round 5 assignment may become CURRENT and no Round 5 branch may be created until every activation field is resolved and independently verified by the orchestrator."
+    "recoveryManifest": null,
+    "trustedV27RegressionContract": null,
+    "finalAuthorizationGate": null
   },
-  "workers": [
-    {"workerId":"worker-0","nextSequence":7,"issueNumber":128,"plannedBranch":"audit-round5/production-recovery-acceptance-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000007_worker-0-round5-production-recovery-acceptance-v1.md","state":"queued"},
-    {"workerId":"worker-1","nextSequence":6,"issueNumber":129,"plannedBranch":"audit-round5/live-api-auth-gpt-r2-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000006_worker-1-round5-live-api-auth-gpt-r2-v1.md","state":"queued","executionOwner":"orchestrator-direct-takeover","workerRuntimeEligible":false,"replacementAgentRequired":false},
-    {"workerId":"worker-2","nextSequence":9,"issueNumber":130,"plannedBranch":"audit-round5/production-deployment-integration-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-2-round5-production-deployment-integration-v1.md","state":"queued"},
-    {"workerId":"worker-3","nextSequence":9,"issueNumber":131,"plannedBranch":"audit-round5/github-direct-actions-security-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000009_worker-3-round5-github-direct-actions-security-v1.md","state":"queued"},
-    {"workerId":"worker-4","nextSequence":4,"issueNumber":132,"plannedBranch":"audit-round5/web-operator-live-e2e-v1","template":".agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/000004_worker-4-round5-web-operator-live-e2e-v1.md","state":"queued"}
+  "liveActivation": {
+    "authorized": false,
+    "secretNameReadinessConfirmed": false,
+    "externalRpcWorkReconciled": true,
+    "deploymentAuthorized": false,
+    "liveProductionTestingAuthorized": false,
+    "rule": "Static preparation may proceed on the isolated orchestrator branch. No promotion, merge, secret access, deployment, workflow dispatch, or live request is permitted until the corresponding explicit account-owner gate is satisfied."
+  },
+  "legacyQueuedWorkerLanes": [
+    {"workerId":"worker-0","issueNumber":128,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
+    {"workerId":"worker-1","issueNumber":129,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
+    {"workerId":"worker-2","issueNumber":130,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
+    {"workerId":"worker-3","issueNumber":131,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
+    {"workerId":"worker-4","issueNumber":132,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false}
   ],
-  "nonOverlap": {"currentPointersModified":false,"workerStatusesModified":false,"round5BranchesCreated":false,"liveWorkAuthorized":false},
-  "updatedAt": "2026-08-02T11:42:40Z"
+  "nonOverlap": {
+    "round4CandidateBranchModified": false,
+    "currentPointersModified": false,
+    "workerStatusesModified": false,
+    "liveWorkAuthorized": false
+  }
 }
