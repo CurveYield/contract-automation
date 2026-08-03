@@ -87,7 +87,7 @@ test('workflow validates an atomic request before dynamic source checkout', asyn
 
 test('workflow uses immutable action revisions and always uploads normalized evidence', async () => {
   const workflow = await text(workflowUrl);
-  for (const action of workflow.matchAll(/uses:\s*([^\s]+)/g)) {
+  for (const action of workflow.matchAll(/^\s*uses:\s*([^\s]+)$/gm)) {
     assert.match(action[1], /@[0-9a-f]{40}$/);
   }
   assert.match(workflow, /finalize-deep-assurance-result\.mjs/);
