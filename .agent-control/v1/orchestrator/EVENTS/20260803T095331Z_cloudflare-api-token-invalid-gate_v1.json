@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "orchestrator-event-v1",
+  "eventId": "cloudflare-api-token-invalid-gate-20260803T095331Z",
+  "recordedAt": "2026-08-03T09:53:31Z",
+  "localRecordedAt": "2026-08-03T02:53:31-07:00",
+  "repository": "CurveYield/contract-automation",
+  "round": 5,
+  "issue": 125,
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "sha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b"
+  },
+  "productionEnvironment": {
+    "accountOwnerConfirmedCreated": true,
+    "workflowBindingObserved": true
+  },
+  "deploymentAttempt": {
+    "triggerMergePullRequest": 142,
+    "triggerMergeSha": "81b7d3b2f4cf4636f204ae778617103804c30012",
+    "workflowRun": 30800918581,
+    "job": 91645019455,
+    "conclusion": "failure",
+    "failureStep": "Create R2 bucket when missing",
+    "testsPassedBeforeFailure": 471,
+    "workerMutationExecuted": false,
+    "pagesMutationExecuted": false,
+    "r2MutationProven": false,
+    "liveProductionTestingExecuted": false,
+    "rerunPerformed": false
+  },
+  "diagnostics": {
+    "deploymentObserverMergeSha": "de350bcfce68ddbdbbb88b826fdd5f7614bce69a",
+    "r2CapabilityDiagnosticMergeSha": "8734852cbf6a08d6cfa65d611035e98a30494f50",
+    "cloudflareAuthDiagnosticPullRequest": 145,
+    "cloudflareAuthDiagnosticMergeSha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b",
+    "cloudflareMutationPerformed": false,
+    "tokenVerification": {
+      "httpStatus": 401,
+      "success": false,
+      "numericErrorCodes": [1000],
+      "status": "unknown"
+    },
+    "accountScope": {
+      "httpStatus": 403,
+      "success": false,
+      "numericErrorCodes": [9109]
+    },
+    "r2BucketAccess": {
+      "httpStatus": 403,
+      "success": false,
+      "numericErrorCodes": [10000]
+    },
+    "derivedDiagnosis": "token-invalid-disabled-or-expired"
+  },
+  "externalGate": {
+    "state": "account-owner-cloudflare-api-token-replacement-required",
+    "requiredSecretName": "CLOUDFLARE_API_TOKEN",
+    "requiredAction": "Replace the repository secret with a newly generated valid Cloudflare API token scoped to the CurveYield account and required deployment permissions.",
+    "secretValueMayBeReadOrRecorded": false,
+    "oldDeploymentRunMayBeRerun": false
+  },
+  "networkScope": {
+    "active": ["ethereum", "base"],
+    "deferred": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"]
+  },
+  "safety": {
+    "secretValuesReadOrRecorded": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerun": false,
+    "workerOwnedAckOrStatusModified": false
+  }
+}
