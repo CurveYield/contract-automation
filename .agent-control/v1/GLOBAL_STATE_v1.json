@@ -4,9 +4,9 @@
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "sole-orchestrator",
-  "activationState": "pages-v6-rejected-v7-blocked",
+  "activationState": "pages-v9-merged-live-result-pending",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-03T13:01:21Z",
+  "lastOrchestratorReviewAt": "2026-08-03T16:00:38Z",
   "authority": {
     "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
     "directive": "The orchestrator will finish all remaining work alone until production acceptance or a hard external block requires user assistance.",
@@ -42,11 +42,11 @@
     "name": "production-test-preparation-and-acceptance",
     "round4MasterIssue": 119,
     "productionAcceptanceIssue": 125,
-    "stage": "pages-production-binding-repair",
+    "stage": "pages-v9-live-gate-observation",
     "liveWorkAuthorized": true,
     "deploymentAuthorized": true,
     "mergeAuthorized": false,
-    "mergeBlockedBy": "PR 157 reviewed head is unsafe and unproven"
+    "mergeBlockedBy": "Do not promote another candidate until the exact v9 trusted push result is observed and classified."
   },
   "promotedPullRequests": [
     {"pullRequest":139,"mergeSha":"42a54988b7b5135ddb6cba90891ad2706356363c"},
@@ -63,7 +63,9 @@
     {"pullRequest":150,"mergeSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072"},
     {"pullRequest":153,"mergeSha":"b31c79a2b48b3d1390e050489e2b9307f1fb75af"},
     {"pullRequest":155,"mergeSha":"669591985d27a7c9e7a3dee8be1ff1ab8821d2e2"},
-    {"pullRequest":156,"mergeSha":"3c37394f814c40b1fc6fff134d2de698635bd185"}
+    {"pullRequest":156,"mergeSha":"3c37394f814c40b1fc6fff134d2de698635bd185"},
+    {"pullRequest":157,"mergeSha":"70719851d8e18faf89e65027858b9f4f728d979d"},
+    {"pullRequest":159,"mergeSha":"11036211d5448e0bd32bb4c4fdd85bf638caa53d"}
   ],
   "round4Acceptance": {
     "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
@@ -76,8 +78,8 @@
   },
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
-    "sourcePullRequest": 156,
+    "currentSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "sourcePullRequest": 159,
     "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
     "acceptedApplicationSourcePullRequest": 150,
     "runnerWorkflow": ".github/workflows/simulate.yml"
@@ -107,7 +109,8 @@
     },
     "pagesCustomDomain": {
       "acceptedApplicationSourceObserved": false,
-      "observedState": "stale-seven-network-selector",
+      "observedState": "last-observed-stale-seven-network-selector",
+      "v9LiveGate": "pending-observation",
       "exactServingSourceSha": null,
       "currentSourceSmokeAccepted": false
     }
@@ -122,39 +125,45 @@
     {"run":30805768611,"reason":"invalid R2 lifecycle schema; superseded by accepted repair"},
     {"run":30813209037,"reason":"current-source smoke failed on stale Pages UI"},
     {"run":30814064657,"job":91687395097,"reason":"Pages v5 deployed detached HEAD preview"},
-    {"run":30815289252,"job":91691417740,"reason":"Pages v6 custom-domain failure and no-download contract violation"}
+    {"run":30815289252,"job":91691417740,"reason":"Pages v6 custom-domain failure and no-download contract violation"},
+    {"run":30815965400,"job":91693663510,"reason":"Pages v7 full-history hypothesis falsified; production custom domain remained stale"}
   ],
   "latestRejectedGate": {
-    "pullRequest": 156,
-    "workflowRun": 30815289252,
-    "job": 91691417740,
+    "pullRequest": 157,
+    "workflowRun": 30815965400,
+    "job": 91693663510,
     "conclusion": "failure",
     "customDomainCheck": "failure",
     "dependencyDownloadContractViolation": true,
     "rerunAllowed": false
   },
   "activeCandidate": {
-    "pullRequest": 157,
-    "branch": "orchestrator/round5-pages-commit-object-v7",
-    "lastReviewedHead": "0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
-    "state": "draft-blocked",
-    "blockingCommentId": 5166610889,
+    "pullRequest": 159,
+    "branch": "orchestrator/round5-pages-api-production-v9",
+    "verifiedHead": "918631333aed3d6f8ffe4b8896168be8e6d64e05",
+    "mergeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "state": "merged-live-result-pending",
+    "issueCheckpointCommentId": 5168755699,
     "mergeAllowed": false,
-    "liveExecutionAllowed": false
+    "liveExecutionAllowed": true,
+    "trustedPushAccepted": false,
+    "trustedPushRejected": false
   },
   "executionState": {
     "productionEnvironmentConfirmed": true,
     "apiWorkerDeploymentCompleted": true,
     "pagesCurrentApplicationSourceObserved": false,
+    "pagesV9CodePromoted": true,
+    "pagesV9TrustedPushObserved": false,
     "currentSourceSmokeAccepted": false,
     "boundedLiveProductionTestingStarted": true,
     "trustedV27RegressionExecuted": false,
     "finalProductionAcceptance": "PENDING"
   },
   "hardExternalGates": [],
-  "nextAction": "Correct PR 157 or supersede it with a fresh exact-parent dependency-free Cloudflare Pages API deployment that uses existing assets, fails closed with no upload, proves environment production and exact custom-domain binding, and passes natural RED plus exact-head GREEN before merge.",
+  "nextAction": "Observe the exact trusted v9 push run through its sanitized issue 125 result or connector-visible run evidence; inspect its exact job and every step before acceptance or rejection. Do not rerun. If accepted, create a fresh exact-parent current-source smoke gate. If rejected or absent, preserve the exact discrepancy before creating a fresh versioned request.",
   "antiDuplication": {
-    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0900-0700_v3.md",
     "acceptedRedGreenSequencesMustNotBeRepeated": true,
     "historicalOrFailedWorkflowRerunsForbidden": true,
     "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
@@ -175,8 +184,8 @@
     "no rerun of failed or historical workflow runs"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0601-0700_v2.json",
-  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0900-0700_v3.json",
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0900-0700_v3.md",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T130121Z_pages-v6-rejected-v7-blocked_v2.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T160038Z_pages-v9-merged-live-result-pending_v3.json"
 }
