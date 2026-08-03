@@ -101,8 +101,7 @@ test('Phase 5 normal result remains compatible with exact profile/catalog identi
         suite: 'Round3',
         name: 'accepts',
         status: 'passed',
-        durationMs: 1,
-        errorMessage: null
+        durationMs: 1
       }]
     }),
     exitCode: 0,

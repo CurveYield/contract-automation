@@ -1,0 +1,7 @@
+{
+  "mutants": [
+    {"id":"mut-003","status":"survived","operator":"assignment-mutation","file":"contracts/Example.sol","line":30,"column":7},
+    {"id":"mut-001","status":"killed","operator":"require-mutation","file":"contracts/Example.sol","line":12,"column":5,"killedBy":"rejects unauthorized"},
+    {"id":"mut-002","status":"timeout","operator":"unary-operator-mutation","file":"contracts/Example.sol","line":20,"column":9}
+  ]
+}

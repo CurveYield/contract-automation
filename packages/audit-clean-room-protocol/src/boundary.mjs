@@ -5,6 +5,7 @@ const CONTROL=/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
 export function canonicalJson(value){if(value===null||typeof value==='boolean'||typeof value==='string')return JSON.stringify(value);if(typeof value==='number'){if(!Number.isSafeInteger(value)||Object.is(value,-0))fail('invalid_number','$');return JSON.stringify(value);}if(Array.isArray(value))return`[${value.map(canonicalJson).join(',')}]`;return`{${Object.keys(value).sort().map((key)=>`${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;}
 export function frozenClone(value){const clone=structuredClone(value);const freeze=(item)=>{if(item&&typeof item==='object'&&!Object.isFrozen(item)){for(const child of Object.values(item))freeze(child);Object.freeze(item);}return item;};return freeze(clone);}
 function inspect(value,path){try{return{prototype:Object.getPrototypeOf(value),keys:Reflect.ownKeys(value),descriptors:Object.getOwnPropertyDescriptors(value)};}catch{fail('hostile_reflection',path);}}
+export function plainObject(value,path='$'){if(value===null||typeof value!=='object'||Array.isArray(value))fail('invalid_object',path);const shape=inspect(value,path);if(shape.prototype!==Object.prototype&&shape.prototype!==null)fail('invalid_prototype',path);for(const key of shape.keys){if(typeof key==='symbol')fail('symbol_field',path);const descriptor=shape.descriptors[key];if(!descriptor||!Object.hasOwn(descriptor,'value'))fail('accessor_field',`${path}.${String(key)}`);}return{desc:shape.descriptors};}
 export function sanitize(value,path='$',seen=new Map()){
   if(value===null||typeof value==='boolean')return value;
   if(typeof value==='string'){if(CONTROL.test(value))fail('unsafe_control',path);if(utf8ByteLength(value)>2_000_000)fail('value_too_large',path);return value;}
@@ -19,10 +20,13 @@ export function sanitize(value,path='$',seen=new Map()){
 export function exactKeys(value,keys,path='$'){const safe=sanitize(value,path);const expected=new Set(keys);for(const key of Object.keys(safe))if(!expected.has(key))fail('unknown_field',`${path}.${key}`);for(const key of keys)if(!Object.hasOwn(safe,key))fail('missing_field',`${path}.${key}`);return safe;}
 export function boundedString(value,path,maximum=256){if(typeof value!=='string'||value.length<1||value.length>maximum||CONTROL.test(value))fail('invalid_string',path);return value;}
 export function identifier(value,path){return boundedString(value,path,128).match(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)?value:fail('invalid_identifier',path);}
+export function safePath(value,path){const result=boundedString(value,path,512).replaceAll('\\','/');if(result.startsWith('/')||/^[A-Za-z]:\//.test(result)||result.includes('//')||result.split('/').includes('..')||!/^[A-Za-z0-9_.@+\/-]+$/.test(result))fail('unsafe_path',path);return result;}
 export function digest(value,path){return typeof value==='string'&&/^sha256:[0-9a-f]{64}$/.test(value)?value:fail('invalid_digest',path);}
 export function timestamp(value,path){boundedString(value,path,40);const date=new Date(value);if(Number.isNaN(date.getTime())||date.toISOString()!==value)fail('invalid_timestamp',path);return value;}
 export function integer(value,path,minimum=0,maximum=Number.MAX_SAFE_INTEGER){if(!Number.isSafeInteger(value)||Object.is(value,-0)||value<minimum||value>maximum)fail('invalid_integer',path);return value;}
+export function boolean(value,path){if(typeof value!=='boolean')fail('invalid_boolean',path);return value;}
 export function enumValue(value,allowed,path){return allowed.includes(value)?value:fail('invalid_enum',path);}
+export function nullable(value,validator,path){return value===null?null:validator(value,path);}
 export function denseArray(value,path,maximum=10_000){if(!Array.isArray(value)||Object.getPrototypeOf(value)!==Array.prototype||value.length>maximum)fail('invalid_array',path);for(let index=0;index<value.length;index+=1)if(!Object.hasOwn(value,index))fail('sparse_array',path);return value;}
 export function stringArray(value,path,{item=(x,p)=>boundedString(x,p),maximum=10_000}={}){const result=denseArray(value,path,maximum).map((x,index)=>item(x,`${path}[${index}]`));if(new Set(result).size!==result.length)fail('duplicate_item',path);return result.sort();}
 export function sha256(value){return`sha256:${sha256Hex(canonicalJson(value))}`;}

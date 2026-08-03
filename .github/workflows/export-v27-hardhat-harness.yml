@@ -1,0 +1,53 @@
+name: Export Proven V27 Hardhat Harness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/export-v27-hardhat-harness.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Fetch proven execution branch
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin automation/v27-hardhat-full-v1
+          git worktree add /tmp/v27-hardhat FETCH_HEAD
+
+      - name: Reconstruct proven harness
+        run: |
+          set -euo pipefail
+          source_root='/tmp/v27-hardhat/github-native-sim/jobs/v27-hardhat-full-v1'
+          output_root="$RUNNER_TEMP/v27-hardhat-harness"
+          mkdir -p "$output_root"
+          cat "$source_root"/payload-hex/v27-hardhat-job.tar.gz.hex.part-* > /tmp/v27-hardhat-job.hex
+          python - <<'PY'
+          from pathlib import Path
+          compact = ''.join(Path('/tmp/v27-hardhat-job.hex').read_text(encoding='utf-8').split())
+          Path('/tmp/v27-hardhat-job.tar.gz').write_bytes(bytes.fromhex(compact))
+          PY
+          tar -xzf /tmp/v27-hardhat-job.tar.gz -C "$output_root"
+          cp "$source_root/run-ci.sh" "$output_root/proven-run-ci.sh"
+          find "$output_root" -type f -print | sort > "$output_root/exported-files.txt"
+
+      - name: Upload harness
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: proven-v27-hardhat-harness-${{ github.run_id }}
+          path: ${{ runner.temp }}/v27-hardhat-harness
+          if-no-files-found: error
+          retention-days: 7

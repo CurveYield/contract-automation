@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "round5-production-input-v1",
+  "state": "preparation-only",
+  "secretNames": [
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_API_TOKEN",
+    "PREFLIGHTSIM_CLIENT_API_KEY",
+    "PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY",
+    "PREFLIGHTSIM_GITHUB_TOKEN",
+    "PREFLIGHTSIM_GPT_API_KEY",
+    "PREFLIGHTSIM_R2_ACCESS_KEY_ID",
+    "PREFLIGHTSIM_R2_SECRET_ACCESS_KEY",
+    "PREFLIGHTSIM_RUNNER_API_KEY",
+    "RPC_ARBITRUM",
+    "RPC_BASE",
+    "RPC_ETHEREUM",
+    "RPC_FRAXTAL",
+    "RPC_KATANA",
+    "RPC_OPTIMISM",
+    "RPC_POLYGON"
+  ],
+  "variableNames": [
+    "PAGES_PROJECT_NAME",
+    "PREFLIGHTSIM_ALLOWED_GITHUB_USERS",
+    "PREFLIGHTSIM_API_URL"
+  ],
+  "cloudflare": {
+    "workerName": "curveyield-preflight-api",
+    "pagesProject": "curveyield-preflight",
+    "zones": ["curveyield.online"],
+    "routes": ["api.preflight.curveyield.online"],
+    "r2Bindings": [
+      {"binding": "AUDIT_R2", "bucket": "curveyield-preflight"}
+    ],
+    "corsOrigins": ["https://preflight.curveyield.online"]
+  },
+  "github": {
+    "repository": "CurveYield/contract-automation",
+    "environment": "production",
+    "workflowPath": ".github/workflows/audit-production-v1.yml"
+  },
+  "rpcNetworks": [
+    {"name": "arbitrum", "secretName": "RPC_ARBITRUM", "readOnly": true},
+    {"name": "base", "secretName": "RPC_BASE", "readOnly": true},
+    {"name": "ethereum", "secretName": "RPC_ETHEREUM", "readOnly": true},
+    {"name": "fraxtal", "secretName": "RPC_FRAXTAL", "readOnly": true},
+    {"name": "katana", "secretName": "RPC_KATANA", "readOnly": true},
+    {"name": "optimism", "secretName": "RPC_OPTIMISM", "readOnly": true},
+    {"name": "polygon", "secretName": "RPC_POLYGON", "readOnly": true}
+  ],
+  "caps": {
+    "requestsPerMinute": 30,
+    "dailyUsd": 10,
+    "artifactBytes": 10000000,
+    "retentionDays": 7
+  },
+  "rollback": {
+    "requiredChecks": ["api-health", "r2-read", "web-health"],
+    "preservePreviousRelease": true
+  },
+  "observability": {
+    "fields": ["correlation-id", "duration-ms", "route", "status"],
+    "redactions": ["authorization", "cookie", "rpc-url"]
+  },
+  "restrictions": [
+    "secret values must never be retrieved, printed, logged or committed",
+    "RPC use is read-only and eth_sendRawTransaction is forbidden",
+    "no wallet keys, signing or transaction broadcast",
+    "no live deployment before Round 5 issue #125 activation",
+    "the production workflow path is a required future input and is not created or executed by Stage 0"
+  ]
+}

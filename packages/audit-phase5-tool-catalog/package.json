@@ -1,0 +1,7 @@
+{
+  "name": "@curveyield/audit-phase5-tool-catalog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.mjs"
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "round4-additive-public-contract-compatibility-v1",
+  "recordedAt": "2026-08-02T19:27:00Z",
+  "candidateBefore": "242b1e1d6cb300143a00b4af57ee561006ff9de2",
+  "changes": [
+    {
+      "contract": "controlled-merge legacy service",
+      "sourceSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+      "sourceBlobSha": "d165b5c73e17c3c203d504f63e861ff2a18829e6",
+      "newPath": "packages/audit-controlled-merge/src/legacy-service.mjs",
+      "indexBlobSha": "1b9e5f1484ca1db914888fa3e9f0c031f6bfeee6",
+      "strategy": "additive export union"
+    },
+    {
+      "contract": "backend-injected AuditR2Store",
+      "targetPath": "packages/audit-r2-store/src/index.mjs",
+      "resultBlobSha": "2c061ddf0efb723a7e59dae07cb2aa665e6a8236",
+      "strategy": "preserve hardened InMemoryAuditStore and add a conditional-write backend adapter"
+    }
+  ],
+  "redEvidence": [
+    "test/audit-round2-phases1-8-e2e.test.mjs could not import AuditR2Store",
+    "the Worker 1 controlled-merge index no longer exported createControlledMerge/validateControlledMerge"
+  ],
+  "constraints": [
+    "No hardened implementation is removed or weakened.",
+    "The controlled-merge legacy implementation is an exact accepted base blob under a dedicated module path.",
+    "AuditR2Store delegates only to an explicitly supplied backend and enforces the same etag preconditions before writes.",
+    "Fresh combined CI is required."
+  ]
+}

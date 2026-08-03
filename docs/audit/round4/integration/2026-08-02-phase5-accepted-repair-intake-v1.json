@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "round4-phase5-accepted-repair-intake-v1",
+  "recordedAt": "2026-08-02T19:12:00Z",
+  "resultContractRepair": {
+    "issue": 76,
+    "sourceBranch": "audit-phase5/result-contract-hardening-v2",
+    "implementationSha": "40b5ad7e60ed255ad7723592d91967ca3b05513d",
+    "verdict": "ACCEPT_WITH_REPAIR_SUPERSEDED_BY_PARSER_REPAIR"
+  },
+  "parserLifecycleRepair": {
+    "issue": 79,
+    "sourceBranch": "audit-phase5/parser-lifecycle-repair-v1",
+    "implementationSha": "c216692cf780871dc1f2701f4ecdbfa1c778c538",
+    "verdict": "ACCEPT"
+  },
+  "productionPaths": [
+    {"path":"packages/audit-phase5-result-contracts/package.json","blobSha":"994155e4f4b6732366dce5f87c087d2aa7c51695"},
+    {"path":"packages/audit-phase5-result-contracts/src/boundary.mjs","blobSha":"a16ee20b0db5a5aa5ec84c7de48402604f19ca11"},
+    {"path":"packages/audit-phase5-result-contracts/src/contracts.mjs","blobSha":"5af64d031f9c5925d9c35db941a9f19b75093cec"},
+    {"path":"packages/audit-phase5-result-contracts/src/errors.mjs","blobSha":"be24706998a70c7a02aa9c4d2bdfe1c74c38c059"},
+    {"path":"packages/audit-phase5-result-contracts/src/index.mjs","blobSha":"4e968bea09aacb0741ff109132971424c45e6dab"},
+    {"path":"packages/audit-phase5-result-contracts/src/records.mjs","blobSha":"289fbf5f76bbc603c945d6bea6e2e715c5042c8d"},
+    {"path":"packages/audit-phase5-tool-catalog/package.json","blobSha":"cfe9ae29479d04cf95597917ce8a84198c52b97e"},
+    {"path":"packages/audit-phase5-tool-catalog/src/index.mjs","blobSha":"ed4d17252e61c7b26ff124b8b2868b6d0a560cda"},
+    {"path":"packages/audit-phase5-parsers/src/index.mjs","blobSha":"0016ff3424c67eb9342351727248e2ff98b2f2bb"},
+    {"path":"packages/audit-phase5-parsers/src/lifecycle-boundary.mjs","blobSha":"3416aadc66bb457b10d5b067ba598dc25558bfe7"}
+  ],
+  "testPaths": [
+    {"path":"test/audit-phase5-parser-lifecycle-normalization-v1.test.mjs","blobSha":"761dc237b13b8c9fab8d9d71d066299e85f23e0a"},
+    {"path":"test/audit-phase5-parser-contract-static-boundary-v1.test.mjs","blobSha":"718d62a75c94df20a710f5a12124f2d2bf9ae8aa"},
+    {"path":"test/audit-phase5-catalog-hardening-v2.test.mjs","blobSha":"dedb3ea5140d53c8656c477c3ba2808cb6c73220"},
+    {"path":"test/audit-phase5-compatibility-fixture-replay-v2.test.mjs","blobSha":"20cdfa499dd0350bc5f6e3401cd46338e265b3d7"},
+    {"path":"test/audit-phase5-compatibility-helpers-v2.mjs","blobSha":"bb3852c3e9bfd478215de2deb20c3e114c0fd6fd"},
+    {"path":"test/audit-phase5-compatibility-mutation-vectors-v2.test.mjs","blobSha":"4a0578974a5c7460272a82a8895491ff8bc6b1f4"},
+    {"path":"test/audit-phase5-compatibility-static-boundary-v2.test.mjs","blobSha":"eb135db876f5c0e8db20128f00eedc12392df891"},
+    {"path":"test/audit-phase5-result-boundary-ordering-v2.test.mjs","blobSha":"020ed9e7fce2c008004488f6bad46177ba9506ca"},
+    {"path":"test/audit-phase5-result-contract-compatibility-v1.test.mjs","blobSha":"377be6431e4083b5cd2fd87c859da7d8b16f5435"},
+    {"path":"test/audit-phase5-result-evidence-summary-v2.test.mjs","blobSha":"b2a369ae98edaf386f70c9f18e472b8d2fb06078"},
+    {"path":"test/audit-phase5-result-lifecycle-hardening-v2.test.mjs","blobSha":"cb1edac9a9f756ee15404e19fd1d341f4b3ba53b"}
+  ],
+  "rules": [
+    "Use exact path/blob intake only.",
+    "The parser lifecycle repair supersedes issue-76 diagnostic expectations that retained exitCode 137 for resource exhaustion.",
+    "Fresh combined CI is required before acceptance."
+  ]
+}

@@ -66,3 +66,6 @@ export class ProvenanceService {
   }
   async readHead(workspaceId){ const record=await this.store.get(this.headKey(workspaceId)); return frozenClone(parse(record) ?? {schemaVersion:'phase8-provenance-head-v1',workspaceId,sequence:0,eventDigest:null}); }
 }
+
+export * from './contracts.mjs';
+export * from './graph.mjs';

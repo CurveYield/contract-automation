@@ -3,7 +3,7 @@ name: GitHub-Native Contract Simulation
 on:
   push:
     branches:
-      - 'github-native-sim/**'
+      - main
     paths:
       - 'github-native-sim/jobs/**'
   workflow_dispatch:
@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: github-native-sim-${{ github.ref }}
@@ -23,9 +24,9 @@ concurrency:
 jobs:
   simulate:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 70
     env:
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      PUSH_BEFORE: ${{ github.event.before || '' }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       RPC_BASE: ${{ secrets.RPC_BASE }}
       RPC_KATANA: ${{ secrets.RPC_KATANA }}
@@ -33,28 +34,108 @@ jobs:
       RPC_ARBITRUM: ${{ secrets.RPC_ARBITRUM }}
       RPC_POLYGON: ${{ secrets.RPC_POLYGON }}
       RPC_OPTIMISM: ${{ secrets.RPC_OPTIMISM }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_03 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_04 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_05 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_06 }}
+      SIM_ARCHIVE_PRIMARY_ETHEREUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_07 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_01 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_02 }}
+      SIM_ARCHIVE_SECONDARY_ETHEREUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ETHEREUM_03 }}
+      SIM_ARCHIVE_PRIMARY_BASE_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_01 }}
+      SIM_ARCHIVE_PRIMARY_BASE_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_02 }}
+      SIM_ARCHIVE_PRIMARY_BASE_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_03 }}
+      SIM_ARCHIVE_PRIMARY_BASE_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_04 }}
+      SIM_ARCHIVE_PRIMARY_BASE_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_05 }}
+      SIM_ARCHIVE_PRIMARY_BASE_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_06 }}
+      SIM_ARCHIVE_PRIMARY_BASE_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_BASE_07 }}
+      SIM_ARCHIVE_SECONDARY_BASE_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_BASE_01 }}
+      SIM_ARCHIVE_SECONDARY_BASE_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_BASE_02 }}
+      SIM_ARCHIVE_SECONDARY_BASE_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_BASE_03 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_01 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_02 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_03 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_04 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_05 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_06 }}
+      SIM_ARCHIVE_PRIMARY_KATANA_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_KATANA_07 }}
+      SIM_ARCHIVE_SECONDARY_KATANA_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_KATANA_01 }}
+      SIM_ARCHIVE_SECONDARY_KATANA_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_KATANA_02 }}
+      SIM_ARCHIVE_SECONDARY_KATANA_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_KATANA_03 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_01 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_02 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_03 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_04 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_05 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_06 }}
+      SIM_ARCHIVE_PRIMARY_FRAXTAL_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_FRAXTAL_07 }}
+      SIM_ARCHIVE_SECONDARY_FRAXTAL_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_FRAXTAL_01 }}
+      SIM_ARCHIVE_SECONDARY_FRAXTAL_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_FRAXTAL_02 }}
+      SIM_ARCHIVE_SECONDARY_FRAXTAL_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_FRAXTAL_03 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_01 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_02 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_03 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_04 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_05 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_06 }}
+      SIM_ARCHIVE_PRIMARY_ARBITRUM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_ARBITRUM_07 }}
+      SIM_ARCHIVE_SECONDARY_ARBITRUM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_ARBITRUM_01 }}
+      SIM_ARCHIVE_SECONDARY_ARBITRUM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_ARBITRUM_02 }}
+      SIM_ARCHIVE_SECONDARY_ARBITRUM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_ARBITRUM_03 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_01 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_02 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_03 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_04 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_05 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_06 }}
+      SIM_ARCHIVE_PRIMARY_POLYGON_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_POLYGON_07 }}
+      SIM_ARCHIVE_SECONDARY_POLYGON_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_POLYGON_01 }}
+      SIM_ARCHIVE_SECONDARY_POLYGON_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_POLYGON_02 }}
+      SIM_ARCHIVE_SECONDARY_POLYGON_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_POLYGON_03 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_01 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_02: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_02 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_03: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_03 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_04: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_04 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_05: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_05 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_06: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_06 }}
+      SIM_ARCHIVE_PRIMARY_OPTIMISM_07: ${{ secrets.SIM_ARCHIVE_PRIMARY_OPTIMISM_07 }}
+      SIM_ARCHIVE_SECONDARY_OPTIMISM_01: ${{ secrets.SIM_ARCHIVE_SECONDARY_OPTIMISM_01 }}
+      SIM_ARCHIVE_SECONDARY_OPTIMISM_02: ${{ secrets.SIM_ARCHIVE_SECONDARY_OPTIMISM_02 }}
+      SIM_ARCHIVE_SECONDARY_OPTIMISM_03: ${{ secrets.SIM_ARCHIVE_SECONDARY_OPTIMISM_03 }}
     steps:
       - name: Check out trusted runner and committed job
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
 
       - name: Install trusted repository dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
 
       - name: Select one isolated job
         id: select
         env:
           MANUAL_JOB_PATH: ${{ inputs.job_path || '' }}
         run: |
-          git fetch --no-tags origin "$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
-          changed_paths="$(git diff --name-only "origin/$DEFAULT_BRANCH...$GITHUB_SHA")"
+          set -euo pipefail
+          changed_paths=''
+          if test "$GITHUB_EVENT_NAME" = 'push'; then
+            test -n "$PUSH_BEFORE"
+            if printf '%s' "$PUSH_BEFORE" | grep -Eq '^0+$'; then
+              changed_paths="$(git show --pretty='' --name-only "$GITHUB_SHA")"
+            else
+              changed_paths="$(git diff --name-only "$PUSH_BEFORE...$GITHUB_SHA")"
+            fi
+          fi
           selection="$(CHANGED_PATHS="$changed_paths" node packages/github-native-sim/src/select-job.mjs)"
           job_id="$(printf '%s' "$selection" | jq -r '.jobId')"
           job_root="$(printf '%s' "$selection" | jq -r '.jobRoot')"
@@ -76,7 +157,7 @@ jobs:
 
       - name: Upload GitHub-native result
         if: always() && steps.select.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: github-native-sim-${{ steps.select.outputs.job_id }}-${{ github.run_id }}
           path: ${{ steps.select.outputs.output_dir }}

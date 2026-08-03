@@ -13,7 +13,9 @@ export async function executeWorkflow(workflow, runtime, initialContext = {}) {
     aliases: { ...(initialContext.aliases ?? {}) },
     values: { ...(initialContext.values ?? {}) },
     snapshots: { ...(initialContext.snapshots ?? {}) },
-    deployments: { ...(initialContext.deployments ?? {}) }
+    deployments: { ...(initialContext.deployments ?? {}) },
+    history: [...(initialContext.history ?? [])],
+    checkpointSteps: { ...(initialContext.checkpointSteps ?? {}) }
   };
   const steps = [];
 
@@ -31,6 +33,12 @@ export async function executeWorkflow(workflow, runtime, initialContext = {}) {
         finishedAt: new Date().toISOString(),
         output: output ?? null
       });
+      if (step.action !== 'refork') {
+        context.history.push(structuredClone(step));
+        if (step.action === 'snapshot' && step.alias) {
+          context.checkpointSteps[step.alias] = context.history.length;
+        }
+      }
     } catch (cause) {
       steps.push({
         index,

@@ -1,3 +1,7 @@
+import { validateSimulationConfig } from './simulation-config.mjs';
+
+export { validateSimulationConfig } from './simulation-config.mjs';
+
 export const MAX_INLINE_BYTES = 2 * 1024 * 1024;
 export const MAX_ARCHIVE_BYTES = 250 * 1024 * 1024;
 export const MAX_STEPS = 200;
@@ -21,6 +25,13 @@ export const ACTIONS = Object.freeze(new Set([
   'transferNative',
   'mine',
   'increaseTime',
+  'setNextBlockTimestamp',
+  'mineAtTimestamp',
+  'mineUntilTimestamp',
+  'advanceToBlock',
+  'setAutomine',
+  'setIntervalMining',
+  'refork',
   'snapshot',
   'revertSnapshot',
   'assertBalance',
@@ -29,13 +40,13 @@ export const ACTIONS = Object.freeze(new Set([
 
 const FORBIDDEN_KEYS = new Set([
   'privateKey', 'privateKeys', 'mnemonic', 'seed', 'secret', 'signer',
-  'rpcUrl', 'rpc', 'rawTransaction', 'signedTransaction', 'shell', 'command',
+  'rpcUrl', 'rawTransaction', 'signedTransaction', 'shell', 'command',
   'script', 'npmScript', 'broadcast'
 ]);
 
 const TOP_LEVEL_KEYS = new Set([
   'mode', 'project', 'compilerVersion', 'openZeppelinVersion', 'chain', 'block',
-  'timeoutMinutes', 'workflow', 'optimizer', 'evmVersion', 'viaIR'
+  'timeoutMinutes', 'workflow', 'optimizer', 'evmVersion', 'viaIR', 'simulation'
 ]);
 
 const COMMON_STEP_KEYS = new Set(['action', 'label', 'continueOnFailure']);
@@ -46,13 +57,27 @@ const STEP_KEYS = Object.freeze({
   expectRevert: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'value', 'reason']),
   setBalance: new Set([...COMMON_STEP_KEYS, 'account', 'amount']),
   transferNative: new Set([...COMMON_STEP_KEYS, 'from', 'to', 'amount']),
-  mine: new Set([...COMMON_STEP_KEYS, 'blocks']),
+  mine: new Set([...COMMON_STEP_KEYS, 'blocks', 'intervalSeconds']),
   increaseTime: new Set([...COMMON_STEP_KEYS, 'seconds']),
+  setNextBlockTimestamp: new Set([...COMMON_STEP_KEYS, 'timestamp']),
+  mineAtTimestamp: new Set([...COMMON_STEP_KEYS, 'timestamp']),
+  mineUntilTimestamp: new Set([...COMMON_STEP_KEYS, 'timestamp', 'intervalSeconds']),
+  advanceToBlock: new Set([...COMMON_STEP_KEYS, 'blockNumber', 'intervalSeconds']),
+  setAutomine: new Set([...COMMON_STEP_KEYS, 'enabled']),
+  setIntervalMining: new Set([...COMMON_STEP_KEYS, 'intervalMilliseconds']),
+  refork: new Set([...COMMON_STEP_KEYS, 'target', 'stateStrategy', 'replay', 'overlay', 'customHandler']),
   snapshot: new Set([...COMMON_STEP_KEYS, 'alias']),
   revertSnapshot: new Set([...COMMON_STEP_KEYS, 'snapshot']),
   assertBalance: new Set([...COMMON_STEP_KEYS, 'account', 'equals', 'min', 'max']),
   assertCall: new Set([...COMMON_STEP_KEYS, 'target', 'function', 'args', 'from', 'equals'])
 });
+
+const REFORK_MODES = new Set(['explicit', 'latest-at-action', 'tag']);
+const REFORK_TAGS = new Set(['latest', 'safe', 'finalized']);
+const REFORK_STATE_STRATEGIES = new Set([
+  'discard', 'replay-workflow', 'replay-from-checkpoint', 'replay-selected-steps',
+  'transaction-journal', 'state-overlay', 'custom-handler'
+]);
 
 export class ValidationError extends Error {
   constructor(code, message, path = '$') {
@@ -94,6 +119,13 @@ function rejectUnknownKeys(object, allowed, path) {
 function requireString(value, path, { min = 1, max = 4096 } = {}) {
   if (typeof value !== 'string' || value.length < min || value.length > max) {
     throw new ValidationError('invalid_string', `${path} must be a string between ${min} and ${max} characters`, path);
+  }
+  return value;
+}
+
+function requireSafeInteger(value, path, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new ValidationError('invalid_integer', `${path} must be an integer from ${min} to ${max}`, path);
   }
   return value;
 }
@@ -174,6 +206,32 @@ function validateBlock(block) {
   throw new ValidationError('invalid_block', 'block must be latest or a non-negative integer', '$.block');
 }
 
+function validateRefork(step, path) {
+  assertPlainObject(step.target, `${path}.target`);
+  rejectUnknownKeys(step.target, new Set(['mode', 'blockNumber', 'tag']), `${path}.target`);
+  const mode = requireString(step.target.mode, `${path}.target.mode`, { max: 32 });
+  if (!REFORK_MODES.has(mode)) {
+    throw new ValidationError('invalid_refork_mode', `${path}.target.mode is invalid`, `${path}.target.mode`);
+  }
+  if (mode === 'explicit') requireSafeInteger(step.target.blockNumber, `${path}.target.blockNumber`);
+  if (mode === 'tag') {
+    const tag = requireString(step.target.tag, `${path}.target.tag`, { max: 16 });
+    if (!REFORK_TAGS.has(tag)) throw new ValidationError('invalid_refork_tag', `${path}.target.tag is invalid`, `${path}.target.tag`);
+  }
+  const stateStrategy = requireString(step.stateStrategy ?? 'discard', `${path}.stateStrategy`, { max: 40 });
+  if (!REFORK_STATE_STRATEGIES.has(stateStrategy)) {
+    throw new ValidationError('invalid_state_strategy', `${path}.stateStrategy is invalid`, `${path}.stateStrategy`);
+  }
+  if (step.replay !== undefined) {
+    assertPlainObject(step.replay, `${path}.replay`);
+    rejectUnknownKeys(step.replay, new Set(['fromStep', 'throughStep', 'checkpoint', 'verifyOutputs']), `${path}.replay`);
+    if (step.replay.fromStep !== undefined) requireSafeInteger(step.replay.fromStep, `${path}.replay.fromStep`);
+    if (step.replay.throughStep !== undefined) requireSafeInteger(step.replay.throughStep, `${path}.replay.throughStep`);
+  }
+  if (step.overlay !== undefined) assertPlainObject(step.overlay, `${path}.overlay`);
+  return { ...step, stateStrategy };
+}
+
 function validateStep(step, index) {
   const path = `$.workflow.steps[${index}]`;
   assertPlainObject(step, path);
@@ -184,13 +242,13 @@ function validateStep(step, index) {
   }
   rejectUnknownKeys(step, STEP_KEYS[action], path);
 
-  const normalized = { ...step, action };
+  let normalized = { ...step, action };
   if ('args' in normalized && !Array.isArray(normalized.args)) {
     throw new ValidationError('invalid_args', `${path}.args must be an array`, `${path}.args`);
   }
   if ('alias' in normalized) requireString(normalized.alias, `${path}.alias`, { max: 80 });
   if ('contract' in normalized) requireString(normalized.contract, `${path}.contract`, { max: 160 });
-  if ('target' in normalized) requireString(normalized.target, `${path}.target`, { max: 160 });
+  if ('target' in normalized && action !== 'refork') requireString(normalized.target, `${path}.target`, { max: 160 });
   if ('function' in normalized) requireString(normalized.function, `${path}.function`, { max: 512 });
   if ('from' in normalized) requireString(normalized.from, `${path}.from`, { max: 160 });
   if ('account' in normalized) requireString(normalized.account, `${path}.account`, { max: 160 });
@@ -199,7 +257,7 @@ function validateStep(step, index) {
   if (action === 'deploy' && !normalized.alias) {
     throw new ValidationError('missing_field', `${path}.alias is required`, `${path}.alias`);
   }
-  if (['deploy'].includes(action) && !normalized.contract) {
+  if (action === 'deploy' && !normalized.contract) {
     throw new ValidationError('missing_field', `${path}.contract is required`, `${path}.contract`);
   }
   if (['call', 'staticCall', 'expectRevert', 'assertCall'].includes(action)) {
@@ -207,6 +265,28 @@ function validateStep(step, index) {
       throw new ValidationError('missing_field', `${path}.target and function are required`, path);
     }
   }
+  if (action === 'mine') {
+    if (normalized.blocks !== undefined) requireSafeInteger(normalized.blocks, `${path}.blocks`, { min: 1, max: 10000 });
+    if (normalized.intervalSeconds !== undefined) requireSafeInteger(normalized.intervalSeconds, `${path}.intervalSeconds`);
+  }
+  if (action === 'increaseTime') requireSafeInteger(normalized.seconds, `${path}.seconds`, { max: 315360000 });
+  if (['setNextBlockTimestamp', 'mineAtTimestamp', 'mineUntilTimestamp'].includes(action)) {
+    requireSafeInteger(normalized.timestamp, `${path}.timestamp`);
+  }
+  if (action === 'mineUntilTimestamp' && normalized.intervalSeconds !== undefined) {
+    requireSafeInteger(normalized.intervalSeconds, `${path}.intervalSeconds`, { min: 1 });
+  }
+  if (action === 'advanceToBlock') {
+    requireSafeInteger(normalized.blockNumber, `${path}.blockNumber`);
+    if (normalized.intervalSeconds !== undefined) requireSafeInteger(normalized.intervalSeconds, `${path}.intervalSeconds`, { min: 1 });
+  }
+  if (action === 'setAutomine' && typeof normalized.enabled !== 'boolean') {
+    throw new ValidationError('invalid_boolean', `${path}.enabled must be boolean`, `${path}.enabled`);
+  }
+  if (action === 'setIntervalMining') {
+    requireSafeInteger(normalized.intervalMilliseconds, `${path}.intervalMilliseconds`, { max: 86400000 });
+  }
+  if (action === 'refork') normalized = validateRefork(normalized, path);
   return normalized;
 }
 
@@ -257,6 +337,7 @@ export function validateCreateJobRequest(input) {
     throw new ValidationError('invalid_optimizer', 'optimizer requires boolean enabled and runs from 0 to 1,000,000', '$.optimizer');
   }
 
+  const block = validateBlock(input.block);
   const workflowInput = input.workflow ?? { steps: [] };
   return {
     mode,
@@ -264,7 +345,8 @@ export function validateCreateJobRequest(input) {
     compilerVersion,
     openZeppelinVersion: optionalExactVersion(input.openZeppelinVersion, '$.openZeppelinVersion'),
     chain,
-    block: validateBlock(input.block),
+    block,
+    simulation: validateSimulationConfig(input.simulation ?? {}, { legacyBlock: block }),
     timeoutMinutes,
     workflow: validateWorkflow(workflowInput, { allowEmpty: mode === 'compile' }),
     optimizer,

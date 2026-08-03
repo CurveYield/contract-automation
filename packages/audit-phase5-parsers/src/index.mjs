@@ -7,7 +7,7 @@ import {
   parseJson,
   parserFailure,
   fault
-} from './common.mjs';
+} from './lifecycle-boundary.mjs';
 import {
   parseHardhat,
   parseEchidna,
