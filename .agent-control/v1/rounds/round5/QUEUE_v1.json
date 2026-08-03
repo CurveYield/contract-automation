@@ -3,9 +3,9 @@
   "schemaVersion": "agent-round5-queue-v1",
   "round": 5,
   "masterIssue": 125,
-  "state": "orchestrator-static-preparation",
+  "state": "static-preparation-accepted-external-authorization-required",
   "createdAt": "2026-08-02T10:52:00Z",
-  "updatedAt": "2026-08-03T06:05:25Z",
+  "updatedAt": "2026-08-03T06:39:00Z",
   "authority": {
     "executionOwner": "orchestrator",
     "soleOrchestratorDirective": true,
@@ -21,19 +21,38 @@
     "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
   },
   "staticPreparation": {
+    "pullRequest": 140,
     "branch": "orchestrator/round5-production-test-prep-v1",
     "startingSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-    "branchCreated": false,
-    "productionTestManifest": null,
-    "releaseShaBindingManifest": null,
-    "secretNameBindingManifest": null,
-    "resourceManifest": null,
-    "deploymentPreflightManifest": null,
-    "rollbackManifest": null,
-    "observabilityManifest": null,
-    "recoveryManifest": null,
-    "trustedV27RegressionContract": null,
-    "finalAuthorizationGate": null
+    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
+    "branchCreated": true,
+    "productionTestManifest": "docs/audit/round5/production-test-manifest-v1.json",
+    "releaseShaBindingManifest": "docs/audit/round5/release-source-binding-v1.json",
+    "secretNameBindingManifest": "docs/audit/round5/secret-variable-binding-manifest-v1.json",
+    "resourceManifest": "docs/audit/round5/production-resource-manifest-v1.json",
+    "deploymentPreflightManifest": "docs/audit/round5/deployment-preflight-manifest-v1.json",
+    "rollbackRecoveryManifest": "docs/audit/round5/rollback-recovery-manifest-v1.json",
+    "observabilityManifest": "docs/audit/round5/observability-redaction-manifest-v1.json",
+    "trustedV27RegressionContract": "docs/audit/round5/trusted-v27-live-regression-contract-v1.json",
+    "finalAuthorizationGate": "docs/audit/round5/production-authorization-gate-v1.json",
+    "operatorGuide": "docs/audit/round5/README_v1.md",
+    "readinessReceipt": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+    "readinessReceiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "packagePathCount": 14,
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "staticProductionTestReadiness": "ACCEPT",
+    "productionTestingReady": true
+  },
+  "exactHeadVerification": {
+    "liveForkUpgradeRun": 30790716022,
+    "githubNativeSimulationRun": 30790716033,
+    "repositoryTestsPassed": 464,
+    "repositoryTestsFailed": 0,
+    "focusedLiveForkTestsPassed": 14,
+    "focusedGitHubNativeTestsPassed": 49,
+    "javascriptModulesSyntaxValid": 279,
+    "lintBuildSyntax": "success",
+    "manualWorkflowDispatchOrRerun": false
   },
   "liveActivation": {
     "authorized": false,
@@ -41,7 +60,7 @@
     "externalRpcWorkReconciled": true,
     "deploymentAuthorized": false,
     "liveProductionTestingAuthorized": false,
-    "rule": "Static preparation may proceed on the isolated orchestrator branch. No promotion, merge, secret access, deployment, workflow dispatch, or live request is permitted until the corresponding explicit account-owner gate is satisfied."
+    "rule": "Static preparation is accepted. No promotion, merge, secret access, deployment, workflow dispatch, or live request is permitted until the corresponding explicit account-owner gate is satisfied."
   },
   "legacyQueuedWorkerLanes": [
     {"workerId":"worker-0","issueNumber":128,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
