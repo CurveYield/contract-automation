@@ -236,7 +236,7 @@ def _self_test() -> None:
         ),
         (
             _official_vector_input(1025),
-            "d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b844",
+            "d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b8444",
         ),
     )
     for payload, expected in vectors:
