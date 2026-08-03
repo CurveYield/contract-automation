@@ -1,0 +1,34 @@
+name: Audit Controller Exact Verify v1
+
+on:
+  pull_request:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - '.github/workflows/audit-controller-exact-verify-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-controller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact audit-controller source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CurveYield/audit-controller
+          ref: a703eba83ac85b462c4140b6b656808c3ae9ed18
+          path: audit-controller
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Verify exact controller source
+        working-directory: audit-controller
+        run: npm run verify
