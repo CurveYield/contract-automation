@@ -3,15 +3,13 @@
   "schemaVersion": "agent-round5-queue-v1",
   "round": 5,
   "masterIssue": 125,
-  "state": "trusted-deployment-preflight-promoted-external-environment-dispatch-required",
+  "state": "deployment-attempted-external-cloudflare-api-token-replacement-required",
   "createdAt": "2026-08-02T10:52:00Z",
-  "updatedAt": "2026-08-03T08:18:00Z",
+  "updatedAt": "2026-08-03T09:53:31Z",
   "authority": {
     "executionOwner": "orchestrator",
     "soleOrchestratorDirective": true,
     "accountOwnerProceedAuthorized": true,
-    "promotionAuthorized": true,
-    "credentialNameReadinessAuthorized": true,
     "deploymentAuthorized": true,
     "liveProductionTestingAuthorized": true,
     "workerRuntimeActivationAllowed": false,
@@ -20,29 +18,10 @@
   },
   "promotedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentTrustedSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
-    "round4": {
-      "pullRequest": 139,
-      "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-      "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
-      "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
-    },
-    "round5StaticPreparation": {
-      "pullRequest": 140,
-      "acceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
-      "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
-      "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
-      "readinessReceipt": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
-      "networkScopeAmendment": "docs/audit/round5/production-network-scope-amendment-v1.json",
-      "authorizationReceipt": "docs/audit/round5/account-owner-authorization-receipt-v1.json"
-    },
-    "trustedDeploymentPreflight": {
-      "pullRequest": 141,
-      "acceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
-      "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
-      "receipt": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
-      "status": "ACCEPT"
-    }
+    "currentTrustedSha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b",
+    "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "round5PackageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "promotedPullRequests": [139, 140, 141, 142, 143, 144, 145]
   },
   "networkScope": {
     "activeReadOnlyRpcNetworks": [
@@ -50,51 +29,51 @@
       {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
     ],
     "deferredReadOnlyRpcNetworks": ["arbitrum","fraxtal","katana","optimism","polygon"],
-    "missingDeferredRpcSecretsFailCurrentReadiness": false,
     "deferredNetworksMayBeTested": false,
     "futureActivationRequiresNewAccountOwnerAuthorization": true
   },
-  "credentialReadiness": {
-    "accountOwnerConfirmedConfigured": true,
-    "activeRepositorySecretNameCount": 11,
-    "repositoryVariableNameCount": 3,
-    "namesOnly": true,
-    "secretValuesReadOrRecorded": false
-  },
-  "exactHeadVerification": {
-    "liveForkUpgradeRun": 30796659737,
-    "liveForkUpgradeJob": 91631654571,
-    "githubNativeSimulationRun": 30796659857,
-    "githubNativeSimulationJob": 91631655388,
-    "repositoryTestsPassed": 470,
-    "repositoryTestsFailed": 0,
-    "focusedLiveForkTestsPassed": 14,
-    "focusedGitHubNativeTestsPassed": 49,
-    "javascriptModulesSyntaxValid": 283,
-    "lintBuildSyntax": "success",
-    "manualWorkflowDispatchOrRerun": false
-  },
   "liveActivation": {
     "authorized": true,
-    "secretNameReadinessConfirmed": true,
-    "deploymentAuthorized": true,
-    "liveProductionTestingAuthorized": true,
-    "productionEnvironmentProtectionConfirmed": false,
-    "deploymentWorkflowDispatched": false,
-    "deploymentExecuted": false,
+    "productionEnvironmentConfirmed": true,
+    "deploymentWorkflowDispatched": true,
+    "deploymentCompleted": false,
     "liveProductionTestingExecuted": false,
-    "rule": "Deployment and bounded Ethereum/Base production testing are authorized. Execution must use the exact trusted release branch through the GitHub production environment. Deferred networks, secret disclosure, wallet signing and transaction broadcasting remain forbidden."
+    "rule": "Deployment and bounded Ethereum/Base production testing remain authorized, but execution is paused until the invalid Cloudflare API token is replaced and verified."
+  },
+  "deploymentAttempt": {
+    "run": 30800918581,
+    "job": 91645019455,
+    "conclusion": "failure",
+    "failureStep": "Create R2 bucket when missing",
+    "repositoryTestsPassed": 471,
+    "workerMutationExecuted": false,
+    "pagesMutationExecuted": false,
+    "rerunAllowed": false
+  },
+  "cloudflareDiagnostics": {
+    "tokenVerification": {"httpStatus":401,"success":false,"numericErrorCodes":[1000],"status":"unknown"},
+    "accountScope": {"httpStatus":403,"success":false,"numericErrorCodes":[9109]},
+    "r2BucketAccess": {"httpStatus":403,"success":false,"numericErrorCodes":[10000]},
+    "derivedDiagnosis": "token-invalid-disabled-or-expired",
+    "mutationPerformed": false
   },
   "externalGate": {
-    "state": "github-production-environment-and-manual-dispatch-required",
+    "state": "account-owner-cloudflare-api-token-replacement-required",
     "accountOwnerActions": [
-      "create-or-confirm-environment-production",
-      "restrict-environment-to-orchestrator-round4-ci-base-v1",
-      "dispatch-test-and-deploy-curveyield-preflight-from-exact-release-branch"
+      "generate-new-valid-cloudflare-api-token-for-curveyield-account",
+      "replace-repository-secret-CLOUDFLARE_API_TOKEN",
+      "confirm-replacement-without-sharing-value"
     ],
-    "connectorLimitations": [
-      "environment-configuration-action-unavailable",
-      "workflow-dispatch-action-unavailable"
+    "doNotChange": [
+      "PREFLIGHTSIM_R2_ACCESS_KEY_ID",
+      "PREFLIGHTSIM_R2_SECRET_ACCESS_KEY",
+      "RPC_ETHEREUM",
+      "RPC_BASE"
+    ],
+    "nextOrchestratorActions": [
+      "verify-replacement-through-new-exact-parent-GET-only-diagnostic",
+      "create-new-reviewed-one-time-deployment-request",
+      "continue-Ethereum-and-Base-production-acceptance"
     ]
   },
   "legacyQueuedWorkerLanes": [
