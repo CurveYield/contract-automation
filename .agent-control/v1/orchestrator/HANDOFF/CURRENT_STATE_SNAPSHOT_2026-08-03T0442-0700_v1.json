@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v1",
+  "capturedAtUtc": "2026-08-03T11:42:00Z",
+  "capturedAtLocal": "2026-08-03T04:42:00-07:00",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "round": 5,
+  "state": "production-ui-v4-deployed-awaiting-current-source-smoke",
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "promotionAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "boundedTestDataRequired": true,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
+    "deferredNetworkTestingAllowed": false,
+    "walletSigningAllowed": false,
+    "publicTransactionBroadcastAllowed": false,
+    "secretDisclosureAllowed": false,
+    "destructiveIrreplaceableDataTestingAllowed": false
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "sourcePullRequest": 150,
+    "sourcePullRequestHead": "e0441639defca2bbcd47e004c38b955a2148460e",
+    "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "round5StaticPackageDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3"
+  },
+  "currentProductionDeployment": {
+    "version": 4,
+    "workflowRun": 30808377849,
+    "job": 91668946456,
+    "deployedSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "conclusion": "success",
+    "allJobStepsSucceeded": true,
+    "workerDeployed": true,
+    "pagesDeployed": true,
+    "apiDomainVerified": true,
+    "pagesDomainVerified": true,
+    "existingR2BucketVerified": true,
+    "secretValuesLoggedOrRecorded": false,
+    "walletSigningOrBroadcast": false
+  },
+  "productionResources": {
+    "pagesUrl": "https://preflight.curveyield.online",
+    "apiUrl": "https://api.preflight.curveyield.online",
+    "pagesProject": "curveyield-preflight",
+    "r2Bucket": "curveyield-preflight",
+    "zone": "curveyield.online",
+    "githubEnvironment": "production"
+  },
+  "currentUiContract": {
+    "staticSelectorNetworks": ["ethereum", "base"],
+    "defaultNetwork": "base",
+    "synchronizesFromAuthenticatedChainsRoute": true,
+    "deferredNetworksSelectable": false
+  },
+  "promotedPullRequests": [
+    {"pullRequest":139,"mergeSha":"42a54988b7b5135ddb6cba90891ad2706356363c"},
+    {"pullRequest":140,"mergeSha":"6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca"},
+    {"pullRequest":141,"mergeSha":"819fa7e90cebc4287eebda8e9ecbd0486522d33c"},
+    {"pullRequest":142,"mergeSha":"81b7d3b2f4cf4636f204ae778617103804c30012"},
+    {"pullRequest":143,"mergeSha":"de350bcfce68ddbdbbb88b826fdd5f7614bce69a"},
+    {"pullRequest":144,"mergeSha":"8734852cbf6a08d6cfa65d611035e98a30494f50"},
+    {"pullRequest":145,"mergeSha":"4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b"},
+    {"pullRequest":146,"mergeSha":"4a4cf0f85ba1fdf9a31e7e7dfa4341256bebb667"},
+    {"pullRequest":147,"mergeSha":"bb500321d084dfc9336304898f9cdd8b65bd9e1b"},
+    {"pullRequest":148,"mergeSha":"fbe27b824da8084970915b31f2051679abe39cfc"},
+    {"pullRequest":149,"mergeSha":"ec6c5c3c99a767dbed5505846a3ce4efee9290ca"},
+    {"pullRequest":150,"mergeSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072"}
+  ],
+  "acceptedHistoricalEvidence": {
+    "round4StaticAcceptance": "ACCEPT",
+    "round5StaticProductionTestReadiness": "ACCEPT",
+    "replacementCloudflareTokenVerified": true,
+    "r2LifecycleNativeSchemaAccepted": true,
+    "deploymentV3": {"run":30806403201,"job":91662681725,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success"},
+    "smokeV1": {"run":30807373463,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success","statusForCurrentSource":"historical-superseded-by-ui-source-change"},
+    "deploymentV4": {"run":30808377849,"job":91668946456,"sourceSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072","conclusion":"success"}
+  },
+  "failedRunsPreservedDoNotRerun": [
+    {"run":30800918581,"job":91645019455,"reason":"initial deployment failed before Worker/Pages mutation during R2 bucket step"},
+    {"run":30805768611,"reason":"deployment v2 failed on S3-style lifecycle JSON; replaced by tested native R2 schema"}
+  ],
+  "immediateNextAction": {
+    "description": "Create a fresh exact-parent read-only production smoke gate bound to deployed SHA 2c6e543dfcaa17ca975bbde3c15302269bbf8072.",
+    "mustNotRerunHistoricalAcceptance": true,
+    "requiredChecks": [
+      "pages-availability",
+      "api-health",
+      "api-setup-readiness",
+      "unauthenticated-api-rejection",
+      "authenticated-ethereum-base-chain-allowlist",
+      "exact-production-cors-origin",
+      "ethereum-chain-id-and-current-head",
+      "base-chain-id-and-current-head",
+      "deployed-ui-only-ethereum-and-base",
+      "deployed-ui-base-default",
+      "deployed-client-synchronizes-from-api-chains",
+      "deferred-networks-not-selectable",
+      "zero-job-upload-signing-wallet-or-broadcast-operation"
+    ]
+  },
+  "remainingRound5Stages": [
+    "current-source-production-smoke",
+    "live-api-and-identity-separation",
+    "bounded-r2-upload-publication-readback-and-cleanup",
+    "bounded-github-bridge-and-direct",
+    "trusted-ethereum-base-v27-live-fork-regression",
+    "web-operator-e2e-and-accessibility",
+    "observability-redaction-and-retention",
+    "idempotent-redeploy-and-rollback",
+    "r2-partial-publication-recovery",
+    "github-duplicate-publication-reconciliation",
+    "non-production-application-key-rotation",
+    "final-production-acceptance-record"
+  ],
+  "antiDuplication": {
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+    "historicalWorkflowRerunsForbidden": true,
+    "acceptedRedGreenSequencesMustNotBeRepeated": true,
+    "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
+    "newExactParentRequestRequiredForEveryNewLiveGate": true
+  },
+  "hardExternalGates": [],
+  "scheduledAutomationEnabled": false,
+  "safety": {
+    "secretValuesReadOrExposed": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerunPerformed": false,
+    "workerOwnedAckOrStatusModified": false
+  }
+}
