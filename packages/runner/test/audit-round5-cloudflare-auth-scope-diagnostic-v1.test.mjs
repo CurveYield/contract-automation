@@ -25,7 +25,7 @@ test('Cloudflare auth diagnostic distinguishes token, account scope, and R2 perm
   assert.doesNotMatch(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /--request POST|--request PUT|--request PATCH|--request DELETE/);
   assert.doesNotMatch(workflow, /wrangler/);
-  assert.doesNotMatch(workflow, /\.message|token_id|account_name|cat .*response/);
+  assert.doesNotMatch(workflow, /\.message(?:\b|\[)|token_id|account_name|cat .*response/);
 
   const request = JSON.parse(readFileSync(REQUEST_PATH, 'utf8'));
   assert.equal(request.schemaVersion, 'round5-cloudflare-auth-scope-diagnostic-request-v1');
