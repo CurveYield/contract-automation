@@ -1,60 +1,72 @@
-# Round 5 Activation Runbook v1
+# Round 5 Sole-Orchestrator Activation Runbook v1
 
 ## Purpose
 
-Convert the queued Round 5 templates into active worker assignments immediately after Round 4 closes, without overlapping current assignments or exposing production credentials.
+Prepare the accepted Round 4 candidate for production testing without activating worker runtimes, changing worker-owned records, exposing credentials, merging, deploying, or running live workflows prematurely.
 
-## Hard prerequisites
+## Authority
 
-Do not activate any Round 5 worker until all are true:
+The user directed the orchestrator to finish all remaining work alone until production-testing readiness or a hard external block requires account-owner assistance. The former Worker 0–4 Round 5 templates and issues #128–#132 remain historical lane definitions only. They are not consumable assignments and no worker runtime may acknowledge or execute them.
 
-1. Round 4 master issue #119 records one exact assembled release-candidate SHA accepted by Workers 0, 1, 3, and 4.
-2. Worker 2's Round 4 integration assignment is durably completed.
-3. The orchestrator independently verifies the exact SHA, branch head, reports, manifests, combined gates, protected blobs, and merge to the approved release branch.
-4. The production-test, rollback, observability, secret-name/binding, and resource manifests are committed and mutually consistent.
-5. PR #126 or successor BlockPI/live-RPC work is declared complete by the account owner, independently reviewed, and reconciled into the accepted release SHA.
-6. The account owner confirms required secret and variable names exist. Never read or record values.
+## Accepted source
 
-## Activation compilation
+- Round 4 PR: #139
+- exact source SHA: `3da6b10f240e2abd031195f440c7cd80b72b691b`
+- frozen base SHA: `bbb4cac794865f84b65ee78a2fc78d391421c759`
+- exact-tree attestation SHA-256: `22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16`
+- static verdict: `ACCEPT`
+- merge authorization: none
 
-For each worker:
+## Static preparation branch
 
-1. Verify its current `STATUS_v1.json` has `state: completed`, `activeSequence: null`, exact final SHA, recommendation, final report reference, and matching branch head.
-2. Read the queued template from `.agent-control/v1/rounds/round5/QUEUED_ASSIGNMENTS/`.
-3. Replace the release placeholder with the exact accepted Round 4 release SHA and add:
-   - approved release branch;
-   - exact source/report/manifest references;
-   - activation timestamp;
-   - precise live-test authorization scope;
-   - any account-owner manual prerequisites still pending.
-4. Write the immutable compiled assignment to the worker's `ASSIGNMENTS/` directory at the queued sequence.
-5. Fetch and pin the assignment blob SHA.
-6. Create the planned worker branch from the exact accepted release SHA.
-7. Update `NEXT_v1.json` from `queued` to `ready`, adding starting SHA, compiled assignment path/blob, and activation comment ID.
-8. Update `CURRENT_v1.json` to the same sequence/path/blob only after the previous assignment is complete.
-9. Post one activation comment on the worker issue and #125.
-10. Require the worker to verify the pointer/blob and create one ACK before editing or performing live operations.
+Create `orchestrator/round5-production-test-prep-v1` from exact source SHA `3da6b10f240e2abd031195f440c7cd80b72b691b`.
 
-## Startup order
+Do not modify the accepted Round 4 branch. Every Round 5 static preparation change must remain isolated until independently reviewed.
 
-All five assignments may be activated after the hard prerequisites resolve, but live stages are checkpoint-gated:
+## Required static contracts
 
-1. **Worker 0** begins release/configuration/resource/rollback preflight.
-2. **Worker 2** begins trusted workflow/deployment preflight and publishes the deployment checkpoint.
-3. **Workers 1, 3, and 4** may begin static production-manifest review immediately, but must not issue live API/R2/GitHub/UI requests until Worker 2 publishes the exact deployment checkpoint and the orchestrator verifies it.
-4. **Worker 0** performs final semantic acceptance only after Workers 1, 2, 3, and 4 publish final production reports bound to the same exact SHA/configuration digest.
-5. **Worker 2** publishes the combined production acceptance record only after all specialist reports are durable and mutually consistent.
+Before requesting any account-owner action, commit mutually consistent versioned records for:
+
+1. exact release-SHA and tree-attestation binding;
+2. production-test stage plan and acceptance matrix;
+3. required GitHub secret names and repository variable names without values;
+4. Cloudflare account/zone, Worker, Pages, domain, R2, CORS and lifecycle resource expectations;
+5. GitHub workflow source, action-pin, permission, concurrency and environment requirements;
+6. seven-network read-only RPC names, chain IDs, allowed-method policy and bounded test expectations without endpoint values;
+7. deployment preflight, idempotency and artifact-evidence contract;
+8. rollback/redeploy and last-known-good configuration contract;
+9. observability, correlation-ID, recursive-redaction and bounded-retention contract;
+10. recovery, duplicate-publication reconciliation, partial-publication repair and test-key rotation contract;
+11. trusted V27 live-regression exact-SHA/artifact-digest acceptance contract;
+12. explicit promotion, credential-name readiness, deployment and live-test authorization gate.
+
+## Static verification
+
+- Use source-only tests and deterministic manifest validation.
+- Do not download dependencies or compile locally.
+- Naturally triggered secretless pull-request CI may be observed when a PR exists; do not manually dispatch or rerun workflows.
+- Bind every result to one exact preparation SHA.
+- Any preparation commit invalidates earlier acceptance for that preparation SHA and requires fresh static verification.
+
+## External authorization gates
+
+Static preparation must stop before each action below unless the account owner explicitly authorizes it:
+
+1. promoting or merging PR #139 or the Round 5 preparation branch;
+2. confirming required secret and variable names exist in repository/account settings;
+3. changing production secrets, variables, DNS, Cloudflare resources, R2 settings, GitHub environments or workflow permissions;
+4. dispatching deployment, V27 live-regression or production-test workflows;
+5. deploying Worker/Pages/R2/GitHub integrations;
+6. executing live API, R2, GitHub, UI or RPC tests.
+
+Secret values must never be read, copied, echoed, logged, screenshotted, committed or posted to issues.
 
 ## Failure handling
 
-- Any stale SHA, branch-head mismatch, manifest disagreement, missing worker completion, missing credential-name readiness, or unresolved PR #126 reconciliation keeps the queue inactive.
-- Any critical identity, cross-tenant, credential, workflow-trust, RPC-policy, deployment-integrity, rollback, data-loss, or hidden-resource failure is `REJECT` and requires halt/rollback.
-- Never silently waive a gate or activate a replacement assignment over an active sequence.
+- A stale SHA, manifest mismatch, missing rollback path, unpinned action, broad token permission, secret-bearing pull-request execution, transaction-capable RPC method, credential leak path or destructive recovery step blocks readiness.
+- Any critical identity, tenant-isolation, workflow-trust, credential, RPC-policy, deployment-integrity, rollback or data-loss defect is `REJECT`.
+- Preserve the accepted Round 4 candidate unchanged and record the exact failing preparation SHA and minimum repair.
 
-## Queued mapping
+## Completion condition
 
-- Worker 0 sequence 7 → issue #128 → `audit-round5/production-recovery-acceptance-v1`
-- Worker 1 sequence 6 → issue #129 → `audit-round5/live-api-auth-gpt-r2-v1`
-- Worker 2 sequence 9 → issue #130 → `audit-round5/production-deployment-integration-v1`
-- Worker 3 sequence 9 → issue #131 → `audit-round5/github-direct-actions-security-v1`
-- Worker 4 sequence 4 → issue #132 → `audit-round5/web-operator-live-e2e-v1`
+Round 5 is statically ready for production testing only when all preparation contracts are committed, mutually consistent, independently verified on one exact SHA, and the only remaining steps are explicit account-owner promotion/credential/deployment/live-test gates.
