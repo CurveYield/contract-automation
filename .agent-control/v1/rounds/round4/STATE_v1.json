@@ -1,8 +1,10 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "direct-orchestrator-candidate-review",
+  "state": "exact-head-static-accepted",
   "masterIssueNumber": 119,
+  "productionAcceptanceIssueNumber": 125,
+  "integrationOwner": "orchestrator",
   "workerIssues": {
     "worker-0": 120,
     "worker-1": 121,
@@ -10,157 +12,118 @@
     "worker-3": 123,
     "worker-4": 124
   },
-  "productionAcceptanceIssueNumber": 125,
-  "activeRound3Issues": [112, 113, 114, 115, 116],
-  "completedRound3Workers": ["worker-0", "worker-1", "worker-2", "worker-3", "worker-4"],
-  "stageAActivatedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
   "stageACompletedWorkers": ["worker-0", "worker-1", "worker-3", "worker-4"],
   "stageAOutputs": {
     "worker-0": {
       "issueNumber": 120,
-      "branch": "audit-round4/review-integration-spine-v1",
       "candidateSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
       "documentationSha": "2ca9e70fb1e34cb1fb1b163844169cae510a7f52",
-      "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157224221,
-      "intakeManifestPath": "docs/audit/round4/worker0/2026-08-02-phase78-api-stage-b-intake-contract-v1.json",
-      "intakeManifestBlobSha": "cbb3ad3b9caebe303cbea481e449d6fb8c46c105"
+      "recommendation": "ACCEPT WITH REPAIR"
     },
     "worker-1": {
       "issueNumber": 121,
-      "branch": "orchestrator/worker1-round4-takeover-v1",
       "candidateSha": "e26b78c2c26f3c11897e8fea397c8615fc66a5a0",
       "documentationSha": "df983ab905266ddd2dad39866f0e0341aaa0f100",
-      "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157596912,
-      "intakeManifestPath": "docs/audit/round4/worker1/2026-08-02-phase78-stage-a-path-blob-manifest-v1.json",
-      "intakeManifestBlobSha": "3ddd153e315459bfb9f1e2673a297e6f8552e8b7"
+      "recommendation": "ACCEPT WITH REPAIR"
     },
     "worker-3": {
       "issueNumber": 123,
-      "branch": "orchestrator/worker3-round4-takeover-v1",
       "candidateSha": "a70e6d762530bf0ce8c7dfd467c8b1278b6dd43d",
       "documentationSha": "8bb81ace67855e0a4bc214059b5ce3ad6c9c7ba1",
-      "recommendation": "ACCEPT WITH REPAIR",
       "reportCommentId": 5157962261,
-      "intakeManifestPath": "docs/audit/round4/worker3/2026-08-02-worker3-stage-a-path-blob-manifest-v1.json",
-      "intakeManifestBlobSha": "246ae11f0c1b377773f941394cfcee9defac5301"
+      "recommendation": "ACCEPT WITH REPAIR"
     },
     "worker-4": {
       "issueNumber": 124,
-      "branch": "audit-round4/review-web-direct-e2e-v1",
       "candidateSha": "11823bb8150debcf65b87aec27a20325546f864e",
       "documentationSha": "8e3b66fea86fa574384699a07988eda23cf8bdc3",
-      "recommendation": "ACCEPT",
       "reportCommentId": 5157176317,
-      "intakeManifestPath": "test/fixtures/audit-round4/worker4/stage-a-intake-v1.json",
-      "intakeManifestBlobSha": "f4aefc7deac3efabbbf6bd3e1d3b8a664c9157d0"
+      "recommendation": "ACCEPT"
     }
   },
-  "integrationOwner": "orchestrator",
-  "integrationOwnershipDirective": {
-    "receivedAt": "2026-08-02T22:24:00-07:00",
-    "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260803T052400Z_round4-sole-orchestrator-ownership-v1.json",
-    "worker2SupersessionSequence": 10,
-    "worker2SupersessionMessageId": "worker-2-round4-integration-ownership-revoked-v1-000010",
-    "worker2BranchFrozenSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "worker2StatusModified": false
+  "soleOwnership": {
+    "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
+    "worker2Sequence9RevokedBySequence10": true,
+    "worker2Sequence9Branch": "audit-round4/full-platform-integration-v2",
+    "worker2Sequence9BranchFrozenSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "worker2StatusModified": false,
+    "soleCandidatePullRequest": 139
   },
-  "integrationWorkerActivated": false,
-  "integrationWorkerSequence": 9,
-  "integrationWorkerMessageId": "worker-2-round4-full-platform-integration-v2-000009",
-  "integrationWorkerStage": "superseded-before-acknowledgement",
-  "integrationWorkerBranch": "audit-round4/full-platform-integration-v2",
-  "integrationWorkerBranchHead": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-  "integrationWorkerStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-  "integrationProductionIntakeAuthorized": true,
-  "integrationProductionIntakeCondition": "Satisfied by sole-owner directive, exact frozen Worker 2 branch, accepted Stage A outputs, accepted PR #126 security repair, completed reconstruction/intake on PR #139, and fresh exact-head secretless CI. Final static acceptance still requires independent path/blob reconciliation.",
-  "integrationValidatorRepair": {
-    "state": "reconstructed-and-ci-validated",
-    "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
-    "receiptBlobSha": "fef4bc39d3d2ab8ebdf597be9fbca36fa02ac812",
-    "exactIntakePathCount": 3,
-    "freshCombinedSuiteRequired": true
-  },
-  "integrationSupersessionProcedure": {
-    "state": "superseded-by-sole-orchestrator-owner",
-    "path": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
-    "blobSha": "493e987b9dd1e83f056305380c4245ba8007f2a6",
-    "closedSequence": 8,
-    "closedFrozenHeadSha": "8bddd31232f14597afba63ffba13f3b96069610b",
-    "successorSequence": 9,
-    "successorBranch": "audit-round4/full-platform-integration-v2",
-    "successorStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "successorAssignmentBlobSha": "cc735acf452edfb16319a9439bb3880dbfb01bbc",
-    "revocationSequence": 10,
-    "revocationAssignmentBlobSha": "9f8154ed5371a9dea3348536450e885214e05418",
-    "reconstructionPathCount": 27,
-    "pr126OverlapCount": 0
-  },
-  "directIntegrationTakeover": {
-    "state": "sole-owner-pending-exact-sha-static-acceptance",
-    "branch": "orchestrator/round4-final-integration-takeover-v1",
-    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "candidateHeadSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
-    "relationToBase": {
-      "status": "ahead",
-      "aheadBy": 47,
-      "behindBy": 0
-    },
+  "acceptedCandidate": {
     "pullRequest": 139,
-    "pullRequestBase": "orchestrator/round4-ci-base-v1",
-    "pullRequestBaseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "mergeAuthorized": false,
-    "requiredNextReview": "Independently reconcile every changed path and final blob against the accepted Stage A, transitive-closure, protected-addon and PR #126 security manifests, then publish one exact-SHA acceptance record."
+    "baseBranch": "orchestrator/round4-ci-base-v1",
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "headBranch": "orchestrator/round4-final-integration-takeover-v1",
+    "headSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "mergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+    "changedPathCount": 202,
+    "attestedPathCount": 198,
+    "attestationDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "draft": true,
+    "mergeable": true,
+    "mergeAuthorized": false
   },
-  "assembledCandidateSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
-  "assembledCandidateState": "frozen-pending-independent-path-blob-reconciliation",
-  "specialistAcceptances": {},
+  "acceptedIntake": {
+    "stage0PathCount": 27,
+    "stageAPathCount": 55,
+    "pr126SecurityPathCount": 48,
+    "worker1MetadataCorrectionCount": 1,
+    "stage0ValidatorRepairAccepted": true,
+    "pr126SecurityRepairAccepted": true,
+    "liveGateUnresolved": []
+  },
+  "testFirstEvidence": {
+    "attestationRedHeadSha": "43fb5bef8444325bfb28ad9e2823cc8a21f26708",
+    "gateRedHeadSha": "e0913267d355d333abdd4a044f48e2a00b0adf1f",
+    "implementationHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b"
+  },
   "ciEvidence": {
-    "exactHeadSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+    "exactHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
     "githubNativeSimulation": {
-      "runId": 30781904598,
-      "conclusion": "success"
+      "runId": 30788571549,
+      "conclusion": "success",
+      "repositoryTestsPassed": 461,
+      "repositoryTestsFailed": 0
     },
     "liveForkUpgrade": {
-      "runId": 30781904575,
-      "conclusion": "success"
+      "runId": 30788571507,
+      "conclusion": "success",
+      "focusedTestsPassed": 14,
+      "repositoryTestsPassed": 461,
+      "repositoryTestsFailed": 0,
+      "lintBuildSyntax": "success"
     },
-    "manualDispatchOrRerun": false
+    "manualDispatchOrRerun": false,
+    "liveSimulationExecutedByOrchestrator": false
   },
+  "decision": {
+    "exactHeadStaticAcceptance": "ACCEPT",
+    "round4ClosedForStaticIntegration": true,
+    "mergeAuthorized": false,
+    "nextRound": 5,
+    "nextStage": "static-production-test-preparation"
+  },
+  "residualRequirements": [
+    "trusted V27 live regression in Round 5 after explicit authorization",
+    "approved release promotion or merge",
+    "secret-name and variable-name readiness confirmation without values",
+    "deployment and live production-test authorization"
+  ],
   "externalWorkstreams": [
     {
-      "workstreamId": "live-fork-rpc-routing-pr126-v1",
-      "pullRequestNumber": 126,
-      "reviewPullRequestNumber": 138,
-      "state": "security-repair-accepted-for-round4-static-intake",
-      "acceptedRepairHeadSha": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
-      "round4InterferenceAuthorized": true,
-      "finalCandidateFreezeBlocked": false,
-      "round5TrustedLiveRegressionRequired": true,
-      "acceptanceManifest": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-pr126-security-repair-acceptance-v1.json"
+      "pullRequestNumber": 138,
+      "state": "separate-frozen-do-not-touch",
+      "acceptedHeadSha": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82"
     },
     {
-      "workstreamId": "remote-mutable-fork-simulation-v1",
       "pullRequestNumber": 136,
-      "branch": "fix/remote-mutable-fork-simulation-v1",
       "state": "separate-frozen-do-not-touch",
       "lastKnownHeadSha": "38166cd938c3b2cbbde9359418f40621c538e534"
     }
   ],
-  "blockers": [
-    {
-      "blockerId": "exact-candidate-path-blob-reconciliation-v1",
-      "description": "Both exact-head workflows are green and ownership is resolved, but the surviving PR #139 tree still requires one durable independent reconciliation against every accepted source/path/blob manifest before exact-head static acceptance can be declared.",
-      "requiredResolution": "Verify changed paths and final blobs, protected workflows/addon baselines, transitive closure receipts, combined metadata and Round 5 production input; publish the acceptance record and update issue #119."
-    }
-  ],
-  "productionTestTarget": {
-    "nonAwsFunctions": "ready-after-round4-exact-sha-acceptance-and-approved-release-merge",
-    "awsDependentHardenedExecutionPlane": "deferred-separate-workstream"
-  },
-  "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
-  "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "lastDecisionEventPath": ".agent-control/v1/orchestrator/EVENTS/20260803T052400Z_round4-sole-orchestrator-ownership-v1.json",
-  "updatedAt": "2026-08-03T05:24:00Z"
+  "blockers": [],
+  "lastDecisionEventPath": ".agent-control/v1/orchestrator/EVENTS/20260803T060525Z_round4-exact-head-static-acceptance_v1.json",
+  "updatedAt": "2026-08-03T06:05:25Z"
 }
