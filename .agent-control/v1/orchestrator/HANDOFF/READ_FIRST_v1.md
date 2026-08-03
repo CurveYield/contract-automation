@@ -13,6 +13,7 @@ GitHub is the durable source of truth. Do not rely on chat history, Project file
 - Operating mode: sole orchestrator
 - Active networks: Ethereum and Base only
 - Deferred and prohibited networks: Arbitrum, Fraxtal, Katana, Optimism, Polygon
+- Dependency downloads: prohibited
 
 Do not activate worker runtimes or edit worker-owned ACK/STATUS files.
 
@@ -20,36 +21,73 @@ Do not activate worker runtimes or edit worker-owned ACK/STATUS files.
 
 1. Read `.agent-control/v1/PROTOCOL_v2.md` in full.
 2. Read `.agent-control/v1/GLOBAL_STATE_v1.json`.
-3. Read `CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json` in this folder.
-4. Read `ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md` in this folder.
-5. Read `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` and `CONTEXT_EXHAUSTION_CHECKLIST_v1.md`.
-6. Read `.agent-control/v1/orchestrator/STATUS_v1.json` and the newest orchestrator events.
-7. Refresh issue #125, PR #150, release branch `orchestrator/round4-ci-base-v1`, deployment run `30808377849`, and job `91668946456`.
-8. Verify all live references before acting.
+3. Read `CURRENT_STATE_SNAPSHOT_2026-08-03T0601-0700_v2.json` in this folder.
+4. Read `ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md` in this folder.
+5. Read the prior `ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md` for historical PRs #139–#150.
+6. Read `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` and `CONTEXT_EXHAUSTION_CHECKLIST_v1.md`.
+7. Read `.agent-control/v1/orchestrator/STATUS_v1.json` and the newest orchestrator events.
+8. Refresh issue #125, PRs #156 and #157, release branch `orchestrator/round4-ci-base-v1`, deployment v6 run `30815289252`, and job `91691417740`.
+9. Verify all live references before acting.
 
-Older timestamped snapshots and earlier replacement prompts are historical. Protocol v2, the newest timestamped snapshot, the accepted-work ledger, and refreshed live GitHub state win on conflict.
+Older timestamped snapshots and prompts are historical. Protocol v2, the newest timestamped snapshot, the additive ledgers, and refreshed live GitHub state win on conflict.
 
 ## Current trusted state
 
-- Current trusted and deployed source: `2c6e543dfcaa17ca975bbde3c15302269bbf8072`
-- Release branch: `orchestrator/round4-ci-base-v1`
-- Source PR: #150 — merged
-- Deployment v4 run: `30808377849`
-- Deployment v4 job: `91668946456`
-- Deployment v4 result: success
+- Trusted release branch head: `3c37394f814c40b1fc6fff134d2de698635bd185`
+- Current release-head source: PR #156
+- Accepted application source: `2c6e543dfcaa17ca975bbde3c15302269bbf8072`
+- Accepted application source PR: #150
+- Last verified API Worker deployment: run `30808377849`, job `91668946456`, success
+- Production Pages custom domain current-source acceptance: **not accepted**
+- Observed Pages state: stale seven-network selector
 
-PR #150 repaired a real production UI defect:
+Do not describe release head `3c37394...` as an accepted deployed application. Its one-time Pages deployment gate failed.
 
-- removed all deferred networks from the operator selector;
-- made Base the safe default;
-- synchronized the selector from authenticated `/api/v1/chains` data;
-- redeployed Worker and Pages from the corrected exact source.
+## Latest rejected gate
 
-Every deployment v4 job step succeeded.
+PR #156 merged a Pages-only deployment v6. Its live evidence is:
+
+- workflow run: `30815289252`
+- job: `91691417740`
+- job conclusion: failure
+- request verification: success
+- committed static UI verification: success
+- configured Pages production branch verification: success
+- Wrangler deployment command: success
+- production custom-domain UI verification: failure on all six bounded attempts
+- sanitized issue report: success
+
+The workflow produced deployment short ID `1e0bf5b9`, but `preflight.curveyield.online` continued serving the stale selector.
+
+The v6 request declared `dependencyInstallationAllowed: false`, while the workflow executed `npm exec --yes --package=wrangler@4.116.0`. That runtime dependency download is an independent rejection reason.
+
+The log also emitted `fatal: bad object 2c6e543...` while Wrangler attempted to infer an omitted commit message. Current Wrangler source catches that metadata-discovery failure and continues with the supplied branch and commit hash. The missing object is not established as the production-routing cause.
+
+Never rerun v6.
+
+## Active blocked candidate
+
+PR #157:
+
+- branch: `orchestrator/round5-pages-commit-object-v7`
+- exact base: `3c37394f814c40b1fc6fff134d2de698635bd185`
+- last reviewed head: `0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1`
+- state at review: draft and mergeable
+- blocking comment: `5166610889`
+- merge allowed: false
+- live execution allowed: false
+
+Blockers:
+
+- still downloads Wrangler with `npm exec`;
+- drops the prior no-dependency-installation request field;
+- full-history checkout does not prove production classification;
+- does not require deployment response `environment: production`;
+- does not require exact production/custom-domain alias binding.
+
+Re-fetch PR #157 before acting because another runtime may advance it. Do not merge or execute the reviewed unsafe head.
 
 ## Preserve completed work
-
-The accepted-work ledger records PRs #139–#150, every important RED/GREEN run, failed diagnostic deployments, successful deployments, and smoke evidence.
 
 Standing anti-duplication rules:
 
@@ -57,27 +95,37 @@ Standing anti-duplication rules:
 - do not recreate accepted PRs or repeat their RED/GREEN sequences;
 - do not recompute historical digests from the current mutable tree;
 - do not repeat Cloudflare token diagnostics unless credential state changed;
-- do not repeat deployment v3 or v4 merely to prove they happened;
-- preserve issue #125 comments and PR descriptions as durable evidence;
+- preserve issue #125 comments and accepted receipts;
 - every new live gate must use a fresh exact-parent one-time request.
 
-Production smoke run `30807373463` succeeded for the previous deployed source `fbe27b824da8084970915b31f2051679abe39cfc`. It is valid historical evidence but is superseded for final current-source acceptance because PR #150 changed the deployed UI.
+Failed runs that must never be rerun:
+
+- `30800918581`
+- `30805768611`
+- `30813209037`
+- `30814064657`
+- `30815289252`
+
+Production smoke run `30807373463` remains valid historical evidence for source `fbe27b824da8084970915b31f2051679abe39cfc`, but is superseded for current-source acceptance.
 
 ## Exact next action
 
-Create a fresh test-first, exact-parent, read-only production smoke gate bound to:
+Correct PR #157 or supersede it with a fresh exact-parent, test-first candidate that deploys Pages without downloading dependencies.
 
-`2c6e543dfcaa17ca975bbde3c15302269bbf8072`
+The corrected candidate must:
 
-It must verify the previous Pages/API/CORS/Ethereum/Base checks plus deployed UI evidence that:
+- use the Cloudflare Pages API directly against the already-uploaded asset manifest;
+- use no package manager, dependency installer, or downloaded CLI;
+- fail closed and perform no asset upload if any expected asset is missing;
+- use the configured production branch by API contract;
+- require deployment response `environment: production`;
+- require trigger metadata branch `orchestrator/round4-ci-base-v1`;
+- require exact production/custom-domain binding;
+- verify the custom domain serves only Ethereum and Base, with Base as the sole default and authenticated `/api/v1/chains` synchronization present;
+- preserve exact-parent, `production` environment, full-SHA action pins, secretless PR CI, and sanitized issue #125 reporting;
+- perform no repository compilation, API Worker deployment, secret mutation, R2 mutation, API job/upload submission, RPC call, wallet action, signing, or transaction broadcast.
 
-- only Ethereum and Base are selectable;
-- Base is the default;
-- the client synchronizes from `/api/v1/chains`;
-- no deferred network is selectable;
-- no job, upload, signing, wallet, or transaction-broadcast action occurs.
-
-Do not rerun the superseded smoke workflow.
+After Pages production binding is accepted, create a fresh current-source production smoke gate. Do not reuse or rerun the failed smoke v2 workflow.
 
 ## Remaining Round 5 scope
 
@@ -97,6 +145,6 @@ After current-source smoke acceptance, continue issue #125 without repeating acc
 
 ## Standing restrictions
 
-No production secret values, raw RPC URLs, authorization headers, wallet keys, signing, public-chain broadcasting, deferred-network testing, broad unreviewed merges, direct `main` merge, AWS work, CurveYield Lite changes, destructive recovery against irreplaceable data, or worker-owned ACK/STATUS edits.
+No dependency downloads, production secret values, raw RPC URLs, authorization headers, wallet keys, signing, public-chain broadcasting, deferred-network testing, broad unreviewed merges, direct `main` merge, AWS work, CurveYield Lite changes, destructive recovery against irreplaceable data, or worker-owned ACK/STATUS edits.
 
 When live records conflict, integrate nothing, preserve the last validated exact state, record the discrepancy durably, and resolve it before proceeding.
