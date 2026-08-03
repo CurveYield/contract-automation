@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v1",
+  "snapshotId": "round5-trusted-deployment-preflight-promoted-2026-08-03T0118-0700",
+  "createdAt": "2026-08-03T08:18:00Z",
+  "createdAtLocal": "2026-08-03T01:18:00-07:00",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "state": "external-github-environment-and-dispatch-gate",
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "promotionAuthorized": true,
+    "credentialNameReadinessAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "workerRuntimeActivationAllowed": false,
+    "workerOwnedAckOrStatusEditsAllowed": false
+  },
+  "round4": {
+    "issue": 119,
+    "pullRequest": 139,
+    "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
+    "releaseBranch": "orchestrator/round4-ci-base-v1",
+    "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "acceptance": "ACCEPT",
+    "merged": true
+  },
+  "round5StaticPreparation": {
+    "issue": 125,
+    "pullRequest": 140,
+    "acceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
+    "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "staticReadinessReceipt": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+    "networkScopeAmendment": "docs/audit/round5/production-network-scope-amendment-v1.json",
+    "authorizationReceipt": "docs/audit/round5/account-owner-authorization-receipt-v1.json",
+    "acceptance": "ACCEPT",
+    "merged": true
+  },
+  "trustedDeploymentPreflight": {
+    "pullRequest": 141,
+    "branch": "orchestrator/round5-trusted-deployment-preflight-v1",
+    "baseSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
+    "exactAcceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
+    "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "receipt": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
+    "acceptance": "ACCEPT",
+    "merged": true,
+    "controls": {
+      "exactReleaseBranchBinding": true,
+      "productionEnvironmentRequired": true,
+      "thirdPartyActionsPinnedToFullCommitShas": true,
+      "exactSourceShaVerifiedBeforeExecution": true,
+      "credentialNamesValidatedWithoutValues": true,
+      "ethereumAndBaseOnlyRuntimeAllowlist": true,
+      "deferredNetworksRejectedBeforeDispatch": true,
+      "workerAndPagesDomainsSeparated": true,
+      "boundedR2CorsAndLifecycleConfiguration": true,
+      "requiredGitHubLabelsProvisionedByDeployment": true,
+      "walletSigningOrTransactionBroadcastPath": false
+    },
+    "exactHeadCi": {
+      "liveForkUpgradeRun": 30796659737,
+      "liveForkUpgradeJob": 91631654571,
+      "githubNativeSimulationRun": 30796659857,
+      "githubNativeSimulationJob": 91631655388,
+      "repositoryTestsPassed": 470,
+      "repositoryTestsFailed": 0,
+      "focusedGitHubNativeTestsPassed": 49,
+      "focusedLiveForkTestsPassed": 14,
+      "javascriptModulesSyntaxValid": 283,
+      "lintBuildSyntax": "success",
+      "manualWorkflowDispatchOrRerun": false
+    }
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "deploymentWorkflow": ".github/workflows/deploy.yml",
+    "runnerWorkflow": ".github/workflows/simulate.yml",
+    "apiHostname": "api.preflight.curveyield.online",
+    "pagesHostname": "preflight.curveyield.online",
+    "pagesProject": "curveyield-preflight",
+    "r2Bucket": "curveyield-preflight"
+  },
+  "networkScope": {
+    "active": [
+      {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
+      {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
+    ],
+    "deferred": ["arbitrum","fraxtal","katana","optimism","polygon"],
+    "deferredNetworksMayBeTested": false,
+    "futureExpansionRequiresNewAccountOwnerAuthorization": true
+  },
+  "credentialReadiness": {
+    "accountOwnerConfirmedConfigured": true,
+    "activeRepositorySecretNameCount": 11,
+    "repositoryVariableNameCount": 3,
+    "namesOnly": true,
+    "valuesRetrievedOrRecorded": false
+  },
+  "executionState": {
+    "productionEnvironmentProtectionConfirmed": false,
+    "deploymentWorkflowDispatched": false,
+    "cloudflareDeploymentExecuted": false,
+    "liveApiAuthGptTestsExecuted": false,
+    "liveR2TestsExecuted": false,
+    "liveGitHubBridgeTestsExecuted": false,
+    "liveReadOnlyRpcTestsExecuted": false,
+    "webOperatorAcceptanceExecuted": false,
+    "observabilityRecoveryTestsExecuted": false,
+    "trustedV27RegressionExecuted": false,
+    "finalProductionAcceptance": "PENDING"
+  },
+  "hardExternalGate": {
+    "name": "github-production-environment-and-manual-dispatch",
+    "reason": "The connected GitHub interface has no action for configuring repository environments or dispatching a workflow. The trusted workflow deliberately requires the production environment and exact release branch.",
+    "accountOwnerActions": [
+      "Create or confirm a GitHub environment named production.",
+      "Restrict that environment to the protected branch orchestrator/round4-ci-base-v1.",
+      "Manually dispatch Test and Deploy CurveYield Preflight from orchestrator/round4-ci-base-v1."
+    ],
+    "repositorySecretsRemainRepositoryLevel": true,
+    "manualRerunOfHistoricalOrFailedWorkflowsAllowed": false
+  },
+  "safety": {
+    "secretValuesReadOrExposed": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "deploymentExecuted": false,
+    "liveProductionRequestsExecuted": false,
+    "workerOwnedAckOrStatusModified": false
+  },
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T081800Z_round5-trusted-deployment-preflight-promoted_v1.json"
+}
