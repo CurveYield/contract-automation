@@ -3,11 +3,12 @@
   "releaseVersion": "deep-assurance-github-bridge-v1",
   "baseContractAutomationCommit": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
   "files": {
-    ".github/workflows/deep-assurance-github-request-v1.yml": "bb00d7ec0c46b595af301f4e6609813c2c2f45c70f5cec11b2d9ab546fc148dd",
+    ".github/workflows/deep-assurance-github-request-v1.yml": "1271ac4d0803b058cb2d0b715655511614b63c754c5b349c83371decc0eaf15f",
     "packages/github-native-sim/src/deep-assurance-request.mjs": "9cfa7807dd384e49f11f15907999f9d3ae2aa772a838f4adb20b4a110bc4f99b",
     "packages/github-native-sim/src/inspect-deep-assurance-request.mjs": "0983bb9977cbed46f2b1f5dcb6bd834a5c83b1340ef353cc9bdb087ae76e11f9",
     "packages/github-native-sim/src/prepare-deep-assurance-job.mjs": "4fd5f515ea599e0f9bcde15ea869e02560738ca962d051bd125cff2829176e1f",
     "packages/github-native-sim/src/finalize-deep-assurance-result.mjs": "dd1182d572f3310878fe95ea3f2b3a6e3f40fbc521c198c0e9c4990e7964d4a6",
+    "packages/github-native-sim/src/publish-deep-assurance-status.mjs": "e1a1afc9147a4a2f107cb95ffe0397865f71a6fbecd1be098a55384c43929650",
     "packages/github-native-sim/src/verify-deep-assurance-runner-release.mjs": "7b0ffcccc83163d3ad0d8b0eef2d7815beeafb96072950049325290e01dd13ca"
   }
 }

@@ -18,7 +18,7 @@ test('Deep Assurance workflow is trusted-release push only and request-path scop
   assert.match(workflow, /github-native-sim\/requests\/\*\/request\.json/);
   assert.doesNotMatch(workflow, /pull_request(?:_target)?:/);
   assert.doesNotMatch(workflow, /repository_dispatch:/);
-  assert.match(workflow, /permissions:\s*\n\s*contents: read/);
+  assert.match(workflow, /permissions:\s*\n\s*contents: read\s*\n\s*statuses: write/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
 
@@ -42,6 +42,36 @@ test('secret-free classifier gates exactly one downstream execution job', async 
   assert.match(simulateBlock, /SIM_ARCHIVE_PRIMARY_ETHEREUM_01/);
 });
 
+test('workflow publishes navigational pending and terminal commit statuses', async () => {
+  const workflow = await text(workflowUrl);
+  assert.match(workflow, /Publish pending request status/);
+  assert.equal((workflow.match(/Publish terminal .* request status/g) ?? []).length, 2);
+  assert.equal((workflow.match(/publish-deep-assurance-status\.mjs/g) ?? []).length, 3);
+  assert.equal((workflow.match(/GITHUB_TOKEN: \$\{\{ github\.token \}\}/g) ?? []).length, 3);
+  assert.match(workflow, /--commit "\$GITHUB_SHA"/);
+  assert.match(workflow, /--run-id "\$GITHUB_RUN_ID"/);
+  assert.match(workflow, /if: always\(\)/);
+  assert.doesNotMatch(workflow, /description:.*PASS|description:.*NO_GO/i);
+});
+
+test('terminal status publication occurs after evidence upload and propagates execution failure', async () => {
+  const workflow = await text(workflowUrl);
+  for (const [startMarker, endMarker] of [
+    ['  execute-compile:', '  execute-simulate:'],
+    ['  execute-simulate:', null],
+  ]) {
+    const start = workflow.indexOf(startMarker);
+    const end = endMarker ? workflow.indexOf(endMarker) : workflow.length;
+    const block = workflow.slice(start, end);
+    const upload = block.indexOf('Upload normalized');
+    const terminal = block.indexOf('Publish terminal');
+    assert.ok(upload >= 0 && terminal > upload);
+    assert.match(block, /state=failure/);
+    assert.match(block, /test "\$state" = success/);
+    assert.doesNotMatch(block, /Propagate (compile|simulation) failure/);
+  }
+});
+
 test('workflow validates an atomic request before dynamic source checkout', async () => {
   const workflow = await text(workflowUrl);
   const selectIndex = workflow.indexOf('Select and validate atomic request');
@@ -57,7 +87,7 @@ test('workflow validates an atomic request before dynamic source checkout', asyn
 
 test('workflow uses immutable action revisions and always uploads normalized evidence', async () => {
   const workflow = await text(workflowUrl);
-  for (const action of workflow.matchAll(/uses:\s*([^\s]+)/g)) {
+  for (const action of workflow.matchAll(/^\s*uses:\s*([^\s]+)$/gm)) {
     assert.match(action[1], /@[0-9a-f]{40}$/);
   }
   assert.match(workflow, /finalize-deep-assurance-result\.mjs/);

@@ -9,6 +9,7 @@ export const DEEP_ASSURANCE_RUNNER_RELEASE_FILES = Object.freeze([
   'packages/github-native-sim/src/inspect-deep-assurance-request.mjs',
   'packages/github-native-sim/src/prepare-deep-assurance-job.mjs',
   'packages/github-native-sim/src/finalize-deep-assurance-result.mjs',
+  'packages/github-native-sim/src/publish-deep-assurance-status.mjs',
   'packages/github-native-sim/src/verify-deep-assurance-runner-release.mjs'
 ]);
 

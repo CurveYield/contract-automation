@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: deep-assurance-${{ github.sha }}
@@ -60,6 +61,18 @@ jobs:
             printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
           done
           printf 'expected_runner_manifest_sha256=%s\n' "$manifest_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pending request status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node packages/github-native-sim/src/publish-deep-assurance-status.mjs
+          --repository "$GITHUB_REPOSITORY"
+          --commit "$GITHUB_SHA"
+          --run-id "$GITHUB_RUN_ID"
+          --request-id "${{ steps.request.outputs.request_id }}"
+          --profile-id "${{ steps.request.outputs.profile_id }}"
+          --state pending
 
   execute-compile:
     needs: classify
@@ -149,6 +162,7 @@ jobs:
 
       - name: Upload normalized compile evidence
         if: always() && steps.prepare.outcome == 'success'
+        id: upload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ steps.prepare.outputs.artifact_name }}
@@ -156,9 +170,25 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Propagate compile failure
-        if: steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure'
-        run: exit 1
+      - name: Publish terminal compile request status
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state=success
+          for outcome in "${{ steps.prepare.outcome }}" "${{ steps.execute.outcome }}" "${{ steps.finalize.outcome }}" "${{ steps.upload.outcome }}"; do
+            if [ "$outcome" != success ]; then state=failure; fi
+          done
+          node packages/github-native-sim/src/publish-deep-assurance-status.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --request-id "${{ needs.classify.outputs.request_id }}" \
+            --profile-id "${{ needs.classify.outputs.profile_id }}" \
+            --state "$state"
+          test "$state" = success
 
   execute-simulate:
     needs: classify
@@ -271,6 +301,7 @@ jobs:
 
       - name: Upload normalized simulation evidence
         if: always() && steps.prepare.outcome == 'success'
+        id: upload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ steps.prepare.outputs.artifact_name }}
@@ -278,6 +309,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Propagate simulation failure
-        if: steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure'
-        run: exit 1
+      - name: Publish terminal simulation request status
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state=success
+          for outcome in "${{ steps.prepare.outcome }}" "${{ steps.execute.outcome }}" "${{ steps.finalize.outcome }}" "${{ steps.upload.outcome }}"; do
+            if [ "$outcome" != success ]; then state=failure; fi
+          done
+          node packages/github-native-sim/src/publish-deep-assurance-status.mjs \
+            --repository "$GITHUB_REPOSITORY" \
+            --commit "$GITHUB_SHA" \
+            --run-id "$GITHUB_RUN_ID" \
+            --request-id "${{ needs.classify.outputs.request_id }}" \
+            --profile-id "${{ needs.classify.outputs.profile_id }}" \
+            --state "$state"
+          test "$state" = success
