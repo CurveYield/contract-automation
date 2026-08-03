@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "agent-control-event-v1",
+  "eventId": "round5-trusted-deployment-preflight-promoted-20260803T081800Z",
+  "eventType": "round5-trusted-deployment-preflight-promoted",
+  "recordedAt": "2026-08-03T08:18:00Z",
+  "recordedAtLocal": "2026-08-03T01:18:00-07:00",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "actor": "orchestrator",
+  "authority": {
+    "authorizer": "account-owner",
+    "explicitProceedAuthorized": true,
+    "candidatePromotionAuthorized": true,
+    "credentialNameReadinessAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
+    "secretValuesReadOrRecorded": false
+  },
+  "promotions": [
+    {
+      "pullRequest": 139,
+      "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+      "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
+      "purpose": "round4-final-static-integration"
+    },
+    {
+      "pullRequest": 140,
+      "acceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
+      "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
+      "purpose": "round5-static-preparation-scope-and-authorization"
+    },
+    {
+      "pullRequest": 141,
+      "acceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
+      "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+      "purpose": "trusted-deployment-preflight-and-ethereum-base-runtime-scope"
+    }
+  ],
+  "release": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentTrustedSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "round5StaticPackageDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3"
+  },
+  "trustedDeploymentPreflight": {
+    "pullRequest": 141,
+    "exactAcceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
+    "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "receiptPath": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
+    "status": "ACCEPT",
+    "activeReadOnlyRpcNetworks": [
+      {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
+      {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
+    ],
+    "deferredReadOnlyRpcNetworks": ["arbitrum","fraxtal","katana","optimism","polygon"],
+    "exactHeadCi": {
+      "liveForkUpgradeRun": 30796659737,
+      "liveForkUpgradeJob": 91631654571,
+      "githubNativeSimulationRun": 30796659857,
+      "githubNativeSimulationJob": 91631655388,
+      "repositoryTestsPassed": 470,
+      "repositoryTestsFailed": 0,
+      "focusedGitHubNativeTestsPassed": 49,
+      "focusedLiveForkTestsPassed": 14,
+      "javascriptModulesSyntaxValid": 283,
+      "lintBuildSyntax": "success",
+      "manualWorkflowDispatchOrRerun": false
+    }
+  },
+  "credentialReadiness": {
+    "confirmationSource": "account-owner-direct-confirmation",
+    "activeRepositorySecretNameCount": 11,
+    "repositoryVariableNameCount": 3,
+    "namesOnly": true,
+    "valuesRetrieved": false,
+    "valuesRecorded": false
+  },
+  "executionState": {
+    "productionEnvironmentProtectionConfirmed": false,
+    "deploymentWorkflowDispatched": false,
+    "cloudflareDeploymentExecuted": false,
+    "liveProductionTestingExecuted": false,
+    "trustedV27RegressionExecuted": false
+  },
+  "hardExternalGate": {
+    "state": "external-github-environment-and-dispatch-gate",
+    "requiredAccountOwnerActions": [
+      "create-or-confirm-github-environment-production",
+      "restrict-production-environment-to-orchestrator-round4-ci-base-v1",
+      "manually-dispatch-test-and-deploy-curveyield-preflight-from-exact-release-branch"
+    ],
+    "reason": "The connected GitHub interface does not expose environment configuration or workflow-dispatch actions. Historical or failed workflow reruns remain prohibited."
+  },
+  "safety": {
+    "secretValuesExposed": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "deploymentExecuted": false,
+    "liveProductionRequestsExecuted": false,
+    "workerOwnedAckOrStatusModified": false
+  }
+}
