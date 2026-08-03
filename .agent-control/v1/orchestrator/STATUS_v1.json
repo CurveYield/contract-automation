@@ -2,10 +2,10 @@
   "protocolVersion": 1,
   "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "round5-static-production-test-preparation",
+  "state": "external-account-owner-authorization-gate",
   "operatingMode": "sole-orchestrator",
-  "lastPollAt": "2026-08-03T06:05:25Z",
-  "lastProcessedEvent": "round4-exact-head-static-acceptance-20260803T060525Z",
+  "lastPollAt": "2026-08-03T06:39:00Z",
+  "lastProcessedEvent": "round5-static-production-test-readiness-accepted-20260803T063900Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "round": 5,
@@ -22,20 +22,35 @@
     "draft": true,
     "mergeAuthorized": false
   },
+  "round5StaticReadiness": {
+    "pullRequest": 140,
+    "sourceSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "branch": "orchestrator/round5-production-test-prep-v1",
+    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
+    "packagePathCount": 14,
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "receiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "staticProductionTestReadiness": "ACCEPT",
+    "productionTestingReady": true,
+    "draft": true,
+    "mergeAuthorized": false
+  },
   "exactHeadCi": {
-    "githubNativeSimulationRun": 30788571549,
-    "liveForkUpgradeRun": 30788571507,
-    "repositoryTestsPassed": 461,
+    "githubNativeSimulationRun": 30790716033,
+    "liveForkUpgradeRun": 30790716022,
+    "repositoryTestsPassed": 464,
     "repositoryTestsFailed": 0,
+    "focusedGitHubNativeTestsPassed": 49,
+    "focusedLiveForkTestsPassed": 14,
+    "javascriptModulesSyntaxValid": 279,
     "lintBuildSyntax": "success",
     "manualDispatchOrRerun": false
   },
   "pendingActions": [
-    "Publish Round 4 exact-head acceptance to issues #119 and #63.",
-    "Create an isolated Round 5 production-test preparation branch from exact accepted SHA 3da6b10f240e2abd031195f440c7cd80b72b691b.",
-    "Commit mutually consistent production-test, release-SHA, secret-name/binding, resource, deployment-preflight, rollback, observability, recovery, and trusted V27 live-regression contracts.",
-    "Review the complete static Round 5 preparation package without running live workflows or reading secret values.",
-    "Stop at the explicit promotion/credential/deployment/live-test authorization gate if no further safe static work remains."
+    "Wait for explicit candidate promotion or merge authorization.",
+    "Obtain account-owner confirmation that required secret and variable names exist without reading values.",
+    "Wait for explicit deployment authorization.",
+    "Wait for explicit trusted live production-test authorization."
   ],
   "hardExternalGates": [
     "explicit authorization to promote or merge the accepted candidate",
@@ -43,7 +58,7 @@
     "explicit authorization for deployment and trusted live production tests"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2258-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2339-0700_v1.json",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "updatedAt": "2026-08-03T06:05:25Z"
+  "updatedAt": "2026-08-03T06:39:00Z"
 }
