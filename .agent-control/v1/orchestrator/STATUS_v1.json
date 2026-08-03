@@ -2,10 +2,10 @@
   "protocolVersion": 1,
   "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "external-cloudflare-api-token-replacement-gate",
+  "state": "production-ui-v4-deployed-awaiting-current-source-smoke",
   "operatingMode": "sole-orchestrator",
-  "lastPollAt": "2026-08-03T09:53:31Z",
-  "lastProcessedEvent": "cloudflare-api-token-invalid-gate-20260803T095331Z",
+  "lastPollAt": "2026-08-03T11:42:00Z",
+  "lastProcessedEvent": "production-ui-v4-deployed-replacement-handoff-20260803T114200Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "round": 5,
@@ -15,15 +15,17 @@
     "accountOwnerProceedAuthorized": true,
     "deploymentAuthorized": true,
     "trustedLiveProductionTestingAuthorized": true,
-    "activeNetworks": ["ethereum", "base"]
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworkTestingAllowed": false
   },
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b",
+    "currentSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "sourcePullRequest": 150,
     "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
     "round5StaticPackageDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3"
   },
-  "promotedPullRequests": [139, 140, 141, 142, 143, 144, 145],
+  "promotedPullRequests": [139,140,141,142,143,144,145,146,147,148,149,150],
   "networkScope": {
     "active": [
       {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
@@ -32,49 +34,65 @@
     "deferred": ["arbitrum","fraxtal","katana","optimism","polygon"],
     "deferredNetworkTestingAllowed": false
   },
-  "deploymentAttempt": {
-    "run": 30800918581,
-    "job": 91645019455,
-    "conclusion": "failure",
-    "failureStep": "Create R2 bucket when missing",
-    "repositoryTestsPassed": 471,
-    "workerOrPagesMutationExecuted": false,
-    "rerunPerformed": false
+  "currentDeployment": {
+    "version": 4,
+    "run": 30808377849,
+    "job": 91668946456,
+    "sourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "conclusion": "success",
+    "allStepsSucceeded": true,
+    "workerDeployed": true,
+    "pagesDeployed": true,
+    "r2BucketVerified": true,
+    "apiDomainVerified": true,
+    "pagesDomainVerified": true
   },
-  "cloudflareDiagnosis": {
-    "tokenVerification": {"httpStatus":401,"success":false,"numericErrorCodes":[1000],"status":"unknown"},
-    "accountScope": {"httpStatus":403,"success":false,"numericErrorCodes":[9109]},
-    "r2BucketAccess": {"httpStatus":403,"success":false,"numericErrorCodes":[10000]},
-    "derivedDiagnosis": "token-invalid-disabled-or-expired",
-    "cloudflareMutationPerformed": false
+  "acceptedHistoricalEvidence": {
+    "replacementCloudflareTokenVerified": true,
+    "r2LifecycleNativeSchemaAccepted": true,
+    "deploymentV3Run": 30806403201,
+    "deploymentV3Conclusion": "success",
+    "smokeV1Run": 30807373463,
+    "smokeV1Conclusion": "success-for-superseded-source",
+    "deploymentV4Run": 30808377849,
+    "deploymentV4Conclusion": "success"
   },
+  "failedRunsDoNotRerun": [30800918581,30805768611],
   "executionState": {
     "productionEnvironmentConfirmed": true,
-    "deploymentWorkflowDispatched": true,
-    "cloudflareDeploymentCompleted": false,
-    "liveProductionTestingExecuted": false,
+    "cloudflareDeploymentCompleted": true,
+    "currentProductionSourceDeployed": true,
+    "currentSourceSmokeAccepted": false,
+    "boundedLiveProductionTestingStarted": true,
     "trustedV27RegressionExecuted": false,
     "finalProductionAcceptance": "PENDING"
   },
   "pendingActions": [
-    "Account owner replaces repository secret CLOUDFLARE_API_TOKEN with a newly generated valid Cloudflare API token scoped to the CurveYield account and required deployment permissions.",
-    "Orchestrator verifies the replacement through a new exact-parent GET-only diagnostic.",
-    "Orchestrator creates a new reviewed one-time deployment request after verification."
+    "Create a fresh exact-parent read-only production smoke gate for deployed SHA 2c6e543dfcaa17ca975bbde3c15302269bbf8072.",
+    "Include deployed UI checks proving only Ethereum and Base are selectable, Base is default, and the selector synchronizes from /api/v1/chains.",
+    "Continue remaining issue #125 stages without repeating accepted work."
   ],
-  "hardExternalGates": [
-    "Cloudflare API token creation and repository-secret replacement require account-owner dashboard access."
-  ],
+  "hardExternalGates": [],
+  "antiDuplication": {
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+    "historicalOrFailedWorkflowRerunsForbidden": true,
+    "acceptedRedGreenSequencesMustNotBeRepeated": true,
+    "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
+    "freshExactParentRequestRequiredForNewLiveGate": true
+  },
   "safety": {
     "secretValuesReadOrExposed": false,
     "walletKeysUsed": false,
     "signingPerformed": false,
     "publicTransactionsBroadcast": false,
     "deferredNetworksTested": false,
-    "manualHistoricalOrFailedWorkflowRerun": false,
-    "workerOwnedAckOrStatusModified": false
+    "historicalOrFailedWorkflowRerun": false,
+    "workerOwnedAckOrStatusModified": false,
+    "scheduledAutomationEnabled": false
   },
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0253-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json",
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "updatedAt": "2026-08-03T09:53:31Z"
+  "updatedAt": "2026-08-03T11:42:00Z"
 }
