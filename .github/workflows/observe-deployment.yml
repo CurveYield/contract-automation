@@ -1,0 +1,163 @@
+name: Observe Trusted Production Deployment
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/DEPLOY_OBSERVE_REQUEST_v1.json
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-deployment-observer
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      OBSERVE_REQUEST_PATH: .agent-control/v1/orchestrator/DEPLOY_OBSERVE_REQUEST_v1.json
+      OBSERVE_REQUEST_ID: round5-observe-deployment-20260803T0920Z-v1
+      OBSERVE_EXPECTED_BEFORE_SHA: 81b7d3b2f4cf4636f204ae778617103804c30012
+      TARGET_DEPLOY_SHA: 81b7d3b2f4cf4636f204ae778617103804c30012
+    steps:
+      - name: Check out exact observer source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time observer request
+        shell: bash
+        env:
+          OBSERVE_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$OBSERVE_EVENT_BEFORE" = "$OBSERVE_EXPECTED_BEFORE_SHA"
+          test -f "$OBSERVE_REQUEST_PATH"
+          jq -e \
+            --arg request_id "$OBSERVE_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$OBSERVE_EXPECTED_BEFORE_SHA" \
+            --arg target_sha "$TARGET_DEPLOY_SHA" \
+            '
+              keys == [
+                "expectedBeforeSha",
+                "permissions",
+                "releaseBranch",
+                "repository",
+                "requestId",
+                "requestedAt",
+                "requestedBy",
+                "schemaVersion",
+                "targetDeploymentSha"
+              ] and
+              .schemaVersion == "round5-deployment-observer-request-v1" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .targetDeploymentSha == $target_sha and
+              .requestedAt == "2026-08-03T09:20:00Z" and
+              .requestedBy == "orchestrator" and
+              (.permissions | keys) == [
+                "cloudflareMutationAllowed",
+                "secretAccessAllowed",
+                "workflowMutationAllowed"
+              ] and
+              .permissions.secretAccessAllowed == false and
+              .permissions.workflowMutationAllowed == false and
+              .permissions.cloudflareMutationAllowed == false
+            ' "$OBSERVE_REQUEST_PATH" >/dev/null
+
+      - name: Observe exact deployment and report metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_json=""
+
+          for attempt in $(seq 1 60); do
+            response=$(gh api --method GET \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs" \
+              -f branch="$RELEASE_BRANCH" \
+              -f event=push \
+              -f per_page=20)
+
+            run_json=$(jq -c --arg target_sha "$TARGET_DEPLOY_SHA" '
+              .workflow_runs
+              | map(select(.head_sha == $target_sha and .event == "push"))
+              | sort_by(.created_at)
+              | last // empty
+            ' <<<"$response")
+
+            if [[ -n "$run_json" ]]; then
+              status=$(jq -r '.status' <<<"$run_json")
+              if [[ "$status" == "completed" ]]; then
+                break
+              fi
+            fi
+
+            sleep 10
+          done
+
+          if [[ -z "$run_json" ]]; then
+            gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body \
+              "Deployment observer could not find a push run for trusted deployment SHA \`$TARGET_DEPLOY_SHA\` within the bounded observation window. No logs or secret values were accessed."
+            exit 1
+          fi
+
+          run_id=$(jq -r '.id' <<<"$run_json")
+          run_url=$(jq -r '.html_url' <<<"$run_json")
+          run_number=$(jq -r '.run_number' <<<"$run_json")
+          status=$(jq -r '.status' <<<"$run_json")
+          conclusion=$(jq -r '.conclusion // "pending"' <<<"$run_json")
+          created_at=$(jq -r '.created_at' <<<"$run_json")
+          updated_at=$(jq -r '.updated_at' <<<"$run_json")
+
+          jobs_response=$(gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs" \
+            -f per_page=100)
+
+          job_summary=$(jq -r '
+            .jobs[]
+            | "- job `\(.name)` (`\(.id)`): status=`\(.status)`, conclusion=`\(.conclusion // "pending")`\n"
+              + ([.steps[]? | "  - step `\(.name)`: `\(.status)` / `\(.conclusion // "pending")`"] | join("\n"))
+          ' <<<"$jobs_response")
+
+          comment_file=$(mktemp)
+          trap 'rm -f "$comment_file"' EXIT
+          cat >"$comment_file" <<EOF
+          ## Trusted production deployment observation
+
+          - workflow: \`Test and Deploy CurveYield Preflight\`
+          - run: [\`$run_id\`]($run_url), number \`$run_number\`
+          - event: \`push\`
+          - trusted deployment SHA: \`$TARGET_DEPLOY_SHA\`
+          - status: \`$status\`
+          - conclusion: \`$conclusion\`
+          - created: \`$created_at\`
+          - updated: \`$updated_at\`
+          - observer secret access: none
+          - observer log-body access: none
+          - observer mutation authority: issue comment only
+
+          ### Jobs and steps
+
+          $job_summary
+          EOF
+
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
+
+          test "$status" = "completed"
+          test "$conclusion" = "success"
