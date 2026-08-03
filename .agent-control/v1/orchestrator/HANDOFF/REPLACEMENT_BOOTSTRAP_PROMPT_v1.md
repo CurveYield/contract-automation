@@ -17,6 +17,7 @@ Do not rely on prior chat history, ChatGPT Project files, uploaded archives, hid
 - Round 5 production acceptance: #125
 - Timezone: `America/Los_Angeles`
 - Operating mode: sole orchestrator
+- Dependency downloads: prohibited
 
 Do not activate worker runtimes or edit worker-owned ACK/STATUS files.
 
@@ -25,30 +26,71 @@ Do not activate worker runtimes or edit worker-owned ACK/STATUS files.
 1. `.agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md`
 2. `.agent-control/v1/PROTOCOL_v2.md`
 3. `.agent-control/v1/GLOBAL_STATE_v1.json`
-4. `.agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json`
-5. `.agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md`
-6. every other file under `.agent-control/v1/orchestrator/HANDOFF/`
-7. `.agent-control/v1/orchestrator/STATUS_v1.json` and newest orchestrator events
-8. newest comments on issue #125
-9. PR #150 and deployment run `30808377849`
-10. current head of `orchestrator/round4-ci-base-v1`
+4. `.agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0601-0700_v2.json`
+5. `.agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md`
+6. `.agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md`
+7. every other current file under `.agent-control/v1/orchestrator/HANDOFF/`
+8. `.agent-control/v1/orchestrator/STATUS_v1.json` and newest orchestrator events
+9. newest comments on issue #125
+10. PRs #156 and #157
+11. deployment run `30815289252`, job `91691417740`
+12. current head of `orchestrator/round4-ci-base-v1`
 
-Older snapshots and prompts are historical. Protocol v2, the newest timestamped snapshot, the accepted-work ledger, and refreshed live GitHub state win on conflict.
+Older snapshots and prompts are historical. Protocol v2, the newest timestamped snapshot, the additive accepted-work ledgers, and refreshed live GitHub state win on conflict.
 
 ## Current verified checkpoint
 
 Re-fetch and verify:
 
-- PR #150 is merged.
-- PR #150 head before merge: `e0441639defca2bbcd47e004c38b955a2148460e`
-- PR #150 merge SHA/current deployed source: `2c6e543dfcaa17ca975bbde3c15302269bbf8072`
-- Release branch: `orchestrator/round4-ci-base-v1`
-- Deployment v4 run: `30808377849`
-- Deployment v4 job: `91668946456`
-- Deployment v4 conclusion: success
-- Every deployment v4 job step succeeded.
+- Trusted release branch: `orchestrator/round4-ci-base-v1`
+- Current release head: `3c37394f814c40b1fc6fff134d2de698635bd185`
+- Current release-head source: PR #156
+- Accepted application source: `2c6e543dfcaa17ca975bbde3c15302269bbf8072`
+- Accepted application source PR: #150
+- Last verified API Worker deployment: run `30808377849`, job `91668946456`, success
+- Production Pages custom-domain current-source acceptance: false
+- Production Pages observed state: stale seven-network selector
 
-PR #150 fixed the production operator UI so it exposes only Ethereum and Base, defaults to Base, and synchronizes its chain selector from authenticated `/api/v1/chains` data.
+Do not describe release head `3c37394...` as an accepted deployed application. The v6 Pages live gate failed.
+
+## Latest rejected gate
+
+PR #156 merged deployment v6. Live run `30815289252`, job `91691417740` concluded failure.
+
+Exact step outcomes:
+
+- checkout exact source: success
+- one-time request verification: success
+- committed static UI verification: success
+- configured production branch verification: success
+- Wrangler deployment command: success
+- production custom-domain UI verification: failure on six bounded attempts
+- sanitized issue #125 reporting: success
+
+The workflow produced deployment short ID `1e0bf5b9`, while `preflight.curveyield.online` continued serving the stale selector.
+
+The v6 request declared `dependencyInstallationAllowed: false`, but the workflow executed `npm exec --yes --package=wrangler@4.116.0`, downloading Wrangler at runtime. This independently rejects v6.
+
+The log also emitted `fatal: bad object 2c6e543...` during Wrangler's omitted commit-message discovery. Current Wrangler catches that metadata-discovery failure and continues with the supplied branch and commit hash, so the missing object is not established as the routing root cause.
+
+Never rerun v6.
+
+## Active blocked candidate
+
+Re-fetch PR #157 before acting. Last reviewed state:
+
+- branch: `orchestrator/round5-pages-commit-object-v7`
+- exact base: `3c37394f814c40b1fc6fff134d2de698635bd185`
+- head: `0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1`
+- draft: true
+- mergeable: true
+- blocking comment ID: `5166610889`
+- merge allowed: false
+- live workflow execution allowed: false
+
+It is blocked because it still downloads Wrangler, drops the earlier no-dependency-installation field, treats full history as an unproven routing fix, and does not require Cloudflare response `environment: production` or exact production/custom-domain alias binding.
+
+Do not merge or execute the reviewed head.
 
 ## Active network scope
 
@@ -65,11 +107,9 @@ Deferred and prohibited from current testing:
 - Optimism
 - Polygon
 
-Do not require the deferred RPC secrets. Any future activation requires new account-owner authorization.
+Do not require deferred RPC secrets. Future activation requires new account-owner authorization.
 
 ## Preserve accepted work
-
-The accepted-work ledger records PRs #139–#150 and their exact RED/GREEN/deployment evidence.
 
 Do not:
 
@@ -78,49 +118,40 @@ Do not:
 - repeat accepted RED/GREEN sequences;
 - recompute historical digests from the current mutable tree;
 - repeat Cloudflare diagnostics unless credential state changed;
-- repeat deployment v3 or v4 merely to prove they happened;
 - discard or overwrite issue #125 comments or accepted receipts.
 
-Production smoke run `30807373463` succeeded for old deployed source `fbe27b824da8084970915b31f2051679abe39cfc`. It remains historical evidence but is superseded for current-source acceptance because PR #150 changed the UI.
+Failed runs that must never be rerun:
+
+- `30800918581`
+- `30805768611`
+- `30813209037`
+- `30814064657`
+- `30815289252`
+
+Production smoke run `30807373463` succeeded for old deployed source `fbe27b824da8084970915b31f2051679abe39cfc`. It remains historical evidence but is superseded for current-source acceptance.
 
 ## Immediate next action
 
-Create a fresh test-first exact-parent read-only production smoke gate bound to:
+Correct PR #157 or supersede it with a fresh exact-parent, test-first candidate that deploys Pages through the Cloudflare API without downloading dependencies.
 
-`2c6e543dfcaa17ca975bbde3c15302269bbf8072`
+The corrected gate must:
 
-The gate must verify:
+1. use the already-uploaded static asset manifest;
+2. use no package manager, dependency installer, or downloaded deployment CLI;
+3. fail closed and perform no asset upload if any expected asset hash is missing;
+4. use the configured Pages production branch by API contract;
+5. require deployment response `environment: production`;
+6. require deployment trigger metadata branch `orchestrator/round4-ci-base-v1`;
+7. require exact production/custom-domain binding;
+8. verify the custom domain exposes only Ethereum and Base;
+9. verify Base is the sole default;
+10. verify the client synchronizes from authenticated `/api/v1/chains`;
+11. use exact `github.event.before`, the `production` environment, full-SHA action pins, secretless PR CI and sanitized issue #125 reporting;
+12. perform no repository compilation, Worker deployment, secret mutation, R2 mutation, API job/upload submission, RPC call, wallet action, signing, contract transaction or public broadcast.
 
-1. Pages availability.
-2. API health.
-3. setup readiness without secret disclosure.
-4. missing/invalid client rejection.
-5. authenticated `/api/v1/chains` exposes exactly Ethereum and Base.
-6. CORS allows exactly `https://preflight.curveyield.online`.
-7. Ethereum reports chain ID `0x1` and a nonzero current block.
-8. Base reports chain ID `0x2105` and a nonzero current block.
-9. deployed HTML contains only Ethereum and Base chain options.
-10. Base is the deployed default.
-11. deployed client synchronizes from `/api/v1/chains`.
-12. deferred networks are not selectable.
-13. no job, upload, wallet, signing, contract transaction, or public broadcast action occurs.
+Use natural RED CI from the focused failing test, then implement the minimal correction, run fresh exact-head GREEN CI, inspect exact diff/reviews/threads/mergeability, and merge only an exact verified safe head.
 
-Use the established pattern:
-
-- focused failing test first;
-- natural RED CI;
-- fresh one-time request and trusted push workflow;
-- exact `github.event.before` parent check;
-- `production` environment;
-- full-SHA action pins;
-- secretless PR workflows;
-- fresh exact-head GREEN CI;
-- exact diff/review/thread/mergeability inspection;
-- merge only the verified head;
-- sanitized issue #125 report;
-- inspect the exact live job and every step.
-
-Do not rerun the superseded smoke workflow.
+After Pages production binding succeeds, create a fresh current-source production smoke gate. Do not rerun or reuse the failed smoke v2 run.
 
 ## Remaining Round 5 work
 
@@ -143,7 +174,8 @@ After current-source smoke acceptance, continue issue #125 without repeating acc
 - Use connected GitHub tools for supported operations.
 - Ask the account owner only for genuinely external account actions.
 - Use isolated branches and test-first development.
-- Preserve accepted historical receipts unchanged; add new receipts.
+- Preserve accepted historical receipts unchanged; add new versioned receipts.
+- Never download dependencies.
 - Never expose secrets, bearer tokens, RPC URLs, provider messages, or authorization headers.
 - Never use wallet keys, seed phrases, signing, `eth_sendRawTransaction`, or public-chain broadcasting.
 - Never test deferred networks.
@@ -156,11 +188,12 @@ Before changing anything, report:
 
 - live release branch head;
 - live control-plane branch head;
-- PR #150 state;
-- deployment v4 run/job state;
+- PR #156 state;
+- deployment v6 run/job and exact step state;
+- PR #157 current head and blocker state;
 - newest issue #125 checkpoint;
 - whether current control-plane pointers match live GitHub;
-- exact next branch and focused RED test.
+- exact safe next branch and focused RED test.
 
 Do not ask James to reconstruct context. Resolve live discrepancies from GitHub and record them durably.
 
