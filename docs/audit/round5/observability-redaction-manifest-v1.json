@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "round5-observability-redaction-manifest-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "structuredLoggingRequired": true,
+  "recursiveRedactionRequired": true,
+  "requiredFields": [
+    "timestamp",
+    "correlationId",
+    "stageId",
+    "exactSha",
+    "configurationDigest",
+    "workflowRunId",
+    "resourceClass",
+    "operationClass",
+    "resultClass",
+    "failureCode"
+  ],
+  "correlationRules": [
+    "one-correlation-id-per-production-test-scenario",
+    "propagate-across-api-r2-github-rpc-and-web-boundaries",
+    "do-not-use-credentials-or-user-submitted-source-as-identifiers",
+    "bind-evidence-to-exact-sha-and-stage"
+  ],
+  "redactionClasses": [
+    "credential-material",
+    "authorization-material",
+    "raw-provider-locations",
+    "query-and-path-credential-fragments",
+    "submitted-source-and-upload-bytes",
+    "host-filesystem-paths",
+    "internal-stack-details",
+    "tenant-sensitive-identifiers"
+  ],
+  "prohibitedOutputs": [
+    "secret-values",
+    "raw-rpc-urls",
+    "authorization-headers",
+    "private-or-seed-material",
+    "submitted-source",
+    "host-filesystem-paths",
+    "stack-traces-in-public-output",
+    "provider-error-text",
+    "cross-tenant-object-identifiers"
+  ],
+  "publicErrorContract": {
+    "stableClassifiedMessagesOnly": true,
+    "boundedLengthRequired": true,
+    "providerTextAllowed": false,
+    "credentialFragmentsAllowed": false,
+    "unknownFailuresUseGenericClass": true
+  },
+  "retention": {
+    "bounded": true,
+    "defaultTestLogDays": 7,
+    "defaultTransientArtifactDays": 7,
+    "acceptedReleaseEvidenceRetained": true,
+    "rawCredentialBearingDiagnosticsRetained": false,
+    "deletionVerificationRequired": true
+  },
+  "requiredEvidence": [
+    "correlated-stage-log-sample",
+    "recursive-redaction-test-result",
+    "stable-public-error-contract-result",
+    "retention-policy-and-expiry-verification",
+    "public-output-sensitive-pattern-scan"
+  ],
+  "rejectConditions": [
+    "missing-correlation-id",
+    "missing-exact-sha",
+    "sensitive-output-detected",
+    "raw-provider-text-detected",
+    "unbounded-retention",
+    "public-stack-trace-detected",
+    "cross-tenant-identifier-disclosure"
+  ],
+  "liveObservabilityTestingAuthorized": false,
+  "authorizer": "account-owner"
+}
