@@ -1,0 +1,177 @@
+name: Diagnose Cloudflare Authentication Scope
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/CLOUDFLARE_AUTH_DIAGNOSTIC_REQUEST_v1.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-cloudflare-auth-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      DIAGNOSTIC_REQUEST_PATH: .agent-control/v1/orchestrator/CLOUDFLARE_AUTH_DIAGNOSTIC_REQUEST_v1.json
+      DIAGNOSTIC_REQUEST_ID: round5-cloudflare-auth-diagnostic-20260803T1000Z-v1
+      DIAGNOSTIC_EXPECTED_BEFORE_SHA: 8734852cbf6a08d6cfa65d611035e98a30494f50
+      R2_BUCKET_NAME: curveyield-preflight
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out exact diagnostic source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time GET-only diagnostic request
+        shell: bash
+        env:
+          DIAGNOSTIC_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$DIAGNOSTIC_EVENT_BEFORE" = "$DIAGNOSTIC_EXPECTED_BEFORE_SHA"
+          test -f "$DIAGNOSTIC_REQUEST_PATH"
+          jq -e \
+            --arg request_id "$DIAGNOSTIC_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$DIAGNOSTIC_EXPECTED_BEFORE_SHA" \
+            '
+              keys == [
+                "expectedBeforeSha",
+                "outputPolicy",
+                "probes",
+                "readOnly",
+                "releaseBranch",
+                "repository",
+                "requestId",
+                "requestedAt",
+                "requestedBy",
+                "schemaVersion"
+              ] and
+              .schemaVersion == "round5-cloudflare-auth-scope-diagnostic-request-v1" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .requestedAt == "2026-08-03T10:00:00Z" and
+              .requestedBy == "orchestrator" and
+              .probes == ["token-status", "account-scope", "r2-bucket-access"] and
+              .readOnly == true and
+              (.outputPolicy | keys) == [
+                "identifiersAllowed",
+                "messagesAllowed",
+                "numericErrorCodesOnly",
+                "responseBodiesAllowed",
+                "secretValuesAllowed"
+              ] and
+              .outputPolicy.numericErrorCodesOnly == true and
+              .outputPolicy.messagesAllowed == false and
+              .outputPolicy.identifiersAllowed == false and
+              .outputPolicy.responseBodiesAllowed == false and
+              .outputPolicy.secretValuesAllowed == false
+            ' "$DIAGNOSTIC_REQUEST_PATH" >/dev/null
+
+      - name: Perform GET-only Cloudflare authentication probes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          token_response=$(mktemp)
+          account_response=$(mktemp)
+          r2_response=$(mktemp)
+          comment_file=$(mktemp)
+          trap 'rm -f "$token_response" "$account_response" "$r2_response" "$comment_file"' EXIT
+          chmod 600 "$token_response" "$account_response" "$r2_response" "$comment_file"
+
+          token_http=$(curl --silent --show-error \
+            --request GET \
+            --output "$token_response" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/user/tokens/verify")
+
+          account_http=$(curl --silent --show-error \
+            --request GET \
+            --output "$account_response" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID")
+
+          r2_http=$(curl --silent --show-error \
+            --request GET \
+            --output "$r2_response" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets/$R2_BUCKET_NAME")
+
+          token_success=$(jq -r 'if .success == true then "true" else "false" end' "$token_response" 2>/dev/null || printf 'false')
+          account_success=$(jq -r 'if .success == true then "true" else "false" end' "$account_response" 2>/dev/null || printf 'false')
+          r2_success=$(jq -r 'if .success == true then "true" else "false" end' "$r2_response" 2>/dev/null || printf 'false')
+
+          token_codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$token_response" 2>/dev/null || printf '[]')
+          account_codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$account_response" 2>/dev/null || printf '[]')
+          r2_codes=$(jq -c 'if (.errors | type) == "array" then (.errors | map(.code)) else [] end' "$r2_response" 2>/dev/null || printf '[]')
+
+          token_status=$(jq -r '.result.status // "unknown"' "$token_response" 2>/dev/null || printf 'unknown')
+          case "$token_status" in
+            active|disabled|expired) ;;
+            *) token_status="unknown" ;;
+          esac
+
+          diagnosis="indeterminate"
+          if [[ "$token_http" != "200" || "$token_success" != "true" || "$token_status" != "active" ]]; then
+            diagnosis="token-invalid-disabled-or-expired"
+          elif [[ "$account_http" != "200" || "$account_success" != "true" ]]; then
+            diagnosis="account-id-or-token-account-scope-invalid"
+          elif [[ "$r2_http" == "200" && "$r2_success" == "true" ]]; then
+            diagnosis="r2-authorized-bucket-present"
+          elif [[ "$r2_http" == "404" ]]; then
+            diagnosis="r2-authorized-bucket-absent"
+          elif [[ "$r2_http" == "401" || "$r2_http" == "403" ]]; then
+            diagnosis="missing-workers-r2-storage-permission"
+          fi
+
+          cat >"$comment_file" <<EOF
+          ## Cloudflare authentication and account-scope diagnostic
+
+          - source deployment failure: run \`30800918581\`, job \`91645019455\`
+          - token verification HTTP status: \`$token_http\`
+          - token verification success: \`$token_success\`
+          - token verification numeric error codes: \`$token_codes\`
+          - token status: \`$token_status\`
+          - account-scope HTTP status: \`$account_http\`
+          - account-scope success: \`$account_success\`
+          - account-scope numeric error codes: \`$account_codes\`
+          - R2 bucket-access HTTP status: \`$r2_http\`
+          - R2 bucket-access success: \`$r2_success\`
+          - R2 bucket-access numeric error codes: \`$r2_codes\`
+          - derived diagnosis: \`$diagnosis\`
+          - request methods: \`GET only\`
+          - Cloudflare mutation performed: \`false\`
+          - response messages or bodies recorded: \`false\`
+          - token/account identifiers or secret values recorded: \`false\`
+          EOF
+
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
