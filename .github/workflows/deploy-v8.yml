@@ -1,0 +1,256 @@
+name: Deploy CurveYield Pages Clean-CWD Production V8
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/DEPLOY_REQUEST_v8.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-clean-cwd-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-pages:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      DEPLOY_REQUEST_PATH: .agent-control/v1/orchestrator/DEPLOY_REQUEST_v8.json
+      DEPLOY_REQUEST_ID: round5-pages-clean-cwd-20260803T1315Z-v8
+      DEPLOY_EXPECTED_BEFORE_SHA: 70719851d8e18faf89e65027858b9f4f728d979d
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
+      PAGES_DOMAIN: preflight.curveyield.online
+    steps:
+      - name: Check out complete trusted history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time clean-cwd request v8
+        shell: bash
+        env:
+          DEPLOY_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_EVENT_BEFORE" = "$DEPLOY_EXPECTED_BEFORE_SHA"
+          test -f "$DEPLOY_REQUEST_PATH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$PAGES_PROJECT_NAME"
+          jq -e \
+            --arg request_id "$DEPLOY_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$DEPLOY_EXPECTED_BEFORE_SHA" \
+            --arg application_source "$APPLICATION_SOURCE_SHA" \
+            '
+              .schemaVersion == "round5-pages-clean-cwd-request-v8" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .applicationSourceSha == $application_source and
+              .requestedAt == "2026-08-03T13:15:00Z" and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .activeNetworks == ["ethereum", "base"] and
+              .deferredNetworks == ["arbitrum", "fraxtal", "katana", "optimism", "polygon"] and
+              .supersededRuns == [30808377849, 30813209037, 30814064657, 30815289252, 30815965400] and
+              .finding == "repository-wrangler-redirect-overrode-pages-deployment-context" and
+              .repair == "stage-static-assets-and-run-wrangler-from-clean-temporary-directory" and
+              .failedOrHistoricalWorkflowRerunAllowed == false and
+              .cleanDeploymentDirectoryRequired == true and
+              .repositoryWranglerRedirectAllowed == false and
+              .repositoryCompilationAllowed == false and
+              .workerDeploymentAllowed == false and
+              .secretMutationAllowed == false and
+              .r2MutationAllowed == false and
+              .jobOrUploadSubmissionAllowed == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .secretValuesIncluded == false
+            ' "$DEPLOY_REQUEST_PATH" >/dev/null
+
+      - name: Verify application source commit object exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPLICATION_SOURCE_SHA^{commit}"
+          echo "APPLICATION_COMMIT_OBJECT_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify committed static Pages assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s apps/web/public/index.html
+          test -s apps/web/public/app.js
+          python3 - <<'PY'
+          import re
+          html = open('apps/web/public/index.html', encoding='utf-8').read()
+          app = open('apps/web/public/app.js', encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain option scope')
+          selected = [value for value, attributes in options if re.search(r'\bselected\b', attributes)]
+          if selected != ['base']:
+              raise SystemExit('Base is not the sole default')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+          echo "SOURCE_UI_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify configured Pages production branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$response_file" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e '.success == true and (.result.production_branch | type == "string")' "$response_file" >/dev/null
+          production_branch=$(jq -r '.result.production_branch' "$response_file")
+          test "$production_branch" = "$RELEASE_BRANCH"
+          echo "PAGES_PRODUCTION_BRANCH_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Stage static assets in clean deployment directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          PAGES_DEPLOY_ROOT=$(mktemp -d)
+          cp -R apps/web/public/. "$PAGES_DEPLOY_ROOT/"
+          test ! -e "$PAGES_DEPLOY_ROOT/.wrangler/deploy/config.json"
+          test -s "$PAGES_DEPLOY_ROOT/index.html"
+          test -s "$PAGES_DEPLOY_ROOT/app.js"
+          echo "PAGES_DEPLOY_ROOT=$PAGES_DEPLOY_ROOT" >> "$GITHUB_ENV"
+          echo "CLEAN_DEPLOYMENT_DIRECTORY_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Deploy static assets from clean working directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          wrangler() {
+            npm exec --yes --package=wrangler@4.116.0 -- wrangler "$@"
+          }
+          cd "$PAGES_DEPLOY_ROOT"
+          wrangler pages deploy . \
+            --project-name="$PAGES_PROJECT_NAME" \
+            --branch="$RELEASE_BRANCH" \
+            --commit-hash="$APPLICATION_SOURCE_SHA"
+          echo "PAGES_CLEAN_CWD_DEPLOY=success" >> "$GITHUB_ENV"
+
+      - name: Verify production custom domain serves clean-cwd production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=false
+          for attempt in 1 2 3 4 5 6; do
+            html_file=$(mktemp)
+            app_file=$(mktemp)
+            nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}"
+            if curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$html_file" \
+              "https://$PAGES_DOMAIN/?acceptance=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$app_file" \
+              "https://$PAGES_DOMAIN/app.js?acceptance=$nonce" && \
+               python3 - "$html_file" "$app_file" <<'PY'
+          import re
+          import sys
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain option scope')
+          selected = [value for value, attributes in options if re.search(r'\bselected\b', attributes)]
+          if selected != ['base']:
+              raise SystemExit('Base is not the sole default')
+          for deferred in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon'):
+              if deferred in selector.lower():
+                  raise SystemExit('deferred network exposed')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+            then
+              success=true
+              rm -f "$html_file" "$app_file"
+              break
+            fi
+            rm -f "$html_file" "$app_file"
+            sleep 10
+          done
+          test "$success" = true
+          echo "PRODUCTION_DOMAIN_UI_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Report Production Pages clean-cwd deployment v8 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          comment_file=$(mktemp)
+          trap 'rm -f "$comment_file"' EXIT
+          cat >"$comment_file" <<EOF
+          ## Production Pages clean-cwd deployment v8 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$DEPLOY_JOB_STATUS\`
+          - deployment source SHA: \`$GITHUB_SHA\`
+          - application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - release branch: \`$RELEASE_BRANCH\`
+          - application commit object: \`${APPLICATION_COMMIT_OBJECT_CHECK:-not-run}\`
+          - source UI contract: \`${SOURCE_UI_CHECK:-not-run}\`
+          - configured Pages production branch: \`${PAGES_PRODUCTION_BRANCH_CHECK:-not-run}\`
+          - clean deployment directory: \`${CLEAN_DEPLOYMENT_DIRECTORY_CHECK:-not-run}\`
+          - clean-cwd Pages deployment: \`${PAGES_CLEAN_CWD_DEPLOY:-not-run}\`
+          - production custom-domain UI: \`${PRODUCTION_DOMAIN_UI_CHECK:-not-run}\`
+          - API Worker redeployed: \`false\`
+          - secret mutation performed: \`false\`
+          - R2 mutation performed: \`false\`
+          - job or upload submission performed: \`false\`
+          - signing or transaction broadcasting performed: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          - secret values or service locations recorded: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
