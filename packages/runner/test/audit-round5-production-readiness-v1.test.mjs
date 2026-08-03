@@ -167,8 +167,8 @@ test('Round 5 production-test readiness manifests are complete, consistent and c
 
   assert.equal(manifests.deployment.schemaVersion, 'round5-deployment-preflight-manifest-v1');
   assert.equal(manifests.deployment.trustedSource.exactSha, ACCEPTED_SOURCE_SHA);
-  assert.equal(manifests.deployment.pullRequestEventsMayReceiveProductionSecrets, false);
-  assert.equal(manifests.deployment.thirdPartyActionsMustUseFullCommitSha, true);
+  assert.equal(manifests.deployment.workflowTrust.pullRequestEventsMayReceiveProductionSecrets, false);
+  assert.equal(manifests.deployment.workflowTrust.thirdPartyActionsMustUseFullCommitSha, true);
   assert.equal(manifests.deployment.deploymentAuthorized, false);
   assert.ok(manifests.deployment.requiredEvidence.includes('deployment-run-id'));
   assert.ok(manifests.deployment.requiredEvidence.includes('artifact-id-and-digest'));
