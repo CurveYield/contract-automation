@@ -4,12 +4,19 @@
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "sole-orchestrator",
-  "activationState": "external-account-owner-authorization-gate",
+  "activationState": "external-github-environment-and-dispatch-gate",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-03T06:39:00Z",
+  "lastOrchestratorReviewAt": "2026-08-03T08:18:00Z",
   "authority": {
     "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
     "directive": "The orchestrator will finish all remaining work alone until production testing readiness or a hard external block requires user assistance.",
+    "accountOwnerProceedAuthorized": true,
+    "promotionAuthorized": true,
+    "credentialNameReadinessAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
     "workerRuntimeActivationAllowed": false,
     "workerOwnedAckOrStatusEditsAllowed": false
   },
@@ -24,17 +31,19 @@
     "exactPathBlobIntakeRequired": true,
     "broadBranchMergesForbidden": true,
     "productionSecretValuesForbiddenInRepositoryEvidence": true,
-    "manualWorkflowDispatchForbiddenUntilExplicitAuthorization": true
+    "trustedDeploymentManualDispatchAuthorized": true,
+    "historicalOrFailedWorkflowRerunsForbidden": true,
+    "deferredNetworkTestingForbidden": true
   },
   "round": {
     "number": 5,
     "name": "production-test-preparation-and-acceptance",
     "round4MasterIssue": 119,
     "productionAcceptanceIssue": 125,
-    "stage": "external-account-owner-authorization-gate",
-    "liveWorkAuthorized": false,
-    "deploymentAuthorized": false,
-    "mergeAuthorized": false
+    "stage": "external-github-environment-and-dispatch-gate",
+    "liveWorkAuthorized": true,
+    "deploymentAuthorized": true,
+    "mergeAuthorized": true
   },
   "round4AcceptedCandidate": {
     "pullRequest": 139,
@@ -42,55 +51,85 @@
     "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
     "headBranch": "orchestrator/round4-final-integration-takeover-v1",
     "headSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-    "mergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+    "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
     "changedPathCount": 202,
     "attestedPathCount": 198,
     "attestationDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
     "staticAcceptance": "ACCEPT",
-    "draft": true,
-    "mergeAuthorized": false
-  },
-  "round4ExactHeadCi": {
-    "githubNativeSimulationRun": 30788571549,
-    "liveForkUpgradeRun": 30788571507,
-    "repositoryTestsPassed": 461,
-    "repositoryTestsFailed": 0,
-    "lintBuildSyntax": "success",
-    "manualDispatchOrRerun": false
+    "merged": true
   },
   "round5Preparation": {
     "executionOwner": "orchestrator",
     "sourceSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
     "pullRequest": 140,
     "preparationBranch": "orchestrator/round5-production-test-prep-v1",
-    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
-    "branchCreated": true,
+    "exactAcceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
+    "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
     "packagePathCount": 14,
     "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
     "receiptPath": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
-    "receiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "networkScopeAmendmentPath": "docs/audit/round5/production-network-scope-amendment-v1.json",
+    "authorizationReceiptPath": "docs/audit/round5/account-owner-authorization-receipt-v1.json",
     "staticProductionTestReadiness": "ACCEPT",
     "productionTestingReady": true,
-    "trustedV27LiveRegressionRequired": true,
-    "draft": true,
-    "mergeAuthorized": false
+    "merged": true
   },
-  "round5ExactHeadCi": {
-    "githubNativeSimulationRun": 30790716033,
-    "liveForkUpgradeRun": 30790716022,
-    "repositoryTestsPassed": 464,
-    "repositoryTestsFailed": 0,
-    "focusedGitHubNativeTestsPassed": 49,
-    "focusedLiveForkTestsPassed": 14,
-    "javascriptModulesSyntaxValid": 279,
-    "lintBuildSyntax": "success",
-    "manualDispatchOrRerun": false
+  "trustedDeploymentPreflight": {
+    "pullRequest": 141,
+    "branch": "orchestrator/round5-trusted-deployment-preflight-v1",
+    "baseSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
+    "exactAcceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
+    "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "receiptPath": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
+    "status": "ACCEPT",
+    "merged": true,
+    "exactHeadCi": {
+      "githubNativeSimulationRun": 30796659857,
+      "githubNativeSimulationJob": 91631655388,
+      "liveForkUpgradeRun": 30796659737,
+      "liveForkUpgradeJob": 91631654571,
+      "repositoryTestsPassed": 470,
+      "repositoryTestsFailed": 0,
+      "focusedGitHubNativeTestsPassed": 49,
+      "focusedLiveForkTestsPassed": 14,
+      "javascriptModulesSyntaxValid": 283,
+      "lintBuildSyntax": "success",
+      "manualDispatchOrRerun": false
+    }
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "deploymentWorkflow": ".github/workflows/deploy.yml",
+    "runnerWorkflow": ".github/workflows/simulate.yml"
+  },
+  "networkScope": {
+    "activeReadOnlyRpcNetworks": [
+      {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
+      {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
+    ],
+    "deferredNetworks": ["arbitrum","fraxtal","katana","optimism","polygon"],
+    "futureExpansionRequiresNewAccountOwnerAuthorization": true
+  },
+  "credentialReadiness": {
+    "accountOwnerConfirmedConfigured": true,
+    "activeRepositorySecretNameCount": 11,
+    "repositoryVariableNameCount": 3,
+    "namesOnly": true,
+    "valuesRetrievedOrRecorded": false
+  },
+  "executionState": {
+    "productionEnvironmentProtectionConfirmed": false,
+    "deploymentWorkflowDispatched": false,
+    "cloudflareDeploymentExecuted": false,
+    "liveProductionTestingExecuted": false,
+    "trustedV27RegressionExecuted": false,
+    "finalProductionAcceptance": "PENDING"
   },
   "hardExternalGates": [
-    "explicit candidate promotion or merge authorization",
-    "account-owner confirmation of required secret and variable names without reading values",
-    "explicit deployment authorization",
-    "explicit trusted live production-test authorization"
+    "create or confirm GitHub environment production",
+    "restrict production environment deployment branch to orchestrator/round4-ci-base-v1",
+    "manually dispatch Test and Deploy CurveYield Preflight from the exact trusted release branch"
   ],
   "frozenWorkstreams": [
     {
@@ -106,18 +145,18 @@
   ],
   "standingRestrictions": [
     "no production secret values",
-    "no submitted-project execution",
+    "no submitted-project execution outside trusted bounded workflows",
     "no wallet keys, signing or transaction broadcasting",
-    "no unauthorized live simulation",
-    "no deployment without explicit authorization",
+    "no testing deferred networks",
     "no unreviewed broad branch merge",
     "no direct main merge",
     "no CurveYield Lite modification",
     "no AWS",
-    "no edits to worker-owned ACK or STATUS files"
+    "no edits to worker-owned ACK or STATUS files",
+    "no manual rerun of historical or failed workflow jobs"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2339-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0118-0700_v1.json",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T063900Z_round5-static-production-test-readiness-accepted_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T081800Z_round5-trusted-deployment-preflight-promoted_v1.json"
 }
