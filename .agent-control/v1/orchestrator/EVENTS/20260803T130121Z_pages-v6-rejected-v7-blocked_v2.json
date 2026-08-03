@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "orchestrator-event-v2",
+  "eventId": "pages-v6-rejected-v7-blocked-20260803T130121Z",
+  "recordedAt": "2026-08-03T13:01:21Z",
+  "eventType": "production-gate-rejected",
+  "round": 5,
+  "issue": 125,
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "releaseHead": "3c37394f814c40b1fc6fff134d2de698635bd185",
+  "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "rejectedGate": {
+    "pullRequest": 156,
+    "workflowRun": 30815289252,
+    "job": 91691417740,
+    "conclusion": "failure",
+    "failedStep": "Verify production custom domain serves explicit production deployment",
+    "dependencyContractViolation": true,
+    "historicalRerunAllowed": false
+  },
+  "blockedCandidate": {
+    "pullRequest": 157,
+    "head": "0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
+    "blockingCommentId": 5166610889,
+    "mergeAllowed": false,
+    "liveExecutionAllowed": false
+  },
+  "issue125CheckpointCommentId": 5166619413,
+  "nextAction": "Replace runtime Wrangler download with a dependency-free Cloudflare Pages API deployment against existing assets and require exact production classification and custom-domain binding before merge.",
+  "safety": {
+    "secretValuesRecorded": false,
+    "rpcUrlsRecorded": false,
+    "authorizationHeadersRecorded": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalWorkflowRerun": false,
+    "workerOwnedStateModified": false
+  }
+}
