@@ -4,12 +4,12 @@
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "sole-orchestrator",
-  "activationState": "external-cloudflare-api-token-replacement-gate",
+  "activationState": "production-ui-v4-deployed-awaiting-current-source-smoke",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-03T09:53:31Z",
+  "lastOrchestratorReviewAt": "2026-08-03T11:42:00Z",
   "authority": {
     "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
-    "directive": "The orchestrator will finish all remaining work alone until production testing readiness or a hard external block requires user assistance.",
+    "directive": "The orchestrator will finish all remaining work alone until production acceptance or a hard external block requires user assistance.",
     "accountOwnerProceedAuthorized": true,
     "promotionAuthorized": true,
     "credentialNameReadinessAuthorized": true,
@@ -22,7 +22,7 @@
   },
   "scheduledPolling": {
     "enabled": false,
-    "reason": "Execution is paused at a hard account-owner credential replacement gate."
+    "reason": "The account owner explicitly declined a scheduled task."
   },
   "activePolicies": {
     "reportDestination": ".agent-control/v1/REPORT_DESTINATION_POLICY_v1.md",
@@ -33,14 +33,15 @@
     "productionSecretValuesForbiddenInRepositoryEvidence": true,
     "trustedDeploymentPushRequestAuthorized": true,
     "historicalOrFailedWorkflowRerunsForbidden": true,
-    "deferredNetworkTestingForbidden": true
+    "deferredNetworkTestingForbidden": true,
+    "acceptedWorkMustNotBeRepeated": true
   },
   "round": {
     "number": 5,
     "name": "production-test-preparation-and-acceptance",
     "round4MasterIssue": 119,
     "productionAcceptanceIssue": 125,
-    "stage": "external-cloudflare-api-token-replacement-gate",
+    "stage": "production-ui-v4-deployed-awaiting-current-source-smoke",
     "liveWorkAuthorized": true,
     "deploymentAuthorized": true,
     "mergeAuthorized": true
@@ -52,7 +53,12 @@
     {"pullRequest":142,"mergeSha":"81b7d3b2f4cf4636f204ae778617103804c30012"},
     {"pullRequest":143,"mergeSha":"de350bcfce68ddbdbbb88b826fdd5f7614bce69a"},
     {"pullRequest":144,"mergeSha":"8734852cbf6a08d6cfa65d611035e98a30494f50"},
-    {"pullRequest":145,"mergeSha":"4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b"}
+    {"pullRequest":145,"mergeSha":"4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b"},
+    {"pullRequest":146,"mergeSha":"4a4cf0f85ba1fdf9a31e7e7dfa4341256bebb667"},
+    {"pullRequest":147,"mergeSha":"bb500321d084dfc9336304898f9cdd8b65bd9e1b"},
+    {"pullRequest":148,"mergeSha":"fbe27b824da8084970915b31f2051679abe39cfc"},
+    {"pullRequest":149,"mergeSha":"ec6c5c3c99a767dbed5505846a3ce4efee9290ca"},
+    {"pullRequest":150,"mergeSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072"}
   ],
   "round4Acceptance": {
     "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
@@ -65,8 +71,9 @@
   },
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b",
-    "deploymentWorkflow": ".github/workflows/deploy.yml",
+    "currentSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "sourcePullRequest": 150,
+    "deploymentWorkflow": ".github/workflows/deploy-v4.yml",
     "runnerWorkflow": ".github/workflows/simulate.yml"
   },
   "networkScope": {
@@ -82,54 +89,68 @@
     "activeRepositorySecretNameCount": 11,
     "repositoryVariableNameCount": 3,
     "valuesRetrievedOrRecorded": false,
-    "cloudflareApiTokenValidity": "REJECTED_BY_CLOUDFLARE",
-    "cloudflareApiTokenVerificationHttpStatus": 401,
-    "cloudflareApiTokenVerificationErrorCodes": [1000]
+    "cloudflareApiTokenValidity": "VERIFIED_ACTIVE",
+    "cloudflareAccountScopeAccessible": true,
+    "r2BucketAccessible": true
   },
-  "deploymentAttempt": {
-    "triggerMergeSha": "81b7d3b2f4cf4636f204ae778617103804c30012",
-    "workflowRun": 30800918581,
-    "job": 91645019455,
-    "conclusion": "failure",
-    "failureStep": "Create R2 bucket when missing",
-    "repositoryTestsPassed": 471,
-    "workerMutationExecuted": false,
-    "pagesMutationExecuted": false,
-    "liveProductionTestingExecuted": false,
-    "rerunPerformed": false
+  "currentDeployment": {
+    "version": 4,
+    "workflowRun": 30808377849,
+    "job": 91668946456,
+    "sourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "conclusion": "success",
+    "allStepsSucceeded": true,
+    "workerDeployed": true,
+    "pagesDeployed": true,
+    "r2BucketVerified": true,
+    "apiDomainVerified": true,
+    "pagesDomainVerified": true,
+    "secretValuesRecorded": false
   },
-  "cloudflareDiagnostics": {
-    "tokenVerification": {"httpStatus":401,"success":false,"numericErrorCodes":[1000],"status":"unknown"},
-    "accountScope": {"httpStatus":403,"success":false,"numericErrorCodes":[9109]},
-    "r2BucketAccess": {"httpStatus":403,"success":false,"numericErrorCodes":[10000]},
-    "derivedDiagnosis": "token-invalid-disabled-or-expired",
-    "cloudflareMutationPerformed": false
+  "acceptedHistoricalEvidence": {
+    "deploymentV3": {"run":30806403201,"job":91662681725,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success"},
+    "smokeV1": {"run":30807373463,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success","currentSourceStatus":"superseded-by-pr150-ui-change"},
+    "deploymentV4": {"run":30808377849,"job":91668946456,"sourceSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072","conclusion":"success"}
   },
+  "failedRunsDoNotRerun": [
+    {"run":30800918581,"job":91645019455,"reason":"initial deployment failure before Worker/Pages mutation"},
+    {"run":30805768611,"reason":"S3-style R2 lifecycle schema rejected; superseded by native-schema repair"}
+  ],
   "executionState": {
     "productionEnvironmentConfirmed": true,
     "deploymentWorkflowDispatched": true,
-    "cloudflareDeploymentCompleted": false,
-    "liveProductionTestingExecuted": false,
+    "cloudflareDeploymentCompleted": true,
+    "currentProductionSourceDeployed": true,
+    "currentSourceSmokeAccepted": false,
+    "boundedLiveProductionTestingStarted": true,
     "trustedV27RegressionExecuted": false,
     "finalProductionAcceptance": "PENDING"
   },
-  "hardExternalGates": [
-    "Account owner replaces repository secret CLOUDFLARE_API_TOKEN with a newly generated valid Cloudflare API token scoped to the CurveYield account and required deployment permissions."
-  ],
-  "nextActionAfterGate": "Run a new exact-parent GET-only token verification. If valid, create a new reviewed one-time deployment request. Do not rerun workflow run 30800918581.",
+  "hardExternalGates": [],
+  "nextAction": "Create a fresh exact-parent read-only production smoke gate for deployed SHA 2c6e543dfcaa17ca975bbde3c15302269bbf8072. Include deployed UI scope/default/synchronization checks. Do not rerun the superseded smoke workflow.",
+  "antiDuplication": {
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+    "acceptedRedGreenSequencesMustNotBeRepeated": true,
+    "historicalOrFailedWorkflowRerunsForbidden": true,
+    "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
+    "freshExactParentRequestRequiredForEachNewLiveGate": true
+  },
   "standingRestrictions": [
     "no production secret values",
+    "no raw RPC URLs or authorization headers",
     "no wallet keys, signing or transaction broadcasting",
     "no testing deferred networks",
     "no unreviewed broad branch merge",
     "no direct main merge",
     "no CurveYield Lite modification",
     "no AWS",
+    "no destructive recovery against irreplaceable data",
     "no edits to worker-owned ACK or STATUS files",
-    "no rerun of workflow run 30800918581"
+    "no rerun of failed or historical workflow runs"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0253-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json",
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T095331Z_cloudflare-api-token-invalid-gate_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T114200Z_production-ui-v4-deployed-replacement-handoff_v1.json"
 }
