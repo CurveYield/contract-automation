@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "round5-live-api-r2-github-acceptance-request-v1",
+  "requestId": "round5-live-api-r2-github-acceptance-20260803T1115Z-v1",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "baselineDeployedSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "baselineDeploymentRun": 30808377849,
+  "baselineDeploymentJob": 91668946456,
+  "requestedAt": "2026-08-03T11:15:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "deployCorrelationGateway": true,
+  "applySevenDayLifecycle": true,
+  "checks": [
+    "same-source-worker-and-pages-redeployment",
+    "seven-day-r2-lifecycle-write-and-readback",
+    "client-gpt-bridge-runner-identity-separation",
+    "correlation-id-propagation",
+    "error-redaction",
+    "disposable-r2-upload-cors-and-cleanup",
+    "compile-only-github-dispatch",
+    "result-summary-report-idempotency"
+  ],
+  "readOnlyBlockchain": true,
+  "compileOnlyJob": true,
+  "boundedDisposableR2Object": true,
+  "cleanupRequired": true,
+  "secretValuesIncluded": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
