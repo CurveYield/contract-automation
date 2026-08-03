@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v5",
+  "capturedAt": "2026-08-03T16:35:00Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "round": 5,
+  "round5ProductionAcceptanceIssue": 125,
+  "state": "pages-v11-merged-live-result-pending",
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "dependencyDownloadsAllowed": false,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"]
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
+    "sourcePullRequest": 161,
+    "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "acceptedApplicationSourcePullRequest": 150
+  },
+  "pagesV10RejectedGate": {
+    "pullRequest": 160,
+    "mergeSha": "23a6ec8d8cc89d3aaa5d6a19d843bc37544358b5",
+    "workflowRun": 30831520420,
+    "job": 91746369253,
+    "conclusion": "failure",
+    "rootCause": "optional-deployment-alias-coupled-to-stage-acceptance",
+    "rerunAllowed": false
+  },
+  "pagesV11Candidate": {
+    "pullRequest": 161,
+    "exactParentSha": "23a6ec8d8cc89d3aaa5d6a19d843bc37544358b5",
+    "verifiedHeadSha": "c7dd9fe0b8cf5c980b96467ab8e1dfcd6d8b9e04",
+    "mergeSha": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
+    "githubNativeCi": {"run": 30832374734, "job": 91749219029, "conclusion": "success"},
+    "liveForkCi": {"run": 30832374470, "job": 91749218091, "conclusion": "success"},
+    "changedFileCount": 5,
+    "reviewComments": 0,
+    "reviews": 0,
+    "reviewThreads": 0,
+    "mergeGuardSatisfied": true,
+    "trustedPushResult": "PENDING_OBSERVATION",
+    "issueCheckpointCommentId": 5169093411
+  },
+  "productionBinding": {
+    "apiWorker": {
+      "lastVerifiedDeploymentVersion": 4,
+      "run": 30808377849,
+      "job": 91668946456,
+      "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "conclusion": "success"
+    },
+    "pagesCustomDomain": {
+      "acceptedApplicationSourceObserved": false,
+      "observedState": "awaiting-v11-terminal-stage-and-domain-content-result",
+      "exactServingSourceSha": null,
+      "currentSourceSmokeAccepted": false
+    }
+  },
+  "failedRunsDoNotRerun": [
+    30800918581,
+    30805768611,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400,
+    30831520420
+  ],
+  "executionState": {
+    "pagesV11CodePromoted": true,
+    "pagesV11TrustedPushAccepted": false,
+    "pagesV11TrustedPushRejected": false,
+    "currentSourceSmokeAccepted": false,
+    "trustedV27RegressionExecuted": false,
+    "finalProductionAcceptance": "PENDING"
+  },
+  "nextAction": "Observe the exact trusted v11 push run through its sanitized issue 125 result or connector-visible evidence. Inspect the exact run, job, every step, terminal deploy-stage binding and separate custom-domain content result before acceptance or rejection. Never rerun. If accepted, create a fresh exact-parent current-source smoke gate.",
+  "safety": {
+    "secretValuesReadOrExposed": false,
+    "dependencyDownloadsPerformedByThisCheckpoint": false,
+    "assetUploadPerformedByThisCheckpoint": false,
+    "workerDeploymentPerformedByThisCheckpoint": false,
+    "r2MutationPerformedByThisCheckpoint": false,
+    "blockchainRpcCallsPerformedByThisCheckpoint": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerun": false
+  }
+}
