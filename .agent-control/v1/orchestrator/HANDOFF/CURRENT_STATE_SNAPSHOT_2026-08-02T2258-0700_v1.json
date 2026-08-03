@@ -1,0 +1,130 @@
+{
+  "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
+  "snapshotType": "replacement-orchestrator-round4-static-acceptance",
+  "snapshotCreatedAt": "2026-08-02T22:58:00-07:00",
+  "snapshotCreatedAtUtc": "2026-08-03T05:58:00Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "controlPlaneHeadAtAcceptanceRefresh": "356e03f653246982cfaa1f7720911e5214869375",
+  "continuityIssue": 63,
+  "round4MasterIssue": 119,
+  "round5ProductionIssue": 125,
+  "operatingAuthority": {
+    "mode": "sole-orchestrator",
+    "userDirective": "Finish all remaining work alone until production testing readiness or a hard external block requiring user assistance.",
+    "worker2IntegrationOwnershipRevoked": true,
+    "worker2Sequence10ControlAssignment": true,
+    "workerOwnedStatusOrAckModified": false
+  },
+  "round4Candidate": {
+    "pullRequest": 139,
+    "draft": true,
+    "mergeable": true,
+    "mergeAuthorized": false,
+    "baseBranch": "orchestrator/round4-ci-base-v1",
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "headBranch": "orchestrator/round4-final-integration-takeover-v1",
+    "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "mergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+    "changedPathCount": 202,
+    "exactTreeAttestation": {
+      "path": "docs/audit/round4/integration/2026-08-03-round4-final-tree-attestation-v1.json",
+      "attestedPathCount": 198,
+      "digestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+      "excludedSelfReferentialPathCount": 4
+    }
+  },
+  "testFirstRepairEvidence": {
+    "attestationRedHeadSha": "43fb5bef8444325bfb28ad9e2823cc8a21f26708",
+    "attestationRedRuns": [30788338934, 30788338920],
+    "attestationRedResult": "460 of 461 passed; only missing final-tree attestation failed.",
+    "gateRedHeadSha": "e0913267d355d333abdd4a044f48e2a00b0adf1f",
+    "gateRedRuns": [30788464398, 30788464412],
+    "gateRedResult": "459 unaffected tests passed; only missing attestation and stale final gate failed.",
+    "implementationHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b"
+  },
+  "exactHeadVerification": {
+    "githubNativeSimulationCi": {
+      "runId": 30788571549,
+      "workflowName": "GitHub-Native Simulation CI",
+      "status": "completed",
+      "conclusion": "success",
+      "focusedTests": "success",
+      "repositoryTests": {"passed": 461, "failed": 0},
+      "completeRepositorySyntaxValidation": "success",
+      "independentGithubNativeJavascriptSyntax": "success"
+    },
+    "liveForkUpgradeCi": {
+      "runId": 30788571507,
+      "workflowName": "Live Fork Upgrade CI",
+      "status": "completed",
+      "conclusion": "success",
+      "focusedLiveForkTests": {"passed": 14, "failed": 0},
+      "repositoryTests": {"passed": 461, "failed": 0},
+      "lint": "success",
+      "build": "success",
+      "javascriptModulesSyntaxValidated": 276,
+      "changedJavascriptSyntax": "success"
+    },
+    "mergeRefBoundToExactHeadAndBase": true,
+    "exactHeadStaticAcceptance": "ESTABLISHED"
+  },
+  "acceptedIntake": {
+    "stage0PathCount": 27,
+    "stageAPathCount": 55,
+    "pr126SecurityPathCount": 48,
+    "worker1MetadataCorrectionCount": 1,
+    "stage0ValidatorRepairAccepted": true,
+    "pr126SecurityRepairAccepted": true,
+    "allLiveGateUnresolvedEntriesCleared": true
+  },
+  "residualWarnings": [
+    "npm reported deprecated tar@7.4.3 in the installed dependency graph.",
+    "Pinned checkout/setup-node actions target the deprecated Node 20 action runtime and were forced onto Node 24 by GitHub.",
+    "Ganache could not load its native µWS binary and used the JavaScript fallback during tests."
+  ],
+  "remainingRequiredWork": [
+    "Correct PR #139 description to the accepted exact head and evidence while retaining draft/no-merge status.",
+    "Record Round 4 acceptance on issues #119 and #63.",
+    "Prepare Round 5 production-test contracts, secret-name/binding manifests, deployment preflight, rollback, observability, recovery, and trusted V27 live-regression acceptance package.",
+    "Do not merge, deploy, expose secrets, dispatch live workflows, sign, or broadcast without explicit authorization."
+  ],
+  "round5BlockingExternalActions": [
+    "Explicit authorization to merge or otherwise promote the accepted candidate when the release plan reaches that gate.",
+    "Production secret values and deployment authority remain outside repository evidence and must not be requested until all static production-test preparation is complete.",
+    "The trusted V27 live regression must execute only under the later authorized Round 5 production-acceptance contract."
+  ],
+  "separateWorkstreams": [
+    {
+      "pullRequest": 138,
+      "branch": "orchestrator/pr126-security-reconciliation-v1",
+      "lastAcceptedHead": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
+      "rule": "Do not modify, merge, dispatch, rerun, or execute from this task."
+    },
+    {
+      "pullRequest": 136,
+      "branch": "fix/remote-mutable-fork-simulation-v1",
+      "lastKnownHead": "38166cd938c3b2cbbde9359418f40621c538e534",
+      "rule": "Do not modify, merge, dispatch, rerun, or execute from this task."
+    }
+  ],
+  "actionsNotTaken": [
+    "no manual workflow dispatch",
+    "no workflow rerun",
+    "no live simulation execution by the orchestrator",
+    "no production secret read or change",
+    "no merge",
+    "no deployment",
+    "no signing or transaction broadcasting",
+    "no worker-owned ACK or STATUS edit"
+  ],
+  "maintenanceCorrection": {
+    "transientInvalidWriteCommit": "cd7da52984dbda1c6aa97aa2984e5c60f118ad62",
+    "affectedPath": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+    "description": "A placeholder replacement was accidentally committed during handoff maintenance. The next write restores complete verified content and points to this snapshot.",
+    "candidateBranchAffected": false,
+    "workerOwnedRecordsAffected": false
+  }
+}
