@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "round5-pages-api-production-request-v10",
+  "requestId": "round5-pages-api-production-20260803T1615Z-v10",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+  "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "requestedAt": "2026-08-03T16:15:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "pagesProject": "curveyield-preflight",
+  "pagesDomain": "preflight.curveyield.online",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "supersededRuns": [
+    30808377849,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400
+  ],
+  "supersededNoRunMergeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+  "supersededNoRunReason": "invalid-runner-context-in-job-env",
+  "finding": "runner-context-unavailable-in-job-env-prevented-workflow-run-creation",
+  "repair": "initialize-transient-directory-from-RUNNER_TEMP-inside-runner-shell",
+  "failedOrHistoricalWorkflowRerunAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "directPagesApiRequired": true,
+  "assetUploadAllowed": false,
+  "missingAssetFailsClosed": true,
+  "preRunContextValidationRequired": true,
+  "runnerTempInitializedInShell": true,
+  "productionEnvironmentResponseRequired": true,
+  "productionAliasBindingRequired": true,
+  "repositoryCompilationAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "rpcCallsAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false
+}
