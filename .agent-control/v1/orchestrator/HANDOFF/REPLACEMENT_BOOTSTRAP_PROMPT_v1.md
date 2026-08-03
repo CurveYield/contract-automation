@@ -6,7 +6,7 @@ Paste everything below into a fresh orchestrator chat.
 
 You are the replacement orchestrator for `CurveYield/contract-automation` during Round 4 final static/inert integration and acceptance.
 
-The predecessor was explicitly ordered to stop at 2026-08-02 20:31 America/Los_Angeles. Do not rely on prior chat history, ChatGPT Project files, uploaded ZIPs, hidden memory or a local checkout. GitHub is the durable source of truth.
+The predecessor was explicitly ordered to stop at 2026-08-02 21:08 America/Los_Angeles. Do not rely on prior chat history, ChatGPT Project files, uploaded ZIPs, hidden memory or a local checkout. GitHub is the durable source of truth.
 
 ## Repository and control plane
 
@@ -23,13 +23,13 @@ The predecessor was explicitly ordered to stop at 2026-08-02 20:31 America/Los_A
 1. `.agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md`
 2. `.agent-control/v1/PROTOCOL_v2.md`
 3. `.agent-control/v1/GLOBAL_STATE_v1.json`
-4. `.agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2031-0700_v1.json`
+4. `.agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2108-0700_v1.json`
 5. every other file under `.agent-control/v1/orchestrator/HANDOFF/`
 6. `.agent-control/v1/orchestrator/STATUS_v1.json` and newest orchestrator events
 7. issues #63 and #119–#125, PR #139 and all exact records they reference
 8. every live mailbox pointer/status and branch head needed to resolve discrepancies
 
-Treat the older `CURRENT_STATE_SNAPSHOT_v1.json` as historical. `PROTOCOL_v1.md` is historical migration evidence; follow `PROTOCOL_v2.md`.
+Treat older timestamped snapshots and `CURRENT_STATE_SNAPSHOT_v1.json` as historical. `PROTOCOL_v1.md` is historical migration evidence; follow `PROTOCOL_v2.md`.
 
 ## Primary Round 4 candidate at predecessor stop
 
@@ -41,15 +41,13 @@ Treat the older `CURRENT_STATE_SNAPSHOT_v1.json` as historical. `PROTOCOL_v1.md`
 - Merge authorization: **none**
 - Last observed mergeability: mergeable
 
-PR #139's body still names an older candidate head. Refresh the live PR/head first; then correct the description if the live state still supports it.
-
-The candidate was assembled by direct orchestrator takeover after worker chats became inaccessible. It contains the exact reconstructed Stage 0 validator package, accepted subsystem intake and the bounded metadata correction described in PR #139 and the timestamped snapshot.
+PR #139's body still names an older candidate head. Refresh the live PR/head first; correct the description only if the refreshed state supports it.
 
 ## Latest exact-head test repairs
 
-1. Head `244fcb72e06940a1d5fd754a697e7747b7a8f9ec` ran 459/460 tests. The Phase 5 top-level deletion mutation expected `missing_field`, but the exact key-set validator returns `invalid_keys`.
-2. Commit `fff4dee6437ea5deefda5b99232aa1f4aa0c2938` changed that Phase 5 expectation to `invalid_keys`.
-3. Head `fff4dee6437ea5deefda5b99232aa1f4aa0c2938` ran 459/460 tests because the canonical Phase 5 result has 14 top-level fields while the test asserted 15.
+1. Head `244fcb72e06940a1d5fd754a697e7747b7a8f9ec` ran 459/460 tests because the Phase 5 deletion mutation expected `missing_field`, while the exact key-set validator returns `invalid_keys`.
+2. Commit `fff4dee6437ea5deefda5b99232aa1f4aa0c2938` changed the expected code to `invalid_keys`.
+3. That head still ran 459/460 because the canonical Phase 5 result has 14 top-level fields while the test asserted 15.
 4. Commit `136d166fa87c50ab95b3083fa4317df85850d8ac` corrected the stale count to 14.
 
 Do not revert these corrections unless new exact evidence proves they are wrong.
@@ -58,7 +56,7 @@ Do not revert these corrections unless new exact evidence proves they are wrong.
 
 No workflow was manually dispatched or rerun.
 
-- GitHub-Native Simulation CI run `30781904598`: in progress. Focused tests passed; the complete repository suite passed all 460 tests; complete repository syntax validation was running. Its final syntax steps and workflow conclusion were not observed.
+- GitHub-Native Simulation CI run `30781904598`: in progress. Focused tests passed; the complete repository suite passed all 460 tests; complete repository syntax validation was running. Final syntax steps and workflow conclusion were not observed.
 - Live Fork Upgrade CI run `30781904575`: in progress at dependency installation. Focused tests, complete tests, lint/build, syntax and final conclusion were not observed.
 
 These are last-observed facts, not final acceptance. Refresh both naturally triggered runs. Do **not** manually dispatch, rerun or trigger a workflow.
@@ -70,12 +68,6 @@ These are last-observed facts, not final acceptance. Refresh both naturally trig
 
 Do not modify, merge, dispatch, rerun or execute either workstream from this Round 4 static-candidate task. Do not run live simulations.
 
-## Worker/mailbox continuity
-
-Worker 2 sequence 9 was last known published for issue #122 on `audit-round4/full-platform-integration-v2`, starting from `bbb4cac794865f84b65ee78a2fc78d391421c759`. Last known status was `ready`, `lastConsumedSequence: 8`, `activeSequence: null`, with no sequence 9 ACK observed before direct takeover.
-
-Refresh all live records, but never write worker-owned ACK or STATUS files. PR #139 is the primary direct-takeover candidate unless live GitHub state proves otherwise.
-
 ## Startup actions
 
 1. Fetch and report the exact live `agent-control-plane-v1` head.
@@ -83,7 +75,7 @@ Refresh all live records, but never write worker-owned ACK or STATUS files. PR #
 3. Refresh PR #139 and verify its exact live base/head.
 4. Refresh naturally triggered runs `30781904598` and `30781904575` without dispatching or rerunning anything.
 5. If either run failed, inspect the first failing step and root cause. Make only the smallest justified repair on `orchestrator/round4-final-integration-takeover-v1`.
-6. If both required workflows are fully green on the same exact head, independently inspect the changed paths, protected blobs, manifests and issue #119 evidence. Green CI alone does not authorize merge.
+6. If both required workflows are fully green on the same exact head, independently inspect changed paths, protected blobs, manifests and issue #119 evidence. Green CI alone does not authorize merge.
 7. Correct stale PR #139 head text only after refreshing the live head.
 8. Update durable evidence and the handoff package before context exhaustion.
 
