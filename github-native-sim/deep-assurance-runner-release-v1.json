@@ -3,7 +3,7 @@
   "releaseVersion": "deep-assurance-github-bridge-v1",
   "baseContractAutomationCommit": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
   "files": {
-    ".github/workflows/deep-assurance-github-request-v1.yml": "4f3909db6c043b1c1f2110fb18d96762711f2ac282a52931f373fe8000115da2",
+    ".github/workflows/deep-assurance-github-request-v1.yml": "d8763ce9b45c04f8a8966548331762aa2867513fd6f806a926f67a8bb50df618",
     "packages/github-native-sim/src/deep-assurance-request.mjs": "9cfa7807dd384e49f11f15907999f9d3ae2aa772a838f4adb20b4a110bc4f99b",
     "packages/github-native-sim/src/inspect-deep-assurance-request.mjs": "0983bb9977cbed46f2b1f5dcb6bd834a5c83b1340ef353cc9bdb087ae76e11f9",
     "packages/github-native-sim/src/prepare-deep-assurance-job.mjs": "4fd5f515ea599e0f9bcde15ea869e02560738ca962d051bd125cff2829176e1f",
