@@ -29,6 +29,7 @@ jobs:
       DEPLOYED_SOURCE_SHA: fbe27b824da8084970915b31f2051679abe39cfc
       PAGES_URL: https://preflight.curveyield.online
       API_URL: https://api.preflight.curveyield.online
+      HEALTH_URL: https://api.preflight.curveyield.online/api/v1/health
       PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_CLIENT_API_KEY }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       RPC_BASE: ${{ secrets.RPC_BASE }}
@@ -114,7 +115,7 @@ jobs:
           trap 'rm -f "$body_file"' EXIT
           curl --fail --silent --show-error --max-time 15 \
             --output "$body_file" \
-            "$API_URL/api/v1/health"
+            "$HEALTH_URL"
           jq -e '
             .status == "ok" and
             .service == "preflightsim-lite-api" and
