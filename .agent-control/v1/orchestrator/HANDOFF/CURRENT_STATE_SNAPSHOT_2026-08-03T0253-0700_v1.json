@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v1",
+  "recordedAt": "2026-08-03T09:53:31Z",
+  "localRecordedAt": "2026-08-03T02:53:31-07:00",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "round": 5,
+  "state": "external-cloudflare-api-token-replacement-gate",
+  "authority": {
+    "promotionAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"]
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "sha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b"
+  },
+  "promotedPullRequests": [139, 140, 141, 142, 143, 144, 145],
+  "productionEnvironment": {
+    "accountOwnerConfirmedCreated": true,
+    "trustedWorkflowUsedEnvironment": "production"
+  },
+  "deploymentAttempt": {
+    "run": 30800918581,
+    "job": 91645019455,
+    "conclusion": "failure",
+    "failureStep": "Create R2 bucket when missing",
+    "preFailureVerification": "success",
+    "repositoryTestsPassed": 471,
+    "workerOrPagesMutationExecuted": false,
+    "liveProductionTestingExecuted": false,
+    "rerunPerformed": false
+  },
+  "cloudflareDiagnosis": {
+    "tokenVerificationHttpStatus": 401,
+    "tokenVerificationErrorCodes": [1000],
+    "accountScopeHttpStatus": 403,
+    "accountScopeErrorCodes": [9109],
+    "r2HttpStatus": 403,
+    "r2ErrorCodes": [10000],
+    "derivedDiagnosis": "token-invalid-disabled-or-expired",
+    "cloudflareMutationPerformedByDiagnostics": false
+  },
+  "hardExternalGate": {
+    "requiredAction": "Account owner replaces repository secret CLOUDFLARE_API_TOKEN with a newly generated valid Cloudflare API token for the CurveYield account.",
+    "doNotChange": [
+      "PREFLIGHTSIM_R2_ACCESS_KEY_ID",
+      "PREFLIGHTSIM_R2_SECRET_ACCESS_KEY",
+      "RPC_ETHEREUM",
+      "RPC_BASE"
+    ],
+    "doNotRerun": 30800918581
+  },
+  "nextOrchestratorActionAfterGate": "Verify the replacement token through a new exact-parent GET-only diagnostic, then create a new reviewed one-time deployment request. Do not rerun the failed deployment.",
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T095331Z_cloudflare-api-token-invalid-gate_v1.json",
+  "safety": {
+    "secretValuesReadOrRecorded": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "workerOwnedAckOrStatusModified": false
+  }
+}
