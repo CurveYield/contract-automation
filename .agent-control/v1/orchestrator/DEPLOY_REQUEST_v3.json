@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "round5-trusted-deployment-request-v3",
+  "requestId": "round5-production-deploy-20260803T1035Z-v3",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "bb500321d084dfc9336304898f9cdd8b65bd9e1b",
+  "requestedAt": "2026-08-03T10:35:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "accountOwnerAuthorization": {
+    "deploymentAuthorized": true,
+    "liveProductionTestingAuthorized": true,
+    "activeNetworks": [
+      "ethereum",
+      "base"
+    ]
+  },
+  "activeReadOnlyRpcNetworks": [
+    {
+      "network": "ethereum",
+      "chainId": 1,
+      "secretName": "RPC_ETHEREUM"
+    },
+    {
+      "network": "base",
+      "chainId": 8453,
+      "secretName": "RPC_BASE"
+    }
+  ],
+  "deferredReadOnlyRpcNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "remediation": {
+    "sourceRun": 30805768611,
+    "sourceJob": 91660666586,
+    "failedStep": "Configure bounded R2 browser uploads and retention",
+    "rootCause": "S3-style lifecycle JSON supplied to Wrangler native R2 lifecycle set command",
+    "repair": "native Cloudflare R2 rules schema with age conditions expressed in seconds",
+    "failedOrHistoricalWorkflowRerun": false
+  },
+  "verifiedCloudflareState": {
+    "tokenStatus": "active",
+    "accountScopeAccessible": true,
+    "r2BucketPresent": true,
+    "verificationIssue": 125,
+    "verificationCommentId": 5165156229
+  },
+  "safety": {
+    "secretValuesIncluded": false,
+    "walletSigningAllowed": false,
+    "publicTransactionBroadcastAllowed": false,
+    "failedOrHistoricalWorkflowRerunAllowed": false
+  }
+}
