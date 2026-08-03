@@ -1,7 +1,7 @@
 {
   "protocolVersion": 1,
   "round": 4,
-  "state": "integration_ownership_conflict_blocked",
+  "state": "direct-orchestrator-candidate-review",
   "masterIssueNumber": 119,
   "workerIssues": {
     "worker-0": 120,
@@ -57,24 +57,33 @@
       "intakeManifestBlobSha": "f4aefc7deac3efabbbf6bd3e1d3b8a664c9157d0"
     }
   },
-  "integrationWorkerActivated": true,
+  "integrationOwner": "orchestrator",
+  "integrationOwnershipDirective": {
+    "receivedAt": "2026-08-02T22:24:00-07:00",
+    "eventPath": ".agent-control/v1/orchestrator/EVENTS/20260803T052400Z_round4-sole-orchestrator-ownership-v1.json",
+    "worker2SupersessionSequence": 10,
+    "worker2SupersessionMessageId": "worker-2-round4-integration-ownership-revoked-v1-000010",
+    "worker2BranchFrozenSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "worker2StatusModified": false
+  },
+  "integrationWorkerActivated": false,
   "integrationWorkerSequence": 9,
   "integrationWorkerMessageId": "worker-2-round4-full-platform-integration-v2-000009",
-  "integrationWorkerStage": "ready-but-ownership-conflicted",
+  "integrationWorkerStage": "superseded-before-acknowledgement",
   "integrationWorkerBranch": "audit-round4/full-platform-integration-v2",
   "integrationWorkerBranchHead": "bbb4cac794865f84b65ee78a2fc78d391421c759",
   "integrationWorkerStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-  "integrationProductionIntakeAuthorized": false,
-  "integrationProductionIntakeCondition": "Authorize only after integration ownership is durably reconciled, the 27 exact reconstruction blobs read back, the prescribed Stage 0 tests and syntax checks pass, and PR #126 security controls are independently accepted.",
+  "integrationProductionIntakeAuthorized": true,
+  "integrationProductionIntakeCondition": "Satisfied by sole-owner directive, exact frozen Worker 2 branch, accepted Stage A outputs, accepted PR #126 security repair, completed reconstruction/intake on PR #139, and fresh exact-head secretless CI. Final static acceptance still requires independent path/blob reconciliation.",
   "integrationValidatorRepair": {
-    "state": "assigned-for-successor-reconstruction",
+    "state": "reconstructed-and-ci-validated",
     "receiptPath": "docs/audit/round4/integration/2026-08-02-worker2-stage0-validator-repair-v1.json",
     "receiptBlobSha": "fef4bc39d3d2ab8ebdf597be9fbca36fa02ac812",
     "exactIntakePathCount": 3,
     "freshCombinedSuiteRequired": true
   },
   "integrationSupersessionProcedure": {
-    "state": "activated",
+    "state": "superseded-by-sole-orchestrator-owner",
     "path": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-worker2-gate5-supersession-reconstruction-v1.json",
     "blobSha": "493e987b9dd1e83f056305380c4245ba8007f2a6",
     "closedSequence": 8,
@@ -82,67 +91,76 @@
     "successorSequence": 9,
     "successorBranch": "audit-round4/full-platform-integration-v2",
     "successorStartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "assignmentBlobSha": "cc735acf452edfb16319a9439bb3880dbfb01bbc",
+    "successorAssignmentBlobSha": "cc735acf452edfb16319a9439bb3880dbfb01bbc",
+    "revocationSequence": 10,
+    "revocationAssignmentBlobSha": "9f8154ed5371a9dea3348536450e885214e05418",
     "reconstructionPathCount": 27,
-    "pr126OverlapCount": 0,
-    "activatedAt": "2026-08-02T16:32:58Z"
+    "pr126OverlapCount": 0
   },
   "directIntegrationTakeover": {
-    "state": "conflicting-unreconciled",
+    "state": "sole-owner-pending-exact-sha-static-acceptance",
     "branch": "orchestrator/round4-final-integration-takeover-v1",
     "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
-    "observedRelationToBase": "10 commits ahead, 0 behind",
-    "declaredOnIssue122": true,
-    "conflictsWithWorkerSequence": 9,
-    "protectedOrQuarantinedPathsObserved": [
-      ".github/workflows/github-native-simulate.yml",
-      "packages/github-native-sim/**",
-      "packages/runner/src/run-job.mjs"
-    ],
-    "requiredResolution": "Durably supersede exactly one integration owner and independently reconcile every takeover path against accepted Stage A manifests, protected-addon rules and PR #126 security acceptance before intake or candidate freeze."
+    "candidateHeadSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+    "relationToBase": {
+      "status": "ahead",
+      "aheadBy": 47,
+      "behindBy": 0
+    },
+    "pullRequest": 139,
+    "pullRequestBase": "orchestrator/round4-ci-base-v1",
+    "pullRequestBaseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "mergeAuthorized": false,
+    "requiredNextReview": "Independently reconcile every changed path and final blob against the accepted Stage A, transitive-closure, protected-addon and PR #126 security manifests, then publish one exact-SHA acceptance record."
   },
-  "assembledCandidateSha": null,
+  "assembledCandidateSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+  "assembledCandidateState": "frozen-pending-independent-path-blob-reconciliation",
   "specialistAcceptances": {},
+  "ciEvidence": {
+    "exactHeadSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+    "githubNativeSimulation": {
+      "runId": 30781904598,
+      "conclusion": "success"
+    },
+    "liveForkUpgrade": {
+      "runId": 30781904575,
+      "conclusion": "success"
+    },
+    "manualDispatchOrRerun": false
+  },
   "externalWorkstreams": [
     {
       "workstreamId": "live-fork-rpc-routing-pr126-v1",
       "pullRequestNumber": 126,
-      "state": "merged-security-repair-required",
-      "finalHeadSha": "df2e51824d257669dac204de5bf869c80ed6e844",
-      "mergeCommitSha": "500de7b8752e926f7478feafb81b92586d6364ea",
-      "round4InterferenceAuthorized": false,
-      "finalCandidateFreezeBlocked": true,
-      "requiredResolution": "Complete and independently accept the test-first PR 126 security repair with one exact head and path/blob manifest."
+      "reviewPullRequestNumber": 138,
+      "state": "security-repair-accepted-for-round4-static-intake",
+      "acceptedRepairHeadSha": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
+      "round4InterferenceAuthorized": true,
+      "finalCandidateFreezeBlocked": false,
+      "round5TrustedLiveRegressionRequired": true,
+      "acceptanceManifest": ".agent-control/v1/orchestrator/HANDOFF/2026-08-02-pr126-security-repair-acceptance-v1.json"
+    },
+    {
+      "workstreamId": "remote-mutable-fork-simulation-v1",
+      "pullRequestNumber": 136,
+      "branch": "fix/remote-mutable-fork-simulation-v1",
+      "state": "separate-frozen-do-not-touch",
+      "lastKnownHeadSha": "38166cd938c3b2cbbde9359418f40621c538e534"
     }
   ],
   "blockers": [
     {
-      "blockerId": "integration-ownership-conflict-v1",
-      "workerId": "worker-2",
-      "issueNumber": 122,
-      "description": "Worker 2 sequence 9 remains published and ready on audit-round4/full-platform-integration-v2 while orchestrator/round4-final-integration-takeover-v1 concurrently performs integration from the same Gate 5 base and changes protected or quarantined paths.",
-      "requiredResolution": "Durably supersede exactly one integration path, reconcile CURRENT/STATUS/STATE and issue #122 ownership without fabricating worker-owned records, then independently validate takeover paths before authorizing intake."
-    },
-    {
-      "blockerId": "stage0-successor-reconstruction-verification-v1",
-      "workerId": "worker-2",
-      "issueNumber": 122,
-      "description": "Sequence 9 is activated at the correct Gate 5 base, but production subsystem intake remains blocked until the 27 exact reconstruction paths and hardened validator blobs are verified and the required Stage 0 suites pass.",
-      "requiredResolution": "The authorized integration owner reconstructs only the exact listed blobs, runs the prescribed tests and syntax checks, and publishes remote blob readback evidence."
-    },
-    {
-      "blockerId": "pr126-security-repair-acceptance-v1",
-      "pullRequestNumber": 126,
-      "description": "PR #126 is merged, but its security repair lacks an independently accepted exact head and path/blob manifest.",
-      "requiredResolution": "Complete and independently accept the separate security repair before any quarantined path is ingested or the assembled candidate is frozen."
+      "blockerId": "exact-candidate-path-blob-reconciliation-v1",
+      "description": "Both exact-head workflows are green and ownership is resolved, but the surviving PR #139 tree still requires one durable independent reconciliation against every accepted source/path/blob manifest before exact-head static acceptance can be declared.",
+      "requiredResolution": "Verify changed paths and final blobs, protected workflows/addon baselines, transitive closure receipts, combined metadata and Round 5 production input; publish the acceptance record and update issue #119."
     }
   ],
   "productionTestTarget": {
-    "nonAwsFunctions": "ready-for-production-testing-after-final-worker-round",
+    "nonAwsFunctions": "ready-after-round4-exact-sha-acceptance-and-approved-release-merge",
     "awsDependentHardenedExecutionPlane": "deferred-separate-workstream"
   },
   "registryPath": ".agent-control/v1/rounds/round4/PENDING_REGISTRY_v1.json",
   "activationRunbookPath": ".agent-control/v1/rounds/round4/ACTIVATION_RUNBOOK_v1.md",
-  "lastBlockerEventPath": ".agent-control/v1/orchestrator/EVENTS/20260802T193426Z_round4-integration-ownership-conflict-blocker_v1.json",
-  "updatedAt": "2026-08-02T19:34:26Z"
+  "lastDecisionEventPath": ".agent-control/v1/orchestrator/EVENTS/20260803T052400Z_round4-sole-orchestrator-ownership-v1.json",
+  "updatedAt": "2026-08-03T05:24:00Z"
 }
