@@ -4,9 +4,9 @@
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "sole-orchestrator",
-  "activationState": "round5-static-production-test-preparation",
+  "activationState": "external-account-owner-authorization-gate",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-03T06:05:25Z",
+  "lastOrchestratorReviewAt": "2026-08-03T06:39:00Z",
   "authority": {
     "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
     "directive": "The orchestrator will finish all remaining work alone until production testing readiness or a hard external block requires user assistance.",
@@ -31,7 +31,7 @@
     "name": "production-test-preparation-and-acceptance",
     "round4MasterIssue": 119,
     "productionAcceptanceIssue": 125,
-    "stage": "static-production-test-preparation",
+    "stage": "external-account-owner-authorization-gate",
     "liveWorkAuthorized": false,
     "deploymentAuthorized": false,
     "mergeAuthorized": false
@@ -61,21 +61,30 @@
   "round5Preparation": {
     "executionOwner": "orchestrator",
     "sourceSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "pullRequest": 140,
     "preparationBranch": "orchestrator/round5-production-test-prep-v1",
-    "branchCreated": false,
-    "requiredStaticContracts": [
-      "release-sha binding",
-      "production-test manifest",
-      "secret-name and variable-name binding manifest without values",
-      "Cloudflare and R2 resource manifest",
-      "trusted deployment preflight contract",
-      "rollback contract",
-      "observability and redaction contract",
-      "recovery contract",
-      "trusted V27 live-regression acceptance contract",
-      "final authorization gate"
-    ],
-    "trustedV27LiveRegressionRequired": true
+    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
+    "branchCreated": true,
+    "packagePathCount": 14,
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "receiptPath": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+    "receiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "staticProductionTestReadiness": "ACCEPT",
+    "productionTestingReady": true,
+    "trustedV27LiveRegressionRequired": true,
+    "draft": true,
+    "mergeAuthorized": false
+  },
+  "round5ExactHeadCi": {
+    "githubNativeSimulationRun": 30790716033,
+    "liveForkUpgradeRun": 30790716022,
+    "repositoryTestsPassed": 464,
+    "repositoryTestsFailed": 0,
+    "focusedGitHubNativeTestsPassed": 49,
+    "focusedLiveForkTestsPassed": 14,
+    "javascriptModulesSyntaxValid": 279,
+    "lintBuildSyntax": "success",
+    "manualDispatchOrRerun": false
   },
   "hardExternalGates": [
     "explicit candidate promotion or merge authorization",
@@ -108,7 +117,7 @@
     "no edits to worker-owned ACK or STATUS files"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2258-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2339-0700_v1.json",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T060525Z_round4-exact-head-static-acceptance_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T063900Z_round5-static-production-test-readiness-accepted_v1.json"
 }
