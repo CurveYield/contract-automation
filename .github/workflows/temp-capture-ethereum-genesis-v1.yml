@@ -1,0 +1,41 @@
+name: Temporary Capture Ethereum Genesis v1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/temp-capture-ethereum-genesis.mjs'
+      - '.github/workflows/temp-capture-ethereum-genesis-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Capture canonical Ethereum genesis response
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/temp-capture-ethereum-genesis.mjs | tee ethereum-genesis-capture.log
+      - name: Upload captured public response
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethereum-genesis-rpc-response-v1
+          path: |
+            ethereum-genesis-rpc-response.json
+            ethereum-genesis-rpc-response.sha256
+            ethereum-genesis-rpc-response-source.txt
+            ethereum-genesis-capture.log
+          if-no-files-found: error
+          retention-days: 7

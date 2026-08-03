@@ -1,0 +1,37 @@
+name: Temporary Unlocked RPC Diagnostic v1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/temp-rpc-unlocked-diagnostic.mjs'
+      - '.github/workflows/temp-rpc-unlocked-diagnostic-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Trace unlocked-account fork startup
+        run: node scripts/temp-rpc-unlocked-diagnostic.mjs | tee rpc-unlocked-diagnostic.log
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethereum-rpc-unlocked-diagnostic-v1
+          path: |
+            rpc-unlocked-diagnostic.json
+            rpc-unlocked-diagnostic.log
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,44 @@
+name: Temporary Ethereum RPC Diagnostic v1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/temp-rpc-diagnostic.mjs'
+      - '.github/workflows/temp-rpc-diagnostic-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - name: Check out diagnostic branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install trusted repository dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Trace RPC boundaries
+        run: node scripts/temp-rpc-diagnostic.mjs | tee rpc-diagnostic.log
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethereum-rpc-diagnostic-v1
+          path: |
+            rpc-diagnostic.json
+            rpc-diagnostic.log
+          if-no-files-found: error
+          retention-days: 7

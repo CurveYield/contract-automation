@@ -1,0 +1,36 @@
+name: Temporary Genesis RPC Diagnostic v1
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/temp-rpc-genesis-diagnostic.mjs'
+      - '.github/workflows/temp-rpc-genesis-diagnostic-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Query earliest and canonical genesis tags
+        run: node scripts/temp-rpc-genesis-diagnostic.mjs | tee rpc-genesis-diagnostic.log
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ethereum-rpc-genesis-diagnostic-v1
+          path: |
+            rpc-genesis-diagnostic.json
+            rpc-genesis-diagnostic.log
+          if-no-files-found: error
+          retention-days: 7
