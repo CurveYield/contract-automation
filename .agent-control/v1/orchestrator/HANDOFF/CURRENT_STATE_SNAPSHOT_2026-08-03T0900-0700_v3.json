@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v3",
+  "capturedAt": "2026-08-03T16:00:38Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "round": 5,
+  "round5ProductionAcceptanceIssue": 125,
+  "state": "pages-v9-merged-live-result-pending",
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "dependencyDownloadsAllowed": false,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"]
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "sourcePullRequest": 159,
+    "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "acceptedApplicationSourcePullRequest": 150
+  },
+  "pagesV9Candidate": {
+    "pullRequest": 159,
+    "exactParentSha": "70719851d8e18faf89e65027858b9f4f728d979d",
+    "verifiedHeadSha": "918631333aed3d6f8ffe4b8896168be8e6d64e05",
+    "mergeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "githubNativeCi": {"run": 30829673867, "job": 91740180002, "conclusion": "success"},
+    "liveForkCi": {"run": 30829674142, "job": 91740180902, "conclusion": "success"},
+    "changedFileCount": 6,
+    "reviewComments": 0,
+    "reviews": 0,
+    "reviewThreads": 0,
+    "mergeGuardSatisfied": true,
+    "trustedPushResult": "PENDING_OBSERVATION",
+    "issueCheckpointCommentId": 5168755699
+  },
+  "productionBinding": {
+    "apiWorker": {
+      "lastVerifiedDeploymentVersion": 4,
+      "run": 30808377849,
+      "job": 91668946456,
+      "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "conclusion": "success"
+    },
+    "pagesCustomDomain": {
+      "acceptedApplicationSourceObserved": false,
+      "observedState": "last-observed-stale-seven-network-selector",
+      "v9LiveGate": "pending-observation",
+      "exactServingSourceSha": null,
+      "currentSourceSmokeAccepted": false
+    }
+  },
+  "failedRunsDoNotRerun": [
+    30800918581,
+    30805768611,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400
+  ],
+  "executionState": {
+    "pagesV9CodePromoted": true,
+    "pagesV9TrustedPushAccepted": false,
+    "pagesV9TrustedPushRejected": false,
+    "currentSourceSmokeAccepted": false,
+    "trustedV27RegressionExecuted": false,
+    "finalProductionAcceptance": "PENDING"
+  },
+  "nextAction": "Observe the exact trusted v9 push run through its sanitized issue 125 result or connector-visible run evidence; inspect its exact job and every step before accepting or rejecting it. Do not rerun. If accepted, create a fresh exact-parent current-source smoke gate. If rejected or absent, preserve evidence and use a fresh versioned request only after determining the live trigger state.",
+  "safety": {
+    "secretValuesReadOrExposed": false,
+    "dependencyDownloadsPerformedByThisCheckpoint": false,
+    "assetUploadPerformedByThisCheckpoint": false,
+    "workerDeploymentPerformedByThisCheckpoint": false,
+    "r2MutationPerformedByThisCheckpoint": false,
+    "rpcCallsPerformedByThisCheckpoint": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerun": false
+  }
+}
