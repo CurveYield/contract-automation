@@ -27,7 +27,6 @@ jobs:
       OBSERVE_REQUEST_ID: round5-observe-deployment-20260803T0920Z-v1
       OBSERVE_EXPECTED_BEFORE_SHA: 81b7d3b2f4cf4636f204ae778617103804c30012
       TARGET_DEPLOY_SHA: 81b7d3b2f4cf4636f204ae778617103804c30012
-      TARGET_WORKFLOW_FILE: deploy.yml
     steps:
       - name: Check out exact observer source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -90,7 +89,7 @@ jobs:
 
           for attempt in $(seq 1 60); do
             response=$(gh api --method GET \
-              "repos/$GITHUB_REPOSITORY/actions/workflows/$TARGET_WORKFLOW_FILE/runs" \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs" \
               -f branch="$RELEASE_BRANCH" \
               -f event=push \
               -f per_page=20)
