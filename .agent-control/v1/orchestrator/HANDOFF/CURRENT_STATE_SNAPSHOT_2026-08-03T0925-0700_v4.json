@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v4",
+  "capturedAt": "2026-08-03T16:25:00Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "round": 5,
+  "round5ProductionAcceptanceIssue": 125,
+  "state": "pages-v10-rejected-v11-red-active",
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "dependencyDownloadsAllowed": false,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"]
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentSha": "23a6ec8d8cc89d3aaa5d6a19d843bc37544358b5",
+    "sourcePullRequest": 160,
+    "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "acceptedApplicationSourcePullRequest": 150
+  },
+  "pagesV10RejectedGate": {
+    "pullRequest": 160,
+    "verifiedHeadSha": "44f0d2817964a27596dc0d1754645b782def3161",
+    "mergeSha": "23a6ec8d8cc89d3aaa5d6a19d843bc37544358b5",
+    "workflowRun": 30831520420,
+    "job": 91746369253,
+    "conclusion": "failure",
+    "successfulChecks": [
+      "exact request",
+      "accepted source and immutable manifest",
+      "configured production branch",
+      "all nine manifest assets already present",
+      "direct deployment response environment branch commit binding"
+    ],
+    "failedCheck": "combined terminal-stage-and-alias predicate",
+    "rootCause": "optional-deployment-alias-coupled-to-stage-acceptance",
+    "customDomainCheck": "skipped",
+    "issueRejectionCommentId": 5168973009,
+    "rerunAllowed": false
+  },
+  "activeCandidate": {
+    "pullRequest": 161,
+    "branch": "orchestrator/round5-pages-api-production-v11",
+    "exactParentSha": "23a6ec8d8cc89d3aaa5d6a19d843bc37544358b5",
+    "redOnlyHeadSha": "8828513c42bdea060edc2cb523fefc399f0632bf",
+    "state": "red-only-ci-active",
+    "purpose": "separate terminal deployment stage acceptance from custom-domain content binding",
+    "implementationAdded": false,
+    "mergeAllowed": false
+  },
+  "productionBinding": {
+    "apiWorker": {
+      "lastVerifiedDeploymentVersion": 4,
+      "run": 30808377849,
+      "job": 91668946456,
+      "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "conclusion": "success"
+    },
+    "pagesCustomDomain": {
+      "acceptedApplicationSourceObserved": false,
+      "observedState": "last-observed-stale-seven-network-selector",
+      "exactServingSourceSha": null,
+      "currentSourceSmokeAccepted": false
+    }
+  },
+  "failedRunsDoNotRerun": [
+    30800918581,
+    30805768611,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400,
+    30831520420
+  ],
+  "executionState": {
+    "pagesV10Rejected": true,
+    "pagesV11RedOnlyActive": true,
+    "currentSourceSmokeAccepted": false,
+    "trustedV27RegressionExecuted": false,
+    "finalProductionAcceptance": "PENDING"
+  },
+  "nextAction": "Inspect the naturally triggered PR CI for v11 head 8828513c42bd. Require the intended missing-v11-gate RED before implementation. Then add a fresh exact-parent v11 request and workflow that require terminal deploy stage name/status without aliases and verify the custom domain separately by served content. Never rerun v10.",
+  "safety": {
+    "secretValuesReadOrExposed": false,
+    "dependencyDownloadsPerformedByOrchestrator": false,
+    "assetUploadPerformedByV10": false,
+    "workerDeploymentPerformedByV10": false,
+    "r2MutationPerformedByV10": false,
+    "blockchainRpcCallsPerformedByV10": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerun": false
+  }
+}
