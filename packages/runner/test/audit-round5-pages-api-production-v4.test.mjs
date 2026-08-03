@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const WORKFLOW_PATH = '.github/workflows/deploy-v9.yml';
 const REQUEST_PATH = '.agent-control/v1/orchestrator/DEPLOY_REQUEST_v9.json';
@@ -9,6 +10,11 @@ const EXPECTED_PARENT = '70719851d8e18faf89e65027858b9f4f728d979d';
 const APPLICATION_SOURCE = '2c6e543dfcaa17ca975bbde3c15302269bbf8072';
 const RELEASE_BRANCH = 'orchestrator/round4-ci-base-v1';
 const REQUEST_ID = 'round5-pages-api-production-20260803T1320Z-v9';
+const OFFICIAL_CHUNK_BOUNDARY_VECTORS = [
+  [1023, '10108970eeda3eb932baac1428c7a2163b0e924c9a9e25b35bba72b28f70bd11'],
+  [1024, '42214739f095a406f3fc83deb889744ac00df831c10daa55189b5d121c855af7'],
+  [1025, 'd00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b844'],
+];
 
 test('deployment v9 uses the dependency-free Pages API and accepts only exact production binding', () => {
   assert.ok(existsSync(WORKFLOW_PATH), `missing workflow: ${WORKFLOW_PATH}`);
@@ -58,11 +64,37 @@ test('deployment v9 uses the dependency-free Pages API and accepts only exact pr
 
   assert.match(manifestScript, /af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262/);
   assert.match(manifestScript, /6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85/);
+  for (const [, expectedHash] of OFFICIAL_CHUNK_BOUNDARY_VECTORS) {
+    assert.match(manifestScript, new RegExp(expectedHash));
+  }
   assert.match(manifestScript, /base64\.b64encode/);
   assert.match(manifestScript, /suffix\.lstrip\(['"]\.['"]\)/);
   assert.match(manifestScript, /\[:32\]/);
   assert.match(manifestScript, /sha256/);
   assert.doesNotMatch(manifestScript, /import blake3|from blake3/);
+
+  const pythonCheck = `
+import importlib.util
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("pages_asset_manifest_v1", Path(${JSON.stringify(MANIFEST_SCRIPT_PATH)}))
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+vectors = ${JSON.stringify(OFFICIAL_CHUNK_BOUNDARY_VECTORS)}
+for length, expected in vectors:
+    payload = bytes(index % 251 for index in range(length))
+    actual = module.blake3_digest(payload).hex()
+    if actual != expected:
+        raise SystemExit(f"BLAKE3 mismatch at {length}: {actual}")
+`;
+  const pythonResult = spawnSync('python3', ['-c', pythonCheck], {
+    encoding: 'utf8',
+    timeout: 20_000,
+  });
+  assert.equal(
+    pythonResult.status,
+    0,
+    `dependency-free BLAKE3 vector verification failed: ${pythonResult.stderr || pythonResult.stdout}`,
+  );
 
   assert.equal(request.schemaVersion, 'round5-pages-api-production-request-v9');
   assert.equal(request.requestId, REQUEST_ID);
