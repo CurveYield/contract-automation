@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "orchestrator-event-v1",
+  "eventId": "production-ui-v4-deployed-replacement-handoff-20260803T114200Z",
+  "eventType": "replacement-handoff-current-state",
+  "occurredAt": "2026-08-03T11:42:00Z",
+  "repository": "CurveYield/contract-automation",
+  "round": 5,
+  "stateBefore": "stale-cloudflare-token-replacement-gate",
+  "stateAfter": "production-ui-v4-deployed-awaiting-current-source-smoke",
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "sha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "sourcePullRequest": 150
+  },
+  "deployment": {
+    "version": 4,
+    "run": 30808377849,
+    "job": 91668946456,
+    "conclusion": "success",
+    "allStepsSucceeded": true
+  },
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json",
+  "historicalEvidencePreserved": true,
+  "historicalOrFailedWorkflowRerunsAllowed": false,
+  "acceptedRedGreenSequencesMayBeRepeated": false,
+  "nextAction": "Create a fresh exact-parent read-only production smoke gate for deployed SHA 2c6e543dfcaa17ca975bbde3c15302269bbf8072. Do not rerun the smoke gate for the superseded fbe27b source.",
+  "activeNetworks": ["ethereum", "base"],
+  "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
+  "safety": {
+    "secretValuesRecorded": false,
+    "walletSigningPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "scheduledAutomationEnabled": false
+  }
+}
