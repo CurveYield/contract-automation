@@ -1,0 +1,105 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-exact-head-static-acceptance-20260803T060525Z",
+  "eventType": "round4_exact_head_static_acceptance",
+  "createdAt": "2026-08-03T06:05:25Z",
+  "createdAtLocal": "2026-08-02T23:05:25-07:00",
+  "createdBy": "orchestrator",
+  "repository": "CurveYield/contract-automation",
+  "round": 4,
+  "masterIssueNumber": 119,
+  "continuityIssueNumber": 63,
+  "productionAcceptanceIssueNumber": 125,
+  "candidate": {
+    "pullRequest": 139,
+    "baseBranch": "orchestrator/round4-ci-base-v1",
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "headBranch": "orchestrator/round4-final-integration-takeover-v1",
+    "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "mergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+    "changedPathCount": 202,
+    "draft": true,
+    "mergeable": true,
+    "mergeAuthorized": false
+  },
+  "attestation": {
+    "path": "docs/audit/round4/integration/2026-08-03-round4-final-tree-attestation-v1.json",
+    "attestedPathCount": 198,
+    "digestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "directlyValidatedSelfReferentialPathCount": 4
+  },
+  "testFirstEvidence": {
+    "attestationRedHeadSha": "43fb5bef8444325bfb28ad9e2823cc8a21f26708",
+    "attestationRedRuns": [30788338934, 30788338920],
+    "gateRedHeadSha": "e0913267d355d333abdd4a044f48e2a00b0adf1f",
+    "gateRedRuns": [30788464398, 30788464412],
+    "implementationHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b"
+  },
+  "verification": {
+    "githubNativeSimulationCi": {
+      "runId": 30788571549,
+      "conclusion": "success",
+      "repositoryTestsPassed": 461,
+      "repositoryTestsFailed": 0,
+      "completeSyntaxValidation": "success",
+      "independentJavascriptSyntax": "success"
+    },
+    "liveForkUpgradeCi": {
+      "runId": 30788571507,
+      "conclusion": "success",
+      "focusedTestsPassed": 14,
+      "focusedTestsFailed": 0,
+      "repositoryTestsPassed": 461,
+      "repositoryTestsFailed": 0,
+      "lint": "success",
+      "build": "success",
+      "javascriptModulesSyntaxValidated": 276,
+      "changedJavascriptSyntax": "success"
+    },
+    "manualWorkflowDispatchOrRerun": false,
+    "liveSimulationExecutedByOrchestrator": false
+  },
+  "decision": {
+    "round4ExactHeadStaticAcceptance": "ACCEPT",
+    "productionTestingReady": false,
+    "mergeAuthorized": false,
+    "nextStage": "round5-static-production-test-preparation",
+    "trustedV27LiveRegressionRequired": true
+  },
+  "soleOwnership": {
+    "worker2Sequence9RevokedBySequence10Control": true,
+    "worker2Sequence9BranchMoved": false,
+    "workerOwnedAckOrStatusModified": false,
+    "soleCandidatePullRequest": 139
+  },
+  "maintenanceCorrection": {
+    "transientInvalidCommit": "cd7da52984dbda1c6aa97aa2984e5c60f118ad62",
+    "restoredContentCommit": "2454ccd1f5a0a6720f20f192b3b060dfb746762d",
+    "affectedPath": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+    "candidateBranchAffected": false,
+    "workerOwnedRecordsAffected": false,
+    "subsequentByteIdenticalNoOpCommits": [
+      "cc07e3da2d81a38b0655a6f7968dbccca06ea2d2",
+      "43619415696511f0ebd26c89e9edd2696febfe9f",
+      "dc594384b02c804b32b282567ff24fdbaefdb72f",
+      "1bbc2d2db9ac4c7ca9fafe16f612388f050590d8",
+      "7f266ce52b83f74af0b53b3097eba9271dd2fc93",
+      "7abae81e6731eba58129ccdd6958b7950c8e2c13",
+      "7e3f6a4978a066029d4a09f9fea19c5bd2582537",
+      "8d770568dc1b2b358032c1b5dfbb558939afd564",
+      "29ea42620451bb6f5fce82f204dff32216946016",
+      "2957102f924d272a97d2217c24c988eaf57d1feb"
+    ],
+    "functionalContentChangedByNoOpCommits": false,
+    "historyRewriteAttempted": false
+  },
+  "prohibitedActionsNotTaken": [
+    "no merge",
+    "no deployment",
+    "no production secret read or change",
+    "no signing or transaction broadcasting",
+    "no manual workflow dispatch or rerun",
+    "no worker-owned ACK or STATUS edit",
+    "no separate PR 136 or PR 138 mutation"
+  ]
+}
