@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REQUEST_ID_PATTERN = /^dar-[0-9a-f]{32}$/;
-const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const REPOSITORY_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const RUN_ID_PATTERN = /^[1-9]\d*$/;
 const STATES = new Set(['pending', 'success', 'failure']);
@@ -19,10 +19,15 @@ function nonEmptyString(value, field, maximum = 512) {
   return value;
 }
 
+function validRepository(value) {
+  if (typeof value !== 'string') return false;
+  const segments = value.split('/');
+  return segments.length === 2
+    && segments.every((segment) => REPOSITORY_SEGMENT_PATTERN.test(segment) && segment !== '.' && segment !== '..');
+}
+
 function validateIdentity({ repository, commitSha, runId, requestId, profileId, state }) {
-  if (typeof repository !== 'string' || !REPOSITORY_PATTERN.test(repository)) {
-    throw new TypeError('repository is invalid');
-  }
+  if (!validRepository(repository)) throw new TypeError('repository is invalid');
   if (typeof commitSha !== 'string' || !COMMIT_PATTERN.test(commitSha)) {
     throw new TypeError('commitSha must be an exact lowercase 40-character commit');
   }
