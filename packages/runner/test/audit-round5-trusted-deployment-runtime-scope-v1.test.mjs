@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import worker from '../../../apps/api/src/index.mjs';
+import worker from '../../../apps/api/src/entry.mjs';
 
 const RELEASE_BRANCH = 'orchestrator/round4-ci-base-v1';
 const FULL_SHA_ACTION = /uses:\s+[A-Za-z0-9_.-]+\/[A-Za-z0-9_.\/-]+@[0-9a-f]{40}\b/g;
@@ -70,6 +70,8 @@ test('production workflow and Worker configuration expose only Ethereum and Base
   const simulation = readFileSync('.github/workflows/simulate.yml', 'utf8');
   const wrangler = readFileSync('apps/api/wrangler.toml', 'utf8');
 
+  assert.match(simulation, new RegExp(`github\\.ref == 'refs/heads/${RELEASE_BRANCH.replaceAll('/', '\\/')}'`));
+  assert.match(simulation, /environment:\s*production/);
   assert.match(simulation, /RPC_ETHEREUM:\s*\$\{\{ secrets\.RPC_ETHEREUM \}\}/);
   assert.match(simulation, /RPC_BASE:\s*\$\{\{ secrets\.RPC_BASE \}\}/);
   for (const deferred of ['KATANA', 'FRAXTAL', 'ARBITRUM', 'POLYGON', 'OPTIMISM']) {
@@ -78,6 +80,8 @@ test('production workflow and Worker configuration expose only Ethereum and Base
 
   assert.match(wrangler, /ENABLED_CHAINS\s*=\s*"ethereum,base"/);
   assert.match(wrangler, new RegExp(`GITHUB_REF\\s*=\\s*"${RELEASE_BRANCH.replaceAll('/', '\\/')}"`));
+  assert.match(wrangler, /pattern\s*=\s*"api\.preflight\.curveyield\.online"/);
+  assert.doesNotMatch(wrangler, /pattern\s*=\s*"preflight\.curveyield\.online"/);
 });
 
 test('production API advertises active networks and rejects a deferred network before dispatch', async () => {
