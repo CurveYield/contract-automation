@@ -3,64 +3,99 @@
   "schemaVersion": "agent-round5-queue-v1",
   "round": 5,
   "masterIssue": 125,
-  "state": "static-preparation-accepted-external-authorization-required",
+  "state": "trusted-deployment-preflight-promoted-external-environment-dispatch-required",
   "createdAt": "2026-08-02T10:52:00Z",
-  "updatedAt": "2026-08-03T06:39:00Z",
+  "updatedAt": "2026-08-03T08:18:00Z",
   "authority": {
     "executionOwner": "orchestrator",
     "soleOrchestratorDirective": true,
+    "accountOwnerProceedAuthorized": true,
+    "promotionAuthorized": true,
+    "credentialNameReadinessAuthorized": true,
+    "deploymentAuthorized": true,
+    "liveProductionTestingAuthorized": true,
     "workerRuntimeActivationAllowed": false,
     "replacementAgentsRequired": false,
     "workerOwnedPointersOrStatusesModified": false
   },
-  "round4Source": {
-    "pullRequest": 139,
-    "acceptedReleaseCandidateSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-    "approvedReleaseBranch": null,
-    "mergeAuthorized": false,
-    "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
+  "promotedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentTrustedSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "round4": {
+      "pullRequest": 139,
+      "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+      "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
+      "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
+    },
+    "round5StaticPreparation": {
+      "pullRequest": 140,
+      "acceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
+      "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca",
+      "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+      "readinessReceipt": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+      "networkScopeAmendment": "docs/audit/round5/production-network-scope-amendment-v1.json",
+      "authorizationReceipt": "docs/audit/round5/account-owner-authorization-receipt-v1.json"
+    },
+    "trustedDeploymentPreflight": {
+      "pullRequest": 141,
+      "acceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
+      "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+      "receipt": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
+      "status": "ACCEPT"
+    }
   },
-  "staticPreparation": {
-    "pullRequest": 140,
-    "branch": "orchestrator/round5-production-test-prep-v1",
-    "startingSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
-    "branchCreated": true,
-    "productionTestManifest": "docs/audit/round5/production-test-manifest-v1.json",
-    "releaseShaBindingManifest": "docs/audit/round5/release-source-binding-v1.json",
-    "secretNameBindingManifest": "docs/audit/round5/secret-variable-binding-manifest-v1.json",
-    "resourceManifest": "docs/audit/round5/production-resource-manifest-v1.json",
-    "deploymentPreflightManifest": "docs/audit/round5/deployment-preflight-manifest-v1.json",
-    "rollbackRecoveryManifest": "docs/audit/round5/rollback-recovery-manifest-v1.json",
-    "observabilityManifest": "docs/audit/round5/observability-redaction-manifest-v1.json",
-    "trustedV27RegressionContract": "docs/audit/round5/trusted-v27-live-regression-contract-v1.json",
-    "finalAuthorizationGate": "docs/audit/round5/production-authorization-gate-v1.json",
-    "operatorGuide": "docs/audit/round5/README_v1.md",
-    "readinessReceipt": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
-    "readinessReceiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
-    "packagePathCount": 14,
-    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
-    "staticProductionTestReadiness": "ACCEPT",
-    "productionTestingReady": true
+  "networkScope": {
+    "activeReadOnlyRpcNetworks": [
+      {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
+      {"network":"base","chainId":8453,"secretName":"RPC_BASE"}
+    ],
+    "deferredReadOnlyRpcNetworks": ["arbitrum","fraxtal","katana","optimism","polygon"],
+    "missingDeferredRpcSecretsFailCurrentReadiness": false,
+    "deferredNetworksMayBeTested": false,
+    "futureActivationRequiresNewAccountOwnerAuthorization": true
+  },
+  "credentialReadiness": {
+    "accountOwnerConfirmedConfigured": true,
+    "activeRepositorySecretNameCount": 11,
+    "repositoryVariableNameCount": 3,
+    "namesOnly": true,
+    "secretValuesReadOrRecorded": false
   },
   "exactHeadVerification": {
-    "liveForkUpgradeRun": 30790716022,
-    "githubNativeSimulationRun": 30790716033,
-    "repositoryTestsPassed": 464,
+    "liveForkUpgradeRun": 30796659737,
+    "liveForkUpgradeJob": 91631654571,
+    "githubNativeSimulationRun": 30796659857,
+    "githubNativeSimulationJob": 91631655388,
+    "repositoryTestsPassed": 470,
     "repositoryTestsFailed": 0,
     "focusedLiveForkTestsPassed": 14,
     "focusedGitHubNativeTestsPassed": 49,
-    "javascriptModulesSyntaxValid": 279,
+    "javascriptModulesSyntaxValid": 283,
     "lintBuildSyntax": "success",
     "manualWorkflowDispatchOrRerun": false
   },
   "liveActivation": {
-    "authorized": false,
-    "secretNameReadinessConfirmed": false,
-    "externalRpcWorkReconciled": true,
-    "deploymentAuthorized": false,
-    "liveProductionTestingAuthorized": false,
-    "rule": "Static preparation is accepted. No promotion, merge, secret access, deployment, workflow dispatch, or live request is permitted until the corresponding explicit account-owner gate is satisfied."
+    "authorized": true,
+    "secretNameReadinessConfirmed": true,
+    "deploymentAuthorized": true,
+    "liveProductionTestingAuthorized": true,
+    "productionEnvironmentProtectionConfirmed": false,
+    "deploymentWorkflowDispatched": false,
+    "deploymentExecuted": false,
+    "liveProductionTestingExecuted": false,
+    "rule": "Deployment and bounded Ethereum/Base production testing are authorized. Execution must use the exact trusted release branch through the GitHub production environment. Deferred networks, secret disclosure, wallet signing and transaction broadcasting remain forbidden."
+  },
+  "externalGate": {
+    "state": "github-production-environment-and-manual-dispatch-required",
+    "accountOwnerActions": [
+      "create-or-confirm-environment-production",
+      "restrict-environment-to-orchestrator-round4-ci-base-v1",
+      "dispatch-test-and-deploy-curveyield-preflight-from-exact-release-branch"
+    ],
+    "connectorLimitations": [
+      "environment-configuration-action-unavailable",
+      "workflow-dispatch-action-unavailable"
+    ]
   },
   "legacyQueuedWorkerLanes": [
     {"workerId":"worker-0","issueNumber":128,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false},
@@ -70,9 +105,10 @@
     {"workerId":"worker-4","issueNumber":132,"state":"superseded-by-sole-orchestrator","workerRuntimeEligible":false}
   ],
   "nonOverlap": {
-    "round4CandidateBranchModified": false,
-    "currentPointersModified": false,
     "workerStatusesModified": false,
-    "liveWorkAuthorized": false
+    "workerRuntimeActivated": false,
+    "deferredNetworkScopeExpanded": false,
+    "secretValuesRetrievedOrRecorded": false,
+    "historicalOrFailedWorkflowRerun": false
   }
 }
