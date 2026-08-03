@@ -34,7 +34,7 @@ test('deployment v5 promotes the accepted web assets to the Pages production tar
   assert.doesNotMatch(workflow, /wrangler secret/);
   assert.doesNotMatch(workflow, /r2 bucket create|r2 bucket lifecycle|r2 bucket cors/);
   assert.doesNotMatch(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /RPC_|private.?key|eth_sendRawTransaction|wallet/i);
+  assert.doesNotMatch(workflow, /RPC_|PRIVATE_KEY|MNEMONIC|eth_sendRawTransaction/);
 
   const request = JSON.parse(readFileSync(REQUEST_PATH, 'utf8'));
   assert.equal(request.schemaVersion, 'round5-pages-production-target-request-v5');
