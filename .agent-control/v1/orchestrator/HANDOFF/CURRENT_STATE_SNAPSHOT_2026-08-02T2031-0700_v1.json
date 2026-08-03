@@ -1,0 +1,137 @@
+{
+  "protocolVersion": 1,
+  "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
+  "snapshotType": "replacement-orchestrator-handoff",
+  "snapshotCreatedAt": "2026-08-02T20:31:00-07:00",
+  "snapshotCreatedAtUtc": "2026-08-03T03:31:00Z",
+  "timezone": "America/Los_Angeles",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "continuityIssue": 63,
+  "round4MasterIssue": 119,
+  "round5ProductionIssue": 125,
+  "stopDirective": "The user ordered all work stopped. The predecessor stopped CI polling and made no further candidate, workflow, simulation, deployment, merge, secret, signing or transaction action after this snapshot point.",
+  "sourceOfTruth": "GitHub live state. Refresh every branch, PR, issue, mailbox, workflow run and file before acting.",
+  "primaryRound4Candidate": {
+    "pullRequest": 139,
+    "draft": true,
+    "mergeAuthorized": false,
+    "baseBranch": "orchestrator/round4-ci-base-v1",
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "headBranch": "orchestrator/round4-final-integration-takeover-v1",
+    "headShaAtStop": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+    "mergeableAtLastRefresh": true,
+    "purpose": "CI-only direct-orchestrator reconstruction of the Round 4 final static/inert candidate after worker chat runtimes became inaccessible.",
+    "includedIntake": {
+      "stage0ValidatorPaths": 27,
+      "acceptedSimulationSecurityPaths": 48,
+      "acceptedSubsystemPathsFromIssues120_121_123_124": 55,
+      "worker1MetadataCorrections": 1
+    },
+    "importantDiscrepancy": "PR #139 body still names an older candidate head. Its live head was 136d166fa87c50ab95b3083fa4317df85850d8ac at stop; refresh and correct the PR description only after confirming the live head."
+  },
+  "latestCandidateRepairs": [
+    {
+      "sha": "fff4dee6437ea5deefda5b99232aa1f4aa0c2938",
+      "path": "test/audit-round2-phases1-8-mutation.test.mjs",
+      "change": "Phase 5 missing-top-level-field mutations now expect invalid_keys, matching the exact top-level key-set validator."
+    },
+    {
+      "sha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+      "path": "test/audit-round2-phases1-8-mutation.test.mjs",
+      "change": "Corrected the stale Phase 5 canonical top-level field count from 15 to 14."
+    }
+  ],
+  "knownPredecessorFailures": [
+    {
+      "head": "244fcb72e06940a1d5fd754a697e7747b7a8f9ec",
+      "result": "459 of 460 tests passed",
+      "failure": "Phase 5 deletion mutation test expected missing_field although the exact key-set validator returns invalid_keys."
+    },
+    {
+      "head": "fff4dee6437ea5deefda5b99232aa1f4aa0c2938",
+      "result": "459 of 460 tests passed",
+      "failure": "Phase 5 deletion helper correctly processed 14 fields but the test asserted 15."
+    }
+  ],
+  "ciLastObservedWithoutFurtherPolling": {
+    "githubNativeSimulationCi": {
+      "runId": 30781904598,
+      "workflowName": "GitHub-Native Simulation CI",
+      "statusAtStop": "in_progress",
+      "observedSuccessfulSteps": [
+        "Install trusted dependencies",
+        "Run focused GitHub-native simulation tests",
+        "Run complete repository test suite: all 460 tests passed"
+      ],
+      "stepAtStop": "Run complete repository syntax validation",
+      "unobservedFinalSteps": [
+        "Run complete repository syntax validation final result",
+        "Check GitHub-native JavaScript syntax independently",
+        "workflow conclusion"
+      ]
+    },
+    "liveForkUpgradeCi": {
+      "runId": 30781904575,
+      "workflowName": "Live Fork Upgrade CI",
+      "statusAtStop": "in_progress",
+      "stepAtStop": "Install trusted dependencies",
+      "unobservedFinalSteps": [
+        "focused live-fork tests",
+        "complete repository tests",
+        "lint and build",
+        "changed JavaScript syntax validation",
+        "workflow conclusion"
+      ]
+    },
+    "manualDispatchOrRerunPerformed": false,
+    "overallExactHeadAcceptance": "NOT YET ESTABLISHED"
+  },
+  "legacyWorkerContinuity": {
+    "worker2Issue": 122,
+    "lastKnownSequencePublished": 9,
+    "lastKnownStatus": "ready",
+    "lastConsumedSequence": 8,
+    "activeSequence": null,
+    "sequence9Branch": "audit-round4/full-platform-integration-v2",
+    "sequence9StartingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "sequence9AcknowledgementObserved": false,
+    "note": "The direct-orchestrator PR #139 candidate superseded waiting for inaccessible worker chats. Refresh mailbox state, but do not overwrite worker-owned ACK or STATUS files."
+  },
+  "separateSimulationTracks": [
+    {
+      "pullRequest": 138,
+      "branch": "orchestrator/pr126-security-reconciliation-v1",
+      "lastKnownHead": "c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82",
+      "rule": "Separate security reconciliation. Do not modify, merge, dispatch or rerun from the Round 4 static candidate task."
+    },
+    {
+      "pullRequest": 136,
+      "branch": "fix/remote-mutable-fork-simulation-v1",
+      "lastKnownHead": "38166cd938c3b2cbbde9359418f40621c538e534",
+      "rule": "Separate persistent remote-Anvil work. Do not modify, merge, dispatch or run from the Round 4 static candidate task."
+    }
+  ],
+  "nextReplacementActions": [
+    "Fetch the live agent-control-plane-v1 head and read the full handoff package and PROTOCOL_v2.md.",
+    "Refresh PR #139 and verify its live head before trusting 136d166fa87c50ab95b3083fa4317df85850d8ac.",
+    "Refresh naturally triggered runs 30781904598 and 30781904575. Do not manually dispatch, rerun or trigger any workflow.",
+    "Do not claim exact-head acceptance until every required step and final workflow conclusion is observed on the same live candidate head.",
+    "If a run failed, inspect the first failing step and make only a minimal root-cause repair on orchestrator/round4-final-integration-takeover-v1.",
+    "If both required workflows are fully green, independently inspect exact changed paths, protected blobs, manifests and issue #119 acceptance evidence before any gate decision.",
+    "Correct PR #139's stale head text after refreshing the live head.",
+    "Update durable handoff/evidence before context exhaustion. Do not merge PR #139 or main without explicit authorization and completed exact-SHA acceptance."
+  ],
+  "standingRestrictions": [
+    "no manual workflow dispatch or rerun",
+    "no live simulation execution from this task",
+    "no production secret values or secret changes",
+    "no wallet keys, signing or transaction broadcasting",
+    "no deployment",
+    "no broad or unreviewed branch merges",
+    "no direct merge to main",
+    "no CurveYield Lite changes",
+    "no AWS",
+    "no edits to worker-owned ACK or STATUS files"
+  ]
+}
