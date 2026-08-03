@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const DEEP_ASSURANCE_RUNNER_RELEASE_FILES = Object.freeze([
   '.github/workflows/deep-assurance-github-request-v1.yml',
@@ -15,8 +16,12 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function repositoryPath(value) {
+  return value instanceof URL ? fileURLToPath(value) : value;
+}
+
 export async function buildDeepAssuranceRunnerManifest(repositoryRoot) {
-  const root = path.resolve(repositoryRoot);
+  const root = path.resolve(repositoryPath(repositoryRoot));
   const files = {};
   for (const file of DEEP_ASSURANCE_RUNNER_RELEASE_FILES) {
     const absolute = path.resolve(root, ...file.split('/'));
