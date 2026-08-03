@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "orchestrator-event-v3",
+  "eventId": "pages-v9-merged-live-result-pending-20260803T160038Z",
+  "recordedAt": "2026-08-03T16:00:38Z",
+  "actor": "orchestrator",
+  "repository": "CurveYield/contract-automation",
+  "round": 5,
+  "eventType": "production-pages-gate-pending-observation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "releaseBeforeSha": "70719851d8e18faf89e65027858b9f4f728d979d",
+  "releaseAfterSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+  "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "pullRequest": {
+    "number": 159,
+    "verifiedHeadSha": "918631333aed3d6f8ffe4b8896168be8e6d64e05",
+    "merged": true,
+    "mergeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "changedFileCount": 6,
+    "comments": 0,
+    "reviews": 0,
+    "reviewThreads": 0
+  },
+  "verification": {
+    "githubNative": {"run": 30829673867, "job": 91740180002, "conclusion": "success"},
+    "liveFork": {"run": 30829674142, "job": 91740180902, "conclusion": "success"},
+    "allRecordedStepsSucceeded": true,
+    "exactHeadMergeGuardSatisfied": true,
+    "releaseBranchMatchesMergeSha": true
+  },
+  "liveGate": {
+    "state": "pending-observation",
+    "accepted": false,
+    "rejected": false,
+    "resultCommentPresentOnIssue125": false,
+    "issueCheckpointCommentId": 5168755699,
+    "historicalOrFailedRerunAllowed": false
+  },
+  "decision": "Do not infer deployment execution or production acceptance. Observe the exact trusted push run and inspect every job step before accepting or rejecting the gate.",
+  "safety": {
+    "dependencyDownloadsPerformedByThisCheckpoint": false,
+    "assetUploadPerformedByThisCheckpoint": false,
+    "workerDeploymentPerformedByThisCheckpoint": false,
+    "secretMutationPerformedByThisCheckpoint": false,
+    "r2MutationPerformedByThisCheckpoint": false,
+    "rpcCallPerformedByThisCheckpoint": false,
+    "walletOrSigningPerformed": false,
+    "publicTransactionBroadcast": false,
+    "deferredNetworkTested": false,
+    "historicalOrFailedWorkflowRerun": false
+  }
+}
