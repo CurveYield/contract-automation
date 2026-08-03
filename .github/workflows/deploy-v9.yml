@@ -1,0 +1,335 @@
+name: Deploy CurveYield Pages API Production V9
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/DEPLOY_REQUEST_v9.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-api-production-v9
+  cancel-in-progress: false
+
+jobs:
+  deploy-pages:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '70719851d8e18faf89e65027858b9f4f728d979d' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      DEPLOY_REQUEST_PATH: .agent-control/v1/orchestrator/DEPLOY_REQUEST_v9.json
+      DEPLOY_REQUEST_ID: round5-pages-api-production-20260803T1320Z-v9
+      DEPLOY_EXPECTED_BEFORE_SHA: 70719851d8e18faf89e65027858b9f4f728d979d
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+      V9_TEMP_DIR: ${{ runner.temp }}/pages-v9
+
+    steps:
+      - name: Check out exact trusted source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time Pages API request v9
+        shell: bash
+        env:
+          DEPLOY_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_EVENT_BEFORE" = "$DEPLOY_EXPECTED_BEFORE_SHA"
+          test -f "$DEPLOY_REQUEST_PATH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          jq -e \
+            --arg request_id "$DEPLOY_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$DEPLOY_EXPECTED_BEFORE_SHA" \
+            --arg application_source "$APPLICATION_SOURCE_SHA" \
+            --arg pages_project "$PAGES_PROJECT_NAME" \
+            --arg pages_domain "$PAGES_DOMAIN" \
+            '
+              .schemaVersion == "round5-pages-api-production-request-v9" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .applicationSourceSha == $application_source and
+              .requestedAt == "2026-08-03T13:20:00Z" and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .pagesProject == $pages_project and
+              .pagesDomain == $pages_domain and
+              .activeNetworks == ["ethereum", "base"] and
+              .deferredNetworks == ["arbitrum", "fraxtal", "katana", "optimism", "polygon"] and
+              .supersededRuns == [30808377849, 30813209037, 30814064657, 30815289252, 30815965400] and
+              .failedOrHistoricalWorkflowRerunAllowed == false and
+              .dependencyInstallationAllowed == false and
+              .directPagesApiRequired == true and
+              .assetUploadAllowed == false and
+              .missingAssetFailsClosed == true and
+              .productionEnvironmentResponseRequired == true and
+              .productionAliasBindingRequired == true and
+              .repositoryCompilationAllowed == false and
+              .workerDeploymentAllowed == false and
+              .secretMutationAllowed == false and
+              .r2MutationAllowed == false and
+              .jobOrUploadSubmissionAllowed == false and
+              .rpcCallsAllowed == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .secretValuesIncluded == false
+            ' "$DEPLOY_REQUEST_PATH" >/dev/null
+          mkdir -p "$V9_TEMP_DIR"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify accepted application assets and build immutable manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPLICATION_SOURCE_SHA^{commit}"
+          git diff --quiet "$APPLICATION_SOURCE_SHA" -- apps/web/public
+          test -s apps/web/public/index.html
+          test -s apps/web/public/app.js
+          python3 - <<'PY'
+          import re
+          html = open('apps/web/public/index.html', encoding='utf-8').read()
+          app = open('apps/web/public/app.js', encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain option scope')
+          selected = [value for value, attributes in options if re.search(r'\bselected\b', attributes)]
+          if selected != ['base']:
+              raise SystemExit('Base is not the sole default')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+          python3 scripts/pages_asset_manifest_v1.py \
+            --root apps/web/public \
+            --manifest "$V9_TEMP_DIR/manifest.json" \
+            --hashes "$V9_TEMP_DIR/hashes.json" \
+            --metadata "$V9_TEMP_DIR/metadata.json"
+          jq -e 'length == 9' "$V9_TEMP_DIR/manifest.json" >/dev/null
+          jq -e '.fileCount == 9 and .uniqueHashCount > 0 and (.files | length == 9)' "$V9_TEMP_DIR/metadata.json" >/dev/null
+          echo "SOURCE_AND_MANIFEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify configured Pages production branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_response="$V9_TEMP_DIR/project-response.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$project_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg release_branch "$RELEASE_BRANCH" \
+            '.success == true and .result.production_branch == $release_branch' \
+            "$project_response" >/dev/null
+          echo "PAGES_PRODUCTION_BRANCH_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Create and verify API-bound production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          upload_token_response="$V9_TEMP_DIR/upload-token-response.json"
+          missing_response="$V9_TEMP_DIR/missing-response.json"
+          deployment_response="$V9_TEMP_DIR/deployment-response.json"
+          deployment_poll="$V9_TEMP_DIR/deployment-poll.json"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$upload_token_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/upload-token"
+          jq -e '.success == true and (.result.jwt | type == "string") and (.result.jwt | length > 0)' \
+            "$upload_token_response" >/dev/null
+          pages_upload_token="$(jq -r '.result.jwt' "$upload_token_response")"
+          echo "::add-mask::$pages_upload_token"
+
+          jq -n --slurpfile hashes "$V9_TEMP_DIR/hashes.json" '{hashes: $hashes[0]}' > "$V9_TEMP_DIR/check-missing-request.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --request POST \
+            --header "Authorization: Bearer $pages_upload_token" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$V9_TEMP_DIR/check-missing-request.json" \
+            --output "$missing_response" \
+            "$CLOUDFLARE_API_BASE/pages/assets/check-missing"
+          jq -e '.success == true and (.result | type == "array")' "$missing_response" >/dev/null
+          missing_asset_count="$(jq -r '.result | length' "$missing_response")"
+          test "$missing_asset_count" = "0"
+          echo "PAGES_ASSET_CACHE_CHECK=success" >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 60 \
+            --request POST \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --form-string "manifest=$(cat "$V9_TEMP_DIR/manifest.json")" \
+            --form-string "commit_hash=$APPLICATION_SOURCE_SHA" \
+            --form-string 'commit_message=Round 5 dependency-free Pages API production deployment v9' \
+            --form-string 'commit_dirty=false' \
+            --output "$deployment_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments"
+
+          jq -e \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg application_source "$APPLICATION_SOURCE_SHA" \
+            '
+              .success == true and
+              (.result.id | type == "string") and
+              (.result.url | type == "string") and
+              .result.environment == "production" and
+              .result.deployment_trigger.metadata.branch == $release_branch and
+              .result.deployment_trigger.metadata.commit_hash == $application_source
+            ' "$deployment_response" >/dev/null
+
+          deployment_id="$(jq -r '.result.id' "$deployment_response")"
+          test -n "$deployment_id"
+          deployment_ready=false
+          for attempt in 1 2 3 4 5 6; do
+            curl --fail --silent --show-error --max-time 20 \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --output "$deployment_poll" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+            if jq -e \
+              --arg release_branch "$RELEASE_BRANCH" \
+              --arg application_source "$APPLICATION_SOURCE_SHA" \
+              --arg domain "$PAGES_DOMAIN" \
+              '
+                .success == true and
+                .result.environment == "production" and
+                .result.deployment_trigger.metadata.branch == $release_branch and
+                .result.deployment_trigger.metadata.commit_hash == $application_source and
+                .result.latest_stage.status == "success" and
+                (.result.aliases | type == "array") and
+                any(.result.aliases[]?; . == $domain or . == ("https://" + $domain))
+              ' "$deployment_poll" >/dev/null
+            then
+              deployment_ready=true
+              break
+            fi
+            sleep 10
+          done
+          test "$deployment_ready" = true
+          echo "PAGES_API_DEPLOYMENT_CHECK=success" >> "$GITHUB_ENV"
+          echo "PAGES_DEPLOYMENT_SHORT_ID=${deployment_id:0:8}" >> "$GITHUB_ENV"
+
+      - name: Verify production custom domain serves API-bound production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=false
+          for attempt in 1 2 3 4 5 6; do
+            html_file="$V9_TEMP_DIR/production-index-$attempt.html"
+            app_file="$V9_TEMP_DIR/production-app-$attempt.js"
+            nonce="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}"
+            if curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$html_file" \
+              "https://$PAGES_DOMAIN/?acceptance=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$app_file" \
+              "https://$PAGES_DOMAIN/app.js?acceptance=$nonce" && \
+               python3 - "$html_file" "$app_file" <<'PY'
+          import re
+          import sys
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain option scope')
+          selected = [value for value, attributes in options if re.search(r'\bselected\b', attributes)]
+          if selected != ['base']:
+              raise SystemExit('Base is not the sole default')
+          for deferred in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon'):
+              if deferred in selector.lower():
+                  raise SystemExit('deferred network exposed')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+            then
+              success=true
+              break
+            fi
+            sleep 10
+          done
+          test "$success" = true
+          echo "PRODUCTION_DOMAIN_UI_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Clean transient Pages API files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$V9_TEMP_DIR"
+
+      - name: Report Production Pages API deployment v9 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          comment_file="$(mktemp)"
+          trap 'rm -f "$comment_file"' EXIT
+          cat > "$comment_file" <<EOF
+          ## Production Pages API deployment v9 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$DEPLOY_JOB_STATUS\`
+          - deployment source SHA: \`$GITHUB_SHA\`
+          - application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - release branch: \`$RELEASE_BRANCH\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - source and immutable manifest: \`${SOURCE_AND_MANIFEST_CHECK:-not-run}\`
+          - configured Pages production branch: \`${PAGES_PRODUCTION_BRANCH_CHECK:-not-run}\`
+          - all manifest assets already present: \`${PAGES_ASSET_CACHE_CHECK:-not-run}\`
+          - API deployment production binding: \`${PAGES_API_DEPLOYMENT_CHECK:-not-run}\`
+          - deployment short ID: \`${PAGES_DEPLOYMENT_SHORT_ID:-not-recorded}\`
+          - production custom-domain UI: \`${PRODUCTION_DOMAIN_UI_CHECK:-not-run}\`
+          - dependency installation performed: \`false\`
+          - asset upload performed: \`false\`
+          - API Worker redeployed: \`false\`
+          - secret mutation performed: \`false\`
+          - R2 mutation performed: \`false\`
+          - job or upload submission performed: \`false\`
+          - network endpoint call performed: \`false\`
+          - signing or transaction broadcasting performed: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          - secret values or authorization headers recorded: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
