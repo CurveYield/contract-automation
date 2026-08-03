@@ -2,10 +2,10 @@
   "protocolVersion": 1,
   "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "external-github-environment-and-dispatch-gate",
+  "state": "external-cloudflare-api-token-replacement-gate",
   "operatingMode": "sole-orchestrator",
-  "lastPollAt": "2026-08-03T08:18:00Z",
-  "lastProcessedEvent": "round5-trusted-deployment-preflight-promoted-20260803T081800Z",
+  "lastPollAt": "2026-08-03T09:53:31Z",
+  "lastProcessedEvent": "cloudflare-api-token-invalid-gate-20260803T095331Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "round": 5,
@@ -13,55 +13,17 @@
   "round5ProductionIssue": 125,
   "authority": {
     "accountOwnerProceedAuthorized": true,
-    "promotionAuthorized": true,
-    "credentialNameReadinessAuthorized": true,
     "deploymentAuthorized": true,
     "trustedLiveProductionTestingAuthorized": true,
     "activeNetworks": ["ethereum", "base"]
   },
-  "promotedCandidates": [
-    {
-      "pullRequest": 139,
-      "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
-      "mergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c"
-    },
-    {
-      "pullRequest": 140,
-      "acceptedHeadSha": "8ef9afcb6496cfdcecf864c8fdd72156abe7a5c6",
-      "mergeSha": "6e2ec3d4ac3b8a454ecf605195cd8a43049de6ca"
-    },
-    {
-      "pullRequest": 141,
-      "acceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
-      "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c"
-    }
-  ],
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
+    "currentSha": "4eeeb50ddfbc4c16d5694a8a5bd96a1b24b9856b",
     "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
     "round5StaticPackageDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3"
   },
-  "trustedDeploymentPreflight": {
-    "pullRequest": 141,
-    "exactAcceptedHeadSha": "dddbe801963134a32f419fa8bf95b10e67e2057b",
-    "mergeSha": "819fa7e90cebc4287eebda8e9ecbd0486522d33c",
-    "receiptPath": "docs/audit/round5/trusted-deployment-preflight-receipt-v1.json",
-    "status": "ACCEPT",
-    "exactHeadCi": {
-      "githubNativeSimulationRun": 30796659857,
-      "githubNativeSimulationJob": 91631655388,
-      "liveForkUpgradeRun": 30796659737,
-      "liveForkUpgradeJob": 91631654571,
-      "repositoryTestsPassed": 470,
-      "repositoryTestsFailed": 0,
-      "focusedGitHubNativeTestsPassed": 49,
-      "focusedLiveForkTestsPassed": 14,
-      "javascriptModulesSyntaxValid": 283,
-      "lintBuildSyntax": "success",
-      "manualDispatchOrRerun": false
-    }
-  },
+  "promotedPullRequests": [139, 140, 141, 142, 143, 144, 145],
   "networkScope": {
     "active": [
       {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
@@ -70,30 +32,37 @@
     "deferred": ["arbitrum","fraxtal","katana","optimism","polygon"],
     "deferredNetworkTestingAllowed": false
   },
-  "credentialReadiness": {
-    "accountOwnerConfirmedConfigured": true,
-    "activeRepositorySecretNameCount": 11,
-    "repositoryVariableNameCount": 3,
-    "namesOnly": true,
-    "secretValuesReadOrRecorded": false
+  "deploymentAttempt": {
+    "run": 30800918581,
+    "job": 91645019455,
+    "conclusion": "failure",
+    "failureStep": "Create R2 bucket when missing",
+    "repositoryTestsPassed": 471,
+    "workerOrPagesMutationExecuted": false,
+    "rerunPerformed": false
+  },
+  "cloudflareDiagnosis": {
+    "tokenVerification": {"httpStatus":401,"success":false,"numericErrorCodes":[1000],"status":"unknown"},
+    "accountScope": {"httpStatus":403,"success":false,"numericErrorCodes":[9109]},
+    "r2BucketAccess": {"httpStatus":403,"success":false,"numericErrorCodes":[10000]},
+    "derivedDiagnosis": "token-invalid-disabled-or-expired",
+    "cloudflareMutationPerformed": false
   },
   "executionState": {
-    "productionEnvironmentProtectionConfirmed": false,
-    "deploymentWorkflowDispatched": false,
-    "cloudflareDeploymentExecuted": false,
+    "productionEnvironmentConfirmed": true,
+    "deploymentWorkflowDispatched": true,
+    "cloudflareDeploymentCompleted": false,
     "liveProductionTestingExecuted": false,
     "trustedV27RegressionExecuted": false,
     "finalProductionAcceptance": "PENDING"
   },
   "pendingActions": [
-    "Account owner creates or confirms the GitHub environment named production.",
-    "Account owner restricts production environment deployment branches to orchestrator/round4-ci-base-v1.",
-    "Account owner manually dispatches Test and Deploy CurveYield Preflight from orchestrator/round4-ci-base-v1.",
-    "Orchestrator inspects the resulting trusted workflow run and continues bounded live production acceptance."
+    "Account owner replaces repository secret CLOUDFLARE_API_TOKEN with a newly generated valid Cloudflare API token scoped to the CurveYield account and required deployment permissions.",
+    "Orchestrator verifies the replacement through a new exact-parent GET-only diagnostic.",
+    "Orchestrator creates a new reviewed one-time deployment request after verification."
   ],
   "hardExternalGates": [
-    "GitHub environment configuration is unavailable through the connected interface",
-    "workflow dispatch is unavailable through the connected interface"
+    "Cloudflare API token creation and repository-secret replacement require account-owner dashboard access."
   ],
   "safety": {
     "secretValuesReadOrExposed": false,
@@ -101,12 +70,11 @@
     "signingPerformed": false,
     "publicTransactionsBroadcast": false,
     "deferredNetworksTested": false,
-    "deploymentExecuted": false,
     "manualHistoricalOrFailedWorkflowRerun": false,
     "workerOwnedAckOrStatusModified": false
   },
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0118-0700_v1.json",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0253-0700_v1.json",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "updatedAt": "2026-08-03T08:18:00Z"
+  "updatedAt": "2026-08-03T09:53:31Z"
 }
