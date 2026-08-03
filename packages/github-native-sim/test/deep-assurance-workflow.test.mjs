@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+import { buildDeepAssuranceRunnerManifest } from '../src/deep-assurance-runner-manifest.mjs';
+
 const workflowUrl = new URL('../../../.github/workflows/deep-assurance-github-request-v1.yml', import.meta.url);
 const manifestUrl = new URL('../../../github-native-sim/deep-assurance-runner-release-v1.json', import.meta.url);
+const repositoryRoot = new URL('../../../', import.meta.url);
 
 async function text(url) {
   return readFile(url, 'utf8');
@@ -57,14 +60,13 @@ test('workflow uses immutable action revisions and always uploads normalized evi
   assert.match(workflow, /retention-days: 30/);
 });
 
-test('runner release manifest binds the trusted bridge source surface', async () => {
-  const manifest = JSON.parse(await text(manifestUrl));
-  assert.equal(manifest.schemaVersion, 'deep-assurance-runner-release-v1');
-  assert.equal(manifest.releaseVersion, 'deep-assurance-github-bridge-v1');
-  assert.equal(manifest.baseContractAutomationCommit, 'ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8');
-  assert.equal(Object.keys(manifest.files).length >= 5, true);
-  for (const [file, digest] of Object.entries(manifest.files)) {
-    assert.equal(file.startsWith('/'), false);
-    assert.match(digest, /^[0-9a-f]{64}$/);
+test('runner release manifest binds the exact trusted bridge bytes', async () => {
+  const expected = await buildDeepAssuranceRunnerManifest(repositoryRoot);
+  let actual;
+  try {
+    actual = JSON.parse(await text(manifestUrl));
+  } catch (cause) {
+    assert.fail(`runner release manifest is missing or invalid; expected:\n${JSON.stringify(expected, null, 2)}\n${cause?.message ?? String(cause)}`);
   }
+  assert.deepEqual(actual, expected);
 });
