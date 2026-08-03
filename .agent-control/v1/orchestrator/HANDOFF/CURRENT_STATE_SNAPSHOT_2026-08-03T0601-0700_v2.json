@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v2",
+  "recordedAt": "2026-08-03T06:01:21-07:00",
+  "recordedAtUtc": "2026-08-03T13:01:21Z",
+  "repository": "CurveYield/contract-automation",
+  "timezone": "America/Los_Angeles",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "controlPlaneParentSha": "db9e02d8ac4f6e2380a3c79ea048f8f5a6bbc078",
+  "operatingMode": "sole-orchestrator",
+  "issues": {
+    "continuity": 63,
+    "round4Master": 119,
+    "round5ProductionAcceptance": 125
+  },
+  "authority": {
+    "accountOwnerProceedAuthorized": true,
+    "deploymentAuthorized": true,
+    "trustedLiveProductionTestingAuthorized": true,
+    "activeNetworks": ["ethereum", "base"],
+    "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
+    "dependencyDownloadsAllowed": false,
+    "repositoryCompilationAllowedForDeploymentCorrection": false,
+    "workerRuntimeActivationAllowed": false,
+    "workerOwnedAckOrStatusEditsAllowed": false
+  },
+  "trustedRelease": {
+    "branch": "orchestrator/round4-ci-base-v1",
+    "currentHead": "3c37394f814c40b1fc6fff134d2de698635bd185",
+    "currentHeadSourcePullRequest": 156,
+    "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "acceptedApplicationSourcePullRequest": 150
+  },
+  "productionBinding": {
+    "apiWorker": {
+      "lastVerifiedDeploymentRun": 30808377849,
+      "job": 91668946456,
+      "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "deploymentConclusion": "success",
+      "healthVerifiedDuringDeployment": true
+    },
+    "pagesCustomDomain": {
+      "domain": "preflight.curveyield.online",
+      "acceptedApplicationSourceObserved": false,
+      "observedState": "stale-seven-network-selector",
+      "exactServingSourceSha": null,
+      "currentSourceSmokeAccepted": false
+    }
+  },
+  "acceptedHistoricalEvidence": {
+    "deploymentV3": {
+      "run": 30806403201,
+      "job": 91662681725,
+      "sourceSha": "fbe27b824da8084970915b31f2051679abe39cfc",
+      "conclusion": "success"
+    },
+    "smokeV1": {
+      "run": 30807373463,
+      "sourceSha": "fbe27b824da8084970915b31f2051679abe39cfc",
+      "conclusion": "success",
+      "currentSourceStatus": "superseded-by-pr150-application-change"
+    },
+    "deploymentV4": {
+      "run": 30808377849,
+      "job": 91668946456,
+      "sourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "conclusion": "success",
+      "allRecordedStepsSucceeded": true,
+      "laterPagesObservation": "custom-domain-did-not-serve-pr150-ui"
+    }
+  },
+  "failedRunsDoNotRerun": [
+    {
+      "run": 30800918581,
+      "job": 91645019455,
+      "reason": "initial deployment failure before Worker or Pages mutation"
+    },
+    {
+      "run": 30805768611,
+      "reason": "invalid S3-style R2 lifecycle schema; superseded by accepted native-schema repair"
+    },
+    {
+      "run": 30813209037,
+      "reason": "current-source smoke v2 failed on stale production Pages selector after earlier read-only checks passed"
+    },
+    {
+      "run": 30814064657,
+      "job": 91687395097,
+      "reason": "Pages v5 deployed detached HEAD preview; production custom domain remained stale"
+    },
+    {
+      "run": 30815289252,
+      "job": 91691417740,
+      "reason": "Pages v6 deployment command returned success but custom-domain UI failed six bounded checks; workflow also violated no-dependency-download contract"
+    }
+  ],
+  "latestRejectedGate": {
+    "pullRequest": 156,
+    "mergeSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
+    "workflowRun": 30815289252,
+    "job": 91691417740,
+    "jobConclusion": "failure",
+    "stepConclusions": [
+      {"step": "Set up job", "conclusion": "success"},
+      {"step": "Check out exact trusted source", "conclusion": "success"},
+      {"step": "Verify one-time explicit production request v6", "conclusion": "success"},
+      {"step": "Verify committed static Pages assets", "conclusion": "success"},
+      {"step": "Verify configured Pages production branch", "conclusion": "success"},
+      {"step": "Deploy static assets with explicit production identity", "conclusion": "success"},
+      {"step": "Verify production custom domain serves explicit production deployment", "conclusion": "failure"},
+      {"step": "Report Production Pages explicit deployment v6 result", "conclusion": "success"},
+      {"step": "Post Check out exact trusted source", "conclusion": "success"},
+      {"step": "Complete job", "conclusion": "success"}
+    ],
+    "deploymentUrlShortId": "1e0bf5b9",
+    "customDomainAccepted": false,
+    "requestDeclaredDependencyInstallationAllowed": false,
+    "workflowDownloadedWranglerAtRuntime": true,
+    "independentRejectionReason": "npm exec --yes --package=wrangler@4.116.0 contradicted the request and account-owner no-download instruction",
+    "rootCauseFinding": "missing application commit object only affected caught commit-message discovery; it is not established as the production-routing cause"
+  },
+  "activeCandidate": {
+    "pullRequest": 157,
+    "branch": "orchestrator/round5-pages-commit-object-v7",
+    "baseSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
+    "lastReviewedHead": "0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
+    "state": "draft-blocked",
+    "blockingCommentId": 5166610889,
+    "mergeAllowed": false,
+    "liveExecutionAllowed": false,
+    "blockers": [
+      "workflow downloads Wrangler through npm exec",
+      "request omits the prior dependencyInstallationAllowed false contract",
+      "full-history repair does not prove Cloudflare production classification",
+      "workflow does not require deployment response environment production or exact production alias"
+    ]
+  },
+  "nextAction": {
+    "description": "Correct PR 157 or replace it with a fresh exact-parent candidate that deploys through the Cloudflare Pages API without dependency downloads or asset uploads, validates production classification and exact custom-domain binding, then captures natural RED and exact-head GREEN evidence before any merge.",
+    "mustNot": [
+      "merge PR 157 at reviewed head 0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
+      "run deployment-v7 from the reviewed unsafe workflow",
+      "rerun any failed or historical workflow",
+      "download dependencies",
+      "compile the repository for the deployment correction",
+      "upload assets when any expected asset is missing",
+      "test deferred networks",
+      "mutate API Worker, R2, secrets, jobs or uploads",
+      "sign or broadcast transactions"
+    ]
+  },
+  "remainingRound5Stages": [
+    "fresh current-source production smoke acceptance after Pages correction",
+    "API identity separation and bounded negative cases",
+    "bounded API R2 GitHub compile-only workflow and cleanup",
+    "bounded GitHub bridge and Direct testing",
+    "trusted Ethereum and Base V27 live-fork regression",
+    "web operator desktop tablet mobile accessibility acceptance",
+    "observability redaction retention and recovery",
+    "final production acceptance record"
+  ],
+  "safetyObservation": {
+    "secretValuesRecorded": false,
+    "rawRpcUrlsRecorded": false,
+    "authorizationHeadersRecorded": false,
+    "walletKeysUsed": false,
+    "signingPerformed": false,
+    "publicTransactionsBroadcast": false,
+    "deferredNetworksTested": false,
+    "historicalOrFailedWorkflowRerun": false,
+    "workerOwnedAckOrStatusModified": false
+  }
+}
