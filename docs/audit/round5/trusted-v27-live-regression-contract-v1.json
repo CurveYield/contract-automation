@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "round5-trusted-v27-live-regression-contract-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "purpose": "Bind one trusted full V27 live-fork regression to the promoted exact release SHA after explicit authorization.",
+  "trustedSource": {
+    "preparedSourceSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "promotedExactShaRequired": true,
+    "sourceTreeDigestRequired": true,
+    "trustedWorkflowSourceRequired": true,
+    "immutableThirdPartyActionsRequired": true
+  },
+  "dispatchPrerequisites": [
+    "promotion-authorized-and-complete",
+    "promoted-exact-sha-independently-confirmed",
+    "credential-name-readiness-authorized-and-confirmed-without-values",
+    "trusted-workflow-permissions-and-environment-approved",
+    "read-only-rpc-policy-and-seven-network-bindings-confirmed",
+    "rollback-target-and-observability-contract-ready",
+    "live-production-testing-explicitly-authorized"
+  ],
+  "workflowDispatchAuthorized": false,
+  "pullRequestEventAllowed": false,
+  "secretBearingPullRequestExecutionAllowed": false,
+  "publicChainBroadcastsRequired": 0,
+  "transactionSigningAllowed": false,
+  "acceptanceChecks": [
+    "workflow-run-head-sha-equals-promoted-release-sha",
+    "artifact-downloaded-and-digest-independently-matches",
+    "fork-block-number-and-hash-match-recorded-identity",
+    "wrapper-exit-code-zero",
+    "validated-success-true",
+    "all-primary-and-supplemental-assertions-pass",
+    "expected-reverts-classified",
+    "rpc-failure-retry-and-quarantine-counts-recorded",
+    "lifecycle-and-state-changing-local-transaction-counts-recorded",
+    "zero-public-chain-broadcasts",
+    "no-provider-location-or-credential-fragment-in-evidence"
+  ],
+  "requiredEvidence": [
+    "workflow-run-id",
+    "promoted-exact-sha",
+    "workflow-source-sha",
+    "artifact-id-and-name",
+    "artifact-digest-match",
+    "fork-identity-match",
+    "wrapper-exit-code",
+    "validated-success-field",
+    "assertion-counts",
+    "supplemental-test-counts",
+    "rpc-health-counts",
+    "lifecycle-and-local-transaction-counts",
+    "zero-public-broadcast-attestation",
+    "redaction-scan-result"
+  ],
+  "rejectConditions": [
+    "pull-request-or-untrusted-source-event",
+    "run-head-sha-mismatch",
+    "artifact-digest-mismatch",
+    "fork-identity-mismatch",
+    "failed-or-missing-assertion",
+    "unclassified-rpc-failure",
+    "public-chain-broadcast",
+    "signing-or-account-method-availability",
+    "credential-or-provider-location-disclosure",
+    "missing-rollback-readiness"
+  ],
+  "priorFunctionalEvidence": {
+    "sourcePr126ArtifactAccepted": true,
+    "priorArtifactDigestSha256": "ec4e17b10a45af7df6b62ab77b2be82058c21d11b4c914ae928b63fe9502ebbd",
+    "priorAssertionsPassed": 85,
+    "priorAssertionsTotal": 85,
+    "priorPublicChainBroadcasts": 0,
+    "note": "Prior evidence remains functional history only; Round 5 requires a new trusted regression on the promoted repaired release SHA."
+  },
+  "acceptanceState": "not-run-not-authorized"
+}
