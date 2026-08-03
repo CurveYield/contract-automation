@@ -1,6 +1,6 @@
 # Replacement Orchestrator — Read First v1
 
-This is the durable entrypoint for a fresh orchestrator chat replacing the 2026-08-02 Round 4 activation agent.
+This is the durable entrypoint for a fresh orchestrator replacing the Round 4 final-integration takeover agent stopped by the user on 2026-08-02 at 20:31 America/Los_Angeles.
 
 ## Identity
 
@@ -16,89 +16,87 @@ Do not rely on ChatGPT Project files, uploaded ZIPs, hidden chat context, local 
 
 ## Mandatory startup order
 
-1. Read `.agent-control/v1/PROTOCOL_v2.md` in full. `PROTOCOL_v1.md` is historical migration state and contains obsolete Worker 4/Scheduled Task rules.
+1. Read `.agent-control/v1/PROTOCOL_v2.md` in full.
 2. Read `.agent-control/v1/GLOBAL_STATE_v1.json`.
-3. Read this folder's `CURRENT_STATE_SNAPSHOT_v1.json`; refresh every live record before acting.
-4. Read `.agent-control/v1/orchestrator/STATUS_v1.json` and the newest orchestrator events.
-5. Read every Worker 0–4 `CURRENT_v1.json` and `STATUS_v1.json`.
-6. Read issues #119–#125 and all active worker issue comments.
-7. Resolve each active branch head and assignment blob independently.
-8. Post one startup confirmation to issue #63 with refreshed state and discrepancies.
+3. Read `CURRENT_STATE_SNAPSHOT_2026-08-02T2031-0700_v1.json` in this folder.
+4. Read every other file in this handoff folder, especially `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` and `CONTEXT_EXHAUSTION_CHECKLIST_v1.md`.
+5. Read `.agent-control/v1/orchestrator/STATUS_v1.json` and newest orchestrator events.
+6. Refresh issues #63 and #119–#125, PR #139, every live mailbox record needed to resolve discrepancies and every exact branch/workflow reference in the timestamped snapshot.
+7. Fetch the live control-plane head, PR #139 base/head and naturally triggered workflow conclusions before acting.
 
-Scheduled Tasks are not required in the current manual-original-chat workflow. Do not create duplicate tasks or claim background polling. The user may manually wake original worker chats, which then consume GitHub mailboxes.
+The older `CURRENT_STATE_SNAPSHOT_v1.json` describes the initial worker activation phase and is historical. `PROTOCOL_v1.md` is also historical migration evidence. Live validated GitHub state and protocol v2 win on conflict.
 
-## Current Round 4 assignments
+## User stop directive
 
-| Worker | Sequence | Issue | Branch | Starting SHA |
-|---|---:|---:|---|---|
-| Worker 0 | 6 | #120 | `audit-round4/review-integration-spine-v1` | `5914b03382422ea714346625a601b5dbda3aa0cd` |
-| Worker 1 | 5 | #121 | `audit-round4/review-phase78-api-compat-v1` | `4d7513b7eabd2e2217b1e3fed43d999df828a93f` |
-| Worker 2 | 8 | #122 | `audit-round4/full-platform-integration-v1` | `5914b03382422ea714346625a601b5dbda3aa0cd` |
-| Worker 3 | 8 | #123 | `audit-round4/review-api-auth-security-v1` | `6d877e2d87f1a91380a6c5d1efc47550527d8729` |
-| Worker 4 | 3 | #124 | `audit-round4/review-web-direct-e2e-v1` | `fdc55d684be2cd5053c1e617aa09399fdfcf60c2` |
+The user ordered all work stopped. The predecessor immediately stopped CI polling and did not dispatch, rerun or trigger workflows. It performed only these handoff writes on the control-plane branch.
 
-All five branches and mailbox pointers were published. Worker 2 may perform Stage 0 preparation only until #120, #121, #123 and #124 publish Stage A accepted/repaired exact heads.
+The replacement must refresh live state before continuing. Do not interpret the last observed in-progress CI state as final acceptance.
 
-## Reconciled Round 3 inputs
+## Primary Round 4 candidate
 
-- Worker 0: final documentation head `4d7513b7eabd2e2217b1e3fed43d999df828a93f`; repaired core `dc77c51eb02d6f07b6ce9d582d8629b9c9932788`; `ACCEPT WITH REPAIR`; report comment `5156777973`. Worker 1 owns the six bounded unfinished service/report/publication compatibility gaps.
-- Worker 1: final head `6d877e2d87f1a91380a6c5d1efc47550527d8729`; implementation `f02840ee3fc0c59759c5034dc5c40e0c154bdab5`; `ACCEPT`; report `5154958425`.
-- Worker 2: final head `5914b03382422ea714346625a601b5dbda3aa0cd`; `ACCEPT WITH DOCUMENTED REPAIR`; report `5156779012`. Its embedded Phase 7–8 source is stale/superseded and must never be imported.
-- Worker 3: final documentation head `1672b31a71674dd78eddc3bf5fc2fbe39d4ae07d`; verified code/workflow candidate `46873f805199e2212af3902c8525c0f3e4501721`; `ACCEPT`; report `5156758072`.
-- Worker 4: final head `fdc55d684be2cd5053c1e617aa09399fdfcf60c2`; implementation `7243b26a23985efe866e4b3ea98c5d1189aca4c4`; `ACCEPT`; report `5154997216`.
+- Draft PR: #139 — `Round 4 final static integration candidate`
+- Base branch: `orchestrator/round4-ci-base-v1`
+- Frozen base SHA: `bbb4cac794865f84b65ee78a2fc78d391421c759`
+- Head branch: `orchestrator/round4-final-integration-takeover-v1`
+- Last observed head SHA: `136d166fa87c50ab95b3083fa4317df85850d8ac`
+- Last observed mergeability: mergeable
+- Merge authorization: none
 
-## First decision rule
+PR #139's body still names an older candidate head. Refresh the live head first and treat that stale text as an explicit discrepancy.
 
-Never infer completion from a branch commit. Completion requires:
+The direct-takeover candidate contains the 27-path hardened Stage 0 validator package, 48 accepted simulation/security paths, 55 disjoint accepted subsystem paths from issues #120, #121, #123 and #124, and one bounded Worker 1 metadata correction. Verify exact live changed paths rather than trusting this summary.
 
-- worker-owned completed status;
-- exact final SHA equal to branch head;
-- durable issue report comment ID/URL;
-- complete path/blob/public-interface manifest;
-- independent review of the exact SHA and changed paths.
+## Latest exact-head repairs
 
-A one-time orchestrator reconciliation published the Round 4 pointers and moved stale status records to the new active assignments. Future orchestrators must not write worker statuses; workers own all subsequent transitions.
+- `244fcb72e06940a1d5fd754a697e7747b7a8f9ec`: 459/460 tests. Phase 5 top-level deletion mutation expected `missing_field`; the exact key-set validator returns `invalid_keys`.
+- `fff4dee6437ea5deefda5b99232aa1f4aa0c2938`: changed the Phase 5 deletion expectation to `invalid_keys`; then 459/460 tests because the canonical result has 14 top-level fields but the test asserted 15.
+- `136d166fa87c50ab95b3083fa4317df85850d8ac`: corrected the Phase 5 field count to 14.
 
-## Round 4 flow
+## CI state at the stop
 
-### Stage A
+No manual workflow dispatch or rerun occurred.
 
-- Worker 0 reviews Worker 2's Phase 1–6/integration spine.
-- Worker 1 reviews/repairs Worker 0's Phase 7–8 service/report compatibility.
-- Worker 3 reviews Worker 1's API/auth security.
-- Worker 4 reviews Worker 3 GitHub Direct plus UI/public compatibility.
-- Worker 2 prepares registries/tests but cannot intake subsystem production paths yet.
+- GitHub-Native Simulation CI run `30781904598`: focused tests passed; all 460 repository tests passed; complete repository syntax validation was running. Final syntax checks and workflow conclusion were not observed.
+- Live Fork Upgrade CI run `30781904575`: in progress at dependency installation. Focused tests, full tests, lint/build, syntax and final conclusion were not observed.
 
-Each reviewer must publish exact source/reviewed SHAs, RED evidence, minimal repairs, full path/blob manifest, verdict and deterministic Worker 2 intake instructions.
+Refresh these naturally triggered runs. Do not manually dispatch, rerun or trigger any workflow.
 
-### Stage B
+## Separate workstreams — frozen for this task
 
-Worker 2 assembles exact accepted/repaired owned paths in the issue #119 order and publishes one frozen SHA. Workers 0, 1, 3 and 4 independently accept or reject that same SHA. Any new integration commit invalidates stale acceptances.
+- PR #138 / `orchestrator/pr126-security-reconciliation-v1`, last known head `c4dd5865f3e5e1d00db96b7d4ccc716ecb41cd82`.
+- PR #136 / `fix/remote-mutable-fork-simulation-v1`, last known head `38166cd938c3b2cbbde9359418f40621c538e534`.
 
-## Frozen addon
+Do not modify, merge, dispatch, rerun or execute either workstream from the Round 4 static-candidate task. Do not run live simulations.
 
-Do not repair or refactor the GitHub-native contract simulation/App/RPC addon during this handoff. It is included only from approved `main` byte-for-byte. The separate addon repair remains paused until the user explicitly resumes it.
+## Worker/mailbox continuity
+
+Worker 2 sequence 9 was last known published on issue #122 for `audit-round4/full-platform-integration-v2` from `bbb4cac794865f84b65ee78a2fc78d391421c759`. Last known status was `ready`, with sequence 8 consumed, no active sequence and no sequence 9 ACK observed before direct takeover.
+
+Refresh mailbox state but never write worker-owned ACK or STATUS files. PR #139 is the primary direct-takeover candidate unless live GitHub state proves otherwise.
+
+## Immediate replacement priorities
+
+1. Fetch the exact live control-plane head.
+2. Refresh PR #139 and verify whether its head remains `136d166fa87c50ab95b3083fa4317df85850d8ac`.
+3. Refresh runs `30781904598` and `30781904575` without dispatching or rerunning anything.
+4. If a run failed, inspect the first failing step and apply only a minimal root-cause repair to the PR #139 head branch.
+5. If both required workflows are fully green on one exact head, independently verify changed paths, protected blobs, manifests and issue #119 evidence. Green CI alone does not authorize merge.
+6. Correct PR #139's stale head text only after confirming the live head.
+7. Update durable handoff/evidence before context exhaustion.
+8. Do not merge PR #139 or `main` without explicit authorization and completed exact-SHA acceptance.
 
 ## Standing restrictions
 
-No secret values, submitted-project execution, wallet keys/signing/transactions, live production deployment in Round 4, unreviewed broad merges, CurveYield Lite changes, AWS or direct `main` merge before exact-SHA acceptance.
+No manual workflow dispatch/rerun, live simulation execution, production secret values or secret changes, submitted-project execution, wallet keys/signing/transactions, deployment, broad merges, direct `main` merge, CurveYield Lite changes, AWS work or edits to worker-owned ACK/STATUS files.
 
 ## Files in this handoff package
 
 - `READ_FIRST_v1.md` — this entrypoint.
-- `CURRENT_STATE_SNAPSHOT_v1.json` — current Round 4 snapshot.
-- `RESTART_RUNBOOK_v1.md` — recovery workflow; live protocol v2 wins on conflict.
-- `AUTOMATION_RECOVERY_v1.md` — historical Scheduled Task notes; current mode is manual original-chat wake.
-- `CONTEXT_EXHAUSTION_CHECKLIST_v1.md` — replacement checklist.
-- `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` — copy-ready prompt.
+- `CURRENT_STATE_SNAPSHOT_2026-08-02T2031-0700_v1.json` — current stopped-state snapshot.
+- `CURRENT_STATE_SNAPSHOT_v1.json` — historical initial worker-phase snapshot.
+- `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` — copy-ready replacement prompt.
+- `CONTEXT_EXHAUSTION_CHECKLIST_v1.md` — durable handoff checklist.
+- `RESTART_RUNBOOK_v1.md` — recovery workflow; protocol v2 and the newest snapshot win on conflict.
+- `AUTOMATION_RECOVERY_v1.md` — historical Scheduled Task notes only.
 
-## Immediate replacement-agent priorities
-
-1. Verify all five workers acknowledged their current sequence and are working.
-2. Inspect their issue checkpoints continuously when the user wakes them.
-3. Independently review every Stage A final head before allowing Worker 2 intake.
-4. Keep Worker 2 at Stage 0 until all four reviewed candidates are durable.
-5. Freeze one assembled SHA, collect four exact-SHA acceptances, verify evidence and only then prepare merge/Round 5.
-6. Update this handoff package again before context exhaustion.
-
-When handoff text conflicts with live validated mailbox/issue/branch records, live records win. Internal inconsistency blocks integration and overlapping assignments until resolved and recorded on issue #63.
+When handoff text conflicts with refreshed live records, integrate nothing until the discrepancy is resolved and recorded durably.
