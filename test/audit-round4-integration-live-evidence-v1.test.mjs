@@ -43,11 +43,19 @@ test('exact accepted intake is 55 paths and disjoint from all 41 PR 126 paths', 
   assert.deepEqual(analysis.overlaps, []);
 });
 
-test('final assembled candidate remains blocked by both repair receipts', async () => {
+test('final assembled candidate is authorized by accepted repairs and exact-tree attestation', async () => {
   const { ROUND4_LIVE_GATES } = await import('../packages/audit-integration-round4/src/live-evidence.mjs');
-  assert.equal(ROUND4_LIVE_GATES.finalAssembledCandidateAuthorized, false);
-  assert.deepEqual(ROUND4_LIVE_GATES.unresolved, [
+  assert.equal(ROUND4_LIVE_GATES.finalAssembledCandidateAuthorized, true);
+  assert.equal(ROUND4_LIVE_GATES.pr126SecurityRepairAccepted, true);
+  assert.equal(ROUND4_LIVE_GATES.stage0ValidatorRepairAccepted, true);
+  assert.equal(ROUND4_LIVE_GATES.exactTreeAttestationPresent, true);
+  assert.deepEqual(ROUND4_LIVE_GATES.unresolved, []);
+  assert.deepEqual(ROUND4_LIVE_GATES.resolved, [
     'pr126-security-repair-acceptance',
-    'stage0-direct-takeover-validator-repair-receipt'
+    'stage0-direct-takeover-validator-repair-receipt',
+    'round4-final-tree-attestation-v1'
   ]);
+  assert.ok(Object.isFrozen(ROUND4_LIVE_GATES));
+  assert.ok(Object.isFrozen(ROUND4_LIVE_GATES.unresolved));
+  assert.ok(Object.isFrozen(ROUND4_LIVE_GATES.resolved));
 });
