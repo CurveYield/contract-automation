@@ -4,52 +4,55 @@ Use this before the current orchestrator chat loses enough context to make safe 
 
 ## Mandatory durable writes
 
-1. Refresh and write a new timestamped state snapshot in this `HANDOFF/` directory. Never overwrite an old snapshot; create a versioned or timestamped successor.
-2. Record the exact `agent-control-plane-v1` head SHA.
-3. Record every worker's current sequence, state, issue, branch, starting SHA, final SHA if reported, recommendation, and report reference.
-4. Record which completed workers have been independently reviewed and which remain unreviewed.
-5. Record every integration PR and resulting merge commit.
-6. Record every unpublished next assignment under consideration, but do not place draft instructions into `CURRENT_v1.json`.
-7. List the active Scheduled Tasks and their observed `last_run_time` values.
-8. Record Worker 4's retirement status and confirm no future assignment exists.
-9. Append an orchestrator event identifying the new handoff snapshot.
-10. Post a short continuity comment to issue #63 linking the handoff path and control-plane head.
+1. Create a new timestamped state snapshot in this `HANDOFF/` directory. Never overwrite a historical timestamped snapshot.
+2. Record the exact candidate branch, base SHA, head SHA, PR number, draft/merge authorization state and every known discrepancy.
+3. Record every naturally triggered CI run ID and the exact last observed step/conclusion. Never describe an in-progress or partially observed run as accepted.
+4. Record each failed exact head, the first reproducible failure and the minimal repair commit that followed.
+5. Record all unresolved gates, stale PR text, unreviewed paths, missing manifests and separate workstreams that must not be touched.
+6. Record mailbox/worker continuity only from live GitHub records. Never edit worker-owned ACK or STATUS files.
+7. Record whether any workflow was manually dispatched or rerun. The current Round 4 static-candidate task forbids manual dispatch/rerun.
+8. Record all prohibitions: no merge, deployment, live simulation, secret changes, signing, transactions, broad merges, Lite or AWS work.
+9. Update `READ_FIRST_v1.md` and `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` to point to the newest timestamped snapshot.
+10. Post continuity evidence to issue #63 only when authorized and supported by exact live GitHub state.
 
 ## Consistency checks
 
 Before declaring the handoff complete:
 
-- every nonzero `CURRENT_v1.json` points to an existing immutable assignment;
-- every pointer blob SHA matches the assignment blob;
+- the newest timestamped snapshot exists and parses;
+- `READ_FIRST_v1.md` identifies it as the current snapshot;
+- the replacement prompt names the current primary PR/branch/head and says to refresh them before acting;
+- every claimed test result identifies the exact candidate head and workflow run;
+- in-progress, skipped and unobserved steps are explicitly distinguished from successful steps;
+- no integration decision relies only on branch movement or a stale PR body;
 - no worker has two active assignments;
-- no assignment sequence was reused;
-- completed statuses contain pinned final SHAs and report references;
-- no integration decision relies only on branch movement;
-- global state matches append-only events;
 - worker-owned status files were not edited by the orchestrator;
-- the control-plane branch has not been merged into `main`.
+- separate simulation/security branches remain isolated;
+- the control-plane branch has not been merged into `main`;
+- no merge authorization is implied by a green CI run.
 
 ## Replacement readiness test
 
 A replacement must be able to answer from GitHub alone:
 
-1. What is each worker doing?
-2. Which exact SHA must be reviewed next?
-3. Which phase gate blocks each integration?
-4. Which worker may receive the next assignment?
-5. Which paths are owned and forbidden?
-6. Which Scheduled Tasks exist and have actually run?
-7. What operations remain prohibited?
+1. What exact PR and SHA is the primary Round 4 candidate?
+2. Which exact CI steps have passed, failed, remained in progress or were never observed?
+3. Which exact repair commits followed each failed candidate head?
+4. Which acceptance gates and independent reviews remain?
+5. Which PRs/branches are separate workstreams and forbidden to touch?
+6. What operations remain prohibited?
+7. What is the first safe next action after refreshing live state?
 
 If any answer depends only on chat memory, the handoff is incomplete.
 
 ## Emergency handoff
 
-When there is not enough context/time for a full update:
+When the user orders an immediate stop or context is nearly exhausted:
 
-1. write one timestamped emergency snapshot containing raw known state and explicit uncertainty;
-2. append an `orchestrator_emergency_handoff` event;
-3. do not publish new assignments or integrate work after uncertainty begins;
-4. tell James to start a replacement chat with `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md`.
+1. stop polling, dispatching, editing and integration work immediately;
+2. create one timestamped snapshot containing raw known state and explicit uncertainty;
+3. update the read-first file and replacement prompt;
+4. do not claim final CI acceptance unless the final conclusions were already observed;
+5. provide James the replacement prompt and exact handoff paths.
 
 Partial truthful state is safer than a convincing but unsupported reconstruction.
