@@ -22,6 +22,26 @@ test('Deep Assurance workflow is trusted-release push only and request-path scop
   assert.match(workflow, /cancel-in-progress: false/);
 });
 
+test('secret-free classifier gates exactly one downstream execution job', async () => {
+  const workflow = await text(workflowUrl);
+  const classifyStart = workflow.indexOf('  classify:');
+  const compileStart = workflow.indexOf('  execute-compile:');
+  const simulateStart = workflow.indexOf('  execute-simulate:');
+  assert.ok(classifyStart >= 0 && compileStart > classifyStart && simulateStart > compileStart);
+  const classifyBlock = workflow.slice(classifyStart, compileStart);
+  const compileBlock = workflow.slice(compileStart, simulateStart);
+  const simulateBlock = workflow.slice(simulateStart);
+  assert.doesNotMatch(classifyBlock, /secrets\.|RPC_ETHEREUM|SIM_ARCHIVE_/);
+  assert.match(classifyBlock, /outputs:/);
+  assert.match(compileBlock, /needs: classify/);
+  assert.match(compileBlock, /needs\.classify\.outputs\.profile_id == 'github-native-compile-v1'/);
+  assert.match(simulateBlock, /needs: classify/);
+  assert.match(simulateBlock, /needs\.classify\.outputs\.profile_id == 'github-native-simulate-v1'/);
+  assert.doesNotMatch(compileBlock, /RPC_ETHEREUM|SIM_ARCHIVE_/);
+  assert.match(simulateBlock, /RPC_ETHEREUM/);
+  assert.match(simulateBlock, /SIM_ARCHIVE_PRIMARY_ETHEREUM_01/);
+});
+
 test('workflow validates an atomic request before dynamic source checkout', async () => {
   const workflow = await text(workflowUrl);
   const selectIndex = workflow.indexOf('Select and validate atomic request');
@@ -32,21 +52,7 @@ test('workflow validates an atomic request before dynamic source checkout', asyn
   assert.match(workflow, /expected_runner_manifest_sha256/);
   assert.match(workflow, /persist-credentials: false/g);
   assert.match(workflow, /fetch-depth: 0/);
-  assert.match(workflow, /ref: \$\{\{ steps\.request\.outputs\.source_commit \}\}/);
-});
-
-test('compile execution receives no RPC secrets and simulation execution is isolated', async () => {
-  const workflow = await text(workflowUrl);
-  const compileStart = workflow.indexOf('execute-compile:');
-  const simulateStart = workflow.indexOf('execute-simulate:');
-  assert.ok(compileStart >= 0 && simulateStart > compileStart);
-  const compileBlock = workflow.slice(compileStart, simulateStart);
-  const simulateBlock = workflow.slice(simulateStart);
-  assert.doesNotMatch(compileBlock, /RPC_ETHEREUM|SIM_ARCHIVE_/);
-  assert.match(simulateBlock, /RPC_ETHEREUM/);
-  assert.match(simulateBlock, /SIM_ARCHIVE_PRIMARY_ETHEREUM_01/);
-  assert.match(workflow, /steps\.request\.outputs\.profile_id == 'github-native-compile-v1'/);
-  assert.match(workflow, /steps\.request\.outputs\.profile_id == 'github-native-simulate-v1'/);
+  assert.match(workflow, /ref: \$\{\{ needs\.classify\.outputs\.source_commit \}\}/);
 });
 
 test('workflow uses immutable action revisions and always uploads normalized evidence', async () => {
