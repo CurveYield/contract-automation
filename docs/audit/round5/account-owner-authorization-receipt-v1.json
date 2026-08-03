@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "round5-account-owner-authorization-receipt-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "authorizer": "account-owner",
+  "authorizationStatus": "AUTHORIZED",
+  "authorizationDate": "2026-08-03",
+  "authorizedPreparationHeadSha": "a76ebe0d0cda7fbce570acd404c7c7a9cb42ac8a",
+  "promotedRound4MergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
+  "authorizationBasis": [
+    "explicit-account-owner-instruction-approved-proceed",
+    "account-owner-confirmation-required-secrets-and-variables-configured",
+    "account-owner-network-scope-limited-to-ethereum-and-base",
+    "round4-exact-head-static-acceptance",
+    "round5-static-production-test-readiness-acceptance",
+    "round5-two-network-scope-amendment"
+  ],
+  "authorizedGates": [
+    "promotion",
+    "credential-name-readiness",
+    "bounded-trusted-deployment",
+    "bounded-live-production-testing"
+  ],
+  "activeNetworks": [
+    "base",
+    "ethereum"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "credentialConfirmation": {
+    "namesOnly": true,
+    "secretValuesReadOrRecorded": false,
+    "requiredActiveSecretNameCount": 11,
+    "requiredRepositoryVariableNameCount": 3,
+    "accountOwnerConfirmedConfigured": true,
+    "confirmationMethod": "account-owner-direct-confirmation",
+    "metadataApiVerificationAvailableToOrchestrator": false
+  },
+  "limits": {
+    "deferredNetworkTestingAllowed": false,
+    "scopeExpansionAllowed": false,
+    "walletSigningAllowed": false,
+    "publicTransactionBroadcastAllowed": false,
+    "secretDisclosureAllowed": false,
+    "destructiveIrreplaceableDataTestingAllowed": false,
+    "workflowRerunAuthorization": false,
+    "boundedTestDataRequired": true,
+    "failClosedRpcPolicyRequired": true,
+    "rollbackReadinessRequired": true,
+    "verifiedDeploymentCheckpointRequiredBeforeLiveTesting": true
+  },
+  "executionState": {
+    "promotionExecuted": true,
+    "round4PromotionPullRequest": 139,
+    "round4PromotionMergeSha": "42a54988b7b5135ddb6cba90891ad2706356363c",
+    "round5PreparationPromotionExecuted": false,
+    "deploymentExecuted": false,
+    "liveProductionTestingExecuted": false,
+    "trustedV27RegressionExecuted": false
+  },
+  "supersedesAuthorizationStateForExecutionOnly": {
+    "path": "docs/audit/round5/production-authorization-gate-v1.json",
+    "originalClosedByDefaultPackageRemainsImmutableHistoricalEvidence": true
+  }
+}

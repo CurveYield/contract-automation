@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "round5-production-network-scope-amendment-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "authorizedBy": "account-owner",
+  "authorizationStatus": "AUTHORIZED",
+  "authorizationDate": "2026-08-03",
+  "effectiveImmediately": true,
+  "reason": "The account owner intends to conduct current production testing only on Ethereum and Base. All other network testing is deferred until a later separately authorized expansion.",
+  "activeReadOnlyRpcNetworks": [
+    {
+      "network": "base",
+      "chainId": 8453,
+      "secretName": "RPC_BASE",
+      "allowedPurpose": "archive-backed-read-only-fork-source",
+      "transactionBroadcastAllowed": false,
+      "signingAllowed": false
+    },
+    {
+      "network": "ethereum",
+      "chainId": 1,
+      "secretName": "RPC_ETHEREUM",
+      "allowedPurpose": "archive-backed-read-only-fork-source",
+      "transactionBroadcastAllowed": false,
+      "signingAllowed": false
+    }
+  ],
+  "deferredReadOnlyRpcNetworks": [
+    {
+      "network": "arbitrum",
+      "chainId": 42161,
+      "secretName": "RPC_ARBITRUM",
+      "status": "deferred-not-required-for-current-readiness"
+    },
+    {
+      "network": "fraxtal",
+      "chainId": 252,
+      "secretName": "RPC_FRAXTAL",
+      "status": "deferred-not-required-for-current-readiness"
+    },
+    {
+      "network": "katana",
+      "chainId": 747474,
+      "secretName": "RPC_KATANA",
+      "status": "deferred-not-required-for-current-readiness"
+    },
+    {
+      "network": "optimism",
+      "chainId": 10,
+      "secretName": "RPC_OPTIMISM",
+      "status": "deferred-not-required-for-current-readiness"
+    },
+    {
+      "network": "polygon",
+      "chainId": 137,
+      "secretName": "RPC_POLYGON",
+      "status": "deferred-not-required-for-current-readiness"
+    }
+  ],
+  "requiredSecretNamesNow": [
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_API_TOKEN",
+    "PREFLIGHTSIM_CLIENT_API_KEY",
+    "PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY",
+    "PREFLIGHTSIM_GITHUB_TOKEN",
+    "PREFLIGHTSIM_GPT_API_KEY",
+    "PREFLIGHTSIM_R2_ACCESS_KEY_ID",
+    "PREFLIGHTSIM_R2_SECRET_ACCESS_KEY",
+    "PREFLIGHTSIM_RUNNER_API_KEY",
+    "RPC_BASE",
+    "RPC_ETHEREUM"
+  ],
+  "deferredSecretNames": [
+    "RPC_ARBITRUM",
+    "RPC_FRAXTAL",
+    "RPC_KATANA",
+    "RPC_OPTIMISM",
+    "RPC_POLYGON"
+  ],
+  "currentRpcReadinessRequirement": "ethereum-and-base-rpc-name-readiness-confirmed",
+  "supersedesForCurrentRound5Execution": [
+    "seven-network-rpc-name-readiness-confirmed",
+    "seven-network-read-only-rpc-name-readiness-report",
+    "read-only-rpc-policy-and-seven-network-bindings-confirmed"
+  ],
+  "policy": {
+    "missingDeferredRpcSecretsFailCurrentReadiness": false,
+    "deferredNetworksMayBeTested": false,
+    "futureActivationRequiresNewAccountOwnerAuthorization": true,
+    "futureActivationRequiresCredentialNameConfirmation": true,
+    "transactionBroadcastAllowed": false,
+    "signingAllowed": false,
+    "rawRpcUrlsMayBeRecorded": false,
+    "secretValuesMayBeReadOrRecorded": false,
+    "failClosedMethodPolicyUnchanged": true
+  },
+  "unchangedRequirements": [
+    "all-non-rpc-secret-names-required-by-round5-remain-required",
+    "all-three-repository-variable-names-remain-required",
+    "cloudflare-pages-r2-github-and-application-identity-gates-remain-required",
+    "deployment-trust-redaction-rollback-and-recovery-gates-remain-required",
+    "no-wallet-key-signing-or-public-transaction-broadcast-path"
+  ]
+}

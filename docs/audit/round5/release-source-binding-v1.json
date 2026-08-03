@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "round5-release-source-binding-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "round4PullRequest": 139,
+  "acceptedBaseBranch": "orchestrator/round4-ci-base-v1",
+  "acceptedBaseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+  "acceptedHeadBranch": "orchestrator/round4-final-integration-takeover-v1",
+  "acceptedSourceSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+  "acceptedMergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+  "changedPathCount": 202,
+  "exactTreeAttestation": {
+    "path": "docs/audit/round4/integration/2026-08-03-round4-final-tree-attestation-v1.json",
+    "attestedPathCount": 198,
+    "directlyValidatedSelfReferentialPathCount": 4,
+    "digestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16"
+  },
+  "exactHeadWorkflowRuns": [
+    30788571549,
+    30788571507
+  ],
+  "verification": {
+    "repositoryTestsPassed": 461,
+    "repositoryTestsFailed": 0,
+    "focusedLiveForkTestsPassed": 14,
+    "lint": "passed",
+    "build": "passed",
+    "syntaxValidation": "passed",
+    "manualWorkflowDispatchOrRerun": false,
+    "liveSimulationExecutedByOrchestrator": false
+  },
+  "staticAcceptance": "ACCEPT",
+  "draftPullRequest": true,
+  "mergeAuthorized": false,
+  "promotionAuthorized": false,
+  "deploymentAuthorized": false,
+  "liveProductionTestingAuthorized": false,
+  "invalidationRule": "Any accepted source SHA or exact-tree digest change invalidates every Round 5 preparation manifest."
+}
