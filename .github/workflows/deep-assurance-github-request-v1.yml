@@ -15,17 +15,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  execute-compile:
+  classify:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 10
     env:
       PUSH_BEFORE: ${{ github.event.before || '' }}
+    outputs:
+      request_id: ${{ steps.request.outputs.request_id }}
+      request_path: ${{ steps.request.outputs.request_path }}
+      request_root: ${{ steps.request.outputs.request_root }}
+      profile_id: ${{ steps.request.outputs.profile_id }}
+      source_repository: ${{ steps.request.outputs.source_repository }}
+      source_commit: ${{ steps.request.outputs.source_commit }}
+      source_project_path: ${{ steps.request.outputs.source_project_path }}
+      expected_runner_manifest_sha256: ${{ steps.request.outputs.expected_runner_manifest_sha256 }}
     steps:
       - name: Check out trusted runner and atomic request
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -51,12 +61,36 @@ jobs:
           done
           printf 'expected_runner_manifest_sha256=%s\n' "$manifest_sha" >> "$GITHUB_OUTPUT"
 
-      - name: Check out exact audit source
-        if: steps.request.outputs.profile_id == 'github-native-compile-v1'
+  execute-compile:
+    needs: classify
+    if: ${{ needs.classify.outputs.profile_id == 'github-native-compile-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - name: Check out trusted runner and atomic request
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          repository: ${{ steps.request.outputs.source_repository }}
-          ref: ${{ steps.request.outputs.source_commit }}
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Verify trusted runner release
+        shell: bash
+        run: |
+          set -euo pipefail
+          verified="$(node packages/github-native-sim/src/verify-deep-assurance-runner-release.mjs "$GITHUB_WORKSPACE" github-native-sim/deep-assurance-runner-release-v1.json)"
+          test "$(printf '%s' "$verified" | jq -r '.manifestSha256')" = "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
+
+      - name: Check out exact audit source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: ${{ needs.classify.outputs.source_repository }}
+          ref: ${{ needs.classify.outputs.source_commit }}
           path: source-checkout
           persist-credentials: false
           fetch-depth: 0
@@ -64,34 +98,31 @@ jobs:
           lfs: false
 
       - name: Prepare trusted compile job
-        if: steps.request.outputs.profile_id == 'github-native-compile-v1'
         id: prepare
         shell: bash
         run: |
           set -euo pipefail
           source_commit="$(git -C source-checkout rev-parse HEAD)"
-          test "$source_commit" = "${{ steps.request.outputs.source_commit }}"
+          test "$source_commit" = "${{ needs.classify.outputs.source_commit }}"
           prepared="$RUNNER_TEMP/deep-assurance-prepared"
           output="$RUNNER_TEMP/deep-assurance-output"
-          artifact_name="deep-assurance-${{ steps.request.outputs.request_id }}-${GITHUB_RUN_ID}"
+          artifact_name="deep-assurance-${{ needs.classify.outputs.request_id }}-${GITHUB_RUN_ID}"
           node packages/github-native-sim/src/prepare-deep-assurance-job.mjs \
-            --request "${{ steps.request.outputs.request_path }}" \
+            --request "${{ needs.classify.outputs.request_path }}" \
             --source source-checkout \
             --source-commit "$source_commit" \
             --output "$prepared" \
-            --runner-manifest-sha256 "${{ steps.request.outputs.expected_runner_manifest_sha256 }}"
+            --runner-manifest-sha256 "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
           mkdir -p "$output"
           cp "$prepared/source-manifest.json" "$output/source-manifest.json"
           printf 'prepared=%s\noutput=%s\nartifact_name=%s\n' "$prepared" "$output" "$artifact_name" >> "$GITHUB_OUTPUT"
 
       - name: Install trusted runner dependencies
-        if: steps.request.outputs.profile_id == 'github-native-compile-v1'
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
 
       - name: Execute trusted compile job
-        if: steps.request.outputs.profile_id == 'github-native-compile-v1'
         id: execute
         continue-on-error: true
         run: >-
@@ -105,12 +136,12 @@ jobs:
         continue-on-error: true
         run: >-
           node packages/github-native-sim/src/finalize-deep-assurance-result.mjs
-          --request "${{ steps.request.outputs.request_path }}"
+          --request "${{ needs.classify.outputs.request_path }}"
           --output "${{ steps.prepare.outputs.output }}"
           --repository "$GITHUB_REPOSITORY"
           --run-id "$GITHUB_RUN_ID"
           --artifact-name "${{ steps.prepare.outputs.artifact_name }}"
-          --runner-manifest-sha256 "${{ steps.request.outputs.expected_runner_manifest_sha256 }}"
+          --runner-manifest-sha256 "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
 
       - name: Verify normalized compile evidence exists
         if: always() && steps.prepare.outcome == 'success'
@@ -126,14 +157,15 @@ jobs:
           retention-days: 30
 
       - name: Propagate compile failure
-        if: steps.request.outputs.profile_id == 'github-native-compile-v1' && (steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure')
+        if: steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure'
         run: exit 1
 
   execute-simulate:
+    needs: classify
+    if: ${{ needs.classify.outputs.profile_id == 'github-native-simulate-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
-      PUSH_BEFORE: ${{ github.event.before || '' }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
       RPC_BASE: ${{ secrets.RPC_BASE }}
       SIM_ARCHIVE_PRIMARY_ETHEREUM_01: ${{ secrets.SIM_ARCHIVE_PRIMARY_ETHEREUM_01 }}
@@ -161,38 +193,26 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-          fetch-depth: 0
+          fetch-depth: 1
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
 
-      - name: Select and validate atomic request
-        id: request
+      - name: Verify trusted runner release
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$PUSH_BEFORE"
-          test ! "$(printf '%s' "$PUSH_BEFORE" | tr -d '0')" = ''
-          changed_paths="$(git diff --name-only "$PUSH_BEFORE...$GITHUB_SHA")"
-          runner_manifest='github-native-sim/deep-assurance-runner-release-v1.json'
-          verified="$(node packages/github-native-sim/src/verify-deep-assurance-runner-release.mjs "$GITHUB_WORKSPACE" "$runner_manifest")"
-          manifest_sha="$(printf '%s' "$verified" | jq -r '.manifestSha256')"
-          inspected="$(CHANGED_PATHS="$changed_paths" node packages/github-native-sim/src/inspect-deep-assurance-request.mjs --repository-root "$GITHUB_WORKSPACE" --runner-manifest-sha256 "$manifest_sha")"
-          for key in request_id request_path request_root profile_id source_repository source_commit source_project_path; do
-            value="$(printf '%s' "$inspected" | jq -r --arg key "$key" '.[$key]')"
-            test -n "$value"
-            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_OUTPUT"
-          done
-          printf 'expected_runner_manifest_sha256=%s\n' "$manifest_sha" >> "$GITHUB_OUTPUT"
+          verified="$(node packages/github-native-sim/src/verify-deep-assurance-runner-release.mjs "$GITHUB_WORKSPACE" github-native-sim/deep-assurance-runner-release-v1.json)"
+          test "$(printf '%s' "$verified" | jq -r '.manifestSha256')" = "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
 
       - name: Check out exact audit source
-        if: steps.request.outputs.profile_id == 'github-native-simulate-v1'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          repository: ${{ steps.request.outputs.source_repository }}
-          ref: ${{ steps.request.outputs.source_commit }}
+          repository: ${{ needs.classify.outputs.source_repository }}
+          ref: ${{ needs.classify.outputs.source_commit }}
           path: source-checkout
           persist-credentials: false
           fetch-depth: 0
@@ -200,34 +220,31 @@ jobs:
           lfs: false
 
       - name: Prepare trusted simulation job
-        if: steps.request.outputs.profile_id == 'github-native-simulate-v1'
         id: prepare
         shell: bash
         run: |
           set -euo pipefail
           source_commit="$(git -C source-checkout rev-parse HEAD)"
-          test "$source_commit" = "${{ steps.request.outputs.source_commit }}"
+          test "$source_commit" = "${{ needs.classify.outputs.source_commit }}"
           prepared="$RUNNER_TEMP/deep-assurance-prepared"
           output="$RUNNER_TEMP/deep-assurance-output"
-          artifact_name="deep-assurance-${{ steps.request.outputs.request_id }}-${GITHUB_RUN_ID}"
+          artifact_name="deep-assurance-${{ needs.classify.outputs.request_id }}-${GITHUB_RUN_ID}"
           node packages/github-native-sim/src/prepare-deep-assurance-job.mjs \
-            --request "${{ steps.request.outputs.request_path }}" \
+            --request "${{ needs.classify.outputs.request_path }}" \
             --source source-checkout \
             --source-commit "$source_commit" \
             --output "$prepared" \
-            --runner-manifest-sha256 "${{ steps.request.outputs.expected_runner_manifest_sha256 }}"
+            --runner-manifest-sha256 "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
           mkdir -p "$output"
           cp "$prepared/source-manifest.json" "$output/source-manifest.json"
           printf 'prepared=%s\noutput=%s\nartifact_name=%s\n' "$prepared" "$output" "$artifact_name" >> "$GITHUB_OUTPUT"
 
       - name: Install trusted runner dependencies
-        if: steps.request.outputs.profile_id == 'github-native-simulate-v1'
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts --no-audit --no-fund hardhat@3.12.0
 
       - name: Execute trusted simulation job
-        if: steps.request.outputs.profile_id == 'github-native-simulate-v1'
         id: execute
         continue-on-error: true
         run: >-
@@ -241,12 +258,12 @@ jobs:
         continue-on-error: true
         run: >-
           node packages/github-native-sim/src/finalize-deep-assurance-result.mjs
-          --request "${{ steps.request.outputs.request_path }}"
+          --request "${{ needs.classify.outputs.request_path }}"
           --output "${{ steps.prepare.outputs.output }}"
           --repository "$GITHUB_REPOSITORY"
           --run-id "$GITHUB_RUN_ID"
           --artifact-name "${{ steps.prepare.outputs.artifact_name }}"
-          --runner-manifest-sha256 "${{ steps.request.outputs.expected_runner_manifest_sha256 }}"
+          --runner-manifest-sha256 "${{ needs.classify.outputs.expected_runner_manifest_sha256 }}"
 
       - name: Verify normalized simulation evidence exists
         if: always() && steps.prepare.outcome == 'success'
@@ -262,5 +279,5 @@ jobs:
           retention-days: 30
 
       - name: Propagate simulation failure
-        if: steps.request.outputs.profile_id == 'github-native-simulate-v1' && (steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure')
+        if: steps.execute.outcome == 'failure' || steps.finalize.outcome == 'failure'
         run: exit 1
