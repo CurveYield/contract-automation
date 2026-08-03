@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "round5-pages-clean-cwd-request-v8",
+  "requestId": "round5-pages-clean-cwd-20260803T1315Z-v8",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "70719851d8e18faf89e65027858b9f4f728d979d",
+  "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "requestedAt": "2026-08-03T13:15:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "supersededRuns": [
+    30808377849,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400
+  ],
+  "finding": "repository-wrangler-redirect-overrode-pages-deployment-context",
+  "repair": "stage-static-assets-and-run-wrangler-from-clean-temporary-directory",
+  "failedOrHistoricalWorkflowRerunAllowed": false,
+  "cleanDeploymentDirectoryRequired": true,
+  "repositoryWranglerRedirectAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false
+}
