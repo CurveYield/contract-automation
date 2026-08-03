@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "round5-production-test-static-readiness-receipt-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "verifiedPackageHeadSha": "2a66733192c02d253a63b25d98f02222a3265f52",
+  "packagePathCount": 14,
+  "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+  "verifiedPackageWorkflowRuns": [
+    30790244219,
+    30790244240
+  ],
+  "staticProductionTestReadiness": "ACCEPT",
+  "productionTestingReady": true,
+  "promotionAuthorized": false,
+  "credentialNameReadinessAuthorized": false,
+  "deploymentAuthorized": false,
+  "liveProductionTestingAuthorized": false,
+  "manualWorkflowDispatchOrRerun": false,
+  "liveSimulationExecutedByOrchestrator": false
+}
