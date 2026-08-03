@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "round5-production-authorization-gate-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "productionTestingReady": false,
+  "staticPreparationComplete": false,
+  "gates": {
+    "promotion": {
+      "authorized": false,
+      "authorizer": "account-owner",
+      "requiredEvidence": [
+        "accepted-round4-exact-sha-and-tree-digest",
+        "round5-static-readiness-receipt",
+        "draft-pr-review-and-merge-target",
+        "explicit-promotion-instruction"
+      ],
+      "permits": ["approved-candidate-promotion-only"],
+      "doesNotPermit": ["secret-access", "deployment", "workflow-dispatch", "live-testing"]
+    },
+    "credentialNameReadiness": {
+      "authorized": false,
+      "authorizer": "account-owner",
+      "requiredEvidence": [
+        "required-secret-names-confirmed-present-without-values",
+        "required-variable-names-confirmed-present-without-values",
+        "credential-scope-review-without-material",
+        "production-environment-name-confirmed"
+      ],
+      "permits": ["name-and-scope-readiness-confirmation-only"],
+      "doesNotPermit": ["reading-values", "copying-values", "changing-values", "deployment", "live-testing"]
+    },
+    "deployment": {
+      "authorized": false,
+      "authorizer": "account-owner",
+      "requiredEvidence": [
+        "promotion-complete-on-exact-sha",
+        "credential-name-readiness-complete",
+        "deployment-preflight-accepted",
+        "last-known-good-and-rollback-binding-ready",
+        "explicit-deployment-instruction"
+      ],
+      "permits": ["bounded-trusted-deployment-only"],
+      "doesNotPermit": ["unreviewed-resource-changes", "secret-disclosure", "live-production-testing"]
+    },
+    "liveProductionTesting": {
+      "authorized": false,
+      "authorizer": "account-owner",
+      "requiredEvidence": [
+        "verified-deployment-checkpoint",
+        "deployed-exact-sha-and-configuration-digest",
+        "bounded-test-data-and-cleanup-plan",
+        "observability-and-redaction-ready",
+        "rollback-and-recovery-ready",
+        "explicit-live-test-instruction"
+      ],
+      "permits": ["bounded-ordered-production-test-stages", "trusted-v27-live-regression"],
+      "doesNotPermit": ["transaction-broadcasting", "wallet-signing", "destructive-irreplaceable-data-tests", "scope-expansion"]
+    }
+  },
+  "ordering": [
+    "promotion",
+    "credentialNameReadiness",
+    "deployment",
+    "liveProductionTesting"
+  ],
+  "failClosed": true,
+  "implicitAuthorizationAllowed": false,
+  "greenCiImpliesAuthorization": false,
+  "draftPullRequestImpliesAuthorization": false,
+  "authorizationMustBindExactSha": true
+}
