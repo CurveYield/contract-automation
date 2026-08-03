@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "round5-production-post-ui-smoke-request-v2",
+  "requestId": "round5-production-post-ui-smoke-20260803T1124Z-v2",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "deployedSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "deploymentRun": 30808377849,
+  "deploymentJob": 91668946456,
+  "requestedAt": "2026-08-03T11:24:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "checks": [
+    "pages-availability",
+    "live-operator-network-selector",
+    "live-operator-chain-sync-code",
+    "api-health",
+    "api-setup-readiness",
+    "api-auth-rejection",
+    "api-chain-allowlist",
+    "cors-origin",
+    "ethereum-rpc-identity-and-head",
+    "base-rpc-identity-and-head"
+  ],
+  "readOnly": true,
+  "jobSubmissionAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
