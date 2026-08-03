@@ -2,27 +2,48 @@
   "protocolVersion": 1,
   "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "handoff-ready-active-round4",
-  "lastPollAt": "2026-08-02T09:36:00Z",
-  "lastProcessedEvent": "round4-activated-handoff-refreshed-20260802T093500Z",
+  "state": "round5-static-production-test-preparation",
+  "operatingMode": "sole-orchestrator",
+  "lastPollAt": "2026-08-03T06:05:25Z",
+  "lastProcessedEvent": "round4-exact-head-static-acceptance-20260803T060525Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
-  "round": 4,
+  "round": 5,
   "round4MasterIssue": 119,
   "round5ProductionIssue": 125,
+  "acceptedRound4Candidate": {
+    "pullRequest": 139,
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "headSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "mergeRefSha": "311311768f3e0465d0583f2be0a0f7d67215fa52",
+    "changedPathCount": 202,
+    "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
+    "staticAcceptance": "ACCEPT",
+    "draft": true,
+    "mergeAuthorized": false
+  },
+  "exactHeadCi": {
+    "githubNativeSimulationRun": 30788571549,
+    "liveForkUpgradeRun": 30788571507,
+    "repositoryTestsPassed": 461,
+    "repositoryTestsFailed": 0,
+    "lintBuildSyntax": "success",
+    "manualDispatchOrRerun": false
+  },
   "pendingActions": [
-    "Verify Worker 0 acknowledges sequence 6 and posts startup/checkpoints on issue #120.",
-    "Verify Worker 1 acknowledges sequence 5 and closes all six bounded Phase 7-8 service/report/publication gaps on issue #121.",
-    "Verify Worker 2 acknowledges sequence 8, performs Stage 0 only, and does not intake subsystem production paths before #120/#121/#123/#124 acceptance.",
-    "Verify Worker 3 acknowledges sequence 8 and posts API/auth security checkpoints on issue #123.",
-    "Verify Worker 4 acknowledges sequence 3 and posts GitHub Direct/UI compatibility checkpoints on issue #124.",
-    "Independently review every Stage A final SHA, path/blob manifest, RED evidence and intake instruction before unblocking Worker 2.",
-    "After deterministic intake, freeze one exact assembled SHA on issue #119 and collect Worker 0/1/3/4 acceptance against that same SHA.",
-    "Keep the GitHub-native simulation/App/RPC addon frozen byte-for-byte; its separate repair remains paused.",
-    "Prepare and verify Round 5 secret-name/binding, deployment, live-test, rollback, observability and recovery manifests.",
-    "Refresh the handoff package before the next context exhaustion."
+    "Publish Round 4 exact-head acceptance to issues #119 and #63.",
+    "Create an isolated Round 5 production-test preparation branch from exact accepted SHA 3da6b10f240e2abd031195f440c7cd80b72b691b.",
+    "Commit mutually consistent production-test, release-SHA, secret-name/binding, resource, deployment-preflight, rollback, observability, recovery, and trusted V27 live-regression contracts.",
+    "Review the complete static Round 5 preparation package without running live workflows or reading secret values.",
+    "Stop at the explicit promotion/credential/deployment/live-test authorization gate if no further safe static work remains."
+  ],
+  "hardExternalGates": [
+    "explicit authorization to promote or merge the accepted candidate",
+    "account-owner confirmation that required secret and variable names exist, without reading values",
+    "explicit authorization for deployment and trusted live production tests"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-02T2258-0700_v1.json",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "updatedAt": "2026-08-02T09:36:00Z"
+  "updatedAt": "2026-08-03T06:05:25Z"
 }
