@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "round5-pages-production-target-request-v5",
+  "requestId": "round5-pages-production-target-20260803T1230Z-v5",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "b31c79a2b48b3d1390e050489e2b9307f1fb75af",
+  "deployedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "requestedAt": "2026-08-03T12:30:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "priorDeploymentRun": 30808377849,
+  "failedAcceptanceRun": 30813209037,
+  "finding": "pages-preview-deployment-not-serving-production-custom-domain",
+  "repair": "deploy-static-assets-to-pages-production-target-and-verify-custom-domain",
+  "failedOrHistoricalWorkflowRerunAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false
+}
