@@ -4,19 +4,19 @@
   "repository": "CurveYield/contract-automation",
   "controlPlaneBranch": "agent-control-plane-v1",
   "operatingMode": "sole-orchestrator",
-  "activationState": "production-ui-v4-deployed-awaiting-current-source-smoke",
+  "activationState": "pages-v6-rejected-v7-blocked",
   "installedAt": "2026-08-01T11:27:00Z",
-  "lastOrchestratorReviewAt": "2026-08-03T11:42:00Z",
+  "lastOrchestratorReviewAt": "2026-08-03T13:01:21Z",
   "authority": {
     "directiveReceivedAt": "2026-08-02T22:24:00-07:00",
     "directive": "The orchestrator will finish all remaining work alone until production acceptance or a hard external block requires user assistance.",
     "accountOwnerProceedAuthorized": true,
     "promotionAuthorized": true,
-    "credentialNameReadinessAuthorized": true,
     "deploymentAuthorized": true,
     "trustedLiveProductionTestingAuthorized": true,
     "activeNetworks": ["ethereum", "base"],
     "deferredNetworks": ["arbitrum", "fraxtal", "katana", "optimism", "polygon"],
+    "dependencyDownloadsAllowed": false,
     "workerRuntimeActivationAllowed": false,
     "workerOwnedAckOrStatusEditsAllowed": false
   },
@@ -34,17 +34,19 @@
     "trustedDeploymentPushRequestAuthorized": true,
     "historicalOrFailedWorkflowRerunsForbidden": true,
     "deferredNetworkTestingForbidden": true,
-    "acceptedWorkMustNotBeRepeated": true
+    "acceptedWorkMustNotBeRepeated": true,
+    "dependencyDownloadsForbidden": true
   },
   "round": {
     "number": 5,
     "name": "production-test-preparation-and-acceptance",
     "round4MasterIssue": 119,
     "productionAcceptanceIssue": 125,
-    "stage": "production-ui-v4-deployed-awaiting-current-source-smoke",
+    "stage": "pages-production-binding-repair",
     "liveWorkAuthorized": true,
     "deploymentAuthorized": true,
-    "mergeAuthorized": true
+    "mergeAuthorized": false,
+    "mergeBlockedBy": "PR 157 reviewed head is unsafe and unproven"
   },
   "promotedPullRequests": [
     {"pullRequest":139,"mergeSha":"42a54988b7b5135ddb6cba90891ad2706356363c"},
@@ -58,7 +60,10 @@
     {"pullRequest":147,"mergeSha":"bb500321d084dfc9336304898f9cdd8b65bd9e1b"},
     {"pullRequest":148,"mergeSha":"fbe27b824da8084970915b31f2051679abe39cfc"},
     {"pullRequest":149,"mergeSha":"ec6c5c3c99a767dbed5505846a3ce4efee9290ca"},
-    {"pullRequest":150,"mergeSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072"}
+    {"pullRequest":150,"mergeSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072"},
+    {"pullRequest":153,"mergeSha":"b31c79a2b48b3d1390e050489e2b9307f1fb75af"},
+    {"pullRequest":155,"mergeSha":"669591985d27a7c9e7a3dee8be1ff1ab8821d2e2"},
+    {"pullRequest":156,"mergeSha":"3c37394f814c40b1fc6fff134d2de698635bd185"}
   ],
   "round4Acceptance": {
     "exactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
@@ -71,9 +76,10 @@
   },
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
-    "sourcePullRequest": 150,
-    "deploymentWorkflow": ".github/workflows/deploy-v4.yml",
+    "currentSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
+    "sourcePullRequest": 156,
+    "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+    "acceptedApplicationSourcePullRequest": 150,
     "runnerWorkflow": ".github/workflows/simulate.yml"
   },
   "networkScope": {
@@ -86,56 +92,76 @@
   },
   "credentialReadiness": {
     "accountOwnerConfirmedConfiguredByName": true,
-    "activeRepositorySecretNameCount": 11,
-    "repositoryVariableNameCount": 3,
     "valuesRetrievedOrRecorded": false,
     "cloudflareApiTokenValidity": "VERIFIED_ACTIVE",
     "cloudflareAccountScopeAccessible": true,
     "r2BucketAccessible": true
   },
-  "currentDeployment": {
-    "version": 4,
-    "workflowRun": 30808377849,
-    "job": 91668946456,
-    "sourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
-    "conclusion": "success",
-    "allStepsSucceeded": true,
-    "workerDeployed": true,
-    "pagesDeployed": true,
-    "r2BucketVerified": true,
-    "apiDomainVerified": true,
-    "pagesDomainVerified": true,
-    "secretValuesRecorded": false
+  "productionBinding": {
+    "apiWorker": {
+      "lastVerifiedDeploymentVersion": 4,
+      "workflowRun": 30808377849,
+      "job": 91668946456,
+      "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+      "conclusion": "success"
+    },
+    "pagesCustomDomain": {
+      "acceptedApplicationSourceObserved": false,
+      "observedState": "stale-seven-network-selector",
+      "exactServingSourceSha": null,
+      "currentSourceSmokeAccepted": false
+    }
   },
   "acceptedHistoricalEvidence": {
     "deploymentV3": {"run":30806403201,"job":91662681725,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success"},
     "smokeV1": {"run":30807373463,"sourceSha":"fbe27b824da8084970915b31f2051679abe39cfc","conclusion":"success","currentSourceStatus":"superseded-by-pr150-ui-change"},
-    "deploymentV4": {"run":30808377849,"job":91668946456,"sourceSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072","conclusion":"success"}
+    "deploymentV4": {"run":30808377849,"job":91668946456,"sourceSha":"2c6e543dfcaa17ca975bbde3c15302269bbf8072","conclusion":"success","pagesCustomDomainLaterObservedStale":true}
   },
   "failedRunsDoNotRerun": [
-    {"run":30800918581,"job":91645019455,"reason":"initial deployment failure before Worker/Pages mutation"},
-    {"run":30805768611,"reason":"S3-style R2 lifecycle schema rejected; superseded by native-schema repair"}
+    {"run":30800918581,"job":91645019455,"reason":"initial deployment failure before Worker or Pages mutation"},
+    {"run":30805768611,"reason":"invalid R2 lifecycle schema; superseded by accepted repair"},
+    {"run":30813209037,"reason":"current-source smoke failed on stale Pages UI"},
+    {"run":30814064657,"job":91687395097,"reason":"Pages v5 deployed detached HEAD preview"},
+    {"run":30815289252,"job":91691417740,"reason":"Pages v6 custom-domain failure and no-download contract violation"}
   ],
+  "latestRejectedGate": {
+    "pullRequest": 156,
+    "workflowRun": 30815289252,
+    "job": 91691417740,
+    "conclusion": "failure",
+    "customDomainCheck": "failure",
+    "dependencyDownloadContractViolation": true,
+    "rerunAllowed": false
+  },
+  "activeCandidate": {
+    "pullRequest": 157,
+    "branch": "orchestrator/round5-pages-commit-object-v7",
+    "lastReviewedHead": "0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
+    "state": "draft-blocked",
+    "blockingCommentId": 5166610889,
+    "mergeAllowed": false,
+    "liveExecutionAllowed": false
+  },
   "executionState": {
     "productionEnvironmentConfirmed": true,
-    "deploymentWorkflowDispatched": true,
-    "cloudflareDeploymentCompleted": true,
-    "currentProductionSourceDeployed": true,
+    "apiWorkerDeploymentCompleted": true,
+    "pagesCurrentApplicationSourceObserved": false,
     "currentSourceSmokeAccepted": false,
     "boundedLiveProductionTestingStarted": true,
     "trustedV27RegressionExecuted": false,
     "finalProductionAcceptance": "PENDING"
   },
   "hardExternalGates": [],
-  "nextAction": "Create a fresh exact-parent read-only production smoke gate for deployed SHA 2c6e543dfcaa17ca975bbde3c15302269bbf8072. Include deployed UI scope/default/synchronization checks. Do not rerun the superseded smoke workflow.",
+  "nextAction": "Correct PR 157 or supersede it with a fresh exact-parent dependency-free Cloudflare Pages API deployment that uses existing assets, fails closed with no upload, proves environment production and exact custom-domain binding, and passes natural RED plus exact-head GREEN before merge.",
   "antiDuplication": {
-    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
     "acceptedRedGreenSequencesMustNotBeRepeated": true,
     "historicalOrFailedWorkflowRerunsForbidden": true,
     "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
     "freshExactParentRequestRequiredForEachNewLiveGate": true
   },
   "standingRestrictions": [
+    "no dependency downloads",
     "no production secret values",
     "no raw RPC URLs or authorization headers",
     "no wallet keys, signing or transaction broadcasting",
@@ -149,8 +175,8 @@
     "no rerun of failed or historical workflow runs"
   ],
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0442-0700_v1.json",
-  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0442-0700_v1.md",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0601-0700_v2.json",
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T114200Z_production-ui-v4-deployed-replacement-handoff_v1.json"
+  "lastDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T130121Z_pages-v6-rejected-v7-blocked_v2.json"
 }
