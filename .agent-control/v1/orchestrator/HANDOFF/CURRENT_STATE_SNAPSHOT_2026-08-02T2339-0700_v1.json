@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "orchestrator-current-state-snapshot-v1",
+  "capturedAt": "2026-08-03T06:39:00Z",
+  "capturedAtLocal": "2026-08-02T23:39:00-07:00",
+  "repository": "CurveYield/contract-automation",
+  "controlPlaneBranch": "agent-control-plane-v1",
+  "operatingMode": "sole-orchestrator",
+  "state": "external-account-owner-authorization-gate",
+  "round4": {
+    "pullRequest": 139,
+    "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "staticAcceptance": "ACCEPT",
+    "draft": true,
+    "mergeAuthorized": false
+  },
+  "round5": {
+    "productionAcceptanceIssue": 125,
+    "pullRequest": 140,
+    "branch": "orchestrator/round5-production-test-prep-v1",
+    "exactAcceptedHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
+    "packagePathCount": 14,
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "receiptPath": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+    "receiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "staticProductionTestReadiness": "ACCEPT",
+    "productionTestingReady": true,
+    "draft": true,
+    "mergeAuthorized": false
+  },
+  "verification": {
+    "liveForkUpgradeRun": 30790716022,
+    "githubNativeSimulationRun": 30790716033,
+    "repositoryTests": {"passed": 464, "failed": 0},
+    "focusedLiveForkTests": {"passed": 14, "failed": 0},
+    "focusedGitHubNativeTests": {"passed": 49, "failed": 0},
+    "lintBuild": "success",
+    "javascriptModulesSyntaxValid": 279,
+    "manualWorkflowDispatchOrRerun": false
+  },
+  "closedLiveGates": {
+    "promotionAuthorized": false,
+    "credentialNameReadinessAuthorized": false,
+    "deploymentAuthorized": false,
+    "liveProductionTestingAuthorized": false
+  },
+  "requiredUserOrAccountOwnerActions": [
+    "explicitly authorize candidate promotion or merge when desired",
+    "confirm required secret and variable names exist without exposing values",
+    "explicitly authorize deployment",
+    "explicitly authorize trusted live production testing"
+  ],
+  "forbiddenWithoutAuthorization": [
+    "merge or promotion",
+    "production secret access or mutation",
+    "manual workflow dispatch or rerun",
+    "live simulation",
+    "deployment",
+    "wallet signing or transaction broadcasting"
+  ],
+  "latestDecisionEvent": ".agent-control/v1/orchestrator/EVENTS/20260803T063900Z_round5-static-production-test-readiness-accepted_v1.json",
+  "latestDecisionEventCommit": "c46413a82582f5a5a068dba829eebeeebb1c8a77"
+}
