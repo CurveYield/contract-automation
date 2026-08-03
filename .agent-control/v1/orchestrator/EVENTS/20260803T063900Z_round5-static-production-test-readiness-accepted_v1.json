@@ -1,0 +1,66 @@
+{
+  "protocolVersion": 1,
+  "schemaVersion": "orchestrator-round5-static-production-test-readiness-acceptance-event-v1",
+  "eventId": "round5-static-production-test-readiness-accepted-20260803T063900Z",
+  "eventType": "round5-static-production-test-readiness-accepted",
+  "recordedAt": "2026-08-03T06:39:00Z",
+  "repository": "CurveYield/contract-automation",
+  "operatingMode": "sole-orchestrator",
+  "authority": {
+    "productionAcceptanceIssue": 125,
+    "workerRuntimeActivationAllowed": false,
+    "workerOwnedAckOrStatusEdited": false
+  },
+  "round4Source": {
+    "pullRequest": 139,
+    "branch": "orchestrator/round4-final-integration-takeover-v1",
+    "acceptedHeadSha": "3da6b10f240e2abd031195f440c7cd80b72b691b",
+    "staticAcceptance": "ACCEPT",
+    "mergeAuthorized": false
+  },
+  "round5Preparation": {
+    "pullRequest": 140,
+    "branch": "orchestrator/round5-production-test-prep-v1",
+    "exactHeadSha": "8524da0cb03908d6903b20a89279859f4a086833",
+    "draft": true,
+    "mergeable": true,
+    "merged": false,
+    "packagePathCount": 14,
+    "packageAggregateDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3",
+    "receiptPath": "docs/audit/round5/production-test-static-readiness-receipt-v1.json",
+    "receiptBlobSha": "d9bb624aa86091b5a1f08bb1c777a1274efb64df",
+    "receiptVerifiedPackageHeadSha": "2a66733192c02d253a63b25d98f02222a3265f52",
+    "staticProductionTestReadiness": "ACCEPT",
+    "productionTestingReady": true
+  },
+  "exactHeadVerification": {
+    "liveForkUpgradeRun": 30790716022,
+    "githubNativeSimulationRun": 30790716033,
+    "repositoryTestsPassed": 464,
+    "repositoryTestsFailed": 0,
+    "focusedLiveForkTestsPassed": 14,
+    "focusedGitHubNativeTestsPassed": 49,
+    "lintBuild": "success",
+    "javascriptModulesSyntaxValid": 279,
+    "manualWorkflowDispatchOrRerun": false
+  },
+  "authorizationGates": {
+    "promotionAuthorized": false,
+    "credentialNameReadinessAuthorized": false,
+    "deploymentAuthorized": false,
+    "liveProductionTestingAuthorized": false
+  },
+  "safety": {
+    "productionSecretValuesReadOrWritten": false,
+    "liveSimulationExecutedByOrchestrator": false,
+    "walletSigningOrTransactionBroadcast": false,
+    "deploymentExecuted": false,
+    "candidateMerged": false,
+    "directMainMerge": false
+  },
+  "issueReceipt": {
+    "issueNumber": 125,
+    "commentId": 5163125602
+  },
+  "nextState": "external-account-owner-authorization-gate"
+}
