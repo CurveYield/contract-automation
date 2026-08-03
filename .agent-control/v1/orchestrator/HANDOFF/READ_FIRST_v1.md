@@ -1,6 +1,6 @@
 # Replacement Orchestrator — Read First v1
 
-This is the durable entrypoint for a fresh orchestrator replacing the Round 4 final-integration takeover agent stopped by the user on 2026-08-02 at 20:31 America/Los_Angeles.
+This is the durable entrypoint for a fresh orchestrator replacing the Round 4 final-integration takeover agent stopped by the user on 2026-08-02 at 21:08 America/Los_Angeles.
 
 ## Identity
 
@@ -12,25 +12,25 @@ This is the durable entrypoint for a fresh orchestrator replacing the Round 4 fi
 - Round 5 production acceptance: #125
 - Timezone: `America/Los_Angeles`
 
-Do not rely on ChatGPT Project files, uploaded ZIPs, hidden chat context, local worktrees or predecessor memory. GitHub is the source of truth.
+Do not rely on prior chat history, ChatGPT Project files, uploaded ZIPs, hidden memory or a local checkout. GitHub is the source of truth.
 
 ## Mandatory startup order
 
 1. Read `.agent-control/v1/PROTOCOL_v2.md` in full.
 2. Read `.agent-control/v1/GLOBAL_STATE_v1.json`.
-3. Read `CURRENT_STATE_SNAPSHOT_2026-08-02T2031-0700_v1.json` in this folder.
+3. Read `CURRENT_STATE_SNAPSHOT_2026-08-02T2108-0700_v1.json` in this folder.
 4. Read every other file in this handoff folder, especially `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` and `CONTEXT_EXHAUSTION_CHECKLIST_v1.md`.
 5. Read `.agent-control/v1/orchestrator/STATUS_v1.json` and newest orchestrator events.
-6. Refresh issues #63 and #119–#125, PR #139, every live mailbox record needed to resolve discrepancies and every exact branch/workflow reference in the timestamped snapshot.
+6. Refresh issues #63 and #119–#125, PR #139, mailbox records and every exact branch/workflow reference in the newest snapshot.
 7. Fetch the live control-plane head, PR #139 base/head and naturally triggered workflow conclusions before acting.
 
-The older `CURRENT_STATE_SNAPSHOT_v1.json` describes the initial worker activation phase and is historical. `PROTOCOL_v1.md` is also historical migration evidence. Live validated GitHub state and protocol v2 win on conflict.
+Older timestamped snapshots and `CURRENT_STATE_SNAPSHOT_v1.json` are historical. `PROTOCOL_v1.md` is historical migration evidence. Live validated GitHub state and protocol v2 win on conflict.
 
 ## User stop directive
 
-The user ordered all work stopped. The predecessor immediately stopped CI polling and did not dispatch, rerun or trigger workflows. It performed only these handoff writes on the control-plane branch.
+The user ordered all work stopped at 21:08. The predecessor stopped candidate edits and CI polling and did not dispatch, rerun or trigger workflows. Only handoff writes were made after the stop directive.
 
-The replacement must refresh live state before continuing. Do not interpret the last observed in-progress CI state as final acceptance.
+Do not interpret the last observed in-progress CI state as final acceptance.
 
 ## Primary Round 4 candidate
 
@@ -44,12 +44,10 @@ The replacement must refresh live state before continuing. Do not interpret the 
 
 PR #139's body still names an older candidate head. Refresh the live head first and treat that stale text as an explicit discrepancy.
 
-The direct-takeover candidate contains the 27-path hardened Stage 0 validator package, 48 accepted simulation/security paths, 55 disjoint accepted subsystem paths from issues #120, #121, #123 and #124, and one bounded Worker 1 metadata correction. Verify exact live changed paths rather than trusting this summary.
-
 ## Latest exact-head repairs
 
 - `244fcb72e06940a1d5fd754a697e7747b7a8f9ec`: 459/460 tests. Phase 5 top-level deletion mutation expected `missing_field`; the exact key-set validator returns `invalid_keys`.
-- `fff4dee6437ea5deefda5b99232aa1f4aa0c2938`: changed the Phase 5 deletion expectation to `invalid_keys`; then 459/460 tests because the canonical result has 14 top-level fields but the test asserted 15.
+- `fff4dee6437ea5deefda5b99232aa1f4aa0c2938`: changed the expected code to `invalid_keys`; then 459/460 because the canonical result has 14 top-level fields but the test asserted 15.
 - `136d166fa87c50ab95b3083fa4317df85850d8ac`: corrected the Phase 5 field count to 14.
 
 ## CI state at the stop
@@ -67,12 +65,6 @@ Refresh these naturally triggered runs. Do not manually dispatch, rerun or trigg
 - PR #136 / `fix/remote-mutable-fork-simulation-v1`, last known head `38166cd938c3b2cbbde9359418f40621c538e534`.
 
 Do not modify, merge, dispatch, rerun or execute either workstream from the Round 4 static-candidate task. Do not run live simulations.
-
-## Worker/mailbox continuity
-
-Worker 2 sequence 9 was last known published on issue #122 for `audit-round4/full-platform-integration-v2` from `bbb4cac794865f84b65ee78a2fc78d391421c759`. Last known status was `ready`, with sequence 8 consumed, no active sequence and no sequence 9 ACK observed before direct takeover.
-
-Refresh mailbox state but never write worker-owned ACK or STATUS files. PR #139 is the primary direct-takeover candidate unless live GitHub state proves otherwise.
 
 ## Immediate replacement priorities
 
@@ -92,7 +84,8 @@ No manual workflow dispatch/rerun, live simulation execution, production secret 
 ## Files in this handoff package
 
 - `READ_FIRST_v1.md` — this entrypoint.
-- `CURRENT_STATE_SNAPSHOT_2026-08-02T2031-0700_v1.json` — current stopped-state snapshot.
+- `CURRENT_STATE_SNAPSHOT_2026-08-02T2108-0700_v1.json` — newest stopped-state snapshot.
+- older timestamped snapshots — historical predecessor snapshots.
 - `CURRENT_STATE_SNAPSHOT_v1.json` — historical initial worker-phase snapshot.
 - `REPLACEMENT_BOOTSTRAP_PROMPT_v1.md` — copy-ready replacement prompt.
 - `CONTEXT_EXHAUSTION_CHECKLIST_v1.md` — durable handoff checklist.
