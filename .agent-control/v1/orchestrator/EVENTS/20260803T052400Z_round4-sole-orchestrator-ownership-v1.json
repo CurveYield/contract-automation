@@ -1,0 +1,71 @@
+{
+  "protocolVersion": 1,
+  "eventId": "round4-sole-orchestrator-ownership-20260803T052400Z",
+  "eventType": "integration_ownership_superseded",
+  "createdAt": "2026-08-03T05:24:00Z",
+  "createdBy": "orchestrator",
+  "round": 4,
+  "masterIssueNumber": 119,
+  "integrationIssueNumber": 122,
+  "ownerDirective": {
+    "receivedAt": "2026-08-02T22:24:00-07:00",
+    "instruction": "The replacement orchestrator must finish all remaining work alone until the repository is ready for production testing or a hard block requires account-owner assistance or input."
+  },
+  "supersededWorkerAssignment": {
+    "workerId": "worker-2",
+    "sequence": 9,
+    "messageId": "worker-2-round4-full-platform-integration-v2-000009",
+    "branch": "audit-round4/full-platform-integration-v2",
+    "startingSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "branchHeadAtSupersession": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "acknowledged": false,
+    "started": false,
+    "workerStatusModified": false
+  },
+  "supersessionControl": {
+    "sequence": 10,
+    "messageId": "worker-2-round4-integration-ownership-revoked-v1-000010",
+    "assignmentPath": ".agent-control/v1/workers/worker-2/ASSIGNMENTS/000010_worker-2-round4-integration-ownership-revoked-v1.md",
+    "assignmentBlobSha": "9f8154ed5371a9dea3348536450e885214e05418",
+    "currentPointerBlobSha": "2fdc9e5d098f98b7ed38d1c026433be371e6024f"
+  },
+  "retainedIntegrationOwner": {
+    "owner": "orchestrator",
+    "branch": "orchestrator/round4-final-integration-takeover-v1",
+    "baseSha": "bbb4cac794865f84b65ee78a2fc78d391421c759",
+    "candidateHeadSha": "136d166fa87c50ab95b3083fa4317df85850d8ac",
+    "pullRequest": 139,
+    "mergeAuthorized": false
+  },
+  "verificationAtSupersession": {
+    "candidateRelationToBase": {
+      "status": "ahead",
+      "aheadBy": 47,
+      "behindBy": 0
+    },
+    "githubNativeSimulationRun": {
+      "runId": 30781904598,
+      "conclusion": "success"
+    },
+    "liveForkUpgradeRun": {
+      "runId": 30781904575,
+      "conclusion": "success"
+    },
+    "exactHeadStaticAcceptance": "pending-independent-path-blob-reconciliation"
+  },
+  "resolvedBlocker": "integration-ownership-conflict-v1",
+  "remainingRestrictions": [
+    "no manual workflow dispatch or rerun",
+    "no live simulation execution",
+    "no production secret values or secret changes",
+    "no submitted-project execution",
+    "no wallet keys, signing or transaction broadcasting",
+    "no deployment",
+    "no broad branch merge",
+    "no direct main merge",
+    "no PR 139 merge without explicit authorization and completed exact-SHA acceptance",
+    "no CurveYield Lite changes",
+    "no AWS",
+    "no worker-owned ACK or STATUS edits"
+  ]
+}
