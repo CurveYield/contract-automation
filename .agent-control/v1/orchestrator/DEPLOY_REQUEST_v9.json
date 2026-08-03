@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "round5-pages-api-production-request-v9",
+  "requestId": "round5-pages-api-production-20260803T1320Z-v9",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "70719851d8e18faf89e65027858b9f4f728d979d",
+  "applicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "requestedAt": "2026-08-03T13:20:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "pagesProject": "curveyield-preflight",
+  "pagesDomain": "preflight.curveyield.online",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "deferredNetworks": [
+    "arbitrum",
+    "fraxtal",
+    "katana",
+    "optimism",
+    "polygon"
+  ],
+  "supersededRuns": [
+    30808377849,
+    30813209037,
+    30814064657,
+    30815289252,
+    30815965400
+  ],
+  "finding": "wrangler-production-target-attempts-created-hash-deployments-without-updating-custom-domain",
+  "repair": "dependency-free-direct-pages-api-deployment-using-existing-asset-manifest-and-exact-production-binding-validation",
+  "failedOrHistoricalWorkflowRerunAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "directPagesApiRequired": true,
+  "assetUploadAllowed": false,
+  "missingAssetFailsClosed": true,
+  "productionEnvironmentResponseRequired": true,
+  "productionAliasBindingRequired": true,
+  "repositoryCompilationAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "rpcCallsAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false
+}
