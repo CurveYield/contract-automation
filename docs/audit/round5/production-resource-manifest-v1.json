@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "round5-production-resource-manifest-v1",
+  "releaseBindingId": "round5-release-source-3da6b10-v1",
+  "repository": "CurveYield/contract-automation",
+  "cloudflare": {
+    "zone": "curveyield.online",
+    "apiHostname": "api.preflight.curveyield.online",
+    "pagesProject": "curveyield-preflight",
+    "pagesHostname": "preflight.curveyield.online",
+    "r2Bucket": "curveyield-preflight",
+    "corsOrigins": [
+      "https://preflight.curveyield.online"
+    ],
+    "r2LifecycleRequired": true,
+    "r2LifecyclePolicy": "Bound temporary uploads and generated evidence by the approved retention contract; durable accepted reports remain explicitly retained.",
+    "dnsChangesAuthorized": false,
+    "resourceChangesAuthorized": false
+  },
+  "github": {
+    "repository": "CurveYield/contract-automation",
+    "requiredIssueLabels": [
+      "preflightsim-campaign",
+      "preflightsim-job",
+      "preflightsim-report"
+    ],
+    "requiredWorkflowClasses": [
+      "secretless-pull-request-validation",
+      "trusted-deployment",
+      "trusted-v27-live-regression",
+      "bounded-production-tests"
+    ],
+    "pullRequestWorkflowsSecretless": true,
+    "trustedWorkflowsRequireReviewedSha": true,
+    "thirdPartyActionsPinned": true
+  },
+  "readOnlyRpcNetworks": [
+    {"network":"arbitrum","chainId":42161,"legacySecretName":"RPC_ARBITRUM","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"base","chainId":8453,"legacySecretName":"RPC_BASE","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"ethereum","chainId":1,"legacySecretName":"RPC_ETHEREUM","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"fraxtal","chainId":252,"legacySecretName":"RPC_FRAXTAL","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"katana","chainId":747474,"legacySecretName":"RPC_KATANA","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"optimism","chainId":10,"legacySecretName":"RPC_OPTIMISM","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false},
+    {"network":"polygon","chainId":137,"legacySecretName":"RPC_POLYGON","allowedPurpose":"archive-backed-read-only-fork-source","transactionBroadcastAllowed":false,"signingAllowed":false}
+  ],
+  "rpcPolicy": {
+    "failClosed": true,
+    "transactionMethodsDenied": true,
+    "accountMethodsDenied": true,
+    "unsupportedMethodsTerminateSimulation": true,
+    "providerMessagesRedacted": true,
+    "rawProviderLocationsRecorded": false,
+    "publicChainBroadcastsAllowed": false
+  },
+  "resourceReadiness": {
+    "presenceConfirmed": false,
+    "configurationConfirmed": false,
+    "authorized": false,
+    "authorizer": "account-owner",
+    "requiredEvidence": [
+      "resource-name-and-binding-presence-report",
+      "cors-and-lifecycle-configuration-report",
+      "domain-routing-report",
+      "github-label-and-workflow-presence-report",
+      "seven-network-read-only-rpc-name-readiness-report"
+    ]
+  }
+}
