@@ -1,0 +1,330 @@
+name: Production Current-Source Smoke Acceptance V2
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PRODUCTION_ACCEPTANCE_REQUEST_v2.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-production-current-source-smoke-v2
+  cancel-in-progress: false
+
+jobs:
+  accept:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      ACCEPTANCE_REQUEST_PATH: .agent-control/v1/orchestrator/PRODUCTION_ACCEPTANCE_REQUEST_v2.json
+      ACCEPTANCE_REQUEST_ID: round5-production-current-source-smoke-20260803T1158Z-v2
+      ACCEPTANCE_EXPECTED_BEFORE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      DEPLOYED_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      PAGES_URL: https://preflight.curveyield.online
+      API_URL: https://api.preflight.curveyield.online
+      HEALTH_URL: https://api.preflight.curveyield.online/api/v1/health
+      PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_CLIENT_API_KEY }}
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      RPC_BASE: ${{ secrets.RPC_BASE }}
+    steps:
+      - name: Check out exact acceptance source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time current-source acceptance request v2
+        shell: bash
+        env:
+          ACCEPTANCE_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$ACCEPTANCE_EVENT_BEFORE" = "$ACCEPTANCE_EXPECTED_BEFORE_SHA"
+          test -f "$ACCEPTANCE_REQUEST_PATH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test -n "$PREFLIGHTSIM_CLIENT_API_KEY"
+          test -n "$RPC_ETHEREUM"
+          test -n "$RPC_BASE"
+          jq -e \
+            --arg request_id "$ACCEPTANCE_REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$ACCEPTANCE_EXPECTED_BEFORE_SHA" \
+            --arg deployed_source "$DEPLOYED_SOURCE_SHA" \
+            '
+              .schemaVersion == "round5-production-current-source-smoke-request-v2" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .deployedSourceSha == $deployed_source and
+              .deploymentRun == 30808377849 and
+              .deploymentJob == 91668946456 and
+              .requestedAt == "2026-08-03T11:58:00Z" and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .activeNetworks == ["ethereum", "base"] and
+              .deferredNetworks == ["arbitrum", "fraxtal", "katana", "optimism", "polygon"] and
+              .checks == [
+                "pages-availability",
+                "api-health",
+                "api-setup-readiness",
+                "api-auth-rejection",
+                "api-chain-allowlist",
+                "cors-origin",
+                "ethereum-rpc-identity-and-head",
+                "base-rpc-identity-and-head",
+                "deployed-ui-ethereum-base-only",
+                "deployed-ui-base-default",
+                "deployed-client-chain-synchronization",
+                "deferred-networks-not-selectable",
+                "zero-job-upload-signing-wallet-or-broadcast-operation"
+              ] and
+              .readOnly == true and
+              .jobSubmissionAllowed == false and
+              .uploadSubmissionAllowed == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .secretValuesIncluded == false and
+              .failedOrHistoricalWorkflowRerunAllowed == false and
+              .supersedesSmokeRun == 30807373463
+            ' "$ACCEPTANCE_REQUEST_PATH" >/dev/null
+
+      - name: Verify Pages availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          trap 'rm -f "$body_file"' EXIT
+          status=$(curl --silent --show-error --max-time 15 \
+            --output "$body_file" \
+            --write-out '%{http_code}' \
+            "$PAGES_URL/")
+          test "$status" = "200"
+          test -s "$body_file"
+          echo "PAGES_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify public API health
+        shell: bash
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          trap 'rm -f "$body_file"' EXIT
+          curl --fail --silent --show-error --max-time 15 \
+            --output "$body_file" \
+            "$HEALTH_URL"
+          jq -e '
+            .status == "ok" and
+            .service == "preflightsim-lite-api" and
+            .version == "0.1.0"
+          ' "$body_file" >/dev/null
+          echo "API_HEALTH_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify setup readiness without secret disclosure
+        shell: bash
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          trap 'rm -f "$body_file"' EXIT
+          curl --fail --silent --show-error --max-time 15 \
+            --output "$body_file" \
+            "$API_URL/api/v1/setup"
+          jq -e '
+            .status == "ready" and
+            .features.storage == true and
+            .features.browserApiAuth == true and
+            .features.customGptAuth == true and
+            .features.githubBridgeAuth == true and
+            .features.runnerAuth == true and
+            .features.githubDispatch == true and
+            .features.largeUploads == true and
+            (.features | keys | sort) == [
+              "browserApiAuth",
+              "customGptAuth",
+              "githubBridgeAuth",
+              "githubDispatch",
+              "largeUploads",
+              "runnerAuth",
+              "storage"
+            ]
+          ' "$body_file" >/dev/null
+          echo "API_SETUP_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify unauthenticated client rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          trap 'rm -f "$body_file"' EXIT
+          status=$(curl --silent --show-error --max-time 15 \
+            --output "$body_file" \
+            --write-out '%{http_code}' \
+            "$API_URL/api/v1/chains")
+          test "$status" = "401"
+          jq -e '
+            .error.code == "unauthorized" and
+            .error.message == "Invalid client API key"
+          ' "$body_file" >/dev/null
+          echo "API_AUTH_REJECTION_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify authenticated chain allowlist and CORS origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          body_file=$(mktemp)
+          header_file=$(mktemp)
+          trap 'rm -f "$body_file" "$header_file"' EXIT
+          status=$(curl --silent --show-error --max-time 15 \
+            --output "$body_file" \
+            --dump-header "$header_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" \
+            "$API_URL/api/v1/chains")
+          test "$status" = "200"
+          jq -e '
+            (.chains | keys | sort) == ["base", "ethereum"] and
+            .chains.ethereum.chainId == 1 and
+            .chains.base.chainId == 8453
+          ' "$body_file" >/dev/null
+          origin=$(awk 'BEGIN { IGNORECASE=1 } /^access-control-allow-origin:/ { sub(/\r$/, ""); sub(/^[^:]+:[[:space:]]*/, ""); print; exit }' "$header_file")
+          test "$origin" = "$PAGES_URL"
+          echo "API_CHAIN_ALLOWLIST_CHECK=success" >> "$GITHUB_ENV"
+          echo "CORS_ORIGIN_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify deployed UI Ethereum/Base scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          html_file=$(mktemp)
+          app_file=$(mktemp)
+          trap 'rm -f "$html_file" "$app_file"' EXIT
+          curl --fail --silent --show-error --max-time 15 \
+            --output "$html_file" \
+            "$PAGES_URL/"
+          curl --fail --silent --show-error --max-time 15 \
+            --output "$app_file" \
+            "$PAGES_URL/app.js"
+          python3 - "$html_file" "$app_file" <<'PY'
+          import re
+          import sys
+
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain option scope')
+          selected = [value for value, attributes in options if re.search(r'\bselected\b', attributes)]
+          if selected != ['base']:
+              raise SystemExit('Base is not the sole default')
+          for deferred in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon'):
+              if deferred in selector.lower():
+                  raise SystemExit('deferred network exposed')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+          echo "UI_SCOPE_CHECK=success" >> "$GITHUB_ENV"
+          echo "UI_BASE_DEFAULT_CHECK=success" >> "$GITHUB_ENV"
+          echo "UI_CHAIN_SYNC_CHECK=success" >> "$GITHUB_ENV"
+          echo "UI_DEFERRED_NETWORK_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Verify Ethereum and Base RPC identity and current head
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe_rpc() {
+            local endpoint="$1"
+            local expected_chain_id="$2"
+            local label="$3"
+            local chain_file block_file chain_result block_result
+            chain_file=$(mktemp)
+            block_file=$(mktemp)
+            if ! curl --fail --silent --max-time 20 \
+              --header 'content-type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+              --output "$chain_file" \
+              "$endpoint"; then
+              rm -f "$chain_file" "$block_file"
+              printf '%s RPC identity request failed\n' "$label"
+              return 1
+            fi
+            if ! curl --fail --silent --max-time 20 \
+              --header 'content-type: application/json' \
+              --data '{"jsonrpc":"2.0","id":2,"method":"eth_blockNumber","params":[]}' \
+              --output "$block_file" \
+              "$endpoint"; then
+              rm -f "$chain_file" "$block_file"
+              printf '%s RPC head request failed\n' "$label"
+              return 1
+            fi
+            chain_result=$(jq -r 'if .error then empty else .result // empty end' "$chain_file")
+            block_result=$(jq -r 'if .error then empty else .result // empty end' "$block_file")
+            test "$chain_result" = "$expected_chain_id"
+            [[ "$block_result" =~ ^0x[0-9a-fA-F]+$ ]]
+            test "$block_result" != "0x0"
+            rm -f "$chain_file" "$block_file"
+            printf '%s RPC identity and head verified\n' "$label"
+          }
+          probe_rpc "$RPC_ETHEREUM" "0x1" "ethereum"
+          probe_rpc "$RPC_BASE" "0x2105" "base"
+          echo "ETHEREUM_RPC_CHECK=success" >> "$GITHUB_ENV"
+          echo "BASE_RPC_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Report Production current-source smoke acceptance v2 result
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACCEPTANCE_JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comment_file=$(mktemp)
+          trap 'rm -f "$comment_file"' EXIT
+          cat >"$comment_file" <<EOF
+          ## Production current-source smoke acceptance v2 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$ACCEPTANCE_JOB_STATUS\`
+          - deployed source SHA: \`$DEPLOYED_SOURCE_SHA\`
+          - acceptance source SHA: \`$GITHUB_SHA\`
+          - release branch: \`$RELEASE_BRANCH\`
+          - deployment v4 run: \`30808377849\`
+          - deployment v4 job: \`91668946456\`
+          - Pages availability: \`${PAGES_CHECK:-not-run}\`
+          - API health: \`${API_HEALTH_CHECK:-not-run}\`
+          - API setup readiness: \`${API_SETUP_CHECK:-not-run}\`
+          - unauthenticated API rejection: \`${API_AUTH_REJECTION_CHECK:-not-run}\`
+          - authenticated chain allowlist: \`${API_CHAIN_ALLOWLIST_CHECK:-not-run}\`
+          - CORS origin: \`${CORS_ORIGIN_CHECK:-not-run}\`
+          - deployed UI Ethereum/Base scope: \`${UI_SCOPE_CHECK:-not-run}\`
+          - deployed UI Base default: \`${UI_BASE_DEFAULT_CHECK:-not-run}\`
+          - deployed client chain synchronization: \`${UI_CHAIN_SYNC_CHECK:-not-run}\`
+          - deferred networks not selectable: \`${UI_DEFERRED_NETWORK_CHECK:-not-run}\`
+          - Ethereum RPC identity and head: \`${ETHEREUM_RPC_CHECK:-not-run}\`
+          - Base RPC identity and head: \`${BASE_RPC_CHECK:-not-run}\`
+          - active networks: \`ethereum, base\`
+          - read-only checks only: \`true\`
+          - job or upload submission performed: \`false\`
+          - wallet signing or transaction broadcasting: \`false\`
+          - secret values or RPC URLs recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
