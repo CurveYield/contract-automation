@@ -218,10 +218,26 @@ def blake3_digest(data: bytes, length: int = 32) -> bytes:
     return output.root_output_bytes(length)
 
 
+def _official_vector_input(length: int) -> bytes:
+    return bytes(index % 251 for index in range(length))
+
+
 def _self_test() -> None:
     vectors = (
         (b"", "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"),
         (b"abc", "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85"),
+        (
+            _official_vector_input(1023),
+            "10108970eeda3eb932baac1428c7a2163b0e924c9a9e25b35bba72b28f70bd11",
+        ),
+        (
+            _official_vector_input(1024),
+            "42214739f095a406f3fc83deb889744ac00df831c10daa55189b5d121c855af7",
+        ),
+        (
+            _official_vector_input(1025),
+            "d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b844",
+        ),
     )
     for payload, expected in vectors:
         actual = blake3_digest(payload).hex()
