@@ -1,11 +1,23 @@
 {
-  "Rules": [
+  "rules": [
     {
-      "ID": "delete-preflight-artifacts-after-30-days",
-      "Status": "Enabled",
-      "Filter": { "Prefix": "" },
-      "Expiration": { "Days": 30 },
-      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+      "id": "delete-preflight-artifacts-after-30-days",
+      "enabled": true,
+      "conditions": {
+        "prefix": ""
+      },
+      "deleteObjectsTransition": {
+        "condition": {
+          "type": "Age",
+          "maxAge": 2592000
+        }
+      },
+      "abortMultipartUploadsTransition": {
+        "condition": {
+          "type": "Age",
+          "maxAge": 86400
+        }
+      }
     }
   ]
 }
