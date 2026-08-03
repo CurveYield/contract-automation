@@ -141,6 +141,8 @@ test('live API, R2, and GitHub acceptance is exact-parent, bounded, correlated, 
   assert.match(workflow, /r2 bucket lifecycle set/);
   assert.match(workflow, /r2 object delete/);
   assert.match(workflow, /access-control-allow-origin/);
+  assert.match(workflow, /wrangler deploy --config apps\/api\/wrangler\.toml/);
+  assert.match(workflow, /wrangler pages deploy dist\/web/);
   assert.match(workflow, /Live API, R2, and GitHub acceptance result/);
   assert.match(workflow, /if: \$\{\{ always\(\) \}\}/);
   assert.doesNotMatch(workflow, /workflow_dispatch:/);
@@ -152,10 +154,12 @@ test('live API, R2, and GitHub acceptance is exact-parent, bounded, correlated, 
   assert.equal(request.schemaVersion, 'round5-live-api-r2-github-acceptance-request-v1');
   assert.equal(request.requestId, REQUEST_ID);
   assert.equal(request.expectedBeforeSha, EXPECTED_PARENT);
-  assert.equal(request.deployedSourceSha, EXPECTED_PARENT);
-  assert.equal(request.deploymentRun, 30808377849);
-  assert.equal(request.deploymentJob, 91668946456);
+  assert.equal(request.baselineDeployedSourceSha, EXPECTED_PARENT);
+  assert.equal(request.baselineDeploymentRun, 30808377849);
+  assert.equal(request.baselineDeploymentJob, 91668946456);
   assert.deepEqual(request.activeNetworks, ['ethereum', 'base']);
+  assert.equal(request.deployCorrelationGateway, true);
+  assert.equal(request.applySevenDayLifecycle, true);
   assert.equal(request.readOnlyBlockchain, true);
   assert.equal(request.compileOnlyJob, true);
   assert.equal(request.boundedDisposableR2Object, true);
