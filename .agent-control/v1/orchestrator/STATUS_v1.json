@@ -2,10 +2,10 @@
   "protocolVersion": 1,
   "operatingProtocol": ".agent-control/v1/PROTOCOL_v2.md",
   "agentId": "orchestrator",
-  "state": "pages-v6-rejected-v7-blocked",
+  "state": "pages-v9-merged-live-result-pending",
   "operatingMode": "sole-orchestrator",
-  "lastPollAt": "2026-08-03T13:01:21Z",
-  "lastProcessedEvent": "pages-v6-rejected-v7-blocked-20260803T130121Z",
+  "lastPollAt": "2026-08-03T16:00:38Z",
+  "lastProcessedEvent": "pages-v9-merged-live-result-pending-20260803T160038Z",
   "activeReviewWorkerId": null,
   "activeReviewSequence": null,
   "round": 5,
@@ -21,14 +21,14 @@
   },
   "trustedRelease": {
     "branch": "orchestrator/round4-ci-base-v1",
-    "currentSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
-    "sourcePullRequest": 156,
+    "currentSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "sourcePullRequest": 159,
     "acceptedApplicationSourceSha": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
     "acceptedApplicationSourcePullRequest": 150,
     "round4ExactTreeDigestSha256": "22ee6ee759c027189b9e8887e584c976e378a6de917a20acb0e5275e3a1afc16",
     "round5StaticPackageDigestSha256": "e79602477befb743a51052a245e8ffc86e308c5488c98f80a936fba11bc463e3"
   },
-  "promotedPullRequests": [139,140,141,142,143,144,145,146,147,148,149,150,153,155,156],
+  "promotedPullRequests": [139,140,141,142,143,144,145,146,147,148,149,150,153,155,156,157,159],
   "networkScope": {
     "active": [
       {"network":"ethereum","chainId":1,"secretName":"RPC_ETHEREUM"},
@@ -47,7 +47,8 @@
     },
     "pagesCustomDomain": {
       "acceptedApplicationSourceObserved": false,
-      "observedState": "stale-seven-network-selector",
+      "observedState": "last-observed-stale-seven-network-selector",
+      "v9LiveGate": "pending-observation",
       "exactServingSourceSha": null,
       "currentSourceSmokeAccepted": false
     }
@@ -62,29 +63,32 @@
     "deploymentV4Run": 30808377849,
     "deploymentV4Conclusion": "success-with-pages-custom-domain-later-observed-stale"
   },
-  "failedRunsDoNotRerun": [30800918581,30805768611,30813209037,30814064657,30815289252],
+  "failedRunsDoNotRerun": [30800918581,30805768611,30813209037,30814064657,30815289252,30815965400],
   "latestRejectedGate": {
-    "pullRequest": 156,
-    "mergeSha": "3c37394f814c40b1fc6fff134d2de698635bd185",
-    "run": 30815289252,
-    "job": 91691417740,
+    "pullRequest": 157,
+    "mergeSha": "70719851d8e18faf89e65027858b9f4f728d979d",
+    "run": 30815965400,
+    "job": 91693663510,
     "conclusion": "failure",
-    "failedStep": "Verify production custom domain serves explicit production deployment",
+    "failedStep": "Verify production custom domain serves commit-bound production deployment",
     "dependencyDownloadContractViolation": true,
     "rerunAllowed": false
   },
   "activeCandidate": {
-    "pullRequest": 157,
-    "branch": "orchestrator/round5-pages-commit-object-v7",
-    "lastReviewedHead": "0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1",
-    "state": "draft-blocked",
-    "blockingCommentId": 5166610889,
-    "mergeAllowed": false,
-    "liveExecutionAllowed": false
+    "pullRequest": 159,
+    "branch": "orchestrator/round5-pages-api-production-v9",
+    "verifiedHead": "918631333aed3d6f8ffe4b8896168be8e6d64e05",
+    "mergeSha": "11036211d5448e0bd32bb4c4fdd85bf638caa53d",
+    "state": "merged-live-result-pending",
+    "issueCheckpointCommentId": 5168755699,
+    "trustedPushAccepted": false,
+    "trustedPushRejected": false
   },
   "executionState": {
     "productionEnvironmentConfirmed": true,
     "apiWorkerDeploymentCompleted": true,
+    "pagesV9CodePromoted": true,
+    "pagesV9TrustedPushObserved": false,
     "pagesCurrentApplicationSourceObserved": false,
     "currentSourceSmokeAccepted": false,
     "boundedLiveProductionTestingStarted": true,
@@ -92,14 +96,15 @@
     "finalProductionAcceptance": "PENDING"
   },
   "pendingActions": [
-    "Do not merge or execute PR 157 at reviewed head 0c457b8236bc673e11ea3e2fa888eff4f8fb5ae1.",
-    "Correct or supersede PR 157 with a fresh exact-parent dependency-free Cloudflare Pages API deployment using already-uploaded assets and failing closed with no upload if any asset is missing.",
-    "Require deployment response environment production, exact production-branch trigger metadata and exact custom-domain binding before acceptance.",
-    "After Pages correction, create a fresh current-source production smoke gate and continue remaining issue 125 stages without repeating accepted work."
+    "Observe the exact trusted v9 push run through issue 125 or connector-visible run evidence.",
+    "Inspect the exact run, job and every step before accepting or rejecting the v9 live gate.",
+    "Do not rerun any failed or historical workflow.",
+    "If v9 is accepted, create a fresh exact-parent current-source smoke gate.",
+    "If v9 is rejected or absent, preserve the exact trigger/result discrepancy before any fresh versioned correction."
   ],
   "hardExternalGates": [],
   "antiDuplication": {
-    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
+    "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0900-0700_v3.md",
     "historicalOrFailedWorkflowRerunsForbidden": true,
     "acceptedRedGreenSequencesMustNotBeRepeated": true,
     "historicalDigestsMustNotBeRecomputedFromMutableTree": true,
@@ -117,8 +122,8 @@
     "scheduledAutomationEnabled": false
   },
   "handoffEntry": ".agent-control/v1/orchestrator/HANDOFF/READ_FIRST_v1.md",
-  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0601-0700_v2.json",
-  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0601-0700_v2.md",
+  "currentSnapshot": ".agent-control/v1/orchestrator/HANDOFF/CURRENT_STATE_SNAPSHOT_2026-08-03T0900-0700_v3.json",
+  "acceptedWorkLedger": ".agent-control/v1/orchestrator/HANDOFF/ACCEPTED_WORK_LEDGER_2026-08-03T0900-0700_v3.md",
   "replacementPrompt": ".agent-control/v1/orchestrator/HANDOFF/REPLACEMENT_BOOTSTRAP_PROMPT_v1.md",
-  "updatedAt": "2026-08-03T13:01:21Z"
+  "updatedAt": "2026-08-03T16:00:38Z"
 }
