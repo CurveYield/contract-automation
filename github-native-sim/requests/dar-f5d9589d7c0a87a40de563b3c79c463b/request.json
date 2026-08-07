@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "deep-assurance-github-request-v1",
+  "processId": "deep-assurance-v6",
+  "contractAutomationRelease": {
+    "repository": "CurveYield/contract-automation",
+    "branch": "orchestrator/round4-ci-base-v1",
+    "commit": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
+    "contractVersion": "contract-automation-finalized-v1"
+  },
+  "runnerRelease": {
+    "version": "deep-assurance-github-bridge-v1",
+    "manifestSha256": "51fc7ef486a75a0593aaf9f8b54965424785e34198479f4ee74dd88168f53292"
+  },
+  "campaignId": "deep-assurance-v16-2-erc20-rehearsal-v1",
+  "assignmentId": "agent-5-build-simulation-evidence-v1",
+  "phaseId": "fork-simulation-lifecycle",
+  "gateId": "fork-simulation-lifecycle-complete",
+  "profileId": "github-native-simulate-v1",
+  "source": {
+    "repository": "CurveYield/Contracts",
+    "commit": "248e5d5de42f8a111050fb8d2b7d587653833331",
+    "projectPath": "audit-fixtures/deep-assurance-v16-2-erc20"
+  },
+  "configuration": {
+    "compilerVersion": "0.8.28",
+    "openZeppelinVersion": "5.4.0",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "evmVersion": "cancun",
+    "viaIR": false,
+    "timeoutMinutes": 20,
+    "chain": "ethereum",
+    "block": 20000000,
+    "simulation": {},
+    "workflow": {
+      "steps": [
+        {"action":"deploy","label":"deploy fixed-supply token","alias":"token","contract":"BasicERC20RehearsalV1","args":["1000"],"from":"$account0"},
+        {"action":"assertCall","label":"supply fixed at constructor value","target":"$token","function":"totalSupply()","args":[],"equals":"1000"},
+        {"action":"assertCall","label":"deployer receives full supply","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"1000"},
+        {"action":"call","label":"basic transfer","target":"$token","function":"transfer(address,uint256)","args":["$account1","100"],"from":"$account0"},
+        {"action":"assertCall","label":"sender balance after transfer","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"900"},
+        {"action":"assertCall","label":"recipient balance after transfer","target":"$token","function":"balanceOf(address)","args":["$account1"],"equals":"100"},
+        {"action":"call","label":"finite approval","target":"$token","function":"approve(address,uint256)","args":["$account2","200"],"from":"$account0"},
+        {"action":"assertCall","label":"finite allowance recorded","target":"$token","function":"allowance(address,address)","args":["$account0","$account2"],"equals":"200"},
+        {"action":"call","label":"finite allowance transferFrom","target":"$token","function":"transferFrom(address,address,uint256)","args":["$account0","$account3","50"],"from":"$account2"},
+        {"action":"assertCall","label":"finite allowance decremented","target":"$token","function":"allowance(address,address)","args":["$account0","$account2"],"equals":"150"},
+        {"action":"assertCall","label":"source balance after transferFrom","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"850"},
+        {"action":"assertCall","label":"transferFrom recipient credited","target":"$token","function":"balanceOf(address)","args":["$account3"],"equals":"50"},
+        {"action":"call","label":"set infinite approval","target":"$token","function":"approve(address,uint256)","args":["$account2","115792089237316195423570985008687907853269984665640564039457584007913129639935"],"from":"$account0"},
+        {"action":"call","label":"infinite allowance transferFrom","target":"$token","function":"transferFrom(address,address,uint256)","args":["$account0","$account3","10"],"from":"$account2"},
+        {"action":"assertCall","label":"infinite allowance remains max","target":"$token","function":"allowance(address,address)","args":["$account0","$account2"],"equals":"115792089237316195423570985008687907853269984665640564039457584007913129639935"},
+        {"action":"assertCall","label":"balance after infinite transferFrom","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"840"},
+        {"action":"expectRevert","label":"insufficient balance reverts","target":"$token","function":"transfer(address,uint256)","args":["$account4","101"],"from":"$account1"},
+        {"action":"expectRevert","label":"zero recipient reverts","target":"$token","function":"transfer(address,uint256)","args":["0x0000000000000000000000000000000000000000","1"],"from":"$account0"},
+        {"action":"assertCall","label":"balance preserved after reverts","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"840"},
+        {"action":"call","label":"same-address transfer is conservative","target":"$token","function":"transfer(address,uint256)","args":["$account0","1"],"from":"$account0"},
+        {"action":"assertCall","label":"same-address balance unchanged","target":"$token","function":"balanceOf(address)","args":["$account0"],"equals":"840"},
+        {"action":"call","label":"zero-value transferFrom from zero-address source","target":"$token","function":"transferFrom(address,address,uint256)","args":["0x0000000000000000000000000000000000000000","$account4","0"],"from":"$account2"},
+        {"action":"assertCall","label":"zero-value edge creates no balance","target":"$token","function":"balanceOf(address)","args":["$account4"],"equals":"0"},
+        {"action":"assertCall","label":"total supply remains fixed after lifecycle","target":"$token","function":"totalSupply()","args":[],"equals":"1000"}
+      ]
+    }
+  },
+  "requestId": "dar-f5d9589d7c0a87a40de563b3c79c463b",
+  "requestDigest": "f5d9589d7c0a87a40de563b3c79c463b1d15e2f10d556a11b9d25bc28659943b"
+}
