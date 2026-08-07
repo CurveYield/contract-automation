@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "round5-pages-domain-attach-request-v12",
+  "expectedBeforeSha": "c1c135e0100703c4acc1f2a9bf662e7c9cf96ed8",
+  "acceptedApplicationSource": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "v9Run": 31187717248,
+  "pagesDeploymentShortId": "db5d91bc",
+  "pagesProject": "curveyield-preflight",
+  "productionHostname": "preflight.curveyield.online",
+  "activeNetworks": ["ethereum", "base"],
+  "defaultNetwork": "base",
+  "idempotentAttach": true,
+  "preconditionWorkerDomainCount": 0,
+  "allowedPreAttachPagesDomainCounts": [0, 1],
+  "pagesDomainAttachAllowed": true,
+  "workerMutationAllowed": false,
+  "pagesProjectMutationAllowed": false,
+  "pagesDeploymentMutationAllowed": false,
+  "assetMutationAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
