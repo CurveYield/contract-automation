@@ -33,40 +33,104 @@ jobs:
           set -euo pipefail
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
-          import { createCampaign, applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
+          import { applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
+          import { evaluateOutcome } from './controller-src/packages/controller-core/src/outcome.mjs';
           import {
+            AssignmentStatus,
+            CampaignStatus,
             DEEP_ASSURANCE_GATE_CATALOG,
-            DEEP_ASSURANCE_REQUIRED_CAPABILITIES,
+            DEEP_ASSURANCE_LANE_CATALOG,
             GateStatus,
+            SecurityVerdict,
           } from './controller-src/packages/controller-core/src/constants.mjs';
 
           assert.equal(GateStatus.MEDIUM_ISSUE_FOUND, 'MEDIUM_ISSUE_FOUND');
           assert.equal(GateStatus.HIGH_ISSUE_FOUND, 'HIGH_ISSUE_FOUND');
           assert.equal(GateStatus.CRITICAL_ISSUE_FOUND, 'CRITICAL_ISSUE_FOUND');
 
-          const controller = { type: 'controller', id: 'policy-test' };
-          let tick = 0;
-          const ts = () => `2026-08-07T08:00:${String(tick++).padStart(2, '0')}.000Z`;
-          const cmd = (id, type, payload = {}) => ({ commandId: id, type, payload, actor: controller });
-          const context = () => ({ timestamp: ts() });
-          const capabilities = Object.fromEntries(DEEP_ASSURANCE_REQUIRED_CAPABILITIES.map((id) => [id, true]));
-          let state = createCampaign({
-            processId: 'deep-assurance-v6',
-            campaignId: 'severity-policy-test',
-            title: 'severity policy regression',
-            source: { repository: 'CurveYield/example', commit: 'a'.repeat(40) },
-            preflight: { status: 'READY', capabilities },
-            commandId: 'create',
-            actor: controller,
-            timestamp: ts(),
-          });
-          state = applyCommand(state, cmd('activate', 'campaign.activate'), context());
-          for (const gate of DEEP_ASSURANCE_GATE_CATALOG) {
-            state = applyCommand(state, cmd(`define-${gate.gateId}`, 'gate.define', {
-              gateId: gate.gateId, phaseId: gate.phaseId, title: gate.gateId, mandatory: true,
-            }), context());
+          function outcomeState(residualStatus, processFailGateId = null) {
+            const gates = Object.fromEntries(DEEP_ASSURANCE_GATE_CATALOG.map((gate) => [gate.gateId, {
+              gateId: gate.gateId,
+              phaseId: gate.phaseId,
+              mandatory: true,
+              status: gate.gateId === processFailGateId
+                ? GateStatus.FAIL
+                : gate.gateId === 'remediation-review-complete'
+                  ? residualStatus
+                  : GateStatus.PASS,
+            }]));
+            const assignments = Object.fromEntries(DEEP_ASSURANCE_LANE_CATALOG.map((lane, index) => [
+              `a-${index}`,
+              { assignmentId: `a-${index}`, roleId: lane.roleId, mandatory: true, status: AssignmentStatus.ACCEPTED },
+            ]));
+            return {
+              gates,
+              assignments,
+              publication: { status: 'PUBLISHED' },
+              userDelivery: { status: 'DELIVERED' },
+            };
           }
-          console.log('SEVERITY_STATUS_ENUM_PRESENT=true');
+
+          const medium = evaluateOutcome(outcomeState(GateStatus.MEDIUM_ISSUE_FOUND), { terminal: true });
+          assert.equal(medium.ready, true);
+          assert.equal(medium.completionStatus, 'COMPLETE');
+          assert.equal(medium.securityVerdict, SecurityVerdict.PASS);
+
+          for (const status of [GateStatus.HIGH_ISSUE_FOUND, GateStatus.CRITICAL_ISSUE_FOUND]) {
+            const blocking = evaluateOutcome(outcomeState(status), { terminal: true });
+            assert.equal(blocking.ready, true);
+            assert.equal(blocking.completionStatus, 'COMPLETE');
+            assert.equal(blocking.securityVerdict, SecurityVerdict.NO_GO);
+          }
+
+          const processFail = evaluateOutcome(
+            outcomeState(GateStatus.MEDIUM_ISSUE_FOUND, 'manual-implementation-review-complete'),
+            { terminal: true },
+          );
+          assert.equal(processFail.ready, false);
+          assert.equal(processFail.completionStatus, null);
+          assert.equal(processFail.securityVerdict, null);
+
+          const controller = { type: 'controller', id: 'policy-test' };
+          const deliveryState = {
+            schemaVersion: 2,
+            processId: 'deep-assurance-v6',
+            campaignId: 'phase10-process-fail-delivery',
+            status: CampaignStatus.ACTIVE,
+            publication: { status: 'PUBLISHED', record: {} },
+            userDelivery: { status: 'PENDING', record: null },
+            gates: {
+              'release-and-report-complete': {
+                gateId: 'release-and-report-complete',
+                phaseId: 'release-and-report',
+                mandatory: true,
+                status: GateStatus.FAIL,
+                evidenceRefs: ['evidence:phase10-process-failure'],
+              },
+            },
+            assignments: {},
+            workers: {},
+            events: [],
+            processedCommands: {},
+          };
+          assert.throws(
+            () => applyCommand(deliveryState, {
+              commandId: 'delivery-after-process-fail',
+              type: 'user_delivery.record',
+              actor: controller,
+              payload: {
+                summaryRef: 'chat:must-not-deliver',
+                artifactLinks: ['github:report'],
+                receiptRef: 'github:must-not-deliver-receipt',
+              },
+            }, { timestamp: '2026-08-07T08:30:00.000Z' }),
+            /release-and-report-complete|process|FAIL/i,
+          );
+
+          console.log('MEDIUM_TO_PASS=true');
+          console.log('HIGH_CRITICAL_TO_NO_GO=true');
+          console.log('PROCESS_FAIL_BLOCKS_COMPLETION=true');
+          console.log('PHASE10_PROCESS_FAIL_BLOCKS_DELIVERY=true');
           NODE
       - name: Publish regression commit status
         if: always()
