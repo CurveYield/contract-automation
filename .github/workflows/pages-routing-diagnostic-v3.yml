@@ -1,0 +1,480 @@
+name: Pages Routing Diagnostic V3
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_ROUTING_DIAGNOSTIC_REQUEST_v3.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-routing-diagnostic-v3
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '2a2ef752b82fc9e4f16bd973bb065d000e768c22' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_ROUTING_DIAGNOSTIC_REQUEST_v3.json
+      REQUEST_ID: round5-pages-routing-diagnostic-20260807-v3
+      EXPECTED_BEFORE_SHA: 2a2ef752b82fc9e4f16bd973bb065d000e768c22
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V11_RUN_ID: '30832528012'
+      V11_JOB_ID: '91749723106'
+      V11_DEPLOYMENT_SHORT_ID: c3d3e149
+      FAILED_V2_RUN_ID: '31183446228'
+      FAILED_V2_JOB_ID: '92882075058'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
+      CUSTOM_DOMAIN_NAME: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact diagnostic source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time GET-only diagnostic request v3
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test "$PAGES_PROJECT_NAME" = "curveyield-preflight"
+          jq -e \
+            --arg request_id "$REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$EXPECTED_BEFORE_SHA" \
+            --arg application_source "$APPLICATION_SOURCE_SHA" \
+            '
+              .schemaVersion == "round5-pages-routing-diagnostic-request-v3" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .acceptedApplicationSource == $application_source and
+              .v11Run == 30832528012 and
+              .v11Job == 91749723106 and
+              .v11DeploymentShortId == "c3d3e149" and
+              .failedV2Run == 31183446228 and
+              .failedV2Job == 92882075058 and
+              .pagesProject == "curveyield-preflight" and
+              .customDomain == "preflight.curveyield.online" and
+              .activeNetworks == ["ethereum", "base"] and
+              .defaultNetwork == "base" and
+              .readOnly == true and
+              .cloudflareMethodsAllowed == "GET-only" and
+              .capturePerEndpointHttpStatus == true and
+              .continueAfterHttp404 == true and
+              .dependencyInstallationAllowed == false and
+              .repositoryCompilationAllowed == false and
+              .cloudflareMutationAllowed == false and
+              .pagesDeploymentAllowed == false and
+              .workerDeploymentAllowed == false and
+              .secretMutationAllowed == false and
+              .r2MutationAllowed == false and
+              .jobOrUploadSubmissionAllowed == false and
+              .rpcCallsAllowed == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .secretValuesIncluded == false and
+              .failedOrHistoricalWorkflowRerunAllowed == false
+            ' "$REQUEST_PATH" >/dev/null
+          DIAGNOSTIC_TEMP_DIR="$RUNNER_TEMP/pages-routing-diagnostic-v3"
+          mkdir -p "$DIAGNOSTIC_TEMP_DIR"
+          echo "DIAGNOSTIC_TEMP_DIR=$DIAGNOSTIC_TEMP_DIR" >> "$GITHUB_ENV"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Capture each Pages metadata HTTP status independently
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          cf_get() {
+            local output="$1"
+            local url="$2"
+            local status
+            if status="$(curl --silent --show-error --max-time 20 \
+              --output "$output" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "$url")"
+            then
+              printf '%s' "$status"
+            else
+              rm -f "$output"
+              printf '%s' transport-error
+            fi
+          }
+
+          api_ok() {
+            local status="$1"
+            local file="$2"
+            [[ "$status" == "200" && -s "$file" ]] && jq -e '.success == true' "$file" >/dev/null 2>&1
+          }
+
+          project_file="$DIAGNOSTIC_TEMP_DIR/project.json"
+          deployments_file="$DIAGNOSTIC_TEMP_DIR/production-deployments.json"
+          domains_file="$DIAGNOSTIC_TEMP_DIR/domains.json"
+          domain_file="$DIAGNOSTIC_TEMP_DIR/domain.json"
+          exact_file="$DIAGNOSTIC_TEMP_DIR/exact-v11-deployment.json"
+
+          PROJECT_GET_HTTP_STATUS="$(cf_get "$project_file" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME")"
+          PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS="$(cf_get "$deployments_file" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments?env=production&per_page=50")"
+          PAGES_DOMAINS_LIST_GET_HTTP_STATUS="$(cf_get "$domains_file" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains")"
+          EXACT_DOMAIN_GET_HTTP_STATUS="$(cf_get "$domain_file" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/preflight.curveyield.online")"
+          EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS=not-run
+
+          PAGES_PRODUCTION_BRANCH_OK=false
+          PAGES_DOMAIN_ASSOCIATION_OK=false
+          PAGES_DOMAIN_STATUS_OK=false
+          PRODUCTION_V11_LIST_OK=false
+          EXACT_V11_METADATA_OK=false
+          PROJECT_SUBDOMAIN_URL=''
+          IMMUTABLE_DEPLOYMENT_URL=''
+          V11_DEPLOYMENT_ID=''
+
+          if api_ok "$PROJECT_GET_HTTP_STATUS" "$project_file"; then
+            if jq -e --arg branch "$RELEASE_BRANCH" '.result.production_branch == $branch' "$project_file" >/dev/null 2>&1; then
+              PAGES_PRODUCTION_BRANCH_OK=true
+            fi
+            project_subdomain="$(jq -r '.result.subdomain // ""' "$project_file" 2>/dev/null)"
+            if [[ -n "$project_subdomain" ]]; then
+              PROJECT_SUBDOMAIN_URL="$(python3 - "$project_subdomain" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          raw = sys.argv[1].strip()
+          candidate = raw if '://' in raw else 'https://' + raw
+          parsed = urlparse(candidate)
+          if parsed.scheme == 'https' and parsed.hostname and parsed.hostname.endswith('.pages.dev') and not parsed.username and not parsed.password and not parsed.port:
+              print('https://' + parsed.hostname)
+          PY
+              )"
+            fi
+          fi
+
+          if api_ok "$PAGES_DOMAINS_LIST_GET_HTTP_STATUS" "$domains_file"; then
+            domain_count="$(jq -r --arg domain "$CUSTOM_DOMAIN_NAME" '[.result[] | select((.name // "") == $domain)] | length' "$domains_file" 2>/dev/null)"
+            [[ "$domain_count" == "1" ]] && PAGES_DOMAIN_ASSOCIATION_OK=true
+          fi
+
+          if api_ok "$EXACT_DOMAIN_GET_HTTP_STATUS" "$domain_file"; then
+            if jq -e --arg domain "$CUSTOM_DOMAIN_NAME" '.result.name == $domain and .result.status == "active"' "$domain_file" >/dev/null 2>&1; then
+              PAGES_DOMAIN_STATUS_OK=true
+            fi
+          fi
+
+          if api_ok "$PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS" "$deployments_file"; then
+            short_match_count="$(jq -r --arg short "$V11_DEPLOYMENT_SHORT_ID" '[.result[] | select((.short_id // "") == $short or ((.id // "") | startswith($short)))] | length' "$deployments_file" 2>/dev/null)"
+            bound_match_count="$(jq -r \
+              --arg short "$V11_DEPLOYMENT_SHORT_ID" \
+              --arg branch "$RELEASE_BRANCH" \
+              --arg commit "$APPLICATION_SOURCE_SHA" \
+              '[.result[] | select(
+                ((.short_id // "") == $short or ((.id // "") | startswith($short))) and
+                .environment == "production" and
+                .deployment_trigger.metadata.branch == $branch and
+                .deployment_trigger.metadata.commit_hash == $commit and
+                .latest_stage.name == "deploy" and
+                .latest_stage.status == "success"
+              )] | length' "$deployments_file" 2>/dev/null)"
+            [[ "$bound_match_count" == "1" ]] && PRODUCTION_V11_LIST_OK=true
+            if [[ "$short_match_count" == "1" ]]; then
+              V11_DEPLOYMENT_ID="$(jq -r --arg short "$V11_DEPLOYMENT_SHORT_ID" '.result[] | select((.short_id // "") == $short or ((.id // "") | startswith($short))) | .id' "$deployments_file" 2>/dev/null)"
+            fi
+          fi
+
+          if [[ -n "$V11_DEPLOYMENT_ID" ]]; then
+            EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS="$(cf_get "$exact_file" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$V11_DEPLOYMENT_ID")"
+            if api_ok "$EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS" "$exact_file"; then
+              if jq -e \
+                --arg short "$V11_DEPLOYMENT_SHORT_ID" \
+                --arg branch "$RELEASE_BRANCH" \
+                --arg commit "$APPLICATION_SOURCE_SHA" \
+                '
+                  ((.result.short_id // "") == $short or ((.result.id // "") | startswith($short))) and
+                  .result.environment == "production" and
+                  .result.deployment_trigger.metadata.branch == $branch and
+                  .result.deployment_trigger.metadata.commit_hash == $commit and
+                  .result.latest_stage.name == "deploy" and
+                  .result.latest_stage.status == "success"
+                ' "$exact_file" >/dev/null 2>&1
+              then
+                EXACT_V11_METADATA_OK=true
+              fi
+              raw_immutable_url="$(jq -r '.result.url // ""' "$exact_file" 2>/dev/null)"
+              if [[ -n "$raw_immutable_url" ]]; then
+                IMMUTABLE_DEPLOYMENT_URL="$(python3 - "$raw_immutable_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          parsed = urlparse(sys.argv[1].strip())
+          if parsed.scheme == 'https' and parsed.hostname and parsed.hostname.endswith('.pages.dev') and not parsed.username and not parsed.password and not parsed.port:
+              print('https://' + parsed.hostname)
+          PY
+                )"
+              fi
+            fi
+          fi
+
+          echo "PROJECT_GET_HTTP_STATUS=$PROJECT_GET_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS=$PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAINS_LIST_GET_HTTP_STATUS=$PAGES_DOMAINS_LIST_GET_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "EXACT_DOMAIN_GET_HTTP_STATUS=$EXACT_DOMAIN_GET_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS=$EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PAGES_PRODUCTION_BRANCH_OK=$PAGES_PRODUCTION_BRANCH_OK" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAIN_ASSOCIATION_OK=$PAGES_DOMAIN_ASSOCIATION_OK" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAIN_STATUS_OK=$PAGES_DOMAIN_STATUS_OK" >> "$GITHUB_ENV"
+          echo "PRODUCTION_V11_LIST_OK=$PRODUCTION_V11_LIST_OK" >> "$GITHUB_ENV"
+          echo "EXACT_V11_METADATA_OK=$EXACT_V11_METADATA_OK" >> "$GITHUB_ENV"
+          echo "PROJECT_SUBDOMAIN_URL=$PROJECT_SUBDOMAIN_URL" >> "$GITHUB_ENV"
+          echo "IMMUTABLE_DEPLOYMENT_URL=$IMMUTABLE_DEPLOYMENT_URL" >> "$GITHUB_ENV"
+          echo "METADATA_STATUS_CAPTURE=success" >> "$GITHUB_ENV"
+
+      - name: Continue with bounded content classification
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          fetch_public() {
+            local base="$1"
+            local path="$2"
+            local output="$3"
+            local nonce="${4:-}"
+            if [[ -z "$base" ]]; then
+              printf '%s' not-run
+              return 0
+            fi
+            local url="${base%/}${path}"
+            [[ -n "$nonce" ]] && url="$url?routing-diagnostic=$nonce"
+            local status
+            if status="$(curl --silent --show-error --location --max-time 20 \
+              --output "$output" \
+              --write-out '%{http_code}' \
+              --header 'Cache-Control: no-cache' \
+              "$url")"
+            then
+              if [[ "$status" == "200" && -s "$output" ]]; then
+                printf '%s' 200
+              else
+                rm -f "$output"
+                printf '%s' "$status"
+              fi
+            else
+              rm -f "$output"
+              printf '%s' transport-error
+            fi
+          }
+
+          mkdir -p "$DIAGNOSTIC_TEMP_DIR/content"
+          nonce="$REQUEST_ID-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          custom_url="https://$CUSTOM_DOMAIN_NAME"
+
+          IMMUTABLE_INDEX_HTTP_STATUS="$(fetch_public "${IMMUTABLE_DEPLOYMENT_URL:-}" "/" "$DIAGNOSTIC_TEMP_DIR/content/immutable-index.html")"
+          IMMUTABLE_APP_HTTP_STATUS="$(fetch_public "${IMMUTABLE_DEPLOYMENT_URL:-}" "/app.js" "$DIAGNOSTIC_TEMP_DIR/content/immutable-app.js")"
+          PROJECT_INDEX_HTTP_STATUS="$(fetch_public "${PROJECT_SUBDOMAIN_URL:-}" "/" "$DIAGNOSTIC_TEMP_DIR/content/project-index.html")"
+          PROJECT_APP_HTTP_STATUS="$(fetch_public "${PROJECT_SUBDOMAIN_URL:-}" "/app.js" "$DIAGNOSTIC_TEMP_DIR/content/project-app.js")"
+          PROJECT_BUST_INDEX_HTTP_STATUS="$(fetch_public "${PROJECT_SUBDOMAIN_URL:-}" "/" "$DIAGNOSTIC_TEMP_DIR/content/project-bust-index.html" "$nonce-project")"
+          PROJECT_BUST_APP_HTTP_STATUS="$(fetch_public "${PROJECT_SUBDOMAIN_URL:-}" "/app.js" "$DIAGNOSTIC_TEMP_DIR/content/project-bust-app.js" "$nonce-project")"
+          CUSTOM_INDEX_HTTP_STATUS="$(fetch_public "$custom_url" "/" "$DIAGNOSTIC_TEMP_DIR/content/custom-index.html")"
+          CUSTOM_APP_HTTP_STATUS="$(fetch_public "$custom_url" "/app.js" "$DIAGNOSTIC_TEMP_DIR/content/custom-app.js")"
+          CUSTOM_BUST_INDEX_HTTP_STATUS="$(fetch_public "$custom_url" "/" "$DIAGNOSTIC_TEMP_DIR/content/custom-bust-index.html" "$nonce-custom")"
+          CUSTOM_BUST_APP_HTTP_STATUS="$(fetch_public "$custom_url" "/app.js" "$DIAGNOSTIC_TEMP_DIR/content/custom-bust-app.js" "$nonce-custom")"
+
+          python3 - "$DIAGNOSTIC_TEMP_DIR/content" "$DIAGNOSTIC_TEMP_DIR/content-metrics.json" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          expected = ['ethereum', 'base']
+          deferred = ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon')
+          required_client = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+
+          def classify(prefix):
+              html_path = root / f'{prefix}-index.html'
+              app_path = root / f'{prefix}-app.js'
+              if not html_path.is_file() or not app_path.is_file():
+                  return {'classification': 'unreachable', 'optionCount': 0}
+              html = html_path.read_text(encoding='utf-8', errors='replace')
+              app = app_path.read_text(encoding='utf-8', errors='replace')
+              match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+              if match is None:
+                  return {'classification': 'stale-or-unexpected', 'optionCount': 0}
+              selector = match.group(1)
+              options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+              values = [value for value, _ in options]
+              selected = [value for value, attrs in options if re.search(r'\bselected\b', attrs)]
+              selector_ok = values == expected and selected == ['base'] and not any(name in selector.lower() for name in deferred)
+              client_ok = all(fragment in app for fragment in required_client)
+              return {
+                  'classification': 'accepted' if selector_ok and client_ok else 'stale-or-unexpected',
+                  'optionCount': len(values),
+              }
+
+          result = {prefix: classify(prefix) for prefix in ('immutable', 'project', 'project-bust', 'custom', 'custom-bust')}
+          output.write_text(json.dumps(result, sort_keys=True), encoding='utf-8')
+          PY
+
+          pair_digest() {
+            local prefix="$1"
+            if [[ ! -s "$DIAGNOSTIC_TEMP_DIR/content/${prefix}-index.html" || ! -s "$DIAGNOSTIC_TEMP_DIR/content/${prefix}-app.js" ]]; then
+              printf '%s' unavailable
+              return 0
+            fi
+            {
+              sha256sum "$DIAGNOSTIC_TEMP_DIR/content/${prefix}-index.html"
+              sha256sum "$DIAGNOSTIC_TEMP_DIR/content/${prefix}-app.js"
+            } | awk '{print $1}' | sha256sum | awk '{print $1}'
+          }
+
+          immutable_digest="$(pair_digest immutable)"
+          project_digest="$(pair_digest project)"
+          project_bust_digest="$(pair_digest project-bust)"
+          custom_digest="$(pair_digest custom)"
+          custom_bust_digest="$(pair_digest custom-bust)"
+          [[ "$immutable_digest" != unavailable && "$project_digest" == "$immutable_digest" ]] && PROJECT_SUBDOMAIN_HASH_MATCH=true || PROJECT_SUBDOMAIN_HASH_MATCH=false
+          [[ "$immutable_digest" != unavailable && "$project_bust_digest" == "$immutable_digest" ]] && PROJECT_SUBDOMAIN_CACHE_BUST_HASH_MATCH=true || PROJECT_SUBDOMAIN_CACHE_BUST_HASH_MATCH=false
+          [[ "$immutable_digest" != unavailable && "$custom_digest" == "$immutable_digest" ]] && CUSTOM_DOMAIN_HASH_MATCH=true || CUSTOM_DOMAIN_HASH_MATCH=false
+          [[ "$immutable_digest" != unavailable && "$custom_bust_digest" == "$immutable_digest" ]] && CUSTOM_DOMAIN_CACHE_BUST_HASH_MATCH=true || CUSTOM_DOMAIN_CACHE_BUST_HASH_MATCH=false
+
+          IMMUTABLE_CONTENT_CLASS="$(jq -r '.immutable.classification' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")"
+          PROJECT_SUBDOMAIN_CONTENT_CLASS="$(jq -r '.project.classification' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")"
+          PROJECT_SUBDOMAIN_CACHE_BUST_CONTENT_CLASS="$(jq -r '."project-bust".classification' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")"
+          CUSTOM_DOMAIN_CONTENT_CLASS="$(jq -r '.custom.classification' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")"
+          CUSTOM_DOMAIN_CACHE_BUST_CONTENT_CLASS="$(jq -r '."custom-bust".classification' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")"
+
+          echo "IMMUTABLE_INDEX_HTTP_STATUS=$IMMUTABLE_INDEX_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "IMMUTABLE_APP_HTTP_STATUS=$IMMUTABLE_APP_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PROJECT_INDEX_HTTP_STATUS=$PROJECT_INDEX_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PROJECT_APP_HTTP_STATUS=$PROJECT_APP_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "CUSTOM_INDEX_HTTP_STATUS=$CUSTOM_INDEX_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "CUSTOM_APP_HTTP_STATUS=$CUSTOM_APP_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "IMMUTABLE_CONTENT_CLASS=$IMMUTABLE_CONTENT_CLASS" >> "$GITHUB_ENV"
+          echo "PROJECT_SUBDOMAIN_CONTENT_CLASS=$PROJECT_SUBDOMAIN_CONTENT_CLASS" >> "$GITHUB_ENV"
+          echo "PROJECT_SUBDOMAIN_CACHE_BUST_CONTENT_CLASS=$PROJECT_SUBDOMAIN_CACHE_BUST_CONTENT_CLASS" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CONTENT_CLASS=$CUSTOM_DOMAIN_CONTENT_CLASS" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_CONTENT_CLASS=$CUSTOM_DOMAIN_CACHE_BUST_CONTENT_CLASS" >> "$GITHUB_ENV"
+          echo "PROJECT_SUBDOMAIN_HASH_MATCH=$PROJECT_SUBDOMAIN_HASH_MATCH" >> "$GITHUB_ENV"
+          echo "PROJECT_SUBDOMAIN_CACHE_BUST_HASH_MATCH=$PROJECT_SUBDOMAIN_CACHE_BUST_HASH_MATCH" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_HASH_MATCH=$CUSTOM_DOMAIN_HASH_MATCH" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_HASH_MATCH=$CUSTOM_DOMAIN_CACHE_BUST_HASH_MATCH" >> "$GITHUB_ENV"
+          echo "IMMUTABLE_OPTION_COUNT=$(jq -r '.immutable.optionCount' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")" >> "$GITHUB_ENV"
+          echo "PROJECT_OPTION_COUNT=$(jq -r '.project.optionCount' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")" >> "$GITHUB_ENV"
+          echo "CUSTOM_OPTION_COUNT=$(jq -r '.custom.optionCount' "$DIAGNOSTIC_TEMP_DIR/content-metrics.json")" >> "$GITHUB_ENV"
+          echo "CONTENT_STATUS_CAPTURE=success" >> "$GITHUB_ENV"
+
+      - name: Derive status-aware routing diagnosis
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${PROJECT_GET_HTTP_STATUS:-not-run}" != "200" ]]; then
+            diagnosis=pages-project-get-failed
+          elif [[ "${PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS:-not-run}" != "200" ]]; then
+            diagnosis=production-deployments-get-failed
+          elif [[ "${PAGES_DOMAINS_LIST_GET_HTTP_STATUS:-not-run}" != "200" ]]; then
+            diagnosis=pages-domains-list-get-failed
+          elif [[ "${PAGES_DOMAIN_ASSOCIATION_OK:-false}" != "true" ]]; then
+            diagnosis=custom-domain-not-associated-with-pages-project
+          elif [[ "${EXACT_DOMAIN_GET_HTTP_STATUS:-not-run}" != "200" ]]; then
+            diagnosis=exact-custom-domain-get-failed
+          elif [[ "${EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS:-not-run}" != "200" && "${EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS:-not-run}" != "not-run" ]]; then
+            diagnosis=exact-v11-deployment-get-failed
+          elif [[ "${EXACT_V11_METADATA_OK:-false}" != "true" ]]; then
+            diagnosis=exact-v11-deployment-metadata-mismatch
+          elif [[ "${PRODUCTION_V11_LIST_OK:-false}" != "true" ]]; then
+            diagnosis=production-deployment-list-mismatch
+          elif [[ "${PAGES_PRODUCTION_BRANCH_OK:-false}" != "true" ]]; then
+            diagnosis=pages-production-branch-mismatch
+          elif [[ "${PAGES_DOMAIN_STATUS_OK:-false}" != "true" ]]; then
+            diagnosis=pages-domain-status-mismatch
+          elif [[ "${IMMUTABLE_CONTENT_CLASS:-unreachable}" != "accepted" ]]; then
+            diagnosis=immutable-deployment-content-mismatch
+          elif [[ "${PROJECT_SUBDOMAIN_CONTENT_CLASS:-unreachable}" != "accepted" || "${PROJECT_SUBDOMAIN_CACHE_BUST_CONTENT_CLASS:-unreachable}" != "accepted" || "${PROJECT_SUBDOMAIN_HASH_MATCH:-false}" != "true" || "${PROJECT_SUBDOMAIN_CACHE_BUST_HASH_MATCH:-false}" != "true" ]]; then
+            diagnosis=project-subdomain-routing-mismatch
+          elif [[ "${CUSTOM_DOMAIN_CONTENT_CLASS:-unreachable}" != "accepted" || "${CUSTOM_DOMAIN_CACHE_BUST_CONTENT_CLASS:-unreachable}" != "accepted" || "${CUSTOM_DOMAIN_HASH_MATCH:-false}" != "true" || "${CUSTOM_DOMAIN_CACHE_BUST_HASH_MATCH:-false}" != "true" ]]; then
+            diagnosis=custom-domain-routing-mismatch
+          else
+            diagnosis=no-current-routing-mismatch-detected
+          fi
+          echo "DERIVED_DIAGNOSIS=$diagnosis" >> "$GITHUB_ENV"
+          echo "DIAGNOSIS_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Clean transient diagnostic files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${DIAGNOSTIC_TEMP_DIR:-}" ]]; then
+            rm -rf "$DIAGNOSTIC_TEMP_DIR"
+          fi
+
+      - name: Report Pages routing diagnostic v3 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIAGNOSTIC_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          comment_file="$(mktemp)"
+          trap 'rm -f "$comment_file"' EXIT
+          cat > "$comment_file" <<EOF
+          ## Pages routing diagnostic v3 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$DIAGNOSTIC_JOB_STATUS\`
+          - diagnostic source SHA: \`$GITHUB_SHA\`
+          - accepted application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - historical v11 run/job: \`$V11_RUN_ID\` / \`$V11_JOB_ID\`
+          - failed v2 run/job examined: \`$FAILED_V2_RUN_ID\` / \`$FAILED_V2_JOB_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - project GET HTTP status: \`${PROJECT_GET_HTTP_STATUS:-not-run}\`
+          - production deployments GET HTTP status: \`${PRODUCTION_DEPLOYMENTS_GET_HTTP_STATUS:-not-run}\`
+          - Pages domains-list GET HTTP status: \`${PAGES_DOMAINS_LIST_GET_HTTP_STATUS:-not-run}\`
+          - exact custom-domain GET HTTP status: \`${EXACT_DOMAIN_GET_HTTP_STATUS:-not-run}\`
+          - exact v11 deployment GET HTTP status: \`${EXACT_V11_DEPLOYMENT_GET_HTTP_STATUS:-not-run}\`
+          - Pages production branch matches release branch: \`${PAGES_PRODUCTION_BRANCH_OK:-not-run}\`
+          - production deployment list contains exact v11 binding: \`${PRODUCTION_V11_LIST_OK:-not-run}\`
+          - exact v11 deployment metadata matches: \`${EXACT_V11_METADATA_OK:-not-run}\`
+          - custom domain associated with Pages project: \`${PAGES_DOMAIN_ASSOCIATION_OK:-not-run}\`
+          - exact custom domain status active: \`${PAGES_DOMAIN_STATUS_OK:-not-run}\`
+          - immutable deployment content: \`${IMMUTABLE_CONTENT_CLASS:-not-run}\` (options \`${IMMUTABLE_OPTION_COUNT:-not-run}\`)
+          - project subdomain content: \`${PROJECT_SUBDOMAIN_CONTENT_CLASS:-not-run}\` (options \`${PROJECT_OPTION_COUNT:-not-run}\`)
+          - custom domain content: \`${CUSTOM_DOMAIN_CONTENT_CLASS:-not-run}\` (options \`${CUSTOM_OPTION_COUNT:-not-run}\`)
+          - project subdomain matches immutable assets: \`${PROJECT_SUBDOMAIN_HASH_MATCH:-not-run}\`
+          - custom domain matches immutable assets: \`${CUSTOM_DOMAIN_HASH_MATCH:-not-run}\`
+          - derived diagnosis: \`${DERIVED_DIAGNOSIS:-not-run}\`
+          - Cloudflare API methods used: \`GET-only\`
+          - Cloudflare or Pages mutation performed: \`false\`
+          - dependency installation or repository compilation performed: \`false\`
+          - secret values, account identifiers, response bodies, validation data, raw hashes, or service URLs recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
