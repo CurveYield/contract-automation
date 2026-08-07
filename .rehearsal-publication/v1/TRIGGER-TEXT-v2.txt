@@ -1,0 +1,3 @@
+campaign=da6-vlsdt-v18-9-v162-rehearsal-7dee48511a
+markdown_sha256=4581262a8aa1fc9cb22dc80271572b93c34fadde7d761a1573ba446b43d256b9
+markdown_git_blob=a766387e4b2a9ba1fc5b11b139e1074880e6754b
