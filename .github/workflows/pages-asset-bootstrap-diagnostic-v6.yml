@@ -1,0 +1,241 @@
+name: Pages Asset Bootstrap Diagnostic V6
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_ASSET_BOOTSTRAP_DIAGNOSTIC_REQUEST_v6.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-asset-bootstrap-diagnostic-v6
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '76dcb1e9fcba83ecbbc704495c9962293a99bb59' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_ASSET_BOOTSTRAP_DIAGNOSTIC_REQUEST_v6.json
+      REQUEST_ID: round5-pages-asset-bootstrap-diagnostic-20260807-v6
+      EXPECTED_BEFORE_SHA: 76dcb1e9fcba83ecbbc704495c9962293a99bb59
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V5_RUN_ID: '31184973446'
+      V5_JOB_ID: '92887124197'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PRODUCTION_HOSTNAME: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact diagnostic source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Verify request and accepted immutable assets
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          jq -e --arg id "$REQUEST_ID" --arg parent "$EXPECTED_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-pages-asset-bootstrap-diagnostic-request-v6" and
+            .requestId == $id and
+            .expectedBeforeSha == $parent and
+            .acceptedApplicationSource == $app and
+            .v5Run == 31184973446 and
+            .v5Job == 92887124197 and
+            .pagesProject == "curveyield-preflight" and
+            .productionHostname == "preflight.curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and
+            .defaultNetwork == "base" and
+            .assetCacheCheckAllowed == true and
+            .assetUploadAllowed == false and
+            .pagesMutationAllowed == false and
+            .workerMutationAllowed == false and
+            .dependencyInstallationAllowed == false and
+            .repositoryCompilationAllowed == false and
+            .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+          git cat-file -e "$APPLICATION_SOURCE_SHA^{commit}"
+          git diff --quiet "$APPLICATION_SOURCE_SHA" -- apps/web/public
+          V6_TEMP_DIR="$RUNNER_TEMP/pages-asset-bootstrap-diagnostic-v6"
+          mkdir -p "$V6_TEMP_DIR"
+          python3 scripts/pages_asset_manifest_v1.py \
+            --root apps/web/public \
+            --manifest "$V6_TEMP_DIR/manifest.json" \
+            --hashes "$V6_TEMP_DIR/hashes.json" \
+            --metadata "$V6_TEMP_DIR/metadata.json"
+          jq -e 'length == 9' "$V6_TEMP_DIR/manifest.json" >/dev/null
+          jq -e 'length > 0 and length <= 9' "$V6_TEMP_DIR/hashes.json" >/dev/null
+          echo "V6_TEMP_DIR=$V6_TEMP_DIR" >> "$GITHUB_ENV"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+          echo "SOURCE_MANIFEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Diagnose Pages project upload-token and missing assets
+        shell: bash
+        run: |
+          set -uo pipefail
+          project_file="$V6_TEMP_DIR/project.json"
+          token_file="$V6_TEMP_DIR/upload-token.json"
+          missing_file="$V6_TEMP_DIR/check-missing.json"
+          worker_file="$V6_TEMP_DIR/worker-domain.json"
+
+          PROJECT_HTTP_STATUS="$(curl --silent --show-error --max-time 20 \
+            --output "$project_file" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME" || printf transport-error)"
+          PROJECT_OK=false
+          if [[ "$PROJECT_HTTP_STATUS" == "200" ]] && jq -e --arg branch "$RELEASE_BRANCH" '
+            .success == true and .result.name == "curveyield-preflight" and .result.production_branch == $branch
+          ' "$project_file" >/dev/null 2>&1; then
+            PROJECT_OK=true
+          fi
+
+          PAGES_UPLOAD_TOKEN_HTTP_STATUS="$(curl --silent --show-error --max-time 20 \
+            --output "$token_file" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/upload-token" || printf transport-error)"
+          PAGES_UPLOAD_TOKEN_OK=false
+          CHECK_MISSING_HTTP_STATUS=not-run
+          CHECK_MISSING_OK=false
+          MISSING_ASSET_COUNT=not-run
+          MISSING_HASHES_ALL_ACCEPTED=false
+          if [[ "$PAGES_UPLOAD_TOKEN_HTTP_STATUS" == "200" ]] && jq -e '.success == true and (.result.jwt | type == "string") and (.result.jwt | length > 0)' "$token_file" >/dev/null 2>&1; then
+            PAGES_UPLOAD_TOKEN_OK=true
+            pages_upload_token="$(jq -r '.result.jwt' "$token_file")"
+            echo "::add-mask::$pages_upload_token"
+            jq -n --slurpfile hashes "$V6_TEMP_DIR/hashes.json" '{hashes: $hashes[0]}' > "$V6_TEMP_DIR/check-missing-request.json"
+            CHECK_MISSING_HTTP_STATUS="$(curl --silent --show-error --max-time 20 \
+              --request POST \
+              --output "$missing_file" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $pages_upload_token" \
+              --header 'Content-Type: application/json' \
+              --data-binary "@$V6_TEMP_DIR/check-missing-request.json" \
+              "$CLOUDFLARE_API_BASE/pages/assets/check-missing" || printf transport-error)"
+            if [[ "$CHECK_MISSING_HTTP_STATUS" == "200" ]] && jq -e '.success == true and (.result | type == "array")' "$missing_file" >/dev/null 2>&1; then
+              CHECK_MISSING_OK=true
+              MISSING_ASSET_COUNT="$(jq -r '.result | length' "$missing_file")"
+              if jq -e --slurpfile accepted "$V6_TEMP_DIR/hashes.json" '[.result[] as $h | select(($accepted[0] | index($h)) == null)] | length == 0' "$missing_file" >/dev/null 2>&1; then
+                MISSING_HASHES_ALL_ACCEPTED=true
+              fi
+            fi
+          fi
+
+          WORKER_DOMAIN_HTTP_STATUS="$(curl --silent --show-error --max-time 20 \
+            --output "$worker_file" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online" || printf transport-error)"
+          WORKER_DOMAIN_MATCH_COUNT=not-run
+          if [[ "$WORKER_DOMAIN_HTTP_STATUS" == "200" ]] && jq -e '.success == true and (.result | type == "array")' "$worker_file" >/dev/null 2>&1; then
+            WORKER_DOMAIN_MATCH_COUNT="$(jq -r --arg domain "$PRODUCTION_HOSTNAME" '[.result[] | select((.hostname // "") == $domain)] | length' "$worker_file")"
+          fi
+
+          echo "PROJECT_HTTP_STATUS=$PROJECT_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PROJECT_OK=$PROJECT_OK" >> "$GITHUB_ENV"
+          echo "PAGES_UPLOAD_TOKEN_HTTP_STATUS=$PAGES_UPLOAD_TOKEN_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "PAGES_UPLOAD_TOKEN_OK=$PAGES_UPLOAD_TOKEN_OK" >> "$GITHUB_ENV"
+          echo "CHECK_MISSING_HTTP_STATUS=$CHECK_MISSING_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "CHECK_MISSING_OK=$CHECK_MISSING_OK" >> "$GITHUB_ENV"
+          echo "MISSING_ASSET_COUNT=$MISSING_ASSET_COUNT" >> "$GITHUB_ENV"
+          echo "MISSING_HASHES_ALL_ACCEPTED=$MISSING_HASHES_ALL_ACCEPTED" >> "$GITHUB_ENV"
+          echo "WORKER_DOMAIN_HTTP_STATUS=$WORKER_DOMAIN_HTTP_STATUS" >> "$GITHUB_ENV"
+          echo "WORKER_DOMAIN_MATCH_COUNT=$WORKER_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"
+          echo "BOOTSTRAP_DIAGNOSTIC_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Classify current production browser content
+        shell: bash
+        run: |
+          set -uo pipefail
+          html_file="$V6_TEMP_DIR/production-index.html"
+          app_file="$V6_TEMP_DIR/production-app.js"
+          PRODUCTION_UI_CLASS=unreachable
+          PRODUCTION_OPTION_COUNT=0
+          if curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' \
+             --output "$html_file" "https://$PRODUCTION_HOSTNAME/?v6=$GITHUB_RUN_ID" && \
+             curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' \
+             --output "$app_file" "https://$PRODUCTION_HOSTNAME/app.js?v6=$GITHUB_RUN_ID"; then
+            result="$(python3 - "$html_file" "$app_file" <<'PY'
+          import re, sys
+          html = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+          app = open(sys.argv[2], encoding='utf-8', errors='replace').read()
+          m = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if not m:
+              print('stale-or-unexpected|0'); raise SystemExit
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', m.group(1))
+          values = [v for v, _ in options]
+          selected = [v for v, a in options if re.search(r'\bselected\b', a)]
+          required = ('function syncChainOptions(chains)', 'syncChainOptions(response.chains)', 'Object.entries(chains)', 'elements.chain.replaceChildren', "preferred === 'base'")
+          accepted = values == ['ethereum', 'base'] and selected == ['base'] and all(x in app for x in required)
+          print(('accepted' if accepted else 'stale-or-unexpected') + '|' + str(len(values)))
+          PY
+            )"
+            PRODUCTION_UI_CLASS="${result%%|*}"
+            PRODUCTION_OPTION_COUNT="${result##*|}"
+          fi
+          echo "PRODUCTION_UI_CLASS=$PRODUCTION_UI_CLASS" >> "$GITHUB_ENV"
+          echo "PRODUCTION_OPTION_COUNT=$PRODUCTION_OPTION_COUNT" >> "$GITHUB_ENV"
+
+      - name: Clean transient v6 files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${V6_TEMP_DIR:-}" ]] && rm -rf "$V6_TEMP_DIR" || true
+
+      - name: Report Pages asset bootstrap diagnostic v6 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          comment_file="$(mktemp)"
+          trap 'rm -f "$comment_file"' EXIT
+          cat > "$comment_file" <<EOF
+          ## Pages asset bootstrap diagnostic v6 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - diagnostic source SHA: \`$GITHUB_SHA\`
+          - accepted application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - v5 run/job examined: \`$V5_RUN_ID\` / \`$V5_JOB_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - accepted source manifest: \`${SOURCE_MANIFEST_CHECK:-not-run}\`
+          - replacement Pages project GET: \`${PROJECT_HTTP_STATUS:-not-run}\`
+          - replacement Pages project binding valid: \`${PROJECT_OK:-false}\`
+          - Pages upload-token GET: \`${PAGES_UPLOAD_TOKEN_HTTP_STATUS:-not-run}\`
+          - Pages upload token valid: \`${PAGES_UPLOAD_TOKEN_OK:-false}\`
+          - check-missing POST: \`${CHECK_MISSING_HTTP_STATUS:-not-run}\`
+          - check-missing response valid: \`${CHECK_MISSING_OK:-false}\`
+          - accepted manifest hashes currently missing: \`${MISSING_ASSET_COUNT:-not-run}\`
+          - every returned missing hash belongs to accepted manifest: \`${MISSING_HASHES_ALL_ACCEPTED:-false}\`
+          - Worker-domain GET: \`${WORKER_DOMAIN_HTTP_STATUS:-not-run}\`
+          - exact production hostname Worker-domain match count: \`${WORKER_DOMAIN_MATCH_COUNT:-not-run}\`
+          - production browser UI classification: \`${PRODUCTION_UI_CLASS:-not-run}\`
+          - production browser option count: \`${PRODUCTION_OPTION_COUNT:-not-run}\`
+          - Pages asset upload/upsert performed: \`false\`
+          - Pages/Worker routing mutation performed: \`false\`
+          - dependency installation or repository compilation performed: \`false\`
+          - R2/secret/job/RPC/wallet/signing/public-chain mutation performed: \`false\`
+          - raw hashes, JWTs, account/service/domain identifiers, response bodies, or service URLs recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
