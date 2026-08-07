@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "round5-production-browser-acceptance-request-v3",
+  "expectedBeforeSha": "eaace5886b48ab1d409bd0679830d02b6ffd23ef",
+  "acceptedApplicationSource": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "v13RoutingRun": 31202904539,
+  "pagesProject": "curveyield-preflight",
+  "pagesHostname": "preflight.curveyield.online",
+  "apiHostname": "api.preflight.curveyield.online",
+  "activeNetworks": ["ethereum", "base"],
+  "defaultNetwork": "base",
+  "readOnly": true,
+  "jobSubmissionAllowed": false,
+  "uploadSubmissionAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "cloudflareMutationAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
