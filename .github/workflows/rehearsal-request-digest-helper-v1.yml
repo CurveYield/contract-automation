@@ -1,0 +1,63 @@
+name: Rehearsal Deep Assurance Request Digest Helper v1
+
+on:
+  push:
+    branches:
+      - rehearsal/request-digest-helper-v1
+    paths:
+      - .github/workflows/rehearsal-request-digest-helper-v1.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out helper commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Compute EDR request identities and publish as status URLs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs/promises';
+          import { calculateDeepAssuranceRequestDigest } from './packages/github-native-sim/src/deep-assurance-request.mjs';
+
+          const cases = [
+            ['reservation', 'github-native-sim/requests/dar-9b99cab7679ae60698845a90ef91bf58/request.json'],
+            ['vault', 'github-native-sim/requests/dar-3ff22eb65866f6944a1cfb99335b7064/request.json'],
+          ];
+
+          for (const [name, file] of cases) {
+            const request = JSON.parse(await fs.readFile(file, 'utf8'));
+            request.configuration.simulation.engine.mode = 'hardhat-edr';
+            const digest = calculateDeepAssuranceRequestDigest(request);
+            const requestId = `dar-${digest.slice(0, 32)}`;
+            const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.GITHUB_SHA}`, {
+              method: 'POST',
+              headers: {
+                accept: 'application/vnd.github+json',
+                authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                'content-type': 'application/json',
+                'user-agent': 'curveyield-rehearsal-request-digest-helper-v1',
+                'x-github-api-version': '2022-11-28',
+              },
+              body: JSON.stringify({
+                state: 'success',
+                context: `rehearsal/request-digest-${name}-v1`,
+                description: requestId,
+                target_url: `https://example.invalid/${digest}`,
+              }),
+            });
+            if (!response.ok) throw new Error(`status publish failed for ${name}: ${response.status} ${await response.text()}`);
+            console.log(JSON.stringify({ name, requestId, digest }));
+          }
+          NODE
