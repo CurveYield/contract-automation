@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "round5-worker-domain-detach-state-request-v9",
+  "requestId": "round5-worker-domain-detach-state-20260807-v9",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "f14bddb27107c3f4295d6932e9c3432bf389fa7d",
+  "acceptedApplicationSource": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "v7DeploymentShortId": "db5d91bc",
+  "v8Run": 31187427226,
+  "v8Job": 92895412422,
+  "pagesProject": "curveyield-preflight",
+  "productionHostname": "preflight.curveyield.online",
+  "activeNetworks": ["ethereum", "base"],
+  "defaultNetwork": "base",
+  "readOnly": true,
+  "cloudflareMethodsAllowed": "GET-only",
+  "cloudflareMutationAllowed": false,
+  "pagesMutationAllowed": false,
+  "workerMutationAllowed": false,
+  "dependencyInstallationAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
