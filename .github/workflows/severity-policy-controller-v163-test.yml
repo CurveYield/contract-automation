@@ -1,0 +1,132 @@
+name: Severity-aware controller policy regression
+
+on:
+  pull_request:
+    branches:
+      - rehearsal/severity-policy-verification-base-v1
+    paths:
+      - .github/workflows/severity-policy-controller-v163-test.yml
+      - controller-src/**
+
+permissions:
+  contents: read
+
+jobs:
+  test-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Run severity policy regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
+          import { evaluateOutcome } from './controller-src/packages/controller-core/src/outcome.mjs';
+          import {
+            AssignmentStatus,
+            CampaignStatus,
+            DEEP_ASSURANCE_GATE_CATALOG,
+            DEEP_ASSURANCE_LANE_CATALOG,
+            GateStatus,
+            SecurityVerdict,
+          } from './controller-src/packages/controller-core/src/constants.mjs';
+
+          assert.equal(GateStatus.MEDIUM_ISSUE_FOUND, 'MEDIUM_ISSUE_FOUND');
+          assert.equal(GateStatus.HIGH_ISSUE_FOUND, 'HIGH_ISSUE_FOUND');
+          assert.equal(GateStatus.CRITICAL_ISSUE_FOUND, 'CRITICAL_ISSUE_FOUND');
+
+          function outcomeState(residualStatus, processFailGateId = null) {
+            const gates = Object.fromEntries(DEEP_ASSURANCE_GATE_CATALOG.map((gate) => [gate.gateId, {
+              gateId: gate.gateId,
+              phaseId: gate.phaseId,
+              mandatory: true,
+              status: gate.gateId === processFailGateId
+                ? GateStatus.FAIL
+                : gate.gateId === 'remediation-review-complete'
+                  ? residualStatus
+                  : GateStatus.PASS,
+            }]));
+            const assignments = Object.fromEntries(DEEP_ASSURANCE_LANE_CATALOG.map((lane, index) => [
+              `a-${index}`,
+              { assignmentId: `a-${index}`, roleId: lane.roleId, mandatory: true, status: AssignmentStatus.ACCEPTED },
+            ]));
+            return {
+              gates,
+              assignments,
+              publication: { status: 'PUBLISHED' },
+              userDelivery: { status: 'DELIVERED' },
+            };
+          }
+
+          const medium = evaluateOutcome(outcomeState(GateStatus.MEDIUM_ISSUE_FOUND), { terminal: true });
+          assert.equal(medium.ready, true);
+          assert.equal(medium.completionStatus, 'COMPLETE');
+          assert.equal(medium.securityVerdict, SecurityVerdict.PASS);
+
+          for (const status of [GateStatus.HIGH_ISSUE_FOUND, GateStatus.CRITICAL_ISSUE_FOUND]) {
+            const blocking = evaluateOutcome(outcomeState(status), { terminal: true });
+            assert.equal(blocking.ready, true);
+            assert.equal(blocking.completionStatus, 'COMPLETE');
+            assert.equal(blocking.securityVerdict, SecurityVerdict.NO_GO);
+          }
+
+          const processFail = evaluateOutcome(
+            outcomeState(GateStatus.MEDIUM_ISSUE_FOUND, 'manual-implementation-review-complete'),
+            { terminal: true },
+          );
+          assert.equal(processFail.ready, false);
+          assert.equal(processFail.completionStatus, null);
+          assert.equal(processFail.securityVerdict, null);
+
+          const controller = { type: 'controller', id: 'policy-test' };
+          const deliveryState = {
+            schemaVersion: 2,
+            processId: 'deep-assurance-v6',
+            campaignId: 'phase10-process-fail-delivery',
+            status: CampaignStatus.ACTIVE,
+            publication: { status: 'PUBLISHED', record: {} },
+            userDelivery: { status: 'PENDING', record: null },
+            gates: {
+              'release-and-report-complete': {
+                gateId: 'release-and-report-complete',
+                phaseId: 'release-and-report',
+                mandatory: true,
+                status: GateStatus.FAIL,
+                evidenceRefs: ['evidence:phase10-process-failure'],
+              },
+            },
+            assignments: {},
+            workers: {},
+            events: [],
+            processedCommands: {},
+          };
+          assert.throws(
+            () => applyCommand(deliveryState, {
+              commandId: 'delivery-after-process-fail',
+              type: 'user_delivery.record',
+              actor: controller,
+              payload: {
+                summaryRef: 'chat:must-not-deliver',
+                artifactLinks: ['github:report'],
+                receiptRef: 'github:must-not-deliver-receipt',
+              },
+            }, { timestamp: '2026-08-07T08:30:00.000Z' }),
+            /release-and-report-complete|process|FAIL/i,
+          );
+
+          console.log('MEDIUM_TO_PASS=true');
+          console.log('HIGH_CRITICAL_TO_NO_GO=true');
+          console.log('PROCESS_FAIL_BLOCKS_COMPLETION=true');
+          console.log('PHASE10_PROCESS_FAIL_BLOCKS_DELIVERY=true');
+          NODE
