@@ -7,6 +7,12 @@ on:
     paths:
       - .github/workflows/severity-policy-controller-v163-test.yml
       - controller-src/**
+  pull_request:
+    branches:
+      - rehearsal/controller-v162-byte-exact-harness-v1
+    paths:
+      - .github/workflows/severity-policy-controller-v163-test.yml
+      - controller-src/**
 
 permissions:
   contents: read
