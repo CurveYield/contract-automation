@@ -1,0 +1,56 @@
+name: vlSDT v16.2 Final Text Publication v2
+
+on:
+  push:
+    branches:
+      - rehearsal/vlsdt-v162-final-publication-7dee48511a
+    paths:
+      - .rehearsal-publication/v1/TRIGGER-TEXT-v2.txt
+
+permissions:
+  contents: write
+
+jobs:
+  publish-exact-markdown:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact publication branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Decode and verify exact final Markdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib
+          stage=Path('.rehearsal-publication/v1')
+          out=Path('rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication-v1')
+          out.mkdir(parents=True, exist_ok=True)
+          parts=sorted(stage.glob('md.part*.txt'))
+          if not parts:
+              raise SystemExit('missing Markdown parts')
+          raw=base64.b64decode(''.join(p.read_text().strip() for p in parts), validate=True)
+          sha=hashlib.sha256(raw).hexdigest()
+          if sha != '4581262a8aa1fc9cb22dc80271572b93c34fadde7d761a1573ba446b43d256b9':
+              raise SystemExit(f'Markdown SHA mismatch {sha}')
+          blob=hashlib.sha1(f'blob {len(raw)}\0'.encode()+raw).hexdigest()
+          if blob != 'a766387e4b2a9ba1fc5b11b139e1074880e6754b':
+              raise SystemExit(f'Markdown Git blob mismatch {blob}')
+          target=out/'CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.md'
+          target.write_bytes(raw)
+          PY
+
+      - name: Commit exact final Markdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Deep Assurance Rehearsal'
+          git config user.email 'deep-assurance-rehearsal@users.noreply.github.com'
+          git add rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication-v1/CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.md
+          git commit -m 'Rehearsal: publish byte-exact final vlSDT Markdown v1'
+          git push origin HEAD:rehearsal/vlsdt-v162-final-publication-7dee48511a
