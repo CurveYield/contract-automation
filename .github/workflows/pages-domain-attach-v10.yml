@@ -1,0 +1,189 @@
+name: Pages Production-Domain Attach V10
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_DOMAIN_ATTACH_REQUEST_v10.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-domain-attach-v10
+  cancel-in-progress: false
+
+jobs:
+  attach:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '7abbf2d0c090d8bc6344014e2d326ffbcb2ccafe' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_DOMAIN_ATTACH_REQUEST_v10.json
+      EXPECTED_BEFORE_SHA: 7abbf2d0c090d8bc6344014e2d326ffbcb2ccafe
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V9_RUN_ID: '31187717248'
+      PAGES_DEPLOYMENT_SHORT_ID: db5d91bc
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact v10 source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify request and pre-attach state
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
+          jq -e --arg parent "$EXPECTED_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-pages-domain-attach-request-v10" and
+            .expectedBeforeSha == $parent and .acceptedApplicationSource == $app and
+            .v9Run == 31187717248 and .pagesDeploymentShortId == "db5d91bc" and
+            .pagesProject == "curveyield-preflight" and .productionHostname == "preflight.curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and .defaultNetwork == "base" and
+            .preconditionWorkerDomainCount == 0 and .preconditionPagesDomainCount == 0 and
+            .pagesDomainAttachAllowed == true and .workerMutationAllowed == false and
+            .pagesProjectMutationAllowed == false and .pagesDeploymentMutationAllowed == false and .assetMutationAllowed == false and
+            .dependencyInstallationAllowed == false and .repositoryCompilationAllowed == false and .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+          V10_TEMP_DIR="$RUNNER_TEMP/pages-domain-attach-v10"; mkdir -p "$V10_TEMP_DIR"
+
+          project="$V10_TEMP_DIR/project.json"; exact="$V10_TEMP_DIR/exact.json"; pages_domains="$V10_TEMP_DIR/pages-domains.json"; worker_domains="$V10_TEMP_DIR/worker-domains.json"
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$project" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" --arg short "$PAGES_DEPLOYMENT_SHORT_ID" '
+            .success == true and .result.production_branch == $branch and
+            ((.result.canonical_deployment.short_id // "") == $short or ((.result.canonical_deployment.id // "") | startswith($short))) and
+            .result.canonical_deployment.environment == "production" and
+            .result.canonical_deployment.deployment_trigger.metadata.branch == $branch and
+            .result.canonical_deployment.deployment_trigger.metadata.commit_hash == $commit and
+            .result.canonical_deployment.latest_stage.name == "deploy" and .result.canonical_deployment.latest_stage.status == "success"
+          ' "$project" >/dev/null
+          deployment_id="$(jq -r '.result.canonical_deployment.id' "$project")"
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$exact" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+          deployment_url="$(jq -r '.result.url' "$exact")"
+          IMMUTABLE_BASE="$(python3 - "$deployment_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          p=urlparse(sys.argv[1]);
+          if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.pages.dev'): raise SystemExit(1)
+          print('https://'+p.hostname)
+          PY
+          )"
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$pages_domains" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains"
+          test "$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select((.name//"")==$d)]|length' "$pages_domains")" = 0
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$worker_domains" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online"
+          test "$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select((.hostname//"")==$d)]|length' "$worker_domains")" = 0
+
+          html="$V10_TEMP_DIR/immutable.html"; app="$V10_TEMP_DIR/immutable.js"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$html" "$IMMUTABLE_BASE/?v10=$GITHUB_RUN_ID"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$app" "$IMMUTABLE_BASE/app.js?v10=$GITHUB_RUN_ID"
+          python3 - "$html" "$app" <<'PY'
+          import re,sys
+          h=open(sys.argv[1],encoding='utf-8').read(); a=open(sys.argv[2],encoding='utf-8').read(); m=re.search(r'<select id="chain">([\s\S]*?)</select>',h)
+          if not m: raise SystemExit(1)
+          s=m.group(1); o=re.findall(r'<option value="([^"]+)"([^>]*)>',s)
+          if [v for v,_ in o] != ['ethereum','base'] or [v for v,x in o if re.search(r'\bselected\b',x)] != ['base']: raise SystemExit(1)
+          req=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          if any(x not in a for x in req): raise SystemExit(1)
+          PY
+          echo "V10_TEMP_DIR=$V10_TEMP_DIR" >> "$GITHUB_ENV"; echo "IMMUTABLE_BASE=$IMMUTABLE_BASE" >> "$GITHUB_ENV"; echo "PREATTACH_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Attach production hostname and wait for Pages authority
+        shell: bash
+        run: |
+          set -uo pipefail
+          request="$V10_TEMP_DIR/add-domain.json"; response="$V10_TEMP_DIR/add-domain-response.json"
+          jq -n --arg name "$PAGES_DOMAIN" '{name:$name}' > "$request"
+          PAGES_DOMAIN_POST_HTTP_STATUS="$(curl --silent --show-error --max-time 30 --request POST --output "$response" --write-out '%{http_code}' --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --header 'Content-Type: application/json' --data-binary "@$request" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains" || printf transport-error)"
+          PAGES_DOMAIN_ACTIVE=false
+          LAST_DOMAIN_STATUS=not-run
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+            state="$V10_TEMP_DIR/domain-$attempt.json"
+            code="$(curl --silent --show-error --max-time 20 --output "$state" --write-out '%{http_code}' --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN" || printf transport-error)"
+            if [[ "$code" == 200 ]] && jq -e --arg d "$PAGES_DOMAIN" '.success == true and .result.name == $d' "$state" >/dev/null 2>&1; then
+              LAST_DOMAIN_STATUS="$(jq -r '.result.status // "unknown"' "$state")"
+              if [[ "$LAST_DOMAIN_STATUS" == active ]]; then PAGES_DOMAIN_ACTIVE=true; break; fi
+              if [[ "$LAST_DOMAIN_STATUS" == error || "$LAST_DOMAIN_STATUS" == blocked || "$LAST_DOMAIN_STATUS" == deactivated ]]; then break; fi
+            fi
+            sleep 10
+          done
+          echo "PAGES_DOMAIN_POST_HTTP_STATUS=$PAGES_DOMAIN_POST_HTTP_STATUS" >> "$GITHUB_ENV"; echo "PAGES_DOMAIN_ACTIVE=$PAGES_DOMAIN_ACTIVE" >> "$GITHUB_ENV"; echo "LAST_DOMAIN_STATUS=$LAST_DOMAIN_STATUS" >> "$GITHUB_ENV"
+          test "$PAGES_DOMAIN_ACTIVE" = true
+
+      - name: Verify production browser and final ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRODUCTION_UI_ACCEPTED=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            html="$V10_TEMP_DIR/prod-$attempt.html"; app="$V10_TEMP_DIR/prod-$attempt.js"; nonce="$GITHUB_RUN_ID-$attempt"
+            if curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$html" "https://$PAGES_DOMAIN/?v10=$nonce" && curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$app" "https://$PAGES_DOMAIN/app.js?v10=$nonce" && python3 - "$html" "$app" <<'PY'
+          import re,sys
+          h=open(sys.argv[1],encoding='utf-8').read(); a=open(sys.argv[2],encoding='utf-8').read(); m=re.search(r'<select id="chain">([\s\S]*?)</select>',h)
+          if not m: raise SystemExit(1)
+          s=m.group(1); o=re.findall(r'<option value="([^"]+)"([^>]*)>',s)
+          if [v for v,_ in o] != ['ethereum','base'] or [v for v,x in o if re.search(r'\bselected\b',x)] != ['base']: raise SystemExit(1)
+          if any(x in s.lower() for x in ('arbitrum','fraxtal','katana','optimism','polygon')): raise SystemExit(1)
+          req=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          if any(x not in a for x in req): raise SystemExit(1)
+          PY
+            then PRODUCTION_UI_ACCEPTED=true; break; fi
+            sleep 10
+          done
+          test "$PRODUCTION_UI_ACCEPTED" = true
+          final_domain="$V10_TEMP_DIR/final-domain.json"; final_worker="$V10_TEMP_DIR/final-worker.json"
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$final_domain" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN"
+          FINAL_PAGES_DOMAIN_ACTIVE="$(jq -r --arg d "$PAGES_DOMAIN" '(.success == true and .result.name == $d and .result.status == "active")' "$final_domain")"
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$final_worker" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online"
+          FINAL_WORKER_DOMAIN_MATCH_COUNT="$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select((.hostname//"")==$d)]|length' "$final_worker")"
+          test "$FINAL_PAGES_DOMAIN_ACTIVE" = true; test "$FINAL_WORKER_DOMAIN_MATCH_COUNT" = 0
+          echo "PRODUCTION_UI_ACCEPTED=$PRODUCTION_UI_ACCEPTED" >> "$GITHUB_ENV"; echo "FINAL_PAGES_DOMAIN_ACTIVE=$FINAL_PAGES_DOMAIN_ACTIVE" >> "$GITHUB_ENV"; echo "FINAL_WORKER_DOMAIN_MATCH_COUNT=$FINAL_WORKER_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"; echo "FINAL_ROUTING_ACCEPTANCE=success" >> "$GITHUB_ENV"
+
+      - name: Clean v10 files
+        if: ${{ always() }}
+        shell: bash
+        run: '[[ -n "${V10_TEMP_DIR:-}" ]] && rm -rf "$V10_TEMP_DIR" || true'
+
+      - name: Report Pages production-domain attach v10 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          f="$(mktemp)"; trap 'rm -f "$f"' EXIT
+          cat > "$f" <<EOF
+          ## Pages production-domain attach v10 result
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - v9 state run: \`$V9_RUN_ID\`
+          - verified Pages deployment short ID: \`$PAGES_DEPLOYMENT_SHORT_ID\`
+          - pre-attach state: \`${PREATTACH_CHECK:-not-run}\`
+          - Pages domain POST HTTP status: \`${PAGES_DOMAIN_POST_HTTP_STATUS:-not-run}\`
+          - Pages domain active: \`${PAGES_DOMAIN_ACTIVE:-false}\`
+          - last Pages domain status: \`${LAST_DOMAIN_STATUS:-not-run}\`
+          - production browser UI accepted: \`${PRODUCTION_UI_ACCEPTED:-false}\`
+          - final Pages domain active: \`${FINAL_PAGES_DOMAIN_ACTIVE:-false}\`
+          - final Worker hostname match count: \`${FINAL_WORKER_DOMAIN_MATCH_COUNT:-not-run}\`
+          - final routing acceptance: \`${FINAL_ROUTING_ACCEPTANCE:-not-run}\`
+          - dependency installation, compilation, Worker mutation, deployment/asset/project mutation, or historical rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$f"
