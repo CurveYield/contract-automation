@@ -1,0 +1,300 @@
+name: Pages Routing Diagnostic V1
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_ROUTING_DIAGNOSTIC_REQUEST_v1.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-routing-diagnostic-v1
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_ROUTING_DIAGNOSTIC_REQUEST_v1.json
+      REQUEST_ID: round5-pages-routing-diagnostic-20260803T1230Z-v1
+      EXPECTED_BEFORE_SHA: b31c79a2b48b3d1390e050489e2b9307f1fb75af
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
+      CUSTOM_DOMAIN: https://preflight.curveyield.online
+    steps:
+      - name: Check out exact diagnostic source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time GET-only diagnostic request
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test "$PAGES_PROJECT_NAME" = "curveyield-preflight"
+          jq -e \
+            --arg request_id "$REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$EXPECTED_BEFORE_SHA" \
+            '
+              .schemaVersion == "round5-pages-routing-diagnostic-request-v1" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .failedSmokeRun == 30813209037 and
+              .failedSmokeJob == 91684591058 and
+              .requestedAt == "2026-08-03T12:30:00Z" and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .checks == [
+                "pages-project-production-branch",
+                "latest-successful-release-branch-deployment",
+                "branch-deployment-selector-scope",
+                "custom-domain-selector-scope",
+                "custom-domain-cache-bust-selector-scope",
+                "custom-domain-index-digest-match",
+                "custom-domain-app-digest-match"
+              ] and
+              .readOnly == true and
+              .cloudflareMutationAllowed == false and
+              .pagesDeploymentAllowed == false and
+              .secretValuesIncluded == false and
+              .failedOrHistoricalWorkflowRerunAllowed == false
+            ' "$REQUEST_PATH" >/dev/null
+
+      - name: Read Pages project and release-branch deployment metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_file=$(mktemp)
+          deployments_file=$(mktemp)
+          selected_file=$(mktemp)
+          trap 'rm -f "$project_file" "$deployments_file" "$selected_file"' EXIT
+
+          project_status=$(curl --silent --show-error --max-time 20 \
+            --output "$project_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME")
+          test "$project_status" = "200"
+          jq -e '.success == true and (.result | type) == "object"' "$project_file" >/dev/null
+
+          deployments_status=$(curl --silent --show-error --max-time 20 \
+            --output "$deployments_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments?per_page=50")
+          test "$deployments_status" = "200"
+          jq -e '.success == true and (.result | type) == "array"' "$deployments_file" >/dev/null
+
+          production_branch=$(jq -r '.result.production_branch // ""' "$project_file")
+          if [[ "$production_branch" == "$RELEASE_BRANCH" ]]; then
+            echo "PROJECT_PRODUCTION_BRANCH_MATCHES=true" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_PRODUCTION_BRANCH_MATCHES=false" >> "$GITHUB_ENV"
+          fi
+
+          jq -e \
+            --arg branch "$RELEASE_BRANCH" \
+            '[.result[] | select(
+              .deployment_trigger.metadata.branch == $branch and
+              .latest_stage.status == "success"
+            )] | sort_by(.created_on) | last // empty' \
+            "$deployments_file" > "$selected_file"
+          test -s "$selected_file"
+          branch_url=$(jq -r '.url // ""' "$selected_file")
+          python3 - "$branch_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          parsed = urlparse(sys.argv[1])
+          if parsed.scheme != 'https' or not parsed.hostname or not parsed.hostname.endswith('.pages.dev'):
+              raise SystemExit('selected deployment URL is outside the expected Pages host class')
+          PY
+          echo "LATEST_RELEASE_BRANCH_DEPLOYMENT_FOUND=true" >> "$GITHUB_ENV"
+          printf 'BRANCH_DEPLOYMENT_URL=%s\n' "$branch_url" >> "$GITHUB_ENV"
+
+      - name: Compare custom domain and branch-deployment assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          custom_index=$(mktemp)
+          custom_app=$(mktemp)
+          custom_bust_index=$(mktemp)
+          custom_bust_app=$(mktemp)
+          branch_index=$(mktemp)
+          branch_app=$(mktemp)
+          metrics=$(mktemp)
+          trap 'rm -f "$custom_index" "$custom_app" "$custom_bust_index" "$custom_bust_app" "$branch_index" "$branch_app" "$metrics"' EXIT
+
+          curl --fail --silent --show-error --max-time 20 --output "$custom_index" "$CUSTOM_DOMAIN/"
+          curl --fail --silent --show-error --max-time 20 --output "$custom_app" "$CUSTOM_DOMAIN/app.js"
+          curl --fail --silent --show-error --max-time 20 \
+            --header 'Cache-Control: no-cache' \
+            --output "$custom_bust_index" \
+            "$CUSTOM_DOMAIN/?round5-routing-diagnostic=$REQUEST_ID"
+          curl --fail --silent --show-error --max-time 20 \
+            --header 'Cache-Control: no-cache' \
+            --output "$custom_bust_app" \
+            "$CUSTOM_DOMAIN/app.js?round5-routing-diagnostic=$REQUEST_ID"
+          curl --fail --silent --show-error --max-time 20 --output "$branch_index" "$BRANCH_DEPLOYMENT_URL/"
+          curl --fail --silent --show-error --max-time 20 --output "$branch_app" "$BRANCH_DEPLOYMENT_URL/app.js"
+
+          custom_index_digest=$(sha256sum "$custom_index" | awk '{print $1}')
+          custom_app_digest=$(sha256sum "$custom_app" | awk '{print $1}')
+          custom_bust_index_digest=$(sha256sum "$custom_bust_index" | awk '{print $1}')
+          custom_bust_app_digest=$(sha256sum "$custom_bust_app" | awk '{print $1}')
+          branch_index_digest=$(sha256sum "$branch_index" | awk '{print $1}')
+          branch_app_digest=$(sha256sum "$branch_app" | awk '{print $1}')
+
+          python3 - \
+            "$custom_index" "$custom_app" \
+            "$custom_bust_index" "$custom_bust_app" \
+            "$branch_index" "$branch_app" \
+            "$metrics" <<'PY'
+          import json
+          import re
+          import sys
+
+          def inspect_html(path):
+              text = open(path, encoding='utf-8').read()
+              match = re.search(r'<select id="chain">([\s\S]*?)</select>', text)
+              if match is None:
+                  return {'selectorFound': False, 'options': [], 'selected': []}
+              selector = match.group(1)
+              options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+              return {
+                  'selectorFound': True,
+                  'options': [value for value, _ in options],
+                  'selected': [value for value, attrs in options if re.search(r'\bselected\b', attrs)],
+              }
+
+          def inspect_app(path):
+              text = open(path, encoding='utf-8').read()
+              required = (
+                  'function syncChainOptions(chains)',
+                  'syncChainOptions(response.chains)',
+                  'Object.entries(chains)',
+                  'elements.chain.replaceChildren',
+                  "preferred === 'base'",
+              )
+              return all(fragment in text for fragment in required)
+
+          custom = inspect_html(sys.argv[1])
+          custom_bust = inspect_html(sys.argv[3])
+          branch = inspect_html(sys.argv[5])
+          expected = ['ethereum', 'base']
+          result = {
+              'customSelectorMatches': custom['options'] == expected and custom['selected'] == ['base'],
+              'customClientMatches': inspect_app(sys.argv[2]),
+              'customBustSelectorMatches': custom_bust['options'] == expected and custom_bust['selected'] == ['base'],
+              'customBustClientMatches': inspect_app(sys.argv[4]),
+              'branchSelectorMatches': branch['options'] == expected and branch['selected'] == ['base'],
+              'branchClientMatches': inspect_app(sys.argv[6]),
+              'customOptionCount': len(custom['options']),
+              'customBustOptionCount': len(custom_bust['options']),
+              'branchOptionCount': len(branch['options']),
+          }
+          with open(sys.argv[7], 'w', encoding='utf-8') as output:
+              json.dump(result, output, sort_keys=True)
+          PY
+
+          custom_selector=$(jq -r '.customSelectorMatches' "$metrics")
+          custom_client=$(jq -r '.customClientMatches' "$metrics")
+          custom_bust_selector=$(jq -r '.customBustSelectorMatches' "$metrics")
+          custom_bust_client=$(jq -r '.customBustClientMatches' "$metrics")
+          branch_selector=$(jq -r '.branchSelectorMatches' "$metrics")
+          branch_client=$(jq -r '.branchClientMatches' "$metrics")
+          custom_count=$(jq -r '.customOptionCount' "$metrics")
+          custom_bust_count=$(jq -r '.customBustOptionCount' "$metrics")
+          branch_count=$(jq -r '.branchOptionCount' "$metrics")
+
+          [[ "$custom_index_digest" == "$branch_index_digest" ]] && index_match=true || index_match=false
+          [[ "$custom_app_digest" == "$branch_app_digest" ]] && app_match=true || app_match=false
+          [[ "$custom_bust_index_digest" == "$branch_index_digest" ]] && bust_index_match=true || bust_index_match=false
+          [[ "$custom_bust_app_digest" == "$branch_app_digest" ]] && bust_app_match=true || bust_app_match=false
+
+          echo "CUSTOM_DOMAIN_INDEX_DIGEST_MATCHES=$index_match" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_APP_DIGEST_MATCHES=$app_match" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_INDEX_DIGEST_MATCHES=$bust_index_match" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_APP_DIGEST_MATCHES=$bust_app_match" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_SELECTOR_MATCHES=$custom_selector" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CLIENT_MATCHES=$custom_client" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_SELECTOR_MATCHES=$custom_bust_selector" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_CLIENT_MATCHES=$custom_bust_client" >> "$GITHUB_ENV"
+          echo "BRANCH_DEPLOYMENT_SELECTOR_MATCHES=$branch_selector" >> "$GITHUB_ENV"
+          echo "BRANCH_DEPLOYMENT_CLIENT_MATCHES=$branch_client" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_OPTION_COUNT=$custom_count" >> "$GITHUB_ENV"
+          echo "CUSTOM_DOMAIN_CACHE_BUST_OPTION_COUNT=$custom_bust_count" >> "$GITHUB_ENV"
+          echo "BRANCH_DEPLOYMENT_OPTION_COUNT=$branch_count" >> "$GITHUB_ENV"
+
+          if [[ "$branch_selector" != "true" || "$branch_client" != "true" ]]; then
+            diagnosis=release-branch-deployment-content-mismatch
+          elif [[ "${PROJECT_PRODUCTION_BRANCH_MATCHES:-false}" != "true" ]]; then
+            diagnosis=pages-production-branch-mismatch
+          elif [[ "$index_match" != "true" || "$app_match" != "true" ]]; then
+            diagnosis=custom-domain-not-serving-latest-release-branch-deployment
+          elif [[ "$custom_selector" != "true" || "$custom_client" != "true" ]]; then
+            diagnosis=custom-domain-content-parser-mismatch
+          else
+            diagnosis=no-current-routing-mismatch-detected
+          fi
+          echo "DERIVED_DIAGNOSIS=$diagnosis" >> "$GITHUB_ENV"
+
+      - name: Report Pages routing diagnostic v1 result
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIAGNOSTIC_JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comment_file=$(mktemp)
+          trap 'rm -f "$comment_file"' EXIT
+          cat >"$comment_file" <<EOF
+          ## Pages routing diagnostic v1 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$DIAGNOSTIC_JOB_STATUS\`
+          - diagnostic source SHA: \`$GITHUB_SHA\`
+          - failed smoke run examined: \`30813209037\`
+          - failed smoke job examined: \`91684591058\`
+          - project production branch matches release branch: \`${PROJECT_PRODUCTION_BRANCH_MATCHES:-not-run}\`
+          - latest successful release-branch deployment found: \`${LATEST_RELEASE_BRANCH_DEPLOYMENT_FOUND:-not-run}\`
+          - branch-deployment-selector-matches: \`${BRANCH_DEPLOYMENT_SELECTOR_MATCHES:-not-run}\`
+          - branch deployment client matches: \`${BRANCH_DEPLOYMENT_CLIENT_MATCHES:-not-run}\`
+          - branch deployment option count: \`${BRANCH_DEPLOYMENT_OPTION_COUNT:-not-run}\`
+          - custom-domain-selector-matches: \`${CUSTOM_DOMAIN_SELECTOR_MATCHES:-not-run}\`
+          - custom domain client matches: \`${CUSTOM_DOMAIN_CLIENT_MATCHES:-not-run}\`
+          - custom domain option count: \`${CUSTOM_DOMAIN_OPTION_COUNT:-not-run}\`
+          - custom domain cache-bust selector matches: \`${CUSTOM_DOMAIN_CACHE_BUST_SELECTOR_MATCHES:-not-run}\`
+          - custom domain cache-bust client matches: \`${CUSTOM_DOMAIN_CACHE_BUST_CLIENT_MATCHES:-not-run}\`
+          - custom domain cache-bust option count: \`${CUSTOM_DOMAIN_CACHE_BUST_OPTION_COUNT:-not-run}\`
+          - custom-domain-index-digest-matches: \`${CUSTOM_DOMAIN_INDEX_DIGEST_MATCHES:-not-run}\`
+          - custom-domain-app-digest-matches: \`${CUSTOM_DOMAIN_APP_DIGEST_MATCHES:-not-run}\`
+          - custom domain cache-bust index digest matches: \`${CUSTOM_DOMAIN_CACHE_BUST_INDEX_DIGEST_MATCHES:-not-run}\`
+          - custom domain cache-bust app digest matches: \`${CUSTOM_DOMAIN_CACHE_BUST_APP_DIGEST_MATCHES:-not-run}\`
+          - derived diagnosis: \`${DERIVED_DIAGNOSIS:-not-run}\`
+          - Cloudflare or Pages mutation performed: \`false\`
+          - secret values or response bodies recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"

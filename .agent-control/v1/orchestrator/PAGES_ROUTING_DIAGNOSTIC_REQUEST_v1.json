@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "round5-pages-routing-diagnostic-request-v1",
+  "requestId": "round5-pages-routing-diagnostic-20260803T1230Z-v1",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "b31c79a2b48b3d1390e050489e2b9307f1fb75af",
+  "failedSmokeRun": 30813209037,
+  "failedSmokeJob": 91684591058,
+  "requestedAt": "2026-08-03T12:30:00Z",
+  "requestedBy": "account-owner-through-orchestrator",
+  "checks": [
+    "pages-project-production-branch",
+    "latest-successful-release-branch-deployment",
+    "branch-deployment-selector-scope",
+    "custom-domain-selector-scope",
+    "custom-domain-cache-bust-selector-scope",
+    "custom-domain-index-digest-match",
+    "custom-domain-app-digest-match"
+  ],
+  "readOnly": true,
+  "cloudflareMutationAllowed": false,
+  "pagesDeploymentAllowed": false,
+  "secretValuesIncluded": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
