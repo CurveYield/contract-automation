@@ -1,0 +1,488 @@
+name: Pages DNS Repair V13
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_DNS_REPAIR_REQUEST_v13.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-domain-attach-v10
+  cancel-in-progress: false
+
+jobs:
+  diagnose-and-repair:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_DNS_REPAIR_REQUEST_v13.json
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      PAGES_DEPLOYMENT_SHORT_ID: db5d91bc
+      V9_RUN_ID: '31187717248'
+      V12_RUN_ID: '31202011243'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+      ZONE_NAME: curveyield.online
+
+    steps:
+      - name: Check out exact v13 request source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Diagnose and repair dedicated Pages DNS record
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          for pair in \
+            'REQUEST_CHECK=not-run' \
+            'DEPLOYMENT_CHECK=not-run' \
+            'WORKER_DOMAIN_CHECK=not-run' \
+            'PAGES_DOMAIN_PRE_STATUS=not-run' \
+            'PAGES_VALIDATION_METHOD=not-run' \
+            'PAGES_VALIDATION_STATUS=not-run' \
+            'PAGES_VERIFICATION_STATUS=not-run' \
+            'PAGES_ERROR_CLASS=none' \
+            'ZONE_LOOKUP_HTTP_STATUS=not-run' \
+            'ZONE_LOOKUP_AUTHORIZED=false' \
+            'DNS_PRE_RECORD_COUNT=not-run' \
+            'DNS_PRE_RECORD_CLASS=not-run' \
+            'DNS_MUTATION_ACTION=not-run' \
+            'DNS_MUTATION_HTTP_STATUS=not-run' \
+            'FINAL_DNS_CORRECT=false' \
+            'PAGES_DOMAIN_ACTIVE=false' \
+            'PRODUCTION_UI_ACCEPTED=false' \
+            'PRODUCTION_OPTION_COUNT=not-run' \
+            'FINAL_WORKER_DOMAIN_MATCH_COUNT=not-run' \
+            'FINAL_ROUTING_ACCEPTANCE=not-run' \
+            'FINAL_DIAGNOSIS=not-run'; do
+            echo "$pair" >> "$GITHUB_ENV"
+          done
+
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$EVENT_BEFORE_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          jq -e --arg before "$EVENT_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-pages-dns-repair-request-v13" and
+            .expectedBeforeSha == $before and
+            .acceptedApplicationSource == $app and
+            .pagesDeploymentShortId == "db5d91bc" and
+            .v9Run == 31187717248 and
+            .v12Run == 31202011243 and
+            .pagesProject == "curveyield-preflight" and
+            .productionHostname == "preflight.curveyield.online" and
+            .zoneName == "curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and
+            .defaultNetwork == "base" and
+            .dnsRecordCreateAllowed == true and
+            .dnsCnamePatchAllowed == true and
+            .dnsRecordDeleteAllowed == false and
+            .pagesDomainMutationAllowed == false and
+            .workerMutationAllowed == false and
+            .pagesProjectMutationAllowed == false and
+            .pagesDeploymentMutationAllowed == false and
+            .assetMutationAllowed == false and
+            .dependencyInstallationAllowed == false and
+            .repositoryCompilationAllowed == false and
+            .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+          echo 'REQUEST_CHECK=success' >> "$GITHUB_ENV"
+
+          V13_TEMP_DIR="$RUNNER_TEMP/pages-dns-repair-v13"
+          mkdir -p "$V13_TEMP_DIR"
+          echo "V13_TEMP_DIR=$V13_TEMP_DIR" >> "$GITHUB_ENV"
+
+          project="$V13_TEMP_DIR/project.json"
+          exact="$V13_TEMP_DIR/exact.json"
+          page_domain="$V13_TEMP_DIR/page-domain.json"
+          worker_domains="$V13_TEMP_DIR/worker-domains.json"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$project" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" --arg short "$PAGES_DEPLOYMENT_SHORT_ID" '
+            .success == true and
+            .result.production_branch == $branch and
+            ((.result.canonical_deployment.short_id // "") == $short or ((.result.canonical_deployment.id // "") | startswith($short))) and
+            .result.canonical_deployment.environment == "production" and
+            .result.canonical_deployment.deployment_trigger.metadata.branch == $branch and
+            .result.canonical_deployment.deployment_trigger.metadata.commit_hash == $commit and
+            .result.canonical_deployment.latest_stage.name == "deploy" and
+            .result.canonical_deployment.latest_stage.status == "success"
+          ' "$project" >/dev/null
+          deployment_id="$(jq -r '.result.canonical_deployment.id' "$project")"
+          project_subdomain="$(jq -r '.result.subdomain // empty' "$project")"
+          test -n "$deployment_id"
+          python3 - "$project_subdomain" <<'PY'
+          import re, sys
+          host=sys.argv[1].strip().lower().rstrip('.')
+          if not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.pages\.dev',host):
+              raise SystemExit('invalid Pages project subdomain')
+          PY
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$exact" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" --arg short "$PAGES_DEPLOYMENT_SHORT_ID" '
+            .success == true and
+            ((.result.short_id // "") == $short or ((.result.id // "") | startswith($short))) and
+            .result.environment == "production" and
+            .result.deployment_trigger.metadata.branch == $branch and
+            .result.deployment_trigger.metadata.commit_hash == $commit and
+            .result.latest_stage.name == "deploy" and
+            .result.latest_stage.status == "success"
+          ' "$exact" >/dev/null
+          deployment_url="$(jq -r '.result.url // empty' "$exact")"
+          immutable_base="$(python3 - "$deployment_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          p=urlparse(sys.argv[1].strip())
+          if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.pages.dev') or p.username or p.password or p.port:
+              raise SystemExit('invalid immutable Pages URL')
+          print('https://'+p.hostname)
+          PY
+          )"
+
+          immutable_html="$V13_TEMP_DIR/immutable.html"
+          immutable_app="$V13_TEMP_DIR/immutable.js"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$immutable_html" "$immutable_base/?v13=$GITHUB_RUN_ID"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$immutable_app" "$immutable_base/app.js?v13=$GITHUB_RUN_ID"
+          python3 - "$immutable_html" "$immutable_app" <<'PY'
+          import re,sys
+          html=open(sys.argv[1],encoding='utf-8').read()
+          app=open(sys.argv[2],encoding='utf-8').read()
+          m=re.search(r'<select id="chain">([\s\S]*?)</select>',html)
+          if m is None: raise SystemExit('selector missing')
+          selector=m.group(1)
+          options=re.findall(r'<option value="([^"]+)"([^>]*)>',selector)
+          values=[v for v,_ in options]
+          selected=[v for v,a in options if re.search(r'\bselected\b',a)]
+          required=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          if values!=['ethereum','base'] or selected!=['base']: raise SystemExit('scope mismatch')
+          if any(x in selector.lower() for x in ('arbitrum','fraxtal','katana','optimism','polygon')): raise SystemExit('deferred network exposed')
+          if any(x not in app for x in required): raise SystemExit('chain sync contract missing')
+          PY
+          echo 'DEPLOYMENT_CHECK=success' >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$worker_domains" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=$PAGES_DOMAIN"
+          jq -e '.success == true and (.result|type)=="array"' "$worker_domains" >/dev/null
+          worker_count="$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select((.hostname//"")==$d)]|length' "$worker_domains")"
+          test "$worker_count" = '0'
+          echo 'WORKER_DOMAIN_CHECK=success' >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$page_domain" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN"
+          jq -e --arg d "$PAGES_DOMAIN" '.success == true and .result.name == $d' "$page_domain" >/dev/null
+          page_status="$(jq -r '.result.status // "unknown"' "$page_domain")"
+          validation_method="$(jq -r '.result.validation_data.method // "unknown"' "$page_domain")"
+          validation_status="$(jq -r '.result.validation_data.status // "unknown"' "$page_domain")"
+          verification_status="$(jq -r '.result.verification_data.status // "unknown"' "$page_domain")"
+          error_class="$(python3 - "$page_domain" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8')).get('result',{})
+          text=' '.join(str(x or '') for x in (d.get('validation_data',{}).get('error_message'),d.get('verification_data',{}).get('error_message'))).lower()
+          if not text.strip(): c='none'
+          elif 'caa' in text or 'certificate authority' in text: c='caa'
+          elif 'dns' in text or 'cname' in text or 'resolve' in text: c='dns'
+          elif 'access' in text: c='access'
+          elif 'redirect' in text: c='redirect'
+          elif 'http' in text: c='http-validation'
+          elif 'certificate' in text or 'ssl' in text or 'tls' in text: c='certificate'
+          else: c='other'
+          print(c)
+          PY
+          )"
+          echo "PAGES_DOMAIN_PRE_STATUS=$page_status" >> "$GITHUB_ENV"
+          echo "PAGES_VALIDATION_METHOD=$validation_method" >> "$GITHUB_ENV"
+          echo "PAGES_VALIDATION_STATUS=$validation_status" >> "$GITHUB_ENV"
+          echo "PAGES_VERIFICATION_STATUS=$verification_status" >> "$GITHUB_ENV"
+          echo "PAGES_ERROR_CLASS=$error_class" >> "$GITHUB_ENV"
+
+          zones="$V13_TEMP_DIR/zones.json"
+          zone_http="$(curl --silent --show-error --max-time 20 \
+            --output "$zones" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/zones?name=$ZONE_NAME&status=active&match=all&per_page=50" || printf transport-error)"
+          echo "ZONE_LOOKUP_HTTP_STATUS=$zone_http" >> "$GITHUB_ENV"
+          if [[ "$zone_http" != '200' ]] || ! jq -e '.success == true and (.result|type)=="array"' "$zones" >/dev/null 2>&1; then
+            echo 'FINAL_DIAGNOSIS=zone-read-not-authorized-or-failed' >> "$GITHUB_ENV"
+            exit 1
+          fi
+          echo 'ZONE_LOOKUP_AUTHORIZED=true' >> "$GITHUB_ENV"
+          zone_count="$(jq -r --arg z "$ZONE_NAME" '[.result[]|select(.name==$z and .status=="active")]|length' "$zones")"
+          if [[ "$zone_count" != '1' ]]; then
+            echo 'FINAL_DIAGNOSIS=active-zone-not-unique' >> "$GITHUB_ENV"
+            exit 1
+          fi
+          zone_id="$(jq -r --arg z "$ZONE_NAME" '.result[]|select(.name==$z and .status=="active")|.id' "$zones")"
+          test -n "$zone_id"
+
+          dns="$V13_TEMP_DIR/dns.json"
+          dns_http="$(curl --silent --show-error --max-time 20 \
+            --output "$dns" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/zones/$zone_id/dns_records?name=$PAGES_DOMAIN&per_page=100" || printf transport-error)"
+          if [[ "$dns_http" != '200' ]] || ! jq -e '.success == true and (.result|type)=="array"' "$dns" >/dev/null 2>&1; then
+            echo 'FINAL_DIAGNOSIS=dns-read-not-authorized-or-failed' >> "$GITHUB_ENV"
+            exit 1
+          fi
+          dns_count="$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select(.name==$d)]|length' "$dns")"
+          echo "DNS_PRE_RECORD_COUNT=$dns_count" >> "$GITHUB_ENV"
+
+          normalize_target() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/\.$//'; }
+          expected_target="$(normalize_target "$project_subdomain")"
+          DNS_MUTATION_ACTION=none
+          DNS_MUTATION_HTTP_STATUS=not-needed
+
+          if [[ "$dns_count" == '0' ]]; then
+            echo 'DNS_PRE_RECORD_CLASS=absent' >> "$GITHUB_ENV"
+            DNS_MUTATION_ACTION=created-cname
+            payload="$V13_TEMP_DIR/create-dns.json"
+            response="$V13_TEMP_DIR/create-dns-response.json"
+            jq -n --arg name "$PAGES_DOMAIN" --arg content "$expected_target" '{type:"CNAME",name:$name,content:$content,ttl:1,proxied:true,comment:"CurveYield Pages production domain v13"}' > "$payload"
+            DNS_MUTATION_HTTP_STATUS="$(curl --silent --show-error --max-time 30 \
+              --request POST --output "$response" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --header 'Content-Type: application/json' \
+              --data-binary "@$payload" \
+              "$CLOUDFLARE_API_BASE/zones/$zone_id/dns_records" || printf transport-error)"
+            if [[ "$DNS_MUTATION_HTTP_STATUS" != '200' ]] || ! jq -e '.success == true' "$response" >/dev/null 2>&1; then
+              echo "DNS_MUTATION_ACTION=$DNS_MUTATION_ACTION" >> "$GITHUB_ENV"
+              echo "DNS_MUTATION_HTTP_STATUS=$DNS_MUTATION_HTTP_STATUS" >> "$GITHUB_ENV"
+              echo 'FINAL_DIAGNOSIS=dns-write-not-authorized-or-failed' >> "$GITHUB_ENV"
+              exit 1
+            fi
+          elif [[ "$dns_count" == '1' ]]; then
+            record_type="$(jq -r --arg d "$PAGES_DOMAIN" '.result[]|select(.name==$d)|.type' "$dns")"
+            record_id="$(jq -r --arg d "$PAGES_DOMAIN" '.result[]|select(.name==$d)|.id' "$dns")"
+            record_content="$(jq -r --arg d "$PAGES_DOMAIN" '.result[]|select(.name==$d)|.content' "$dns")"
+            if [[ "$record_type" != 'CNAME' ]]; then
+              echo "DNS_PRE_RECORD_CLASS=conflicting-$record_type" >> "$GITHUB_ENV"
+              echo 'DNS_MUTATION_ACTION=blocked-conflict' >> "$GITHUB_ENV"
+              echo 'FINAL_DIAGNOSIS=conflicting-non-cname-record' >> "$GITHUB_ENV"
+              exit 1
+            fi
+            actual_target="$(normalize_target "$record_content")"
+            if [[ "$actual_target" == "$expected_target" ]]; then
+              echo 'DNS_PRE_RECORD_CLASS=correct-cname' >> "$GITHUB_ENV"
+              DNS_MUTATION_ACTION=none
+            else
+              echo 'DNS_PRE_RECORD_CLASS=stale-cname' >> "$GITHUB_ENV"
+              DNS_MUTATION_ACTION=patched-cname
+              payload="$V13_TEMP_DIR/patch-dns.json"
+              response="$V13_TEMP_DIR/patch-dns-response.json"
+              jq -n --arg name "$PAGES_DOMAIN" --arg content "$expected_target" '{type:"CNAME",name:$name,content:$content,ttl:1,proxied:true,comment:"CurveYield Pages production domain v13"}' > "$payload"
+              DNS_MUTATION_HTTP_STATUS="$(curl --silent --show-error --max-time 30 \
+                --request PATCH --output "$response" --write-out '%{http_code}' \
+                --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                --header 'Content-Type: application/json' \
+                --data-binary "@$payload" \
+                "$CLOUDFLARE_API_BASE/zones/$zone_id/dns_records/$record_id" || printf transport-error)"
+              if [[ "$DNS_MUTATION_HTTP_STATUS" != '200' ]] || ! jq -e '.success == true' "$response" >/dev/null 2>&1; then
+                echo "DNS_MUTATION_ACTION=$DNS_MUTATION_ACTION" >> "$GITHUB_ENV"
+                echo "DNS_MUTATION_HTTP_STATUS=$DNS_MUTATION_HTTP_STATUS" >> "$GITHUB_ENV"
+                echo 'FINAL_DIAGNOSIS=dns-write-not-authorized-or-failed' >> "$GITHUB_ENV"
+                exit 1
+              fi
+            fi
+          else
+            echo 'DNS_PRE_RECORD_CLASS=multiple-record-conflict' >> "$GITHUB_ENV"
+            echo 'DNS_MUTATION_ACTION=blocked-conflict' >> "$GITHUB_ENV"
+            echo 'FINAL_DIAGNOSIS=multiple-dns-record-conflict' >> "$GITHUB_ENV"
+            exit 1
+          fi
+          echo "DNS_MUTATION_ACTION=$DNS_MUTATION_ACTION" >> "$GITHUB_ENV"
+          echo "DNS_MUTATION_HTTP_STATUS=$DNS_MUTATION_HTTP_STATUS" >> "$GITHUB_ENV"
+
+          final_dns="$V13_TEMP_DIR/final-dns.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$final_dns" \
+            "$CLOUDFLARE_API_BASE/zones/$zone_id/dns_records?name=$PAGES_DOMAIN&per_page=100"
+          FINAL_DNS_CORRECT="$(python3 - "$final_dns" "$PAGES_DOMAIN" "$expected_target" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          name=sys.argv[2].lower().rstrip('.')
+          target=sys.argv[3].lower().rstrip('.')
+          records=[r for r in data.get('result',[]) if str(r.get('name','')).lower().rstrip('.')==name]
+          ok=len(records)==1 and records[0].get('type')=='CNAME' and str(records[0].get('content','')).lower().rstrip('.')==target
+          print('true' if ok else 'false')
+          PY
+          )"
+          echo "FINAL_DNS_CORRECT=$FINAL_DNS_CORRECT" >> "$GITHUB_ENV"
+          if [[ "$FINAL_DNS_CORRECT" != 'true' ]]; then
+            echo 'FINAL_DIAGNOSIS=post-repair-dns-mismatch' >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          PAGES_DOMAIN_ACTIVE=false
+          LAST_PAGE_STATUS="$page_status"
+          LAST_VALIDATION_STATUS="$validation_status"
+          LAST_VERIFICATION_STATUS="$verification_status"
+          LAST_ERROR_CLASS="$error_class"
+          for attempt in $(seq 1 30); do
+            state="$V13_TEMP_DIR/domain-$attempt.json"
+            code="$(curl --silent --show-error --max-time 20 \
+              --output "$state" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN" || printf transport-error)"
+            if [[ "$code" == '200' ]] && jq -e --arg d "$PAGES_DOMAIN" '.success == true and .result.name == $d' "$state" >/dev/null 2>&1; then
+              LAST_PAGE_STATUS="$(jq -r '.result.status // "unknown"' "$state")"
+              LAST_VALIDATION_STATUS="$(jq -r '.result.validation_data.status // "unknown"' "$state")"
+              LAST_VERIFICATION_STATUS="$(jq -r '.result.verification_data.status // "unknown"' "$state")"
+              LAST_ERROR_CLASS="$(python3 - "$state" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1],encoding='utf-8')).get('result',{})
+          text=' '.join(str(x or '') for x in (d.get('validation_data',{}).get('error_message'),d.get('verification_data',{}).get('error_message'))).lower()
+          if not text.strip(): c='none'
+          elif 'caa' in text or 'certificate authority' in text: c='caa'
+          elif 'dns' in text or 'cname' in text or 'resolve' in text: c='dns'
+          elif 'access' in text: c='access'
+          elif 'redirect' in text: c='redirect'
+          elif 'http' in text: c='http-validation'
+          elif 'certificate' in text or 'ssl' in text or 'tls' in text: c='certificate'
+          else: c='other'
+          print(c)
+          PY
+              )"
+              if [[ "$LAST_PAGE_STATUS" == 'active' ]]; then
+                PAGES_DOMAIN_ACTIVE=true
+                break
+              fi
+              if [[ "$LAST_PAGE_STATUS" == 'error' || "$LAST_PAGE_STATUS" == 'blocked' || "$LAST_PAGE_STATUS" == 'deactivated' ]]; then
+                break
+              fi
+            fi
+            sleep 10
+          done
+          echo "PAGES_DOMAIN_ACTIVE=$PAGES_DOMAIN_ACTIVE" >> "$GITHUB_ENV"
+          echo "PAGES_VALIDATION_STATUS=$LAST_VALIDATION_STATUS" >> "$GITHUB_ENV"
+          echo "PAGES_VERIFICATION_STATUS=$LAST_VERIFICATION_STATUS" >> "$GITHUB_ENV"
+          echo "PAGES_ERROR_CLASS=$LAST_ERROR_CLASS" >> "$GITHUB_ENV"
+          if [[ "$PAGES_DOMAIN_ACTIVE" != 'true' ]]; then
+            echo "FINAL_DIAGNOSIS=pages-$LAST_PAGE_STATUS-after-correct-dns-$LAST_ERROR_CLASS" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          PRODUCTION_UI_ACCEPTED=false
+          PRODUCTION_OPTION_COUNT=0
+          for attempt in $(seq 1 12); do
+            html="$V13_TEMP_DIR/production-$attempt.html"
+            app="$V13_TEMP_DIR/production-$attempt.js"
+            nonce="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            if curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$html" "https://$PAGES_DOMAIN/?v13=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$app" "https://$PAGES_DOMAIN/app.js?v13=$nonce"; then
+              result="$(python3 - "$html" "$app" <<'PY'
+          import re,sys
+          html=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+          app=open(sys.argv[2],encoding='utf-8',errors='replace').read()
+          m=re.search(r'<select id="chain">([\s\S]*?)</select>',html)
+          if m is None:
+              print('false|0'); raise SystemExit
+          selector=m.group(1)
+          options=re.findall(r'<option value="([^"]+)"([^>]*)>',selector)
+          values=[v for v,_ in options]
+          selected=[v for v,a in options if re.search(r'\bselected\b',a)]
+          required=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          accepted=values==['ethereum','base'] and selected==['base'] and all(x not in selector.lower() for x in ('arbitrum','fraxtal','katana','optimism','polygon')) and all(x in app for x in required)
+          print(('true' if accepted else 'false')+'|'+str(len(values)))
+          PY
+              )"
+              PRODUCTION_UI_ACCEPTED="${result%%|*}"
+              PRODUCTION_OPTION_COUNT="${result##*|}"
+              if [[ "$PRODUCTION_UI_ACCEPTED" == 'true' ]]; then break; fi
+            fi
+            sleep 10
+          done
+          echo "PRODUCTION_UI_ACCEPTED=$PRODUCTION_UI_ACCEPTED" >> "$GITHUB_ENV"
+          echo "PRODUCTION_OPTION_COUNT=$PRODUCTION_OPTION_COUNT" >> "$GITHUB_ENV"
+          if [[ "$PRODUCTION_UI_ACCEPTED" != 'true' || "$PRODUCTION_OPTION_COUNT" != '2' ]]; then
+            echo 'FINAL_DIAGNOSIS=production-browser-content-mismatch' >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+          final_worker="$V13_TEMP_DIR/final-worker.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$final_worker" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=$PAGES_DOMAIN"
+          FINAL_WORKER_DOMAIN_MATCH_COUNT="$(jq -r --arg d "$PAGES_DOMAIN" '[.result[]|select((.hostname//"")==$d)]|length' "$final_worker")"
+          echo "FINAL_WORKER_DOMAIN_MATCH_COUNT=$FINAL_WORKER_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"
+          test "$FINAL_WORKER_DOMAIN_MATCH_COUNT" = '0'
+
+          echo 'FINAL_ROUTING_ACCEPTANCE=success' >> "$GITHUB_ENV"
+          echo 'FINAL_DIAGNOSIS=pages-domain-active-and-browser-accepted' >> "$GITHUB_ENV"
+
+      - name: Clean v13 transient files
+        if: ${{ always() }}
+        shell: bash
+        run: '[[ -n "${V13_TEMP_DIR:-}" ]] && rm -rf "$V13_TEMP_DIR" || true'
+
+      - name: Report Pages DNS repair v13 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          report="$(mktemp)"
+          trap 'rm -f "$report"' EXIT
+          cat > "$report" <<EOF
+          ## Pages DNS repair v13 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - v13 source SHA: \`$GITHUB_SHA\`
+          - v12 source run: \`$V12_RUN_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - accepted deployment verification: \`${DEPLOYMENT_CHECK:-not-run}\`
+          - Worker-domain absence verification: \`${WORKER_DOMAIN_CHECK:-not-run}\`
+          - pre-repair Pages domain status: \`${PAGES_DOMAIN_PRE_STATUS:-not-run}\`
+          - Pages validation method/status: \`${PAGES_VALIDATION_METHOD:-not-run}\` / \`${PAGES_VALIDATION_STATUS:-not-run}\`
+          - Pages verification status: \`${PAGES_VERIFICATION_STATUS:-not-run}\`
+          - bounded Pages error class: \`${PAGES_ERROR_CLASS:-none}\`
+          - zone lookup HTTP status: \`${ZONE_LOOKUP_HTTP_STATUS:-not-run}\`
+          - zone lookup authorized: \`${ZONE_LOOKUP_AUTHORIZED:-false}\`
+          - pre-repair DNS record count/class: \`${DNS_PRE_RECORD_COUNT:-not-run}\` / \`${DNS_PRE_RECORD_CLASS:-not-run}\`
+          - DNS mutation action: \`${DNS_MUTATION_ACTION:-not-run}\`
+          - DNS mutation HTTP status: \`${DNS_MUTATION_HTTP_STATUS:-not-run}\`
+          - final DNS exact Pages CNAME: \`${FINAL_DNS_CORRECT:-false}\`
+          - Pages domain active: \`${PAGES_DOMAIN_ACTIVE:-false}\`
+          - production browser accepted/options: \`${PRODUCTION_UI_ACCEPTED:-false}\` / \`${PRODUCTION_OPTION_COUNT:-not-run}\`
+          - final Worker hostname match count: \`${FINAL_WORKER_DOMAIN_MATCH_COUNT:-not-run}\`
+          - final routing acceptance: \`${FINAL_ROUTING_ACCEPTANCE:-not-run}\`
+          - final diagnosis: \`${FINAL_DIAGNOSIS:-not-run}\`
+          - DNS record deletion performed: \`false\`
+          - Pages/Worker/project/deployment/asset mutation performed: \`false\`
+          - dependency installation, package-manager execution, compilation, or build performed: \`false\`
+          - R2/secret/job/RPC/wallet/signing/public-chain mutation performed: \`false\`
+          - raw account/zone/DNS identifiers, DNS targets, validation values, error messages, response bodies, service URLs, or secrets recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$report"
