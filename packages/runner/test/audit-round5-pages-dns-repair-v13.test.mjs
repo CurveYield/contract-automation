@@ -1,0 +1,53 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+
+const REQUEST='.agent-control/v1/orchestrator/PAGES_DNS_REPAIR_REQUEST_v13.json';
+const WORKFLOW='.github/workflows/pages-dns-repair-v13.yml';
+const DESIGN='docs/superpowers/specs/2026-08-07-round5-pages-dns-repair-v13-design.md';
+const APP='2c6e543dfcaa17ca975bbde3c15302269bbf8072';
+const read=p=>readFileSync(p,'utf8');
+
+test('v13 diagnoses Pages validation and repairs only the dedicated DNS record',()=>{
+  assert.ok(existsSync(DESIGN));
+  assert.ok(existsSync(WORKFLOW));
+  assert.ok(existsSync(REQUEST));
+  const r=JSON.parse(read(REQUEST));
+  assert.equal(r.schemaVersion,'round5-pages-dns-repair-request-v13');
+  assert.equal(r.acceptedApplicationSource,APP);
+  assert.equal(r.pagesDeploymentShortId,'db5d91bc');
+  assert.equal(r.v12Run,31202011243);
+  assert.match(r.expectedBeforeSha,/^[0-9a-f]{40}$/);
+  assert.deepEqual(r.activeNetworks,['ethereum','base']);
+  assert.equal(r.defaultNetwork,'base');
+  assert.equal(r.dnsRecordCreateAllowed,true);
+  assert.equal(r.dnsCnamePatchAllowed,true);
+  assert.equal(r.dnsRecordDeleteAllowed,false);
+  assert.equal(r.pagesDomainMutationAllowed,false);
+  assert.equal(r.workerMutationAllowed,false);
+  assert.equal(r.dependencyInstallationAllowed,false);
+  assert.equal(r.repositoryCompilationAllowed,false);
+
+  const w=read(WORKFLOW);
+  assert.match(w,/PAGES_DNS_REPAIR_REQUEST_v13\.json/);
+  assert.match(w,/validation_data/);
+  assert.match(w,/verification_data/);
+  assert.match(w,/\/zones\?name=/);
+  assert.match(w,/dns_records\?name=/);
+  assert.match(w,/DNS_MUTATION_ACTION/);
+  assert.match(w,/POST/);
+  assert.match(w,/PATCH/);
+  assert.match(w,/FINAL_DNS_CORRECT/);
+  assert.match(w,/PAGES_DOMAIN_ACTIVE/);
+  assert.match(w,/PRODUCTION_UI_ACCEPTED/);
+  assert.match(w,/FINAL_ROUTING_ACCEPTANCE/);
+  assert.match(w,/Pages DNS repair v13 result/);
+  assert.match(w,/actions\/checkout@[0-9a-f]{40}/);
+  assert.doesNotMatch(w,/workflow_dispatch:/);
+  assert.doesNotMatch(w,/--request\s+DELETE/i);
+  assert.doesNotMatch(w,/pages\/projects[^\n]*\/domains[^\n]*--request\s+(POST|PUT|PATCH|DELETE)/i);
+  assert.doesNotMatch(w,/workers\/domains[^\n]*--request\s+(POST|PUT|PATCH|DELETE)/i);
+  assert.doesNotMatch(w,/pages\/projects[^\n]*\/deployments[^\n]*--request\s+(POST|PUT|PATCH|DELETE)/i);
+  assert.doesNotMatch(w,/pages\/assets\/(upload|upsert-hashes)/i);
+  assert.doesNotMatch(w,/\b(npm|npx|pnpm|yarn|bunx?|wrangler|solc|forge|hardhat)\b/i);
+});
