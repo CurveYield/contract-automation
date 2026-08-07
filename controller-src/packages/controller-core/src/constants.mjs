@@ -9,6 +9,7 @@ export const DEEP_ASSURANCE_REQUIRED_CAPABILITIES = Object.freeze([
 ]);
 
 export const DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID = 'release-and-report-complete';
+export const DEEP_ASSURANCE_REMEDIATION_REVIEW_GATE_ID = 'remediation-review-complete';
 
 export const DEEP_ASSURANCE_GATE_CATALOG = Object.freeze([
   ['exact-scope-provenance-complete', 'scope-and-provenance'],
@@ -19,7 +20,7 @@ export const DEEP_ASSURANCE_GATE_CATALOG = Object.freeze([
   ['exact-build-and-tests-complete', 'build-and-test'],
   ['fork-simulation-lifecycle-complete', 'fork-simulation-lifecycle'],
   ['findings-validation-complete', 'findings-validation'],
-  ['remediation-review-complete', 'remediation-review'],
+  [DEEP_ASSURANCE_REMEDIATION_REVIEW_GATE_ID, 'remediation-review'],
   [DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID, 'release-and-report'],
 ].map(([gateId, phaseId]) => Object.freeze({ gateId, phaseId })));
 
@@ -47,6 +48,11 @@ export const SecurityVerdict = Object.freeze({
 export const GateStatus = Object.freeze({
   PENDING: 'PENDING',
   PASS: 'PASS',
+  INFORMATIONAL_ISSUE_FOUND: 'INFORMATIONAL_ISSUE_FOUND',
+  LOW_ISSUE_FOUND: 'LOW_ISSUE_FOUND',
+  MEDIUM_ISSUE_FOUND: 'MEDIUM_ISSUE_FOUND',
+  HIGH_ISSUE_FOUND: 'HIGH_ISSUE_FOUND',
+  CRITICAL_ISSUE_FOUND: 'CRITICAL_ISSUE_FOUND',
   FAIL: 'FAIL',
 });
 
