@@ -1,0 +1,712 @@
+name: Pages Worker-Domain Cutover V5
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_WORKER_DOMAIN_CUTOVER_REQUEST_v5.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-worker-domain-cutover-v5
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '4867e5ee29b36acd4f32c74ee1f6eb8fe8ada6e6' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_WORKER_DOMAIN_CUTOVER_REQUEST_v5.json
+      REQUEST_ID: round5-pages-worker-domain-cutover-20260807-v5
+      EXPECTED_BEFORE_SHA: 4867e5ee29b36acd4f32c74ee1f6eb8fe8ada6e6
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V11_RUN_ID: '30832528012'
+      V11_JOB_ID: '91749723106'
+      V4_RUN_ID: '31184375729'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact cutover source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time v5 cutover request
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          jq -e \
+            --arg request_id "$REQUEST_ID" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_branch "$RELEASE_BRANCH" \
+            --arg expected_before "$EXPECTED_BEFORE_SHA" \
+            --arg application_source "$APPLICATION_SOURCE_SHA" \
+            '
+              .schemaVersion == "round5-pages-worker-domain-cutover-request-v5" and
+              .requestId == $request_id and
+              .repository == $repository and
+              .releaseBranch == $release_branch and
+              .expectedBeforeSha == $expected_before and
+              .acceptedApplicationSource == $application_source and
+              .v11Run == 30832528012 and
+              .v11Job == 91749723106 and
+              .v4Run == 31184375729 and
+              .pagesProject == "curveyield-preflight" and
+              .pagesDomain == "preflight.curveyield.online" and
+              .activeNetworks == ["ethereum", "base"] and
+              .defaultNetwork == "base" and
+              .staleWorkerDomainBindingConfirmed == true and
+              .expectedPagesProjectDetail404Confirmed == true and
+              .createPagesProjectAllowed == true and
+              .pagesDeploymentAllowed == true and
+              .workerDomainDetachAllowed == true and
+              .pagesDomainAttachAllowed == true and
+              .workerDomainRollbackAllowed == true and
+              .pagesDomainRollbackAllowed == true and
+              .assetCacheCheckAllowed == true and
+              .assetUploadAllowed == false and
+              .workerScriptMutationAllowed == false and
+              .pagesProjectDeleteAllowed == false and
+              .r2MutationAllowed == false and
+              .secretMutationAllowed == false and
+              .jobOrUploadSubmissionAllowed == false and
+              .rpcCallsAllowed == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .dependencyInstallationAllowed == false and
+              .repositoryCompilationAllowed == false and
+              .secretValuesIncluded == false and
+              .failedOrHistoricalWorkflowRerunAllowed == false
+            ' "$REQUEST_PATH" >/dev/null
+          V5_TEMP_DIR="$RUNNER_TEMP/pages-worker-domain-cutover-v5"
+          mkdir -p "$V5_TEMP_DIR"
+          echo "V5_TEMP_DIR=$V5_TEMP_DIR" >> "$GITHUB_ENV"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Fail-closed source and routing preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPLICATION_SOURCE_SHA^{commit}"
+          git diff --quiet "$APPLICATION_SOURCE_SHA" -- apps/web/public
+          test -s apps/web/public/index.html
+          test -s apps/web/public/app.js
+          python3 - <<'PY'
+          import re
+          html = open('apps/web/public/index.html', encoding='utf-8').read()
+          app = open('apps/web/public/app.js', encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('chain selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected chain scope')
+          selected = [value for value, attrs in options if re.search(r'\bselected\b', attrs)]
+          if selected != ['base']:
+              raise SystemExit('Base is not sole default')
+          for deferred in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon'):
+              if deferred in selector.lower():
+                  raise SystemExit('deferred network exposed')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('chain synchronization contract missing')
+          PY
+          python3 scripts/pages_asset_manifest_v1.py \
+            --root apps/web/public \
+            --manifest "$V5_TEMP_DIR/manifest.json" \
+            --hashes "$V5_TEMP_DIR/hashes.json" \
+            --metadata "$V5_TEMP_DIR/metadata.json"
+          jq -e 'length == 9' "$V5_TEMP_DIR/manifest.json" >/dev/null
+          jq -e '.fileCount == 9 and .uniqueHashCount > 0 and (.files | length == 9)' "$V5_TEMP_DIR/metadata.json" >/dev/null
+
+          projects_file="$V5_TEMP_DIR/pages-projects-before.json"
+          project_detail_file="$V5_TEMP_DIR/project-detail-before.json"
+          worker_domains_file="$V5_TEMP_DIR/worker-domains-before.json"
+
+          projects_status="$(curl --silent --show-error --max-time 20 \
+            --output "$projects_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects")"
+          test "$projects_status" = "200"
+          jq -e '.success == true and (.result | type) == "array"' "$projects_file" >/dev/null
+          expected_list_count="$(jq -r --arg project "$PAGES_PROJECT_NAME" '[.result[] | select((.name // "") == $project)] | length' "$projects_file")"
+          test "$expected_list_count" = "0"
+
+          project_detail_status="$(curl --silent --show-error --max-time 20 \
+            --output "$project_detail_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME")"
+          test "$project_detail_status" = "404"
+
+          worker_status="$(curl --silent --show-error --max-time 20 \
+            --output "$worker_domains_file" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online")"
+          test "$worker_status" = "200"
+          jq -e '.success == true and (.result | type) == "array"' "$worker_domains_file" >/dev/null
+          worker_count="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$worker_domains_file")"
+          test "$worker_count" = "1"
+          jq -e --arg domain "$PAGES_DOMAIN" '
+            [.result[] | select((.hostname // "") == $domain)][0] |
+            (.id | type == "string" and length > 0) and
+            (.service | type == "string" and length > 0) and
+            (.zone_id | type == "string" and length > 0) and
+            (.zone_name | type == "string" and length > 0)
+          ' "$worker_domains_file" >/dev/null
+          jq --arg domain "$PAGES_DOMAIN" '
+            [.result[] | select((.hostname // "") == $domain)][0] |
+            {id, hostname, service, zone_id, zone_name}
+          ' "$worker_domains_file" > "$V5_TEMP_DIR/original-worker-binding.json"
+
+          echo "SOURCE_AND_MANIFEST_CHECK=success" >> "$GITHUB_ENV"
+          echo "PREFLIGHT_PAGES_PROJECT_ABSENT=success" >> "$GITHUB_ENV"
+          echo "PREFLIGHT_STALE_WORKER_BINDING=success" >> "$GITHUB_ENV"
+
+      - name: Create and verify replacement Pages project
+        shell: bash
+        run: |
+          set -euo pipefail
+          create_request="$V5_TEMP_DIR/create-project-request.json"
+          create_response="$V5_TEMP_DIR/create-project-response.json"
+          project_response="$V5_TEMP_DIR/project-response.json"
+          jq -n --arg name "$PAGES_PROJECT_NAME" --arg branch "$RELEASE_BRANCH" \
+            '{name: $name, production_branch: $branch}' > "$create_request"
+          curl --fail --silent --show-error --max-time 30 \
+            --request POST \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$create_request" \
+            --output "$create_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          jq -e --arg name "$PAGES_PROJECT_NAME" --arg branch "$RELEASE_BRANCH" '
+            .success == true and
+            .result.name == $name and
+            .result.production_branch == $branch
+          ' "$create_response" >/dev/null
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$project_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg name "$PAGES_PROJECT_NAME" --arg branch "$RELEASE_BRANCH" '
+            .success == true and
+            .result.name == $name and
+            .result.production_branch == $branch and
+            (.result.subdomain | type == "string")
+          ' "$project_response" >/dev/null
+          project_subdomain="$(jq -r '.result.subdomain' "$project_response")"
+          python3 - "$project_subdomain" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          raw = sys.argv[1].strip()
+          candidate = raw if '://' in raw else 'https://' + raw
+          parsed = urlparse(candidate)
+          if parsed.scheme != 'https' or not parsed.hostname or not parsed.hostname.endswith('.pages.dev'):
+              raise SystemExit('invalid Pages project subdomain')
+          PY
+          echo "PAGES_PROJECT_CREATED=true" >> "$GITHUB_ENV"
+          echo "PAGES_PROJECT_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Create terminal production deployment and verify immutable content
+        shell: bash
+        run: |
+          set -euo pipefail
+          upload_token_response="$V5_TEMP_DIR/upload-token-response.json"
+          missing_response="$V5_TEMP_DIR/missing-response.json"
+          deployment_response="$V5_TEMP_DIR/deployment-response.json"
+          deployment_poll="$V5_TEMP_DIR/deployment-poll.json"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$upload_token_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/upload-token"
+          jq -e '.success == true and (.result.jwt | type == "string") and (.result.jwt | length > 0)' "$upload_token_response" >/dev/null
+          pages_upload_token="$(jq -r '.result.jwt' "$upload_token_response")"
+          echo "::add-mask::$pages_upload_token"
+
+          jq -n --slurpfile hashes "$V5_TEMP_DIR/hashes.json" '{hashes: $hashes[0]}' > "$V5_TEMP_DIR/check-missing-request.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --request POST \
+            --header "Authorization: Bearer $pages_upload_token" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$V5_TEMP_DIR/check-missing-request.json" \
+            --output "$missing_response" \
+            "$CLOUDFLARE_API_BASE/pages/assets/check-missing"
+          jq -e '.success == true and (.result | type == "array")' "$missing_response" >/dev/null
+          missing_asset_count="$(jq -r '.result | length' "$missing_response")"
+          test "$missing_asset_count" = "0"
+          echo "PAGES_ASSET_CACHE_CHECK=success" >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 60 \
+            --request POST \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --form-string "manifest=$(cat "$V5_TEMP_DIR/manifest.json")" \
+            --form-string "commit_hash=$APPLICATION_SOURCE_SHA" \
+            --form-string 'commit_message=Round 5 staged Pages Worker-domain cutover v5' \
+            --form-string 'commit_dirty=false' \
+            --output "$deployment_response" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" '
+            .success == true and
+            (.result.id | type == "string" and length > 0) and
+            (.result.url | type == "string" and length > 0) and
+            .result.environment == "production" and
+            .result.deployment_trigger.metadata.branch == $branch and
+            .result.deployment_trigger.metadata.commit_hash == $commit
+          ' "$deployment_response" >/dev/null
+          deployment_id="$(jq -r '.result.id' "$deployment_response")"
+          deployment_url="$(jq -r '.result.url' "$deployment_response")"
+          echo "PAGES_DEPLOYMENT_SHORT_ID=${deployment_id:0:8}" >> "$GITHUB_ENV"
+
+          deployment_ready=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            curl --fail --silent --show-error --max-time 20 \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --output "$deployment_poll" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+            if jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" '
+              .success == true and
+              .result.environment == "production" and
+              .result.deployment_trigger.metadata.branch == $branch and
+              .result.deployment_trigger.metadata.commit_hash == $commit and
+              .result.latest_stage.name == "deploy" and
+              .result.latest_stage.status == "success"
+            ' "$deployment_poll" >/dev/null; then
+              deployment_ready=true
+              deployment_url="$(jq -r '.result.url' "$deployment_poll")"
+              break
+            fi
+            sleep 10
+          done
+          test "$deployment_ready" = true
+          echo "PAGES_API_DEPLOYMENT_CHECK=success" >> "$GITHUB_ENV"
+
+          immutable_base="$(python3 - "$deployment_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          parsed = urlparse(sys.argv[1].strip())
+          if parsed.scheme != 'https' or not parsed.hostname or not parsed.hostname.endswith('.pages.dev'):
+              raise SystemExit('invalid immutable deployment URL')
+          print('https://' + parsed.hostname)
+          PY
+          )"
+          immutable_ok=false
+          for attempt in 1 2 3 4 5 6; do
+            html_file="$V5_TEMP_DIR/immutable-index-$attempt.html"
+            app_file="$V5_TEMP_DIR/immutable-app-$attempt.js"
+            nonce="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            if curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$html_file" \
+              "$immutable_base/?cutover=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$app_file" \
+              "$immutable_base/app.js?cutover=$nonce" && \
+               python3 - "$html_file" "$app_file" <<'PY'
+          import re
+          import sys
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit(1)
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit(1)
+          selected = [value for value, attrs in options if re.search(r'\bselected\b', attrs)]
+          if selected != ['base']:
+              raise SystemExit(1)
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit(1)
+          PY
+            then
+              immutable_ok=true
+              break
+            fi
+            sleep 5
+          done
+          test "$immutable_ok" = true
+          echo "IMMUTABLE_CONTENT_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Cut production hostname from Worker to Pages with rollback
+        shell: bash
+        run: |
+          set -uo pipefail
+          WORKER_DOMAIN_DETACHED=false
+          PAGES_DOMAIN_CREATED=false
+          PAGES_DOMAIN_ACTIVE=false
+          PRODUCTION_DOMAIN_UI_CHECK=not-run
+          WORKER_DOMAIN_FINAL_ABSENT=false
+          CUTOVER_OK=false
+          ROLLBACK_ATTEMPTED=false
+          ROLLBACK_OK=not-run
+          ROLLBACK_REASON=none
+          HARD_BLOCKER=false
+
+          persist_state() {
+            {
+              echo "WORKER_DOMAIN_DETACHED=$WORKER_DOMAIN_DETACHED"
+              echo "PAGES_DOMAIN_CREATED=$PAGES_DOMAIN_CREATED"
+              echo "PAGES_DOMAIN_ACTIVE=$PAGES_DOMAIN_ACTIVE"
+              echo "PRODUCTION_DOMAIN_UI_CHECK=$PRODUCTION_DOMAIN_UI_CHECK"
+              echo "WORKER_DOMAIN_FINAL_ABSENT=$WORKER_DOMAIN_FINAL_ABSENT"
+              echo "CUTOVER_OK=$CUTOVER_OK"
+              echo "ROLLBACK_ATTEMPTED=$ROLLBACK_ATTEMPTED"
+              echo "ROLLBACK_OK=$ROLLBACK_OK"
+              echo "ROLLBACK_REASON=$ROLLBACK_REASON"
+              echo "HARD_BLOCKER=$HARD_BLOCKER"
+            } >> "$GITHUB_ENV"
+          }
+
+          worker_binding_matches_original() {
+            local response="$1"
+            jq -e \
+              --arg domain "$PAGES_DOMAIN" \
+              --slurpfile original "$V5_TEMP_DIR/original-worker-binding.json" \
+              '[.result[] | select((.hostname // "") == $domain)] as $matches |
+               ($matches | length) == 1 and
+               $matches[0].id == $original[0].id and
+               $matches[0].service == $original[0].service and
+               $matches[0].zone_id == $original[0].zone_id and
+               $matches[0].zone_name == $original[0].zone_name' \
+              "$response" >/dev/null 2>&1
+          }
+
+          rollback_to_worker() {
+            ROLLBACK_ATTEMPTED=true
+            ROLLBACK_OK=true
+            if [[ "$PAGES_DOMAIN_CREATED" == "true" ]]; then
+              rollback_pages_response="$V5_TEMP_DIR/rollback-pages-domain-delete.json"
+              rollback_pages_status="$(curl --silent --show-error --max-time 20 \
+                --request DELETE \
+                --output "$rollback_pages_response" \
+                --write-out '%{http_code}' \
+                --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN" || true)"
+              if [[ "$rollback_pages_status" != "200" ]] || ! jq -e '.success == true' "$rollback_pages_response" >/dev/null 2>&1; then
+                ROLLBACK_OK=false
+              fi
+            fi
+
+            original_service="$(jq -r '.service' "$V5_TEMP_DIR/original-worker-binding.json")"
+            original_zone_id="$(jq -r '.zone_id' "$V5_TEMP_DIR/original-worker-binding.json")"
+            original_zone_name="$(jq -r '.zone_name' "$V5_TEMP_DIR/original-worker-binding.json")"
+            restore_request="$V5_TEMP_DIR/restore-worker-domain-request.json"
+            restore_response="$V5_TEMP_DIR/restore-worker-domain-response.json"
+            jq -n \
+              --arg hostname "$PAGES_DOMAIN" \
+              --arg service "$original_service" \
+              --arg zone_id "$original_zone_id" \
+              --arg zone_name "$original_zone_name" \
+              '{hostname: $hostname, service: $service, zone_id: $zone_id, zone_name: $zone_name}' > "$restore_request"
+            restore_status="$(curl --silent --show-error --max-time 30 \
+              --request PUT \
+              --output "$restore_response" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --header 'Content-Type: application/json' \
+              --data-binary "@$restore_request" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains" || true)"
+            if [[ "$restore_status" != "200" ]] || ! jq -e '.success == true' "$restore_response" >/dev/null 2>&1; then
+              ROLLBACK_OK=false
+            else
+              restored=false
+              for attempt in 1 2 3 4 5 6; do
+                restored_file="$V5_TEMP_DIR/restored-worker-$attempt.json"
+                restored_status="$(curl --silent --show-error --max-time 20 \
+                  --output "$restored_file" \
+                  --write-out '%{http_code}' \
+                  --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                  "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online" || true)"
+                if [[ "$restored_status" == "200" ]] && jq -e '.success == true' "$restored_file" >/dev/null 2>&1; then
+                  restored_count="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$restored_file")"
+                  restored_service="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)][0].service // ""' "$restored_file")"
+                  if [[ "$restored_count" == "1" && "$restored_service" == "$original_service" ]]; then
+                    restored=true
+                    break
+                  fi
+                fi
+                sleep 5
+              done
+              [[ "$restored" == "true" ]] || ROLLBACK_OK=false
+            fi
+            [[ "$ROLLBACK_OK" == "true" ]] || HARD_BLOCKER=true
+            persist_state
+          }
+
+          current_worker="$V5_TEMP_DIR/worker-before-detach.json"
+          current_worker_status="$(curl --silent --show-error --max-time 20 \
+            --output "$current_worker" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online" || true)"
+          if [[ "$current_worker_status" != "200" ]] || ! jq -e '.success == true' "$current_worker" >/dev/null 2>&1 || ! worker_binding_matches_original "$current_worker"; then
+            ROLLBACK_REASON=worker-binding-changed-before-cutover
+            persist_state
+            exit 1
+          fi
+          worker_domain_id="$(jq -r '.id' "$V5_TEMP_DIR/original-worker-binding.json")"
+
+          detach_response="$V5_TEMP_DIR/detach-worker-domain-response.json"
+          detach_status="$(curl --silent --show-error --max-time 30 \
+            --request DELETE \
+            --output "$detach_response" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains/$worker_domain_id" || true)"
+          if [[ "$detach_status" != "200" ]] || ! jq -e '.success == true' "$detach_response" >/dev/null 2>&1; then
+            ROLLBACK_REASON=worker-domain-detach-failed
+            persist_state
+            exit 1
+          fi
+          WORKER_DOMAIN_DETACHED=true
+
+          worker_absent=false
+          for attempt in 1 2 3 4 5 6; do
+            absent_file="$V5_TEMP_DIR/worker-absent-$attempt.json"
+            absent_status="$(curl --silent --show-error --max-time 20 \
+              --output "$absent_file" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online" || true)"
+            if [[ "$absent_status" == "200" ]] && jq -e '.success == true' "$absent_file" >/dev/null 2>&1; then
+              absent_count="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$absent_file")"
+              if [[ "$absent_count" == "0" ]]; then
+                worker_absent=true
+                break
+              fi
+            fi
+            sleep 5
+          done
+          if [[ "$worker_absent" != "true" ]]; then
+            ROLLBACK_REASON=worker-domain-detach-not-observed
+            rollback_to_worker
+            exit 1
+          fi
+
+          add_domain_request="$V5_TEMP_DIR/add-pages-domain-request.json"
+          add_domain_response="$V5_TEMP_DIR/add-pages-domain-response.json"
+          jq -n --arg name "$PAGES_DOMAIN" '{name: $name}' > "$add_domain_request"
+          add_domain_status="$(curl --silent --show-error --max-time 30 \
+            --request POST \
+            --output "$add_domain_response" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$add_domain_request" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains" || true)"
+          if [[ "$add_domain_status" != "200" ]] || ! jq -e --arg domain "$PAGES_DOMAIN" '.success == true and .result.name == $domain' "$add_domain_response" >/dev/null 2>&1; then
+            ROLLBACK_REASON=pages-domain-add-failed
+            rollback_to_worker
+            exit 1
+          fi
+          PAGES_DOMAIN_CREATED=true
+
+          pages_active=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            pages_domain_file="$V5_TEMP_DIR/pages-domain-$attempt.json"
+            pages_domain_status="$(curl --silent --show-error --max-time 20 \
+              --output "$pages_domain_file" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN" || true)"
+            if [[ "$pages_domain_status" == "200" ]] && jq -e --arg domain "$PAGES_DOMAIN" '.success == true and .result.name == $domain' "$pages_domain_file" >/dev/null 2>&1; then
+              status_value="$(jq -r '.result.status // ""' "$pages_domain_file")"
+              if [[ "$status_value" == "active" ]]; then
+                pages_active=true
+                break
+              fi
+              if [[ "$status_value" == "error" || "$status_value" == "blocked" || "$status_value" == "deactivated" ]]; then
+                break
+              fi
+            fi
+            sleep 10
+          done
+          if [[ "$pages_active" != "true" ]]; then
+            ROLLBACK_REASON=pages-domain-did-not-activate
+            rollback_to_worker
+            exit 1
+          fi
+          PAGES_DOMAIN_ACTIVE=true
+
+          production_ok=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            html_file="$V5_TEMP_DIR/production-index-$attempt.html"
+            app_file="$V5_TEMP_DIR/production-app-$attempt.js"
+            nonce="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            if curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$html_file" \
+              "https://$PAGES_DOMAIN/?cutover=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              --output "$app_file" \
+              "https://$PAGES_DOMAIN/app.js?cutover=$nonce" && \
+               python3 - "$html_file" "$app_file" <<'PY'
+          import re
+          import sys
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit(1)
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [value for value, _ in options] != ['ethereum', 'base']:
+              raise SystemExit(1)
+          selected = [value for value, attrs in options if re.search(r'\bselected\b', attrs)]
+          if selected != ['base']:
+              raise SystemExit(1)
+          for deferred in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon'):
+              if deferred in selector.lower():
+                  raise SystemExit(1)
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit(1)
+          PY
+            then
+              production_ok=true
+              break
+            fi
+            sleep 10
+          done
+          if [[ "$production_ok" != "true" ]]; then
+            ROLLBACK_REASON=production-domain-content-not-accepted
+            rollback_to_worker
+            exit 1
+          fi
+          PRODUCTION_DOMAIN_UI_CHECK=success
+
+          final_worker="$V5_TEMP_DIR/final-worker-domain.json"
+          final_worker_status="$(curl --silent --show-error --max-time 20 \
+            --output "$final_worker" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online" || true)"
+          final_pages="$V5_TEMP_DIR/final-pages-domains.json"
+          final_pages_status="$(curl --silent --show-error --max-time 20 \
+            --output "$final_pages" \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains" || true)"
+          final_worker_count=1
+          final_pages_count=0
+          if [[ "$final_worker_status" == "200" ]] && jq -e '.success == true' "$final_worker" >/dev/null 2>&1; then
+            final_worker_count="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$final_worker")"
+          fi
+          if [[ "$final_pages_status" == "200" ]] && jq -e '.success == true' "$final_pages" >/dev/null 2>&1; then
+            final_pages_count="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.name // "") == $domain and (.status // "") == "active")] | length' "$final_pages")"
+          fi
+          if [[ "$final_worker_count" != "0" || "$final_pages_count" != "1" ]]; then
+            ROLLBACK_REASON=final-routing-ownership-check-failed
+            rollback_to_worker
+            exit 1
+          fi
+
+          WORKER_DOMAIN_FINAL_ABSENT=true
+          CUTOVER_OK=true
+          ROLLBACK_OK=not-needed
+          persist_state
+
+      - name: Clean transient v5 routing files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${V5_TEMP_DIR:-}" ]]; then
+            rm -rf "$V5_TEMP_DIR"
+          fi
+
+      - name: Report Pages Worker-domain cutover v5 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUTOVER_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          comment_file="$(mktemp)"
+          trap 'rm -f "$comment_file"' EXIT
+          cat > "$comment_file" <<EOF
+          ## Pages Worker-domain cutover v5 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$CUTOVER_JOB_STATUS\`
+          - cutover source SHA: \`$GITHUB_SHA\`
+          - accepted application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - historical v11 run/job: \`$V11_RUN_ID\` / \`$V11_JOB_ID\`
+          - v4 routing-identity run: \`$V4_RUN_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - source and immutable manifest: \`${SOURCE_AND_MANIFEST_CHECK:-not-run}\`
+          - expected Pages project absent before mutation: \`${PREFLIGHT_PAGES_PROJECT_ABSENT:-not-run}\`
+          - exact stale Worker hostname binding before mutation: \`${PREFLIGHT_STALE_WORKER_BINDING:-not-run}\`
+          - Pages project created: \`${PAGES_PROJECT_CREATED:-false}\`
+          - Pages project verification: \`${PAGES_PROJECT_CHECK:-not-run}\`
+          - all manifest assets already present: \`${PAGES_ASSET_CACHE_CHECK:-not-run}\`
+          - Pages deployment terminal binding: \`${PAGES_API_DEPLOYMENT_CHECK:-not-run}\`
+          - deployment short ID: \`${PAGES_DEPLOYMENT_SHORT_ID:-not-recorded}\`
+          - immutable deployment content: \`${IMMUTABLE_CONTENT_CHECK:-not-run}\`
+          - stale Worker custom domain detached: \`${WORKER_DOMAIN_DETACHED:-false}\`
+          - Pages custom domain created: \`${PAGES_DOMAIN_CREATED:-false}\`
+          - Pages custom domain active: \`${PAGES_DOMAIN_ACTIVE:-false}\`
+          - production custom-domain UI acceptance: \`${PRODUCTION_DOMAIN_UI_CHECK:-not-run}\`
+          - Worker-domain binding absent after acceptance: \`${WORKER_DOMAIN_FINAL_ABSENT:-false}\`
+          - cutover accepted: \`${CUTOVER_OK:-false}\`
+          - rollback attempted: \`${ROLLBACK_ATTEMPTED:-false}\`
+          - rollback status: \`${ROLLBACK_OK:-not-run}\`
+          - rollback reason: \`${ROLLBACK_REASON:-none}\`
+          - hard routing-recovery blocker: \`${HARD_BLOCKER:-false}\`
+          - dependency installation or repository compilation performed: \`false\`
+          - asset upload performed: \`false\`
+          - Worker script mutation or deletion performed: \`false\`
+          - Pages project deletion performed: \`false\`
+          - R2/secret/job/RPC/wallet/signing/public-chain mutation performed: \`false\`
+          - Worker/domain/service/zone/account identifiers or secret values recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$comment_file"
