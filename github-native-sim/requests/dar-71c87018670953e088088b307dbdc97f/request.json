@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "deep-assurance-github-request-v1",
+  "processId": "deep-assurance-v6",
+  "contractAutomationRelease": {
+    "repository": "CurveYield/contract-automation",
+    "branch": "orchestrator/round4-ci-base-v1",
+    "commit": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
+    "contractVersion": "contract-automation-finalized-v1"
+  },
+  "runnerRelease": {
+    "version": "deep-assurance-github-bridge-v1",
+    "manifestSha256": "51fc7ef486a75a0593aaf9f8b54965424785e34198479f4ee74dd88168f53292"
+  },
+  "campaignId": "deep-assurance-v16-2-erc20-rehearsal-v2",
+  "assignmentId": "deep-assurance-v16-2-erc20-rehearsal-v2-simulation-retry1",
+  "phaseId": "fork-simulation-lifecycle",
+  "gateId": "fork-simulation-lifecycle-complete",
+  "profileId": "github-native-simulate-v1",
+  "source": {
+    "repository": "CurveYield/Contracts",
+    "commit": "248e5d5de42f8a111050fb8d2b7d587653833331",
+    "projectPath": "audit-fixtures/deep-assurance-v16-2-erc20"
+  },
+  "configuration": {
+    "compilerVersion": "0.8.28",
+    "openZeppelinVersion": "5.4.0",
+    "optimizer": {"enabled": true, "runs": 200},
+    "evmVersion": "cancun",
+    "viaIR": false,
+    "timeoutMinutes": 20,
+    "chain": "ethereum",
+    "block": 20000000,
+    "simulation": {
+      "engine": {"mode": "ganache"},
+      "fork": {"start": {"mode": "explicit", "blockNumber": 20000000}},
+      "rpc": {},
+      "reporting": {}
+    },
+    "workflow": {
+      "steps": [
+        {"action":"deploy","label":"deploy token","alias":"token","contract":"BasicERC20RehearsalV1","source":"BasicERC20Rehearsal_v1.sol","args":["1000000000000000000000000"],"from":"$account0"},
+        {"action":"assertCall","label":"supply","target":"$token","function":"totalSupply() view returns (uint256)","args":[],"equals":"1000000000000000000000000"},
+        {"action":"call","label":"transfer","target":"$token","function":"transfer(address,uint256) returns (bool)","args":["$account1","125000000000000000000"],"from":"$account0"},
+        {"action":"call","label":"approve finite","target":"$token","function":"approve(address,uint256) returns (bool)","args":["$account2","40000000000000000000"],"from":"$account1"},
+        {"action":"call","label":"transferFrom finite","target":"$token","function":"transferFrom(address,address,uint256) returns (bool)","args":["$account1","$account2","15000000000000000000"],"from":"$account2"},
+        {"action":"assertCall","label":"allowance decremented","target":"$token","function":"allowance(address,address) view returns (uint256)","args":["$account1","$account2"],"equals":"25000000000000000000"},
+        {"action":"call","label":"approve infinite","target":"$token","function":"approve(address,uint256) returns (bool)","args":["$account2","115792089237316195423570985008687907853269984665640564039457584007913129639935"],"from":"$account1"},
+        {"action":"call","label":"spend infinite","target":"$token","function":"transferFrom(address,address,uint256) returns (bool)","args":["$account1","$account2","1000000000000000000"],"from":"$account2"},
+        {"action":"assertCall","label":"infinite allowance unchanged","target":"$token","function":"allowance(address,address) view returns (uint256)","args":["$account1","$account2"],"equals":"115792089237316195423570985008687907853269984665640564039457584007913129639935"},
+        {"action":"expectRevert","label":"zero recipient revert","target":"$token","function":"transfer(address,uint256) returns (bool)","args":["0x0000000000000000000000000000000000000000","1"],"from":"$account0"},
+        {"action":"expectRevert","label":"insufficient balance revert","target":"$token","function":"transfer(address,uint256) returns (bool)","args":["$account0","1000000000000000000000000"],"from":"$account1"},
+        {"action":"assertCall","label":"supply conserved","target":"$token","function":"totalSupply() view returns (uint256)","args":[],"equals":"1000000000000000000000000"},
+        {"action":"assertCall","label":"owner balance","target":"$token","function":"balanceOf(address) view returns (uint256)","args":["$account0"],"equals":"999875000000000000000000"},
+        {"action":"assertCall","label":"alice balance","target":"$token","function":"balanceOf(address) view returns (uint256)","args":["$account1"],"equals":"109000000000000000000"},
+        {"action":"assertCall","label":"bob balance","target":"$token","function":"balanceOf(address) view returns (uint256)","args":["$account2"],"equals":"16000000000000000000"}
+      ]
+    }
+  },
+  "requestId": "dar-71c87018670953e088088b307dbdc97f",
+  "requestDigest": "71c87018670953e088088b307dbdc97f93cb6e4b617ae32b0ecd68c2180b7c13"
+}
