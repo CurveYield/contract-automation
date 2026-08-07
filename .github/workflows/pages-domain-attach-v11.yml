@@ -1,0 +1,331 @@
+name: Pages Production-Domain Attach V11
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PAGES_DOMAIN_ATTACH_REQUEST_v11.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-pages-domain-attach-v10
+  cancel-in-progress: false
+
+jobs:
+  attach-or-verify:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == 'd10f2eaea3ef87b1d0d3f3e7dfabed792ed3526d' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PAGES_DOMAIN_ATTACH_REQUEST_v11.json
+      EXPECTED_BEFORE_SHA: d10f2eaea3ef87b1d0d3f3e7dfabed792ed3526d
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      PAGES_DEPLOYMENT_SHORT_ID: db5d91bc
+      V9_RUN_ID: '31187717248'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact v11 source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Attach or verify exact Pages production domain
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+          jq -e --arg parent "$EXPECTED_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-pages-domain-attach-request-v11" and
+            .expectedBeforeSha == $parent and
+            .acceptedApplicationSource == $app and
+            .v9Run == 31187717248 and
+            .v10SourceSha == $parent and
+            .pagesDeploymentShortId == "db5d91bc" and
+            .pagesProject == "curveyield-preflight" and
+            .productionHostname == "preflight.curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and
+            .defaultNetwork == "base" and
+            .idempotentAttach == true and
+            .preconditionWorkerDomainCount == 0 and
+            .allowedPreAttachPagesDomainCounts == [0, 1] and
+            .pagesDomainAttachAllowed == true and
+            .workerMutationAllowed == false and
+            .pagesProjectMutationAllowed == false and
+            .pagesDeploymentMutationAllowed == false and
+            .assetMutationAllowed == false and
+            .dependencyInstallationAllowed == false and
+            .repositoryCompilationAllowed == false and
+            .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+
+          V11_TEMP_DIR="$RUNNER_TEMP/pages-domain-attach-v11"
+          mkdir -p "$V11_TEMP_DIR"
+          echo "V11_TEMP_DIR=$V11_TEMP_DIR" >> "$GITHUB_ENV"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+
+          project="$V11_TEMP_DIR/project.json"
+          exact="$V11_TEMP_DIR/exact.json"
+          pages_domains="$V11_TEMP_DIR/pages-domains.json"
+          worker_domains="$V11_TEMP_DIR/worker-domains.json"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$project" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" --arg short "$PAGES_DEPLOYMENT_SHORT_ID" '
+            .success == true and
+            .result.production_branch == $branch and
+            ((.result.canonical_deployment.short_id // "") == $short or ((.result.canonical_deployment.id // "") | startswith($short))) and
+            .result.canonical_deployment.environment == "production" and
+            .result.canonical_deployment.deployment_trigger.metadata.branch == $branch and
+            .result.canonical_deployment.deployment_trigger.metadata.commit_hash == $commit and
+            .result.canonical_deployment.latest_stage.name == "deploy" and
+            .result.canonical_deployment.latest_stage.status == "success"
+          ' "$project" >/dev/null
+          deployment_id="$(jq -r '.result.canonical_deployment.id' "$project")"
+          test -n "$deployment_id"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$exact" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" --arg short "$PAGES_DEPLOYMENT_SHORT_ID" '
+            .success == true and
+            ((.result.short_id // "") == $short or ((.result.id // "") | startswith($short))) and
+            .result.environment == "production" and
+            .result.deployment_trigger.metadata.branch == $branch and
+            .result.deployment_trigger.metadata.commit_hash == $commit and
+            .result.latest_stage.name == "deploy" and
+            .result.latest_stage.status == "success"
+          ' "$exact" >/dev/null
+          deployment_url="$(jq -r '.result.url' "$exact")"
+          immutable_base="$(python3 - "$deployment_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          p = urlparse(sys.argv[1].strip())
+          if p.scheme != 'https' or not p.hostname or not p.hostname.endswith('.pages.dev') or p.username or p.password or p.port:
+              raise SystemExit('invalid immutable Pages URL')
+          print('https://' + p.hostname)
+          PY
+          )"
+
+          immutable_html="$V11_TEMP_DIR/immutable.html"
+          immutable_app="$V11_TEMP_DIR/immutable.js"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$immutable_html" "$immutable_base/?v11=$GITHUB_RUN_ID"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$immutable_app" "$immutable_base/app.js?v11=$GITHUB_RUN_ID"
+          python3 - "$immutable_html" "$immutable_app" <<'PY'
+          import re, sys
+          html = open(sys.argv[1], encoding='utf-8').read()
+          app = open(sys.argv[2], encoding='utf-8').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              raise SystemExit('selector missing')
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          if [v for v, _ in options] != ['ethereum', 'base']:
+              raise SystemExit('unexpected network scope')
+          if [v for v, attrs in options if re.search(r'\bselected\b', attrs)] != ['base']:
+              raise SystemExit('Base not sole default')
+          if any(name in selector.lower() for name in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon')):
+              raise SystemExit('deferred network exposed')
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          if any(fragment not in app for fragment in required):
+              raise SystemExit('authenticated chain synchronization contract missing')
+          PY
+          echo "DEPLOYMENT_AND_IMMUTABLE_CHECK=success" >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$worker_domains" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online"
+          jq -e '.success == true and (.result | type) == "array"' "$worker_domains" >/dev/null
+          PREATTACH_WORKER_DOMAIN_COUNT="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$worker_domains")"
+          test "$PREATTACH_WORKER_DOMAIN_COUNT" = "0"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$pages_domains" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains"
+          jq -e '.success == true and (.result | type) == "array"' "$pages_domains" >/dev/null
+          PREATTACH_PAGES_DOMAIN_COUNT="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.name // "") == $domain)] | length' "$pages_domains")"
+          test "$PREATTACH_PAGES_DOMAIN_COUNT" = "0" -o "$PREATTACH_PAGES_DOMAIN_COUNT" = "1"
+          echo "PREATTACH_WORKER_DOMAIN_COUNT=$PREATTACH_WORKER_DOMAIN_COUNT" >> "$GITHUB_ENV"
+          echo "PREATTACH_PAGES_DOMAIN_COUNT=$PREATTACH_PAGES_DOMAIN_COUNT" >> "$GITHUB_ENV"
+
+          ATTACH_ATTEMPTED=false
+          PAGES_DOMAIN_POST_HTTP_STATUS=not-needed
+          if [[ "$PREATTACH_PAGES_DOMAIN_COUNT" == "0" ]]; then
+            ATTACH_ATTEMPTED=true
+            attach_request="$V11_TEMP_DIR/attach-request.json"
+            attach_response="$V11_TEMP_DIR/attach-response.json"
+            jq -n --arg name "$PAGES_DOMAIN" '{name: $name}' > "$attach_request"
+            PAGES_DOMAIN_POST_HTTP_STATUS="$(curl --silent --show-error --max-time 30 \
+              --request POST \
+              --output "$attach_response" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --header 'Content-Type: application/json' \
+              --data-binary "@$attach_request" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains" || printf transport-error)"
+          fi
+          echo "ATTACH_ATTEMPTED=$ATTACH_ATTEMPTED" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAIN_POST_HTTP_STATUS=$PAGES_DOMAIN_POST_HTTP_STATUS" >> "$GITHUB_ENV"
+
+          PAGES_DOMAIN_ACTIVE=false
+          LAST_DOMAIN_STATUS=not-observed
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do
+            domain_state="$V11_TEMP_DIR/domain-$attempt.json"
+            domain_http="$(curl --silent --show-error --max-time 20 \
+              --output "$domain_state" \
+              --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN" || printf transport-error)"
+            if [[ "$domain_http" == "200" ]] && jq -e --arg domain "$PAGES_DOMAIN" '.success == true and .result.name == $domain' "$domain_state" >/dev/null 2>&1; then
+              LAST_DOMAIN_STATUS="$(jq -r '.result.status // "unknown"' "$domain_state")"
+              if [[ "$LAST_DOMAIN_STATUS" == "active" ]]; then
+                PAGES_DOMAIN_ACTIVE=true
+                break
+              fi
+              if [[ "$LAST_DOMAIN_STATUS" == "error" || "$LAST_DOMAIN_STATUS" == "blocked" || "$LAST_DOMAIN_STATUS" == "deactivated" ]]; then
+                break
+              fi
+            fi
+            sleep 10
+          done
+          echo "PAGES_DOMAIN_ACTIVE=$PAGES_DOMAIN_ACTIVE" >> "$GITHUB_ENV"
+          echo "LAST_DOMAIN_STATUS=$LAST_DOMAIN_STATUS" >> "$GITHUB_ENV"
+          test "$PAGES_DOMAIN_ACTIVE" = "true"
+
+          PRODUCTION_UI_ACCEPTED=false
+          PRODUCTION_OPTION_COUNT=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            production_html="$V11_TEMP_DIR/production-$attempt.html"
+            production_app="$V11_TEMP_DIR/production-$attempt.js"
+            nonce="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$attempt"
+            if curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$production_html" "https://$PAGES_DOMAIN/?v11=$nonce" && \
+               curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$production_app" "https://$PAGES_DOMAIN/app.js?v11=$nonce"; then
+              classification="$(python3 - "$production_html" "$production_app" <<'PY'
+          import re, sys
+          html = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+          app = open(sys.argv[2], encoding='utf-8', errors='replace').read()
+          match = re.search(r'<select id="chain">([\s\S]*?)</select>', html)
+          if match is None:
+              print('false|0')
+              raise SystemExit
+          selector = match.group(1)
+          options = re.findall(r'<option value="([^"]+)"([^>]*)>', selector)
+          values = [v for v, _ in options]
+          selected = [v for v, attrs in options if re.search(r'\bselected\b', attrs)]
+          required = (
+              'function syncChainOptions(chains)',
+              'syncChainOptions(response.chains)',
+              'Object.entries(chains)',
+              'elements.chain.replaceChildren',
+              "preferred === 'base'",
+          )
+          accepted = values == ['ethereum', 'base'] and selected == ['base'] and all(name not in selector.lower() for name in ('arbitrum', 'fraxtal', 'katana', 'optimism', 'polygon')) and all(fragment in app for fragment in required)
+          print(('true' if accepted else 'false') + '|' + str(len(values)))
+          PY
+              )"
+              PRODUCTION_UI_ACCEPTED="${classification%%|*}"
+              PRODUCTION_OPTION_COUNT="${classification##*|}"
+              if [[ "$PRODUCTION_UI_ACCEPTED" == "true" ]]; then
+                break
+              fi
+            fi
+            sleep 10
+          done
+          echo "PRODUCTION_UI_ACCEPTED=$PRODUCTION_UI_ACCEPTED" >> "$GITHUB_ENV"
+          echo "PRODUCTION_OPTION_COUNT=$PRODUCTION_OPTION_COUNT" >> "$GITHUB_ENV"
+          test "$PRODUCTION_UI_ACCEPTED" = "true"
+          test "$PRODUCTION_OPTION_COUNT" = "2"
+
+          final_domain="$V11_TEMP_DIR/final-domain.json"
+          final_worker="$V11_TEMP_DIR/final-worker.json"
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$final_domain" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN"
+          FINAL_PAGES_DOMAIN_ACTIVE="$(jq -r --arg domain "$PAGES_DOMAIN" '(.success == true and .result.name == $domain and .result.status == "active")' "$final_domain")"
+          test "$FINAL_PAGES_DOMAIN_ACTIVE" = "true"
+
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$final_worker" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online"
+          FINAL_WORKER_DOMAIN_MATCH_COUNT="$(jq -r --arg domain "$PAGES_DOMAIN" '[.result[] | select((.hostname // "") == $domain)] | length' "$final_worker")"
+          test "$FINAL_WORKER_DOMAIN_MATCH_COUNT" = "0"
+
+          echo "FINAL_PAGES_DOMAIN_ACTIVE=$FINAL_PAGES_DOMAIN_ACTIVE" >> "$GITHUB_ENV"
+          echo "FINAL_WORKER_DOMAIN_MATCH_COUNT=$FINAL_WORKER_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"
+          echo "FINAL_ROUTING_ACCEPTANCE=success" >> "$GITHUB_ENV"
+
+      - name: Clean transient v11 files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${V11_TEMP_DIR:-}" ]] && rm -rf "$V11_TEMP_DIR" || true
+
+      - name: Report Pages production-domain attach v11 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          report="$(mktemp)"
+          trap 'rm -f "$report"' EXIT
+          cat > "$report" <<EOF
+          ## Pages production-domain attach v11 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - v11 source SHA: \`$GITHUB_SHA\`
+          - verified Pages deployment short ID: \`$PAGES_DEPLOYMENT_SHORT_ID\`
+          - v9 state run: \`$V9_RUN_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - deployment and immutable browser verification: \`${DEPLOYMENT_AND_IMMUTABLE_CHECK:-not-run}\`
+          - pre-attach Pages domain count: \`${PREATTACH_PAGES_DOMAIN_COUNT:-not-run}\`
+          - pre-attach Worker domain count: \`${PREATTACH_WORKER_DOMAIN_COUNT:-not-run}\`
+          - Pages attach attempted: \`${ATTACH_ATTEMPTED:-not-run}\`
+          - Pages domain POST HTTP status: \`${PAGES_DOMAIN_POST_HTTP_STATUS:-not-run}\`
+          - Pages domain active: \`${PAGES_DOMAIN_ACTIVE:-false}\`
+          - last Pages domain status: \`${LAST_DOMAIN_STATUS:-not-run}\`
+          - production browser UI accepted: \`${PRODUCTION_UI_ACCEPTED:-false}\`
+          - production browser option count: \`${PRODUCTION_OPTION_COUNT:-not-run}\`
+          - final Pages domain active: \`${FINAL_PAGES_DOMAIN_ACTIVE:-false}\`
+          - final Worker hostname match count: \`${FINAL_WORKER_DOMAIN_MATCH_COUNT:-not-run}\`
+          - final routing acceptance: \`${FINAL_ROUTING_ACCEPTANCE:-not-run}\`
+          - Worker/project/deployment/asset mutation performed: \`false\`
+          - dependency installation, package manager, Wrangler, or compilation performed: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$report"
