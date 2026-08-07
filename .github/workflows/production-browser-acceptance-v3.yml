@@ -1,0 +1,288 @@
+name: Production Browser Acceptance V3
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/PRODUCTION_BROWSER_ACCEPTANCE_REQUEST_v3.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-production-browser-acceptance-v3
+  cancel-in-progress: false
+
+jobs:
+  accept-browser-deployment:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/PRODUCTION_BROWSER_ACCEPTANCE_REQUEST_v3.json
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V13_ROUTING_RUN: '31202904539'
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PAGES_DOMAIN: preflight.curveyield.online
+      PAGES_URL: https://preflight.curveyield.online
+      API_URL: https://api.preflight.curveyield.online
+      PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_CLIENT_API_KEY }}
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      RPC_BASE: ${{ secrets.RPC_BASE }}
+
+    steps:
+      - name: Check out exact acceptance source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify one-time browser acceptance request
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          for pair in \
+            'REQUEST_CHECK=not-run' \
+            'PAGES_OWNERSHIP_CHECK=not-run' \
+            'PAGES_UI_CHECK=not-run' \
+            'API_HEALTH_CHECK=not-run' \
+            'API_SETUP_CHECK=not-run' \
+            'API_AUTH_REJECTION_CHECK=not-run' \
+            'CORS_PREFLIGHT_CHECK=not-run' \
+            'API_CHAIN_ALLOWLIST_CHECK=not-run' \
+            'ETHEREUM_RPC_CHECK=not-run' \
+            'BASE_RPC_CHECK=not-run' \
+            'FINAL_BROWSER_DEPLOYMENT_ACCEPTANCE=not-run'; do
+            echo "$pair" >> "$GITHUB_ENV"
+          done
+          test -n "$EVENT_BEFORE_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$PREFLIGHTSIM_CLIENT_API_KEY"
+          test -n "$RPC_ETHEREUM"
+          test -n "$RPC_BASE"
+          jq -e --arg before "$EVENT_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-production-browser-acceptance-request-v3" and
+            .expectedBeforeSha == $before and
+            .acceptedApplicationSource == $app and
+            .v13RoutingRun == 31202904539 and
+            .pagesProject == "curveyield-preflight" and
+            .pagesHostname == "preflight.curveyield.online" and
+            .apiHostname == "api.preflight.curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and
+            .defaultNetwork == "base" and
+            .readOnly == true and
+            .jobSubmissionAllowed == false and
+            .uploadSubmissionAllowed == false and
+            .walletSigningAllowed == false and
+            .publicTransactionBroadcastAllowed == false and
+            .cloudflareMutationAllowed == false and
+            .dependencyInstallationAllowed == false and
+            .repositoryCompilationAllowed == false and
+            .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+          echo 'REQUEST_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify Cloudflare Pages owns the browser hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$tmp/project.json" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg app "$APPLICATION_SOURCE_SHA" '
+            .success == true and
+            .result.production_branch == $branch and
+            .result.canonical_deployment.environment == "production" and
+            .result.canonical_deployment.deployment_trigger.metadata.branch == $branch and
+            .result.canonical_deployment.deployment_trigger.metadata.commit_hash == $app and
+            .result.canonical_deployment.latest_stage.name == "deploy" and
+            .result.canonical_deployment.latest_stage.status == "success"
+          ' "$tmp/project.json" >/dev/null
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$tmp/domain.json" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains/$PAGES_DOMAIN"
+          jq -e --arg d "$PAGES_DOMAIN" '.success == true and .result.name == $d and .result.status == "active"' "$tmp/domain.json" >/dev/null
+          curl --fail --silent --show-error --max-time 20 \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --output "$tmp/workers.json" \
+            "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=$PAGES_DOMAIN"
+          jq -e --arg d "$PAGES_DOMAIN" '.success == true and ([.result[]|select((.hostname//"")==$d)]|length)==0' "$tmp/workers.json" >/dev/null
+          echo 'PAGES_OWNERSHIP_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify production browser assets and chain scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          html="$(mktemp)"; app="$(mktemp)"
+          trap 'rm -f "$html" "$app"' EXIT
+          nonce="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$html" "$PAGES_URL/?acceptance=$nonce"
+          curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$app" "$PAGES_URL/app.js?acceptance=$nonce"
+          python3 - "$html" "$app" <<'PY'
+          import re,sys
+          html=open(sys.argv[1],encoding='utf-8').read()
+          app=open(sys.argv[2],encoding='utf-8').read()
+          m=re.search(r'<select id="chain">([\s\S]*?)</select>',html)
+          if m is None: raise SystemExit('chain selector missing')
+          selector=m.group(1)
+          options=re.findall(r'<option value="([^"]+)"([^>]*)>',selector)
+          values=[v for v,_ in options]
+          selected=[v for v,a in options if re.search(r'\bselected\b',a)]
+          if values!=['ethereum','base'] or selected!=['base']: raise SystemExit('browser scope/default mismatch')
+          if any(x in selector.lower() for x in ('arbitrum','fraxtal','katana','optimism','polygon')): raise SystemExit('deferred network exposed')
+          required=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          if any(x not in app for x in required): raise SystemExit('chain sync contract missing')
+          PY
+          echo 'PAGES_UI_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify public API health and setup readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(mktemp)"; setup="$(mktemp)"
+          trap 'rm -f "$health" "$setup"' EXIT
+          curl --fail --silent --show-error --max-time 15 --output "$health" "$API_URL/api/v1/health"
+          jq -e '.status=="ok" and .service=="preflightsim-lite-api" and .version=="0.1.0"' "$health" >/dev/null
+          echo 'API_HEALTH_CHECK=success' >> "$GITHUB_ENV"
+          curl --fail --silent --show-error --max-time 15 --output "$setup" "$API_URL/api/v1/setup"
+          jq -e '
+            .status=="ready" and
+            .features.storage==true and
+            .features.browserApiAuth==true and
+            .features.customGptAuth==true and
+            .features.githubBridgeAuth==true and
+            .features.runnerAuth==true and
+            .features.githubDispatch==true and
+            .features.largeUploads==true
+          ' "$setup" >/dev/null
+          echo 'API_SETUP_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify authentication rejection and browser CORS preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          unauth="$(mktemp)"; headers="$(mktemp)"; body="$(mktemp)"
+          trap 'rm -f "$unauth" "$headers" "$body"' EXIT
+          status="$(curl --silent --show-error --max-time 15 --output "$unauth" --write-out '%{http_code}' "$API_URL/api/v1/chains")"
+          test "$status" = '401'
+          jq -e '.error.code=="unauthorized" and .error.message=="Invalid client API key"' "$unauth" >/dev/null
+          echo 'API_AUTH_REJECTION_CHECK=success' >> "$GITHUB_ENV"
+
+          preflight="$(curl --silent --show-error --max-time 15 \
+            --request OPTIONS \
+            --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
+            --header "Origin: $PAGES_URL" \
+            --header 'Access-Control-Request-Method: GET' \
+            --header 'Access-Control-Request-Headers: authorization' \
+            "$API_URL/api/v1/chains")"
+          [[ "$preflight" == '200' || "$preflight" == '204' ]]
+          python3 - "$headers" "$PAGES_URL" <<'PY'
+          import sys
+          expected=sys.argv[2]
+          headers={}
+          for raw in open(sys.argv[1],encoding='utf-8',errors='replace'):
+              if ':' not in raw: continue
+              k,v=raw.split(':',1); headers.setdefault(k.strip().lower(),[]).append(v.strip().lower())
+          origin=(headers.get('access-control-allow-origin') or [''])[0]
+          methods=','.join(headers.get('access-control-allow-methods',[])).lower()
+          allowed=','.join(headers.get('access-control-allow-headers',[])).lower()
+          if origin != expected.lower(): raise SystemExit('CORS origin mismatch')
+          if 'get' not in {x.strip() for x in methods.split(',')}: raise SystemExit('GET not preflight-allowed')
+          if 'authorization' not in {x.strip() for x in allowed.split(',')}: raise SystemExit('Authorization not preflight-allowed')
+          PY
+          echo 'CORS_PREFLIGHT_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify authenticated browser chain allowlist and CORS response
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$(mktemp)"; headers="$(mktemp)"
+          trap 'rm -f "$body" "$headers"' EXIT
+          status="$(curl --silent --show-error --max-time 15 \
+            --output "$body" --dump-header "$headers" --write-out '%{http_code}' \
+            --header "Origin: $PAGES_URL" \
+            --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" \
+            "$API_URL/api/v1/chains")"
+          test "$status" = '200'
+          jq -e '(.chains|keys|sort)==["base","ethereum"] and .chains.ethereum.chainId==1 and .chains.base.chainId==8453' "$body" >/dev/null
+          origin="$(awk 'BEGIN{IGNORECASE=1}/^access-control-allow-origin:/{sub(/\r$/," ");sub(/[[:space:]]+$/,"",$0);sub(/^[^:]+:[[:space:]]*/,"");print;exit}' "$headers")"
+          test "$origin" = "$PAGES_URL"
+          echo 'API_CHAIN_ALLOWLIST_CHECK=success' >> "$GITHUB_ENV"
+
+      - name: Verify Ethereum and Base RPC identity and current head
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe() {
+            local endpoint="$1" expected="$2" label="$3" chain block head
+            chain="$(mktemp)"; block="$(mktemp)"
+            curl --fail --silent --show-error --max-time 20 --header 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' --output "$chain" "$endpoint"
+            curl --fail --silent --show-error --max-time 20 --header 'content-type: application/json' --data '{"jsonrpc":"2.0","id":2,"method":"eth_blockNumber","params":[]}' --output "$block" "$endpoint"
+            test "$(jq -r 'if .error then empty else .result//empty end' "$chain")" = "$expected"
+            head="$(jq -r 'if .error then empty else .result//empty end' "$block")"
+            [[ "$head" =~ ^0x[0-9a-fA-F]+$ && "$head" != '0x0' ]]
+            rm -f "$chain" "$block"
+            echo "$label read-only RPC verified"
+          }
+          probe "$RPC_ETHEREUM" '0x1' ethereum
+          echo 'ETHEREUM_RPC_CHECK=success' >> "$GITHUB_ENV"
+          probe "$RPC_BASE" '0x2105' base
+          echo 'BASE_RPC_CHECK=success' >> "$GITHUB_ENV"
+          echo 'FINAL_BROWSER_DEPLOYMENT_ACCEPTANCE=success' >> "$GITHUB_ENV"
+
+      - name: Report Production browser acceptance v3 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          f="$(mktemp)"; trap 'rm -f "$f"' EXIT
+          cat > "$f" <<EOF
+          ## Production browser acceptance v3 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - acceptance source SHA: \`$GITHUB_SHA\`
+          - accepted application source: \`$APPLICATION_SOURCE_SHA\`
+          - routing v13 run: \`$V13_ROUTING_RUN\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - Pages ownership/domain/Worker exclusion: \`${PAGES_OWNERSHIP_CHECK:-not-run}\`
+          - browser HTML/JS Ethereum+Base scope: \`${PAGES_UI_CHECK:-not-run}\`
+          - API health: \`${API_HEALTH_CHECK:-not-run}\`
+          - API setup readiness: \`${API_SETUP_CHECK:-not-run}\`
+          - unauthenticated API rejection: \`${API_AUTH_REJECTION_CHECK:-not-run}\`
+          - browser CORS preflight: \`${CORS_PREFLIGHT_CHECK:-not-run}\`
+          - authenticated browser chain allowlist/CORS: \`${API_CHAIN_ALLOWLIST_CHECK:-not-run}\`
+          - Ethereum RPC identity/current head: \`${ETHEREUM_RPC_CHECK:-not-run}\`
+          - Base RPC identity/current head: \`${BASE_RPC_CHECK:-not-run}\`
+          - final browser deployment acceptance: \`${FINAL_BROWSER_DEPLOYMENT_ACCEPTANCE:-not-run}\`
+          - active networks: \`ethereum, base\`
+          - Base sole static default: \`true\`
+          - read-only checks only: \`true\`
+          - Cloudflare/DNS/Pages/Worker mutation performed: \`false\`
+          - job/upload/storage/GitHub-dispatch mutation performed: \`false\`
+          - wallet signing or transaction broadcasting: \`false\`
+          - dependency installation, package-manager execution, compilation, or build performed: \`false\`
+          - secrets, RPC URLs, Cloudflare identifiers, response bodies, or raw errors recorded: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$f"
