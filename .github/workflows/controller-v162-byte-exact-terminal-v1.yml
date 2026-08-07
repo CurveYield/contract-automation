@@ -1,0 +1,374 @@
+name: Deep Assurance v16.2 vlSDT Controller Terminal Rehearsal v1
+
+on:
+  push:
+    branches:
+      - rehearsal/controller-v162-byte-exact-harness-v1
+    paths:
+      - .github/workflows/controller-v162-byte-exact-terminal-v1.yml
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  terminalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out byte-exact controller harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Verify copied controller blobs equal audit-controller d09a release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object controller-src/packages/controller-core/src/reducer.mjs)" = "5805590078b37fa240276296da21e736131a0496"
+          test "$(git hash-object controller-src/packages/controller-core/src/constants.mjs)" = "f1083c4802991205e0a142970fcd769826974ec1"
+          test "$(git hash-object controller-src/packages/controller-core/src/errors.mjs)" = "09b4e6c87679c12eea437b78702136eb3f464589"
+          test "$(git hash-object controller-src/packages/controller-core/src/outcome.mjs)" = "6991d8a2526b135a89211e0b64e2ef0cb5f25115"
+          test "$(git hash-object controller-src/packages/controller-core/src/assignment-policy.mjs)" = "e4c296a9eec1e996a3ba5e41edb1f2c3d81579ef"
+          test "$(git hash-object controller-src/packages/protocol/src/canonical-json.mjs)" = "a1b8d88b7c802a013dc02f5bcc4e49c03333983b"
+          test "$(git hash-object controller-src/packages/protocol/src/event-chain.mjs)" = "69a1dd5ce6e17462d846e2679d5a9043138fa3ff"
+          test "$(git hash-object controller-src/packages/github-adapter/src/envelope.mjs)" = "5cf6a0f4bda9f9c529612c1b34ab01375e923f80"
+          printf '%s\n' 'BYTE_EXACT_CONTROLLER_RELEASE_VERIFIED=d09a925d4735da8acde24baf39a1de2fb90ddd2f'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Execute complete envelope and reducer lifecycle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/controller-terminal-v1"
+          OUT="$RUNNER_TEMP/controller-terminal-v1" node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          import fs from 'node:fs';
+          import { createCampaign, applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
+          import {
+            DEEP_ASSURANCE_GATE_CATALOG,
+            DEEP_ASSURANCE_LANE_CATALOG,
+            DEEP_ASSURANCE_PROCESS_ID,
+            DEEP_ASSURANCE_REQUIRED_CAPABILITIES,
+            DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID,
+            GateStatus,
+          } from './controller-src/packages/controller-core/src/constants.mjs';
+          import { renderEnvelope, parseEnvelope } from './controller-src/packages/github-adapter/src/envelope.mjs';
+          import { verifyEventChain } from './controller-src/packages/protocol/src/event-chain.mjs';
+
+          const campaignId = 'da6-vlsdt-v18-9-v162-rehearsal-7dee48511a';
+          const sourceCommit = '1f63e0306ac35fdc4a8416064cc7aa606846e163';
+          const controller = { type: 'controller', id: 'rehearsal-controller-v1' };
+          const baseTime = Date.parse('2026-08-07T04:00:00.000Z');
+          let tick = 0;
+          let sequence = 0;
+          const transcript = [];
+          const now = () => new Date(baseTime + (tick++ * 1000)).toISOString();
+          const sha256 = (text) => createHash('sha256').update(text).digest('hex');
+          const commandId = (label) => `rehearsal-${String(++sequence).padStart(3, '0')}-${label}`;
+          const command = (type, actor, payload, label = type.replaceAll('.', '-')) => ({
+            schemaVersion: 1,
+            commandId: commandId(label),
+            type,
+            actor,
+            payload,
+          });
+          const roundTrip = (cmd) => {
+            const rendered = renderEnvelope(cmd);
+            const parsed = parseEnvelope(rendered);
+            assert.deepEqual(parsed, cmd);
+            transcript.push({ commandId: cmd.commandId, type: cmd.type, envelope: rendered });
+            return parsed;
+          };
+
+          const preflight = {
+            status: 'READY',
+            capabilities: Object.fromEntries(DEEP_ASSURANCE_REQUIRED_CAPABILITIES.map((capability) => [capability, true])),
+          };
+          const create = roundTrip(command('campaign.create', controller, {
+            processId: DEEP_ASSURANCE_PROCESS_ID,
+            title: 'vlSDT V18.9 Deep Assurance v16.2 serial rehearsal',
+            source: { repository: 'CurveYield/Audits', commit: sourceCommit },
+            preflight,
+          }, 'campaign-create'));
+          let state = createCampaign({
+            processId: create.payload.processId,
+            campaignId,
+            title: create.payload.title,
+            commandId: create.commandId,
+            timestamp: now(),
+            actor: create.actor,
+            source: create.payload.source,
+            preflight: create.payload.preflight,
+          });
+          const apply = (cmd) => {
+            state = applyCommand(state, roundTrip(cmd), { timestamp: now() });
+            return state;
+          };
+
+          for (const gate of DEEP_ASSURANCE_GATE_CATALOG) {
+            apply(command('gate.define', controller, {
+              gateId: gate.gateId,
+              phaseId: gate.phaseId,
+              title: `Rehearsal gate ${gate.phaseId}`,
+              mandatory: true,
+            }, `define-${gate.gateId}`));
+          }
+          apply(command('campaign.activate', controller, {}, 'campaign-activate'));
+
+          const workerRoleIds = DEEP_ASSURANCE_LANE_CATALOG.filter((lane) => !lane.controllerOwned).map((lane) => lane.roleId);
+          const workers = workerRoleIds.map((roleId, index) => ({ workerId: `agent-${index + 1}`, roleId }));
+          for (const worker of workers) {
+            const actor = { type: 'worker', id: worker.workerId };
+            apply(command('worker.register', actor, {
+              workerId: worker.workerId,
+              roleId: worker.roleId,
+              capabilities: ['browser-agent-review-v1'],
+              sessionManifest: {
+                productSurface: 'ChatGPT browser serial rehearsal',
+                model: 'OpenAI serial rehearsal executor',
+                sessionId: `${campaignId}-${worker.workerId}`,
+                promptHash: sha256(`${campaignId}:${worker.workerId}:prompt-v1`),
+                priorMaterialVisibility: 'serial-correlated-rehearsal-disclosed',
+                independenceClassification: 'correlated-serial-ai-review',
+              },
+            }, `register-${worker.workerId}`));
+          }
+
+          const assignments = DEEP_ASSURANCE_LANE_CATALOG.map((lane, index) => ({
+            assignmentId: `A${index + 1}-${lane.roleId}`,
+            lane,
+            leaseToken: `lease-token-${index + 1}-v1`,
+          }));
+          for (const item of assignments) {
+            apply(command('assignment.publish', controller, {
+              assignmentId: item.assignmentId,
+              roleId: item.lane.roleId,
+              title: `Rehearsal ${item.lane.roleId}`,
+              mandatory: true,
+              requiredCapabilities: item.lane.controllerOwned ? [] : ['browser-agent-review-v1'],
+              requiredEvidenceClasses: ['lane-output'],
+              promptVersion: 'rehearsal-v1',
+              cleanRoom: item.lane.cleanRoom,
+              controllerOwned: item.lane.controllerOwned,
+              permittedPriorMaterial: item.lane.cleanRoom ? [] : ['reconciled-evidence'],
+              leaseToken: item.leaseToken,
+              leaseDurationSeconds: 3600,
+              reviewPolicy: { separateReviewer: true },
+            }, `publish-${item.assignmentId}`));
+          }
+
+          for (let index = 0; index < 6; index += 1) {
+            const item = assignments[index];
+            const worker = workers[index];
+            const actor = { type: 'worker', id: worker.workerId };
+            apply(command('assignment.claim', actor, {
+              assignmentId: item.assignmentId,
+              workerId: worker.workerId,
+              leaseToken: item.leaseToken,
+            }, `claim-${item.assignmentId}`));
+            apply(command('assignment.submit', actor, {
+              assignmentId: item.assignmentId,
+              workerId: worker.workerId,
+              leaseToken: item.leaseToken,
+              summary: `Durable accepted lane output for ${item.lane.roleId}; serial correlation disclosed.`,
+              evidenceRefs: [{
+                class: 'lane-output',
+                ref: `github:CurveYield/audit-controller#61:${item.assignmentId}`,
+                sourceCommit,
+              }],
+            }, `submit-${item.assignmentId}`));
+          }
+
+          const reviewerByIndex = [1, 2, 3, 4, 5, 0];
+          for (let index = 0; index < 6; index += 1) {
+            const reviewer = workers[reviewerByIndex[index]];
+            apply(command('review.accept', { type: 'worker', id: reviewer.workerId }, {
+              assignmentId: assignments[index].assignmentId,
+              reviewerWorkerId: reviewer.workerId,
+            }, `accept-${assignments[index].assignmentId}`));
+          }
+
+          const finalAssignment = assignments[6];
+          apply(command('assignment.controller_submit', controller, {
+            assignmentId: finalAssignment.assignmentId,
+            summary: 'Final report coordinator froze all accepted lanes and reconciled evidence; result is COMPLETE + NO_GO.',
+            evidenceRefs: [{
+              class: 'lane-output',
+              ref: 'github:CurveYield/audit-controller:rehearsal-final-report-coordinator-v1',
+              sourceCommit,
+            }],
+          }, 'controller-submit-final-report'));
+          apply(command('review.accept', { type: 'worker', id: 'agent-1' }, {
+            assignmentId: finalAssignment.assignmentId,
+            reviewerWorkerId: 'agent-1',
+          }, 'accept-final-report'));
+
+          const phaseStatuses = new Map([
+            ['exact-scope-provenance-complete', GateStatus.PASS],
+            ['risk-specification-complete', GateStatus.PASS],
+            ['architecture-threat-model-complete', GateStatus.FAIL],
+            ['manual-implementation-review-complete', GateStatus.FAIL],
+            ['economic-mathematical-review-complete', GateStatus.FAIL],
+            ['exact-build-and-tests-complete', GateStatus.FAIL],
+            ['fork-simulation-lifecycle-complete', GateStatus.PASS],
+            ['findings-validation-complete', GateStatus.PASS],
+            ['remediation-review-complete', GateStatus.FAIL],
+          ]);
+          for (const [gateId, status] of phaseStatuses) {
+            apply(command('gate.record', controller, {
+              gateId,
+              status,
+              evidenceRefs: [`github:CurveYield/audit-controller#61:${gateId}:v1`],
+            }, `record-${gateId}`));
+          }
+
+          const prematurePhase10 = command('gate.record', controller, {
+            gateId: DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID,
+            status: GateStatus.PASS,
+            evidenceRefs: ['github:premature-phase10-v1'],
+          }, 'negative-phase10-before-publication');
+          assert.throws(
+            () => applyCommand(state, roundTrip(prematurePhase10), { timestamp: now() }),
+            /publication/i,
+          );
+
+          apply(command('publication.record', controller, {
+            snapshotRef: 'github:blob:2f79fab0eaf846a008419efcb54bc627ab7a8381',
+            markdownRef: 'github:blob:30ad11530cda2f0318e0648b18ecae936cb8dc67',
+            pdfRef: 'github:blob:ffba6b1fe84d16d8454b9164885707ce5849ac4f',
+            archiveRef: 'github:blob:75fd3e6bd1ed57e0d7937c28555af72b02a1f110',
+            artifactDigestReceiptRef: 'github:blob:c8b849047f32935e3eff1df853a647d006eaa5ce',
+            publicationManifestRef: 'github:blob:4dd9d9e94c7367490141ff6a648fedfbf7ec557f',
+            publicationManifestFetchbackReceiptRef: 'github:blob:8d8c368b1a4b7feb904b7903a89784c60c53535a',
+          }, 'publication-record'));
+
+          const prematureDelivery = command('user_delivery.record', controller, {
+            summaryRef: 'github:premature-delivery-v1',
+            artifactLinks: ['https://github.com/CurveYield/audit-controller/issues/61'],
+            receiptRef: 'github:premature-delivery-receipt-v1',
+          }, 'negative-delivery-before-phase10');
+          assert.throws(
+            () => applyCommand(state, roundTrip(prematureDelivery), { timestamp: now() }),
+            /release-and-report-complete|Phase 10/i,
+          );
+
+          apply(command('gate.record', controller, {
+            gateId: DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID,
+            status: GateStatus.PASS,
+            evidenceRefs: [
+              'github:blob:30ad11530cda2f0318e0648b18ecae936cb8dc67',
+              'github:blob:ffba6b1fe84d16d8454b9164885707ce5849ac4f',
+              'github:blob:75fd3e6bd1ed57e0d7937c28555af72b02a1f110',
+              'github:blob:4dd9d9e94c7367490141ff6a648fedfbf7ec557f',
+              'github:blob:8d8c368b1a4b7feb904b7903a89784c60c53535a'
+            ],
+          }, 'record-phase10'));
+
+          assert.equal(state.status, 'ACTIVE');
+          assert.equal(state.publication.status, 'PUBLISHED');
+          assert.equal(state.gates[DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID].status, GateStatus.PASS);
+          assert.equal(state.userDelivery.status, 'PENDING');
+          assert.equal(Object.values(state.assignments).every((assignment) => assignment.status === 'ACCEPTED'), true);
+
+          const root = 'https://github.com/CurveYield/audit-controller/blob';
+          const textBranch = 'rehearsal/vlsdt-v18-9-v162-7dee48511a';
+          const binaryBranch = 'rehearsal/vlsdt-v18-9-v162-artifacts-v1';
+          const campaignRoot = 'rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication';
+          const artifactLinks = [
+            `${root}/${textBranch}/${campaignRoot}/Deep_Assurance_v16_2_vlSDT_V18_9_Rehearsal_Audit_Report_v1.md`,
+            `${root}/${binaryBranch}/publication/Deep_Assurance_v16_2_vlSDT_V18_9_Rehearsal_Audit_Report_v1.pdf`,
+            `${root}/${binaryBranch}/publication/Deep_Assurance_v16_2_vlSDT_V18_9_Evidence_Packet_v1.zip`,
+          ];
+
+          async function publishDeliveryStatus(context, description, target_url) {
+            const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/statuses/${process.env.GITHUB_SHA}`, {
+              method: 'POST',
+              headers: {
+                accept: 'application/vnd.github+json',
+                authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                'content-type': 'application/json',
+                'user-agent': 'curveyield-deep-assurance-controller-rehearsal-v1',
+                'x-github-api-version': '2022-11-28',
+              },
+              body: JSON.stringify({ state: 'success', context, description, target_url }),
+            });
+            if (!response.ok) throw new Error(`delivery status failed: ${response.status} ${await response.text()}`);
+          }
+          await publishDeliveryStatus('deep-assurance/delivery-markdown-v1', 'vlSDT audit report Markdown v1', artifactLinks[0]);
+          await publishDeliveryStatus('deep-assurance/delivery-pdf-v1', 'vlSDT audit report PDF v1', artifactLinks[1]);
+          await publishDeliveryStatus('deep-assurance/delivery-archive-v1', 'vlSDT evidence archive v1', artifactLinks[2]);
+
+          apply(command('user_delivery.record', controller, {
+            summaryRef: 'github:CurveYield/audit-controller#61:final-delivery-v1',
+            artifactLinks,
+            receiptRef: `github:CurveYield/contract-automation@${process.env.GITHUB_SHA}:delivery-statuses-v1`,
+          }, 'user-delivery-record'));
+          apply(command('campaign.evaluate', controller, { terminal: true }, 'campaign-terminal-evaluate'));
+
+          assert.equal(state.status, 'COMPLETE');
+          assert.equal(state.completionStatus, 'COMPLETE');
+          assert.equal(state.securityVerdict, 'NO_GO');
+          assert.equal(state.publication.status, 'PUBLISHED');
+          assert.equal(state.userDelivery.status, 'DELIVERED');
+          assert.equal(Object.values(state.assignments).length, 7);
+          assert.equal(Object.values(state.assignments).every((assignment) => assignment.status === 'ACCEPTED'), true);
+          assert.equal(Object.keys(state.gates).length, 10);
+          assert.equal(Object.values(state.gates).every((gate) => gate.status === 'PASS' || gate.status === 'FAIL'), true);
+          assert.deepEqual(verifyEventChain(state.events), { valid: true, error: null });
+
+          fs.writeFileSync(`${process.env.OUT}/controller-terminal-state-v1.json`, `${JSON.stringify(state, null, 2)}\n`);
+          fs.writeFileSync(`${process.env.OUT}/controller-envelope-transcript-v1.json`, `${JSON.stringify(transcript, null, 2)}\n`);
+          fs.writeFileSync(`${process.env.OUT}/controller-terminal-summary-v1.txt`, [
+            `campaign=${campaignId}`,
+            'controllerRelease=d09a925d4735da8acde24baf39a1de2fb90ddd2f',
+            `status=${state.status}`,
+            `completionStatus=${state.completionStatus}`,
+            `securityVerdict=${state.securityVerdict}`,
+            `publication=${state.publication.status}`,
+            `phase10=${state.gates[DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID].status}`,
+            `userDelivery=${state.userDelivery.status}`,
+            `assignments=${Object.values(state.assignments).length}`,
+            `acceptedAssignments=${Object.values(state.assignments).filter((assignment) => assignment.status === 'ACCEPTED').length}`,
+            `gates=${Object.keys(state.gates).length}`,
+            `events=${state.events.length}`,
+            `envelopesRoundTripped=${transcript.length}`,
+            'eventChain=VALID',
+            'negativeEarlyPhase10=REJECTED_AS_EXPECTED',
+            'negativeEarlyDelivery=REJECTED_AS_EXPECTED',
+            `deliveryCommit=${process.env.GITHUB_SHA}`,
+          ].join('\n') + '\n');
+
+          console.log('TERMINAL_STATE_VERIFIED');
+          console.log(JSON.stringify({
+            campaignId,
+            status: state.status,
+            completionStatus: state.completionStatus,
+            securityVerdict: state.securityVerdict,
+            publication: state.publication.status,
+            phase10: state.gates[DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID].status,
+            userDelivery: state.userDelivery.status,
+            assignments: Object.values(state.assignments).length,
+            acceptedAssignments: Object.values(state.assignments).filter((assignment) => assignment.status === 'ACCEPTED').length,
+            gates: Object.keys(state.gates).length,
+            events: state.events.length,
+            envelopesRoundTripped: transcript.length,
+            eventChain: verifyEventChain(state.events),
+          }));
+          NODE
+
+      - name: Upload terminal controller evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vlsdt-v18-9-controller-terminal-v1
+          path: ${{ runner.temp }}/controller-terminal-v1
+          if-no-files-found: error
+          retention-days: 30

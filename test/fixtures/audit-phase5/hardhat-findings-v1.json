@@ -1,6 +1,0 @@
-{
-  "tests": [
-    {"file":"test/example-v1.test.mjs","suite":"Example","name":"preserves invariant","status":"failed","durationMs":11,"errorMessage":"expected invariant to hold"},
-    {"file":"test/example-v1.test.mjs","suite":"Example","name":"setup","status":"skipped","durationMs":0}
-  ]
-}

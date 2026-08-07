@@ -1,6 +1,0 @@
-{
-  "mutants": [
-    {"id":"mut-conflict","status":"killed","operator":"require-mutation","file":"contracts/Example.sol","line":12,"column":5,"killedBy":"rejects unauthorized"},
-    {"id":"mut-conflict","status":"survived","operator":"require-mutation","file":"contracts/Example.sol","line":12,"column":5}
-  ]
-}
