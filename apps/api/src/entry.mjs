@@ -1,6 +1,14 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
 
+const CORRELATION_ID_PATTERN = /^[A-Za-z0-9._:-]{8,96}$/;
+
+export function normalizeCorrelationId(value) {
+  const candidate = String(value ?? '').trim();
+  if (CORRELATION_ID_PATTERN.test(candidate)) return candidate;
+  return `corr_${crypto.randomUUID().replaceAll('-', '')}`;
+}
+
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
     status,
@@ -11,6 +19,22 @@ function json(value, env, status = 200, headers = {}) {
       ...headers
     }
   });
+}
+
+function withCorrelation(response, correlationId) {
+  const headers = new Headers(response.headers);
+  headers.set('x-correlation-id', correlationId);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
+function correlatedRequest(request, correlationId) {
+  const cloned = request.clone();
+  cloned.headers.set('x-correlation-id', correlationId);
+  return cloned;
 }
 
 function enabledChainMap(env) {
@@ -63,48 +87,52 @@ export function setupReadiness(env) {
 
 export default {
   async fetch(request, env, context) {
-    const url = new URL(request.url);
-    if (request.method === 'GET' && url.pathname === '/api/v1/setup') {
-      return json(setupReadiness(env), env);
+    const correlationId = normalizeCorrelationId(request.headers.get('x-correlation-id'));
+    const correlated = correlatedRequest(request, correlationId);
+    const respond = (response) => withCorrelation(response, correlationId);
+    const url = new URL(correlated.url);
+
+    if (correlated.method === 'GET' && url.pathname === '/api/v1/setup') {
+      return respond(json(setupReadiness(env), env));
     }
 
     const activeChains = enabledChainMap(env);
-    if (request.method === 'GET' && url.pathname === '/api/v1/chains') {
-      const response = await apiWorker.fetch(request, env, context);
-      if (response.status !== 200 || !env.ENABLED_CHAINS) return response;
+    if (correlated.method === 'GET' && url.pathname === '/api/v1/chains') {
+      const response = await apiWorker.fetch(correlated, env, context);
+      if (response.status !== 200 || !env.ENABLED_CHAINS) return respond(response);
       if (!activeChains) {
-        return json({ error: {
+        return respond(json({ error: {
           code: 'invalid_enabled_chains',
           message: 'The production chain allowlist is invalid'
-        } }, env, 503);
+        } }, env, 503));
       }
-      return new Response(JSON.stringify({ chains: activeChains }), {
+      return respond(new Response(JSON.stringify({ chains: activeChains }), {
         status: response.status,
         headers: response.headers
-      });
+      }));
     }
 
-    if (request.method === 'POST' && url.pathname === '/api/v1/jobs' && env.ENABLED_CHAINS) {
-      const candidate = await parseJobCandidate(request);
+    if (correlated.method === 'POST' && url.pathname === '/api/v1/jobs' && env.ENABLED_CHAINS) {
+      const candidate = await parseJobCandidate(correlated);
       const requestedChain = typeof candidate?.chain === 'string'
         ? candidate.chain.trim().toLowerCase()
         : null;
       if (!activeChains || (requestedChain && !Object.hasOwn(activeChains, requestedChain))) {
-        const authorization = await clientAuthorizationProbe(request, env, context);
-        if (authorization.status !== 200) return authorization;
+        const authorization = await clientAuthorizationProbe(correlated, env, context);
+        if (authorization.status !== 200) return respond(authorization);
         if (!activeChains) {
-          return json({ error: {
+          return respond(json({ error: {
             code: 'invalid_enabled_chains',
             message: 'The production chain allowlist is invalid'
-          } }, env, 503);
+          } }, env, 503));
         }
-        return json({ error: {
+        return respond(json({ error: {
           code: 'chain_not_enabled',
           message: 'The requested chain is not enabled for production testing'
-        } }, env, 400);
+        } }, env, 400));
       }
     }
 
-    return apiWorker.fetch(request, env, context);
+    return respond(await apiWorker.fetch(correlated, env, context));
   }
 };

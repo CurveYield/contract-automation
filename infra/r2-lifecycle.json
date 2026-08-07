@@ -1,7 +1,7 @@
 {
   "rules": [
     {
-      "id": "delete-preflight-artifacts-after-30-days",
+      "id": "delete-preflight-artifacts-after-7-days",
       "enabled": true,
       "conditions": {
         "prefix": ""
@@ -9,7 +9,7 @@
       "deleteObjectsTransition": {
         "condition": {
           "type": "Age",
-          "maxAge": 2592000
+          "maxAge": 604800
         }
       },
       "abortMultipartUploadsTransition": {
