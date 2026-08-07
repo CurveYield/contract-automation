@@ -3,6 +3,7 @@ import {
   DEEP_ASSURANCE_GATE_CATALOG,
   DEEP_ASSURANCE_LANE_CATALOG,
   DEEP_ASSURANCE_RELEASE_AND_REPORT_GATE_ID,
+  DEEP_ASSURANCE_REMEDIATION_REVIEW_GATE_ID,
   GateStatus,
   SecurityVerdict,
 } from './constants.mjs';
@@ -21,6 +22,33 @@ function compareExactTopology(actual, expected, noun) {
     return `mandatory topology mismatch (${details})`;
   }
   return null;
+}
+
+function securityVerdictFromResidualGate(gates) {
+  const remediationGate = gates.find((gate) => gate.gateId === DEEP_ASSURANCE_REMEDIATION_REVIEW_GATE_ID);
+  if (!remediationGate) {
+    return { securityVerdict: null, reason: `missing residual-risk gate ${DEEP_ASSURANCE_REMEDIATION_REVIEW_GATE_ID}` };
+  }
+  if ([GateStatus.HIGH_ISSUE_FOUND, GateStatus.CRITICAL_ISSUE_FOUND].includes(remediationGate.status)) {
+    return {
+      securityVerdict: SecurityVerdict.NO_GO,
+      reason: `unresolved ${remediationGate.status === GateStatus.CRITICAL_ISSUE_FOUND ? 'Critical' : 'High'} finding remains after remediation review`,
+    };
+  }
+  if ([
+    GateStatus.PASS,
+    GateStatus.INFORMATIONAL_ISSUE_FOUND,
+    GateStatus.LOW_ISSUE_FOUND,
+    GateStatus.MEDIUM_ISSUE_FOUND,
+  ].includes(remediationGate.status)) {
+    return {
+      securityVerdict: SecurityVerdict.PASS,
+      reason: remediationGate.status === GateStatus.PASS
+        ? 'remediation review concluded with no unresolved reportable finding'
+        : `highest unresolved finding after remediation review is ${remediationGate.status}`,
+    };
+  }
+  return { securityVerdict: null, reason: `residual-risk gate is not successfully terminal: ${remediationGate.status}` };
 }
 
 export function evaluateOutcome(state, { terminal = false, publicationReadiness = false } = {}) {
@@ -74,6 +102,16 @@ export function evaluateOutcome(state, { terminal = false, publicationReadiness 
     return { completionStatus: null, securityVerdict: null, ready: false, reason: `mandatory gate ${unfinishedGate.gateId} is ${unfinishedGate.status}` };
   }
 
+  const failedGate = gates.find((gate) => gate.status === GateStatus.FAIL);
+  if (failedGate) {
+    return {
+      completionStatus: null,
+      securityVerdict: null,
+      ready: false,
+      reason: `audit process failed to complete mandatory gate ${failedGate.gateId}`,
+    };
+  }
+
   const nonMandatoryAssignment = assignments.find((assignment) => assignment.mandatory !== true);
   if (nonMandatoryAssignment) {
     return { completionStatus: null, securityVerdict: null, ready: false, reason: `assignment ${nonMandatoryAssignment.assignmentId} is not mandatory` };
@@ -83,10 +121,16 @@ export function evaluateOutcome(state, { terminal = false, publicationReadiness 
     return { completionStatus: null, securityVerdict: null, ready: false, reason: `mandatory assignment ${unfinishedAssignment.assignmentId} is ${unfinishedAssignment.status}` };
   }
 
-  const failedGate = gates.find((gate) => gate.status === GateStatus.FAIL);
-  const result = failedGate
-    ? { completionStatus: 'COMPLETE', securityVerdict: SecurityVerdict.NO_GO, ready: true, reason: 'one or more mandatory security gates failed' }
-    : { completionStatus: 'COMPLETE', securityVerdict: SecurityVerdict.PASS, ready: true, reason: 'all mandatory work concluded without a failed security gate' };
+  const residual = securityVerdictFromResidualGate(gates);
+  if (!residual.securityVerdict) {
+    return { completionStatus: null, securityVerdict: null, ready: false, reason: residual.reason };
+  }
+  const result = {
+    completionStatus: 'COMPLETE',
+    securityVerdict: residual.securityVerdict,
+    ready: true,
+    reason: residual.reason,
+  };
 
   if (terminal && state.publication?.status !== 'PUBLISHED') {
     return { ...result, completionStatus: null, ready: false, reason: 'publication is required before terminal completion' };
