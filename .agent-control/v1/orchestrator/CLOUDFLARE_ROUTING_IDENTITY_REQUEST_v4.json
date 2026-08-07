@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "round5-cloudflare-routing-identity-request-v4",
+  "requestId": "round5-cloudflare-routing-identity-20260807-v4",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "expectedBeforeSha": "bf879a18381a5b2a3e2d240d27e498e79b992d22",
+  "acceptedApplicationSource": "2c6e543dfcaa17ca975bbde3c15302269bbf8072",
+  "v11Run": 30832528012,
+  "v11Job": 91749723106,
+  "v3Run": 31183971849,
+  "expectedPagesProject": "curveyield-preflight",
+  "customDomain": "preflight.curveyield.online",
+  "activeNetworks": [
+    "ethereum",
+    "base"
+  ],
+  "defaultNetwork": "base",
+  "checks": [
+    "account-wide-pages-project-list",
+    "expected-pages-project-detail-status",
+    "all-pages-project-domain-associations",
+    "worker-custom-domain-by-hostname",
+    "associated-pages-origin-content",
+    "custom-domain-content-correlation"
+  ],
+  "readOnly": true,
+  "cloudflareMethodsAllowed": "GET-only",
+  "accountWidePagesInventory": true,
+  "workerCustomDomainInventory": true,
+  "dependencyInstallationAllowed": false,
+  "repositoryCompilationAllowed": false,
+  "cloudflareMutationAllowed": false,
+  "pagesDeploymentAllowed": false,
+  "workerDeploymentAllowed": false,
+  "secretMutationAllowed": false,
+  "r2MutationAllowed": false,
+  "jobOrUploadSubmissionAllowed": false,
+  "rpcCallsAllowed": false,
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "secretValuesIncluded": false,
+  "failedOrHistoricalWorkflowRerunAllowed": false
+}
