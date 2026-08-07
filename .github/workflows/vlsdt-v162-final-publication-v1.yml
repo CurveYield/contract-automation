@@ -1,0 +1,73 @@
+name: vlSDT v16.2 Final Publication v1
+
+on:
+  push:
+    branches:
+      - rehearsal/vlsdt-v162-final-publication-7dee48511a
+    paths:
+      - .rehearsal-publication/v1/TRIGGER-v1.txt
+
+permissions:
+  contents: write
+
+jobs:
+  publish-binaries:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact publication branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Decode and verify final binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, zipfile
+          root=Path('.')
+          stage=root/'.rehearsal-publication/v1'
+          out=root/'rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication-v1'
+          out.mkdir(parents=True,exist_ok=True)
+          targets=[
+            ('pdf','CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.pdf','b74e3b52c80e30a0d0ea49a86b47f36626d34814dbca5458e65c1c0dbcd17989'),
+            ('archive','CurveYield_vlSDT_V18_9_Deep_Assurance_Evidence_v1.zip','8f3b10f08ecbefbf9042bff84cb1f9a5a0c0241cc34f0adee0c2862e91b8a90a'),
+          ]
+          for prefix,name,expected in targets:
+              parts=sorted(stage.glob(prefix+'.part*.txt'))
+              if not parts: raise SystemExit(f'missing {prefix} parts')
+              raw=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
+              actual=hashlib.sha256(raw).hexdigest()
+              if actual!=expected: raise SystemExit(f'{prefix} SHA mismatch {actual}')
+              (out/name).write_bytes(raw)
+          pdf=(out/'CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.pdf').read_bytes()
+          if not pdf.startswith(b'%PDF-'): raise SystemExit('invalid PDF header')
+          zp=out/'CurveYield_vlSDT_V18_9_Deep_Assurance_Evidence_v1.zip'
+          expected_members={
+            'CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.md',
+            'CurveYield_vlSDT_V18_9_Finalization_Input_Snapshot_v2.json',
+            'CurveYield_vlSDT_V18_9_Source_Anchor_v1.txt',
+            'CurveYield_vlSDT_V18_9_Static_Rehearsal_v1.txt',
+            'CurveYield_vlSDT_V18_9_Execution_Evidence_Index_v1.json',
+            'CurveYield_vlSDT_V18_9_Lane_Index_v1.json',
+            'CurveYield_vlSDT_V18_9_Deep_Assurance_Evidence_Manifest_v1.json',
+          }
+          with zipfile.ZipFile(zp) as z:
+              if set(z.namelist())!=expected_members: raise SystemExit('archive membership mismatch')
+              bad=z.testzip()
+              if bad: raise SystemExit('bad ZIP member '+bad)
+          PY
+
+      - name: Commit final binary artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Deep Assurance Rehearsal'
+          git config user.email 'deep-assurance-rehearsal@users.noreply.github.com'
+          git add rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication-v1/CurveYield_vlSDT_V18_9_Deep_Assurance_Rehearsal_Report_v1.pdf
+          git add rehearsals/da6-vlsdt-v18-9-v162-rehearsal-7dee48511a/publication-v1/CurveYield_vlSDT_V18_9_Deep_Assurance_Evidence_v1.zip
+          git commit -m 'Rehearsal: publish final vlSDT audit binaries v1'
+          git push origin HEAD:rehearsal/vlsdt-v162-final-publication-7dee48511a
