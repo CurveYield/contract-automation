@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   test-policy:
@@ -26,6 +27,7 @@ jobs:
         with:
           node-version: '22'
       - name: Run severity policy regression
+        id: regression
         shell: bash
         run: |
           set -euo pipefail
@@ -34,10 +36,8 @@ jobs:
           import { createCampaign, applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
           import {
             DEEP_ASSURANCE_GATE_CATALOG,
-            DEEP_ASSURANCE_LANE_CATALOG,
             DEEP_ASSURANCE_REQUIRED_CAPABILITIES,
             GateStatus,
-            SecurityVerdict,
           } from './controller-src/packages/controller-core/src/constants.mjs';
 
           assert.equal(GateStatus.MEDIUM_ISSUE_FOUND, 'MEDIUM_ISSUE_FOUND');
@@ -68,3 +68,20 @@ jobs:
           }
           console.log('SEVERITY_STATUS_ENUM_PRESENT=true');
           NODE
+      - name: Publish regression commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$JOB_STATUS" = "success" ]; then STATE=success; DESCRIPTION='severity policy regression passed'; else STATE=failure; DESCRIPTION='severity policy regression failed'; fi
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -d "{\"state\":\"${STATE}\",\"context\":\"deep-assurance/severity-policy-regression\",\"description\":\"${DESCRIPTION}\"}"
