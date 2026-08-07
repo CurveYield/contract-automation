@@ -1,0 +1,226 @@
+name: Worker-Domain Detach State V8
+
+on:
+  push:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/WORKER_DOMAIN_DETACH_STATE_REQUEST_v8.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-preflight-worker-domain-detach-state-v8
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/orchestrator/round4-ci-base-v1' && github.event.before == '6876ed3c0934d7b49850f3af8239f7045375171a' }}
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+      REQUEST_PATH: .agent-control/v1/orchestrator/WORKER_DOMAIN_DETACH_STATE_REQUEST_v8.json
+      EXPECTED_BEFORE_SHA: 6876ed3c0934d7b49850f3af8239f7045375171a
+      APPLICATION_SOURCE_SHA: 2c6e543dfcaa17ca975bbde3c15302269bbf8072
+      V7_RUN_ID: '31186401186'
+      V7_JOB_ID: '92891932721'
+      V7_DEPLOYMENT_SHORT_ID: db5d91bc
+      CLOUDFLARE_API_BASE: https://api.cloudflare.com/client/v4
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT_NAME: curveyield-preflight
+      PRODUCTION_HOSTNAME: preflight.curveyield.online
+
+    steps:
+      - name: Check out exact v8 source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify read-only v8 request
+        shell: bash
+        env:
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          test "$EVENT_BEFORE_SHA" = "$EXPECTED_BEFORE_SHA"
+          test "$GITHUB_REF" = "refs/heads/$RELEASE_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          jq -e --arg parent "$EXPECTED_BEFORE_SHA" --arg app "$APPLICATION_SOURCE_SHA" '
+            .schemaVersion == "round5-worker-domain-detach-state-request-v8" and
+            .expectedBeforeSha == $parent and
+            .acceptedApplicationSource == $app and
+            .v7Run == 31186401186 and
+            .v7Job == 92891932721 and
+            .v7DeploymentShortId == "db5d91bc" and
+            .pagesProject == "curveyield-preflight" and
+            .productionHostname == "preflight.curveyield.online" and
+            .activeNetworks == ["ethereum", "base"] and
+            .defaultNetwork == "base" and
+            .readOnly == true and
+            .cloudflareMethodsAllowed == "GET-only" and
+            .cloudflareMutationAllowed == false and
+            .pagesMutationAllowed == false and
+            .workerMutationAllowed == false and
+            .dependencyInstallationAllowed == false and
+            .repositoryCompilationAllowed == false and
+            .failedOrHistoricalWorkflowRerunAllowed == false
+          ' "$REQUEST_PATH" >/dev/null
+          V8_TEMP_DIR="$RUNNER_TEMP/worker-domain-detach-state-v8"
+          mkdir -p "$V8_TEMP_DIR"
+          echo "V8_TEMP_DIR=$V8_TEMP_DIR" >> "$GITHUB_ENV"
+          echo "REQUEST_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Read Pages deployment and routing ownership state
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="$V8_TEMP_DIR/project.json"
+          deployments="$V8_TEMP_DIR/deployments.json"
+          exact="$V8_TEMP_DIR/exact.json"
+          pages_domains="$V8_TEMP_DIR/pages-domains.json"
+          worker_domains="$V8_TEMP_DIR/worker-domains.json"
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$project" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME"
+          jq -e --arg branch "$RELEASE_BRANCH" '.success == true and .result.name == "curveyield-preflight" and .result.production_branch == $branch' "$project" >/dev/null
+          PAGES_PROJECT_OK=true
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$deployments" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments?env=production&per_page=50"
+          jq -e '.success == true and (.result | type) == "array"' "$deployments" >/dev/null
+          matches="$(jq -r --arg short "$V7_DEPLOYMENT_SHORT_ID" --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" '[.result[] | select(((.short_id // "") == $short or ((.id // "") | startswith($short))) and .environment == "production" and .deployment_trigger.metadata.branch == $branch and .deployment_trigger.metadata.commit_hash == $commit and .latest_stage.name == "deploy" and .latest_stage.status == "success")] | length' "$deployments")"
+          test "$matches" = "1"
+          deployment_id="$(jq -r --arg short "$V7_DEPLOYMENT_SHORT_ID" '.result[] | select((.short_id // "") == $short or ((.id // "") | startswith($short))) | .id' "$deployments")"
+          test -n "$deployment_id"
+          V7_LIST_BINDING_OK=true
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$exact" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/deployments/$deployment_id"
+          jq -e --arg branch "$RELEASE_BRANCH" --arg commit "$APPLICATION_SOURCE_SHA" '.success == true and .result.environment == "production" and .result.deployment_trigger.metadata.branch == $branch and .result.deployment_trigger.metadata.commit_hash == $commit and .result.latest_stage.name == "deploy" and .result.latest_stage.status == "success"' "$exact" >/dev/null
+          V7_EXACT_BINDING_OK=true
+          deployment_url="$(jq -r '.result.url' "$exact")"
+          IMMUTABLE_BASE="$(python3 - "$deployment_url" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          p=urlparse(sys.argv[1].strip())
+          if p.scheme!='https' or not p.hostname or not p.hostname.endswith('.pages.dev') or p.username or p.password or p.port:
+              raise SystemExit(1)
+          print('https://' + p.hostname)
+          PY
+          )"
+          echo "IMMUTABLE_BASE=$IMMUTABLE_BASE" >> "$GITHUB_ENV"
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$pages_domains" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT_NAME/domains"
+          jq -e '.success == true and (.result | type) == "array"' "$pages_domains" >/dev/null
+          PAGES_DOMAIN_MATCH_COUNT="$(jq -r --arg domain "$PRODUCTION_HOSTNAME" '[.result[] | select((.name // "") == $domain)] | length' "$pages_domains")"
+          PAGES_DOMAIN_ACTIVE_COUNT="$(jq -r --arg domain "$PRODUCTION_HOSTNAME" '[.result[] | select((.name // "") == $domain and (.status // "") == "active")] | length' "$pages_domains")"
+
+          curl --fail --silent --show-error --max-time 20 --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" --output "$worker_domains" "$CLOUDFLARE_API_BASE/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains?hostname=preflight.curveyield.online"
+          jq -e '.success == true and (.result | type) == "array"' "$worker_domains" >/dev/null
+          WORKER_DOMAIN_MATCH_COUNT="$(jq -r --arg domain "$PRODUCTION_HOSTNAME" '[.result[] | select((.hostname // "") == $domain)] | length' "$worker_domains")"
+
+          echo "PAGES_PROJECT_OK=$PAGES_PROJECT_OK" >> "$GITHUB_ENV"
+          echo "V7_LIST_BINDING_OK=$V7_LIST_BINDING_OK" >> "$GITHUB_ENV"
+          echo "V7_EXACT_BINDING_OK=$V7_EXACT_BINDING_OK" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAIN_MATCH_COUNT=$PAGES_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"
+          echo "PAGES_DOMAIN_ACTIVE_COUNT=$PAGES_DOMAIN_ACTIVE_COUNT" >> "$GITHUB_ENV"
+          echo "WORKER_DOMAIN_MATCH_COUNT=$WORKER_DOMAIN_MATCH_COUNT" >> "$GITHUB_ENV"
+          echo "STATE_GET_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Classify immutable and production browser content
+        shell: bash
+        run: |
+          set -euo pipefail
+          classify() {
+            local base="$1" prefix="$2"
+            local html="$V8_TEMP_DIR/${prefix}-index.html" app="$V8_TEMP_DIR/${prefix}-app.js"
+            local nonce="$GITHUB_RUN_ID-$prefix"
+            if ! curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$html" "${base%/}/?v8=$nonce" || ! curl --fail --silent --show-error --max-time 20 --header 'Cache-Control: no-cache' --output "$app" "${base%/}/app.js?v8=$nonce"; then
+              printf '%s' 'unreachable|0'; return
+            fi
+            python3 - "$html" "$app" <<'PY'
+          import re,sys
+          html=open(sys.argv[1],encoding='utf-8',errors='replace').read(); app=open(sys.argv[2],encoding='utf-8',errors='replace').read()
+          m=re.search(r'<select id="chain">([\s\S]*?)</select>',html)
+          if not m: print('stale-or-unexpected|0'); raise SystemExit
+          selector=m.group(1); options=re.findall(r'<option value="([^"]+)"([^>]*)>',selector)
+          values=[v for v,_ in options]; selected=[v for v,a in options if re.search(r'\bselected\b',a)]
+          required=('function syncChainOptions(chains)','syncChainOptions(response.chains)','Object.entries(chains)','elements.chain.replaceChildren',"preferred === 'base'")
+          ok=values==['ethereum','base'] and selected==['base'] and all(x not in selector.lower() for x in ('arbitrum','fraxtal','katana','optimism','polygon')) and all(x in app for x in required)
+          print(('accepted' if ok else 'stale-or-unexpected')+'|'+str(len(values)))
+          PY
+          }
+          immutable="$(classify "$IMMUTABLE_BASE" immutable)"
+          production="$(classify "https://$PRODUCTION_HOSTNAME" production)"
+          echo "IMMUTABLE_CONTENT_CLASS=${immutable%%|*}" >> "$GITHUB_ENV"
+          echo "IMMUTABLE_OPTION_COUNT=${immutable##*|}" >> "$GITHUB_ENV"
+          echo "PRODUCTION_CONTENT_CLASS=${production%%|*}" >> "$GITHUB_ENV"
+          echo "PRODUCTION_OPTION_COUNT=${production##*|}" >> "$GITHUB_ENV"
+          echo "CONTENT_CHECK=success" >> "$GITHUB_ENV"
+
+      - name: Derive post-v7 routing diagnosis
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${PAGES_PROJECT_OK:-false}" != true || "${V7_LIST_BINDING_OK:-false}" != true || "${V7_EXACT_BINDING_OK:-false}" != true || "${IMMUTABLE_CONTENT_CLASS:-unreachable}" != accepted ]]; then
+            diagnosis=pages-deployment-state-discrepancy
+          elif [[ "${WORKER_DOMAIN_MATCH_COUNT:-not-run}" == "1" && "${PAGES_DOMAIN_MATCH_COUNT:-not-run}" == "0" && "${PRODUCTION_CONTENT_CLASS:-unreachable}" == "stale-or-unexpected" ]]; then
+            diagnosis=worker-domain-detach-remains-only-routing-blocker
+          elif [[ "${WORKER_DOMAIN_MATCH_COUNT:-not-run}" == "0" && "${PAGES_DOMAIN_MATCH_COUNT:-not-run}" == "0" ]]; then
+            diagnosis=worker-domain-detached-pages-domain-not-attached
+          elif [[ "${WORKER_DOMAIN_MATCH_COUNT:-not-run}" == "0" && "${PAGES_DOMAIN_ACTIVE_COUNT:-0}" == "1" && "${PRODUCTION_CONTENT_CLASS:-unreachable}" == "accepted" ]]; then
+            diagnosis=routing-already-complete
+          elif [[ "${WORKER_DOMAIN_MATCH_COUNT:-not-run}" == "1" && "${PAGES_DOMAIN_MATCH_COUNT:-not-run}" != "0" ]]; then
+            diagnosis=conflicting-worker-and-pages-domain-state
+          else
+            diagnosis=unclassified-routing-state
+          fi
+          echo "DERIVED_DIAGNOSIS=$diagnosis" >> "$GITHUB_ENV"
+
+      - name: Clean transient v8 files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${V8_TEMP_DIR:-}" ]] && rm -rf "$V8_TEMP_DIR" || true
+
+      - name: Report Worker-domain detach state v8 result
+        if: ${{ always() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          f="$(mktemp)"; trap 'rm -f "$f"' EXIT
+          cat > "$f" <<EOF
+          ## Worker-domain detach state v8 result
+
+          - workflow run: \`$GITHUB_RUN_ID\`
+          - workflow job status: \`$JOB_STATUS\`
+          - diagnostic source SHA: \`$GITHUB_SHA\`
+          - accepted application source SHA: \`$APPLICATION_SOURCE_SHA\`
+          - v7 run/job examined: \`$V7_RUN_ID\` / \`$V7_JOB_ID\`
+          - v7 deployment short ID: \`$V7_DEPLOYMENT_SHORT_ID\`
+          - request verification: \`${REQUEST_CHECK:-not-run}\`
+          - Pages project binding: \`${PAGES_PROJECT_OK:-false}\`
+          - v7 deployment list binding: \`${V7_LIST_BINDING_OK:-false}\`
+          - v7 exact deployment binding: \`${V7_EXACT_BINDING_OK:-false}\`
+          - immutable Pages content: \`${IMMUTABLE_CONTENT_CLASS:-not-run}\` (options \`${IMMUTABLE_OPTION_COUNT:-not-run}\`)
+          - Pages target-domain match count: \`${PAGES_DOMAIN_MATCH_COUNT:-not-run}\`
+          - Pages target-domain active count: \`${PAGES_DOMAIN_ACTIVE_COUNT:-not-run}\`
+          - Worker target-domain match count: \`${WORKER_DOMAIN_MATCH_COUNT:-not-run}\`
+          - production content: \`${PRODUCTION_CONTENT_CLASS:-not-run}\` (options \`${PRODUCTION_OPTION_COUNT:-not-run}\`)
+          - derived diagnosis: \`${DERIVED_DIAGNOSIS:-not-run}\`
+          - Cloudflare methods used: \`GET-only\`
+          - Cloudflare/Pages/Worker mutation performed: \`false\`
+          - dependency installation or repository compilation performed: \`false\`
+          - failed or historical workflow rerun: \`false\`
+          EOF
+          gh issue comment 125 --repo "$GITHUB_REPOSITORY" --body-file "$f"
