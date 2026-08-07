@@ -1,0 +1,73 @@
+name: Deep Assurance v16.2 Controller Terminal Receipt v3
+
+on:
+  push:
+    branches:
+      - rehearsal/controller-v162-byte-exact-harness-v1
+    paths:
+      - .github/workflows/controller-v162-terminal-receipt-v3.yml
+
+permissions:
+  contents: read
+  actions: read
+  statuses: write
+
+jobs:
+  receipt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      TERMINAL_COMMIT: f27b9691bb0b439aa1c8e80a8a016423542becd7
+      EXPECTED_WORKFLOW: Deep Assurance v16.2 vlSDT Controller Terminal Rehearsal v1
+      EXPECTED_ARTIFACT: vlsdt-v18-9-controller-terminal-v1
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify exact terminal run and publish discoverable receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const headers = {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+            'user-agent': 'curveyield-controller-terminal-receipt-v3',
+            'x-github-api-version': '2022-11-28',
+          };
+          async function getJson(url) {
+            const response = await fetch(url, { headers });
+            if (!response.ok) throw new Error(`GET ${url} failed: ${response.status} ${await response.text()}`);
+            return response.json();
+          }
+          const api = `https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}`;
+          const runs = await getJson(`${api}/actions/runs?head_sha=${process.env.TERMINAL_COMMIT}&event=push&per_page=100`);
+          const run = runs.workflow_runs.find((entry) => entry.name === process.env.EXPECTED_WORKFLOW && entry.head_sha === process.env.TERMINAL_COMMIT);
+          if (!run) throw new Error('terminal rehearsal run not found');
+          if (run.status !== 'completed' || run.conclusion !== 'success') {
+            throw new Error(`terminal rehearsal not successful: status=${run.status} conclusion=${run.conclusion}`);
+          }
+          const artifacts = await getJson(`${api}/actions/runs/${run.id}/artifacts?per_page=100`);
+          const artifact = artifacts.artifacts.find((entry) => entry.name === process.env.EXPECTED_ARTIFACT && entry.expired === false);
+          if (!artifact) throw new Error('terminal state artifact not found');
+          const body = {
+            state: 'success',
+            context: 'deep-assurance/controller-terminal-v1',
+            description: 'v16.2 reducer terminalized COMPLETE + NO_GO',
+            target_url: run.html_url,
+          };
+          const response = await fetch(`${api}/statuses/${process.env.TERMINAL_COMMIT}`, {
+            method: 'POST',
+            headers: { ...headers, 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (!response.ok) throw new Error(`status publication failed: ${response.status} ${await response.text()}`);
+          console.log(JSON.stringify({
+            terminalCommit: process.env.TERMINAL_COMMIT,
+            runId: run.id,
+            runUrl: run.html_url,
+            artifactId: artifact.id,
+            artifactName: artifact.name,
+            artifactSizeBytes: artifact.size_in_bytes,
+            artifactDigest: artifact.digest ?? null,
+            conclusion: run.conclusion,
+          }));
+          NODE
