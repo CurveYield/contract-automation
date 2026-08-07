@@ -1,0 +1,70 @@
+name: Severity-aware controller policy regression
+
+on:
+  push:
+    branches:
+      - rehearsal/severity-policy-controller-v163-test
+    paths:
+      - .github/workflows/severity-policy-controller-v163-test.yml
+      - controller-src/**
+
+permissions:
+  contents: read
+
+jobs:
+  test-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out harness
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Run severity policy regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createCampaign, applyCommand } from './controller-src/packages/controller-core/src/reducer.mjs';
+          import {
+            DEEP_ASSURANCE_GATE_CATALOG,
+            DEEP_ASSURANCE_LANE_CATALOG,
+            DEEP_ASSURANCE_REQUIRED_CAPABILITIES,
+            GateStatus,
+            SecurityVerdict,
+          } from './controller-src/packages/controller-core/src/constants.mjs';
+
+          assert.equal(GateStatus.MEDIUM_ISSUE_FOUND, 'MEDIUM_ISSUE_FOUND');
+          assert.equal(GateStatus.HIGH_ISSUE_FOUND, 'HIGH_ISSUE_FOUND');
+          assert.equal(GateStatus.CRITICAL_ISSUE_FOUND, 'CRITICAL_ISSUE_FOUND');
+
+          const controller = { type: 'controller', id: 'policy-test' };
+          let tick = 0;
+          const ts = () => `2026-08-07T08:00:${String(tick++).padStart(2, '0')}.000Z`;
+          const cmd = (id, type, payload = {}) => ({ commandId: id, type, payload, actor: controller });
+          const context = () => ({ timestamp: ts() });
+          const capabilities = Object.fromEntries(DEEP_ASSURANCE_REQUIRED_CAPABILITIES.map((id) => [id, true]));
+          let state = createCampaign({
+            processId: 'deep-assurance-v6',
+            campaignId: 'severity-policy-test',
+            title: 'severity policy regression',
+            source: { repository: 'CurveYield/example', commit: 'a'.repeat(40) },
+            preflight: { status: 'READY', capabilities },
+            commandId: 'create',
+            actor: controller,
+            timestamp: ts(),
+          });
+          state = applyCommand(state, cmd('activate', 'campaign.activate'), context());
+          for (const gate of DEEP_ASSURANCE_GATE_CATALOG) {
+            state = applyCommand(state, cmd(`define-${gate.gateId}`, 'gate.define', {
+              gateId: gate.gateId, phaseId: gate.phaseId, title: gate.gateId, mandatory: true,
+            }), context());
+          }
+          console.log('SEVERITY_STATUS_ENUM_PRESENT=true');
+          NODE
