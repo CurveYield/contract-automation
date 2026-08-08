@@ -1,0 +1,62 @@
+name: Tier 3 No-Install Verification v1
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tier3-no-install-v1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact feature-branch source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Verify runtime and no-install boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          test ! -d node_modules
+
+      - name: Run Tier 3 dependency-free tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            packages/protocol/test/tier3-controller-v1.test.mjs \
+            apps/api/test/controller-adapter-v1.test.mjs \
+            apps/api/test/controller-entry-v1.test.mjs \
+            packages/runner/test/audit-round5-tier3-controller-secret-v1.test.mjs \
+            apps/web/test/tier3-client-v1.test.mjs \
+            apps/web/test/tier3-operator-shell-v1.test.mjs
+
+      - name: Check changed Tier 3 JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check packages/protocol/src/tier3-controller-v1.mjs
+          node --check apps/api/src/controller-adapter-v1.mjs
+          node --check apps/api/src/entry.mjs
+          node --check apps/web/src/client.mjs
+          node --check apps/web/public/app.js
+
+      - name: Assert forbidden execution steps are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          workflow=.github/workflows/tier3-no-install-v1.yml
+          ! grep -Eq 'npm (install|ci)|pnpm|yarn|npx|forge|hardhat|solc|wrangler|pages deploy|eth_sendRawTransaction' "$workflow"
