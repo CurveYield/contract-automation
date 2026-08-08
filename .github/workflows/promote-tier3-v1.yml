@@ -1,0 +1,100 @@
+name: Promote Verified Tier 3 Candidate v1
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact verified clean-v2 SHA to promote
+        required: true
+        type: string
+      confirm:
+        description: Type PROMOTE_TIER3_V2 to confirm
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: read
+  issues: write
+
+concurrency:
+  group: tier3-release-promotion-v1
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Enforce exact verified feature source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.ref_name }}" = "audit-round5/tier3-controller-ui-v2"
+          test "${{ inputs.confirm }}" = "PROMOTE_TIER3_V2"
+          test "${{ inputs.expected_sha }}" = "$GITHUB_SHA"
+          test "${#GITHUB_SHA}" -eq 40
+
+      - name: Require exact final PASS receipt for feature SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/170/comments" > "$RUNNER_TEMP/tier3-final-comments.json"
+          jq -e --arg sha "$GITHUB_SHA" '
+            flatten
+            | any(.body;
+                contains("<!-- CURVEYIELD_TIER3_FINAL_RECEIPT -->")
+                and contains("- result: `PASS`")
+                and contains("- source SHA: `" + $sha + "`")
+            )
+          ' "$RUNNER_TEMP/tier3-final-comments.json" >/dev/null
+          rm -f "$RUNNER_TEMP/tier3-final-comments.json"
+
+      - name: Prove release branch can fast-forward exactly to verified SHA
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_ref='orchestrator/round4-ci-base-v1'
+          release_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$release_ref" --jq '.object.sha')
+          compare=$(gh api "repos/$GITHUB_REPOSITORY/compare/$release_sha...$GITHUB_SHA")
+          status=$(jq -r '.status' <<<"$compare")
+          behind=$(jq -r '.behind_by' <<<"$compare")
+          ahead=$(jq -r '.ahead_by' <<<"$compare")
+          test "$status" = ahead
+          test "$behind" = 0
+          test "$ahead" -gt 0
+          echo "release_before=$release_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Fast-forward release ref without force
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/orchestrator/round4-ci-base-v1" -f sha="$GITHUB_SHA" -F force=false >/dev/null
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/orchestrator/round4-ci-base-v1" --jq '.object.sha')
+          test "$actual" = "$GITHUB_SHA"
+
+      - name: Publish sanitized promotion receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Verified Release Promotion v1
+
+- result: \`${{ job.status }}\`
+- verified source SHA: \`$GITHUB_SHA\`
+- release branch: \`orchestrator/round4-ci-base-v1\`
+- promotion mode: \`FAST_FORWARD_ONLY\`
+- force update allowed: \`NO\`
+- dependency installation/download: \`NO\`
+- build/compiler/deploy/controller mutation: \`NO\`
+
+A successful promotion changes repository release source only. It does not deploy Cloudflare and does not satisfy Stage 7."
