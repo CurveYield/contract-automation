@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "round5-tier3-manual-verify-deploy-request-v1",
+  "repository": "CurveYield/contract-automation",
+  "releaseBranch": "orchestrator/round4-ci-base-v1",
+  "releaseSha": "146773aedab0a680d8268aaee0308e7c549e24e7",
+  "requestedBy": "account-owner-through-orchestrator",
+  "requestedAt": "2026-08-08T06:36:00Z",
+  "verificationAuthorized": true,
+  "dependencyInstallationAuthorized": true,
+  "deploymentAuthorized": true,
+  "activeNetworks": ["ethereum", "base"],
+  "controllerRepository": "CurveYield/audit-controller",
+  "controllerSecretName": "PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN",
+  "walletSigningAllowed": false,
+  "publicTransactionBroadcastAllowed": false,
+  "fixedReleaseOnly": true,
+  "requestBranchMustNotMerge": true
+}
