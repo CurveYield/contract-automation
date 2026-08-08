@@ -130,7 +130,7 @@ async function parseBody(request, maxBytes = MAX_JSON_BODY_BYTES) {
 function auditControllerAdapter(env) {
   return createAuditControllerAdapterV1({
     fetcher: env.FETCH ?? fetch,
-    token: env.GITHUB_TOKEN,
+    token: env.AUDIT_CONTROLLER_GITHUB_TOKEN,
     owner: env.AUDIT_CONTROLLER_OWNER || 'CurveYield',
     repo: env.AUDIT_CONTROLLER_REPO || 'audit-controller',
     mainRef: env.AUDIT_CONTROLLER_REF || 'main',
