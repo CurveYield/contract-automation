@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Compile Solidity and run structured live-RPC fork simulations without broadcasting transactions.">
-  <title>PreflightSim Lite</title>
+  <meta name="description" content="Operate Deep Assurance audit-controller campaigns and use trusted Solidity compile and fork-simulation execution without broadcasting transactions.">
+  <title>CurveYield Deep Assurance Operator Console</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./tier3-v1.css">
 </head>
 <body>
   <header class="shell hero">
     <div>
-      <p class="eyebrow">CurveYield developer infrastructure</p>
-      <h1>PreflightSim Lite</h1>
-      <p class="lede">Compile Solidity, fork an allowlisted live chain, deploy contracts, execute structured writes, and inspect results. Nothing is signed or broadcast to a real blockchain.</p>
+      <p class="eyebrow">CurveYield security infrastructure</p>
+      <h1>Deep Assurance Operator Console</h1>
+      <p class="lede">Inspect authoritative Deep Assurance campaign state, instruction-read authorization, review lanes, findings, remediation, evidence and finalization. Trusted compilation and live-fork simulation remain available below as an execution subsystem.</p>
     </div>
     <div class="status-pill" id="service-state" aria-live="polite">Not connected</div>
   </header>
@@ -27,12 +28,51 @@
         <input id="api-key" name="apiKey" type="password" autocomplete="off" placeholder="Bearer API key">
       </label>
       <label class="checkbox"><input id="remember-key" type="checkbox"> Remember key in this browser</label>
-      <button id="test-connection" type="button" class="secondary">Test connection</button>
+      <button id="test-connection" type="button" class="secondary">Test execution API</button>
+      <p class="tier3-readonly">Controller access uses a separate server-side least-privilege GitHub credential. Browser API keys never expose the controller credential.</p>
+    </section>
+
+    <section class="panel wide tier3-panel" aria-labelledby="controller-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Tier 3 control plane</p><h2 id="controller-title">Audit-controller</h2></div>
+        <span class="badge">GitHub authoritative · read-only adapter v1</span>
+      </div>
+      <div class="tier3-toolbar">
+        <label>Campaign ID
+          <input id="campaign-id" type="text" autocomplete="off" placeholder="deep-assurance campaign ID">
+        </label>
+        <button id="controller-connect" type="button" class="secondary">Check compatibility</button>
+        <button id="load-campaign" type="button">Load campaign</button>
+      </div>
+      <div id="controller-status" class="tier3-status" role="status" aria-live="polite">Controller adapter not checked.</div>
+
+      <dl class="tier3-summary" aria-label="Controller and campaign summary">
+        <div class="tier3-card"><dt>Controller release</dt><dd id="controller-release">—</dd></div>
+        <div class="tier3-card"><dt>Controller ref</dt><dd id="controller-ref">—</dd></div>
+        <div class="tier3-card"><dt>Automation release</dt><dd id="automation-release">—</dd></div>
+        <div class="tier3-card"><dt>Authority</dt><dd id="controller-authority">—</dd></div>
+        <div class="tier3-card"><dt>Mutation mode</dt><dd id="controller-mutation-mode">—</dd></div>
+        <div class="tier3-card"><dt>Network scope</dt><dd id="controller-network-scope">Ethereum, Base · default Base</dd></div>
+        <div class="tier3-card"><dt>Campaign status</dt><dd id="campaign-status">—</dd></div>
+        <div class="tier3-card"><dt>Completion status</dt><dd id="completion-status">—</dd></div>
+        <div class="tier3-card"><dt>Security verdict</dt><dd id="security-verdict">—</dd></div>
+      </dl>
+
+      <div class="tier3-details">
+        <details open><summary>Phases and gates</summary><pre id="controller-phases" tabindex="0">No campaign loaded.</pre></details>
+        <details open><summary>Review lanes</summary><pre id="controller-lanes" tabindex="0">No campaign loaded.</pre></details>
+        <details open><summary>Instruction proofs</summary><pre id="controller-proofs" tabindex="0">No campaign loaded.</pre></details>
+        <details><summary>Findings and severity</summary><pre id="controller-findings" tabindex="0">No campaign loaded.</pre></details>
+        <details><summary>Remediation review</summary><pre id="controller-remediation" tabindex="0">No campaign loaded.</pre></details>
+        <details><summary>Execution evidence</summary><pre id="controller-evidence" tabindex="0">No campaign loaded.</pre></details>
+        <details><summary>Final report and exact release</summary><pre id="controller-report" tabindex="0">No campaign loaded.</pre></details>
+      </div>
+      <p class="tier3-readonly">This v1 slice cannot mutate controller state. Substantive controller commands remain blocked until the structured command adapter preserves instruction-read proof, lease, replay/idempotency, gate, evidence, remediation and finalization enforcement end to end.</p>
     </section>
 
     <form id="job-form" class="panel wide">
       <div class="section-heading">
-        <div><p class="eyebrow">Job request</p><h2>Project and fork</h2></div>
+        <div><p class="eyebrow">Trusted execution subsystem</p><h2>Compile / simulate</h2><p class="execution-divider">Used by controller-authorized evidence flows and still available for bounded direct preflight work.</p></div>
         <span class="badge">Structured EVM actions only</span>
       </div>
 
@@ -145,5 +185,6 @@ contract Counter {
   </footer>
 
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./tier3-operator-v1.js"></script>
 </body>
 </html>
