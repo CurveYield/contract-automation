@@ -1,6 +1,8 @@
 import { createApiClient } from './client.js';
 import {
+  buildAuditCommandV1,
   deriveAuditProgressV1,
+  deriveOperatorActionsV1,
   normalizeHostedAuditStateV1,
 } from './tier3-model-v1.js';
 
@@ -25,7 +27,25 @@ const ui = {
   events: byId('event-state'),
   gateProgress: byId('gate-progress'),
   assignmentProgress: byId('assignment-progress'),
+  commandForm: byId('audit-command-form'),
+  commandId: byId('command-id'),
+  commandType: byId('command-type'),
+  actorType: byId('actor-type'),
+  actorId: byId('actor-id'),
+  scopeSessionId: byId('scope-session-id'),
+  scopeRoleId: byId('scope-role-id'),
+  scopePhaseId: byId('scope-phase-id'),
+  leaseToken: byId('lease-token'),
+  commandPayload: byId('command-payload'),
+  submitCommand: byId('submit-command'),
+  newCommandId: byId('new-command-id'),
+  commandStatus: byId('command-status'),
 };
+
+let currentApi = null;
+let currentCompatibility = null;
+let currentProjectPayload = null;
+let currentState = null;
 
 function clear(target) {
   while (target.firstChild) target.removeChild(target.firstChild);
@@ -106,6 +126,7 @@ function renderCompatibility(compatibility, pointer = null) {
     ['Automation release', compatibility.automationRelease],
     ['Projection schema', compatibility.hostedStateSchemaVersion],
     ['Pointer schema', compatibility.activePointerSchemaVersion],
+    ['Campaign create intake', compatibility.campaignCreateAvailable],
     ['Campaign branch', pointer?.controllerBranch],
   ]);
 }
@@ -230,6 +251,48 @@ function renderActive(state, compatibility) {
   ]), 'No event metadata published.');
 }
 
+function createCommandId() {
+  return `cmd_${crypto.randomUUID().replaceAll('-', '')}`;
+}
+
+function refreshCommandId() {
+  ui.commandId.value = createCommandId();
+}
+
+function currentInstructionScope() {
+  const values = [ui.scopeSessionId.value.trim(), ui.scopeRoleId.value.trim(), ui.scopePhaseId.value.trim()];
+  if (values.every((value) => value.length === 0)) return null;
+  return { sessionId: values[0], roleId: values[1], phaseId: values[2] };
+}
+
+function parseCommandPayload() {
+  let payload;
+  try {
+    payload = JSON.parse(ui.commandPayload.value || '{}');
+  } catch {
+    throw new Error('Command payload must be valid JSON.');
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Command payload must be a JSON object.');
+  return payload;
+}
+
+function commandContextMessage() {
+  if (!currentProjectPayload) return 'Load authoritative state before submitting a command.';
+  if (currentProjectPayload.status === 'NO_ACTIVE_CAMPAIGN') {
+    return currentCompatibility?.campaignCreateAvailable
+      ? 'No active campaign. Only campaign.create may use the configured intake mailbox.'
+      : 'No active campaign, and hosted campaign creation is not configured.';
+  }
+  return 'Active campaign loaded. Commands use the campaign-bound mailbox and remain controller-validated.';
+}
+
+function syncCommandContext() {
+  ui.commandStatus.textContent = commandContextMessage();
+  ui.submitCommand.disabled = !currentProjectPayload;
+  if (currentProjectPayload?.status === 'NO_ACTIVE_CAMPAIGN') ui.commandType.value = 'campaign.create';
+  if (currentProjectPayload?.status !== 'NO_ACTIVE_CAMPAIGN' && ui.commandType.value === 'campaign.create') ui.commandType.value = 'instruction_read_proof.record';
+}
+
 async function loadAudit() {
   const apiUrl = ui.apiUrl.value.trim();
   const apiKey = ui.apiKey.value;
@@ -240,22 +303,95 @@ async function loadAudit() {
   }
   ui.load.disabled = true;
   ui.live.textContent = 'Loading authoritative controller state…';
+  currentApi = null;
+  currentCompatibility = null;
+  currentProjectPayload = null;
+  currentState = null;
+  syncCommandContext();
   try {
     const api = createApiClient({ apiUrl, apiKey });
     const compatibility = await api.getAuditCompatibility();
     const projectPayload = await api.getAuditProject(projectSlug);
+    currentApi = api;
+    currentCompatibility = compatibility;
+    currentProjectPayload = projectPayload;
     if (projectPayload.status === 'NO_ACTIVE_CAMPAIGN') {
       renderInactive(projectPayload, compatibility);
       ui.live.textContent = 'No active campaign.';
+      syncCommandContext();
       return;
     }
     const state = normalizeHostedAuditStateV1(projectPayload, compatibility);
+    currentState = state;
     renderActive(state, compatibility);
     ui.live.textContent = `Loaded ${display(state.campaign.campaignId)} · ${display(state.campaign.status)}`;
+    syncCommandContext();
   } catch (cause) {
     ui.live.textContent = cause?.message ? `Load failed: ${cause.message}` : 'Load failed.';
+    currentApi = null;
+    currentCompatibility = null;
+    currentProjectPayload = null;
+    currentState = null;
+    syncCommandContext();
   } finally {
     ui.load.disabled = false;
+  }
+}
+
+async function submitControllerCommand(event) {
+  event.preventDefault();
+  if (!currentApi || !currentProjectPayload || !currentCompatibility) {
+    ui.commandStatus.textContent = 'Load authoritative state before submitting a command.';
+    return;
+  }
+  const projectSlug = ui.project.value.trim();
+  const type = ui.commandType.value;
+  ui.submitCommand.disabled = true;
+  ui.commandStatus.textContent = 'Validating command against the loaded authoritative projection…';
+  try {
+    const payload = parseCommandPayload();
+    const instructionScope = currentInstructionScope();
+    const command = buildAuditCommandV1({
+      commandId: ui.commandId.value.trim(),
+      type,
+      actorType: ui.actorType.value,
+      actorId: ui.actorId.value.trim(),
+      payload,
+      instructionScope,
+      leaseToken: ui.leaseToken.value,
+    });
+
+    if (currentProjectPayload.status === 'NO_ACTIVE_CAMPAIGN') {
+      if (type !== 'campaign.create') throw new Error('Only campaign.create is available while no active campaign exists.');
+      if (currentCompatibility.campaignCreateAvailable !== true) throw new Error('Hosted campaign creation is not configured.');
+      const result = await currentApi.submitAuditCampaignCreate(projectSlug, command);
+      ui.commandStatus.textContent = `Campaign creation request posted as comment ${display(result.commentId)}. Waiting for a new authoritative pointer and projection; reload state to observe acceptance.`;
+      refreshCommandId();
+      return;
+    }
+
+    if (type === 'campaign.create') throw new Error('campaign.create is available only when the project has no active campaign.');
+    const advisory = deriveOperatorActionsV1(currentState, {
+      actorType: command.actor.type,
+      actorId: command.actor.id,
+      sessionId: instructionScope?.sessionId ?? '',
+      roleId: instructionScope?.roleId ?? '',
+      phaseId: instructionScope?.phaseId ?? '',
+      commandType: type,
+      assignmentId: typeof payload.assignmentId === 'string' ? payload.assignmentId : null,
+      now: new Date().toISOString(),
+    });
+    if (!advisory.substantiveActionAdvisoryAllowed) {
+      throw new Error(`UI advisory blocked this request: instruction authorization ${advisory.instructionAuthorization}; lease state ${advisory.leaseState}. The controller remains authoritative.`);
+    }
+    const result = await currentApi.submitAuditCommand(projectSlug, command);
+    ui.commandStatus.textContent = `Command request posted as comment ${display(result.commentId)}. Reload authoritative state to observe whether the controller accepted the transition.`;
+    refreshCommandId();
+  } catch (cause) {
+    ui.commandStatus.textContent = cause?.message ? `Command not submitted: ${cause.message}` : 'Command not submitted.';
+  } finally {
+    ui.leaseToken.value = '';
+    ui.submitCommand.disabled = !currentProjectPayload;
   }
 }
 
@@ -263,3 +399,17 @@ ui.load.addEventListener('click', loadAudit);
 ui.project.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') loadAudit();
 });
+ui.commandForm.addEventListener('submit', submitControllerCommand);
+ui.newCommandId.addEventListener('click', refreshCommandId);
+ui.commandType.addEventListener('change', () => {
+  if (currentProjectPayload?.status === 'NO_ACTIVE_CAMPAIGN' && ui.commandType.value !== 'campaign.create') {
+    ui.commandStatus.textContent = 'Only campaign.create is available while no active campaign exists.';
+  } else if (currentProjectPayload?.status !== 'NO_ACTIVE_CAMPAIGN' && ui.commandType.value === 'campaign.create') {
+    ui.commandStatus.textContent = 'campaign.create is available only when no active campaign exists.';
+  } else {
+    ui.commandStatus.textContent = commandContextMessage();
+  }
+});
+
+refreshCommandId();
+syncCommandContext();
