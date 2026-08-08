@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Deep Assurance Operator Console v4 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -35,7 +36,7 @@
     <section class="panel wide tier3-panel" aria-labelledby="controller-title">
       <div class="section-heading">
         <div><p class="eyebrow">Tier 3 control plane</p><h2 id="controller-title">Audit-controller</h2></div>
-        <span class="badge">GitHub authoritative · read-only adapter v3</span>
+        <span class="badge">GitHub authoritative · freshness-enforced read adapter v5</span>
       </div>
       <div class="tier3-toolbar">
         <label>Campaign ID
@@ -50,9 +51,10 @@
         <div class="tier3-card"><dt>Controller release</dt><dd id="controller-release">—</dd></div>
         <div class="tier3-card"><dt>Protocol SHA</dt><dd id="controller-protocol-sha">—</dd></div>
         <div class="tier3-card"><dt>Live state ref</dt><dd id="controller-state-ref">—</dd></div>
-        <div class="tier3-card"><dt>Exact state commit</dt><dd id="controller-state-commit">—</dd></div>
+        <div class="tier3-card"><dt>Exact campaign commit</dt><dd id="controller-campaign-commit">—</dd></div>
         <div class="tier3-card"><dt>Automation release</dt><dd id="automation-release">—</dd></div>
         <div class="tier3-card"><dt>Authority</dt><dd id="controller-authority">—</dd></div>
+        <div class="tier3-card"><dt>Freshness mode</dt><dd id="controller-freshness-mode">campaign-path-latest-commit-v1</dd></div>
         <div class="tier3-card"><dt>Mutation mode</dt><dd id="controller-mutation-mode">—</dd></div>
         <div class="tier3-card"><dt>Network scope</dt><dd id="controller-network-scope">Ethereum, Base · default Base</dd></div>
         <div class="tier3-card"><dt>Campaign status</dt><dd id="campaign-status">—</dd></div>
@@ -72,7 +74,7 @@
         <details><summary>Event-chain provenance</summary><pre id="controller-provenance" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Final report and exact release</summary><pre id="controller-report" tabindex="0">No campaign loaded.</pre></details>
       </div>
-      <p class="tier3-readonly">The v3 browser resolves every live controller read to an exact Git commit and verifies it against an immutable protocol SHA. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
+      <p class="tier3-readonly">The v4 browser verifies each projection against the exact latest Git commit that touched its bound campaign directory. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
     </section>
 
     <form id="job-form" class="panel wide">
@@ -190,6 +192,6 @@ contract Counter {
   </footer>
 
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./tier3-operator-v3.js"></script>
+  <script type="module" src="./tier3-operator-v4.js"></script>
 </body>
 </html>
