@@ -56,6 +56,13 @@ export function createApiClient({ apiUrl, apiKey, fetcher = fetch, sleep = (ms) 
       })).json();
     },
 
+    async submitAuditCampaignCreate(projectSlug, command) {
+      return (await request(`${auditProjectPath(projectSlug)}/campaigns`, {
+        method: 'POST',
+        body: JSON.stringify({ command })
+      })).json();
+    },
+
     async uploadProject(file) {
       const session = await (await request('/api/v1/uploads', {
         method: 'POST',
