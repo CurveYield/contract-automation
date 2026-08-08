@@ -13,7 +13,7 @@ test('production deploy requires and uploads a dedicated audit-controller GitHub
   );
   assert.match(
     workflow,
-    /PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN[\s\\]*RPC_ETHEREUM/,
+    /for name in[\s\S]*PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN \\[\s\S]*PREFLIGHTSIM_ALLOWED_GITHUB_USERS; do/,
   );
   assert.match(
     workflow,
