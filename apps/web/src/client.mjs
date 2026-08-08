@@ -42,6 +42,13 @@ export function createApiClient({ apiUrl, apiKey, fetcher = fetch, sleep = (ms) 
       return (await request(`/api/v1/controller/projects/${encodeURIComponent(projectSlug)}`)).json();
     },
 
+    async queueControllerCommand(projectSlug, command) {
+      return (await request('/api/v1/controller/commands', {
+        method: 'POST',
+        body: JSON.stringify({ projectSlug, command })
+      })).json();
+    },
+
     async uploadProject(file) {
       const session = await (await request('/api/v1/uploads', {
         method: 'POST',
