@@ -82,6 +82,11 @@ jobs:
         continue-on-error: true
         run: node --test packages/runner/test/audit-round5-tier3-clean-build-v2.test.mjs
 
+      - name: Production deployment static contract
+        id: deploy_static
+        continue-on-error: true
+        run: node --test packages/runner/test/audit-round5-tier3-production-deploy-v2.test.mjs
+
       - name: JavaScript syntax
         id: syntax
         continue-on-error: true
@@ -110,10 +115,11 @@ jobs:
           DETAIL: ${{ steps.detail.outcome }}
           SHELL: ${{ steps.shell.outcome }}
           BUILD: ${{ steps.build.outcome }}
+          DEPLOY_STATIC: ${{ steps.deploy_static.outcome }}
           SYNTAX: ${{ steps.syntax.outcome }}
         run: |
           set -euo pipefail
-          for outcome in "$PROTOCOL" "$READ_ADAPTER" "$COMMAND_ADAPTER" "$ENTRY" "$CLIENT" "$VIEW" "$DETAIL" "$SHELL" "$BUILD" "$SYNTAX"; do
+          for outcome in "$PROTOCOL" "$READ_ADAPTER" "$COMMAND_ADAPTER" "$ENTRY" "$CLIENT" "$VIEW" "$DETAIL" "$SHELL" "$BUILD" "$DEPLOY_STATIC" "$SYNTAX"; do
             test "$outcome" = success
           done
 
@@ -132,6 +138,7 @@ jobs:
           DETAIL: ${{ steps.detail.outcome }}
           SHELL: ${{ steps.shell.outcome }}
           BUILD: ${{ steps.build.outcome }}
+          DEPLOY_STATIC: ${{ steps.deploy_static.outcome }}
           SYNTAX: ${{ steps.syntax.outcome }}
           ENFORCE: ${{ steps.enforce.outcome }}
         run: |
@@ -155,6 +162,7 @@ jobs:
           - detail model: \`$DETAIL\`
           - clean shell: \`$SHELL\`
           - dual-surface build: \`$BUILD\`
+          - production deployment static: \`$DEPLOY_STATIC\`
           - JavaScript syntax: \`$SYNTAX\`
           - dependency installation/download: \`NO\`
           - Cloudflare deployment/controller mutation: \`NO\`
