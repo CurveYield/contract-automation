@@ -43,6 +43,34 @@ test('browser client fetches a bounded controller project using an encoded slug'
   assert.equal(calls[0].url, 'https://api.example/api/v1/controller/projects/vlsdt');
 });
 
+test('browser client queues structured controller commands without adding routing authority', async () => {
+  const calls = [];
+  const command = {
+    schemaVersion: 1,
+    commandId: 'command-1',
+    type: 'campaign.evaluate',
+    actor: { type: 'controller', id: 'orchestrator' },
+    payload: { terminal: false },
+  };
+  const client = createApiClient({
+    apiUrl: 'https://api.example',
+    apiKey: 'client-secret',
+    fetcher: async (url, init) => {
+      calls.push({ url, init });
+      return jsonResponse({ status: 'queued', commandId: 'command-1', commandType: 'campaign.evaluate', target: 'campaign-mailbox' }, 202);
+    },
+  });
+
+  const result = await client.queueControllerCommand('vlsdt', command);
+  assert.equal(result.status, 'queued');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.example/api/v1/controller/commands');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(calls[0].init.headers.get('authorization'), 'Bearer client-secret');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { projectSlug: 'vlsdt', command });
+  assert.equal(Object.hasOwn(JSON.parse(calls[0].init.body), 'issueNumber'), false);
+});
+
 test('controller client methods preserve structured API errors', async () => {
   const client = createApiClient({
     apiUrl: 'https://api.example',
