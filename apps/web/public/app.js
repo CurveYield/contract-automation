@@ -22,6 +22,11 @@ function setControllerState(message, isError = false) {
   elements['controller-state'].dataset.state = isError ? 'error' : 'ok';
 }
 
+function setCommandState(message, isError = false) {
+  elements['controller-command-state'].textContent = message;
+  elements['controller-command-state'].dataset.state = isError ? 'error' : 'ok';
+}
+
 function setText(id, value) {
   elements[id].textContent = value;
 }
@@ -146,6 +151,33 @@ async function loadController() {
   }
 }
 
+async function queueControllerCommand(event) {
+  event.preventDefault();
+  const projectSlug = elements['controller-project-slug'].value.trim();
+  if (!projectSlug) {
+    setCommandState('Controller project slug is required before queuing a request.', true);
+    return;
+  }
+  const raw = elements['controller-command-json'].value.trim();
+  if (!raw) {
+    setCommandState('Enter one structured controller command JSON object.', true);
+    return;
+  }
+
+  elements['queue-controller-command'].disabled = true;
+  setCommandState('Validating and routing the controller request…');
+  try {
+    const command = JSON.parse(raw);
+    const result = await client().queueControllerCommand(projectSlug, command);
+    const targetLabel = result.target === 'controller-intake' ? 'controller intake' : 'campaign mailbox';
+    setCommandState(`Queued ${result.commandType} to ${targetLabel}. Reload controller state to observe authoritative acceptance.`);
+  } catch (error) {
+    setCommandState(error.message, true);
+  } finally {
+    elements['queue-controller-command'].disabled = false;
+  }
+}
+
 function syncChainOptions(chains) {
   const entries = Object.entries(chains).filter(([name]) => name === 'ethereum' || name === 'base');
   const current = elements.chain.value;
@@ -170,6 +202,11 @@ elements['controller-project-slug'].addEventListener('keydown', (event) => {
     event.preventDefault();
     loadController();
   }
+});
+elements['controller-command-form'].addEventListener('submit', queueControllerCommand);
+elements['clear-controller-command'].addEventListener('click', () => {
+  elements['controller-command-json'].value = '';
+  setCommandState('Controller command cleared.');
 });
 
 async function projectPayload(api) {
