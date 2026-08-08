@@ -1,3 +1,4 @@
+// Browser API Client v2
 export class ApiError extends Error {
   constructor(code, message, status, details) {
     super(message);
@@ -40,6 +41,13 @@ export function createApiClient({ apiUrl, apiKey, fetcher = fetch, sleep = (ms) 
 
     async getControllerCampaign(campaignId) {
       return (await request(`/api/v1/controller/campaigns/${encodeURIComponent(campaignId)}`)).json();
+    },
+
+    async submitControllerCommand(campaignId, authorizationId, capabilityToken, command) {
+      return (await request(`/api/v1/controller/campaigns/${encodeURIComponent(campaignId)}/commands`, {
+        method: 'POST',
+        body: JSON.stringify({ authorizationId, capabilityToken, command })
+      })).json();
     },
 
     async uploadProject(file) {
