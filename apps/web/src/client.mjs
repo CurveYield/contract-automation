@@ -34,6 +34,14 @@ export function createApiClient({ apiUrl, apiKey, fetcher = fetch, sleep = (ms) 
       return (await request('/api/v1/chains')).json();
     },
 
+    async getControllerCompatibility() {
+      return (await request('/api/v1/controller/compatibility')).json();
+    },
+
+    async getControllerCampaign(campaignId) {
+      return (await request(`/api/v1/controller/campaigns/${encodeURIComponent(campaignId)}`)).json();
+    },
+
     async uploadProject(file) {
       const session = await (await request('/api/v1/uploads', {
         method: 'POST',
