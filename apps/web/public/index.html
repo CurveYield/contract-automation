@@ -86,6 +86,26 @@
           <article class="summary-card"><h3>Evidence</h3><p id="evidence-summary" class="summary-value">Awaiting controller load.</p></article>
           <article class="summary-card"><h3>Finalization</h3><p id="finalization-summary" class="summary-value">Awaiting controller load.</p></article>
         </section>
+
+        <form id="controller-command-form" class="panel command-panel" aria-labelledby="controller-command-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Validated mailbox request</p>
+              <h2 id="controller-command-title">Structured Controller Command</h2>
+            </div>
+            <span class="badge">No mailbox target input</span>
+          </div>
+          <p class="command-warning">Queued requests are not accepted controller state until the authoritative projection changes.</p>
+          <p class="hint">Submit one exact <code>CURVEYIELD_AUDIT_COMMAND_V1</code> command object. The Worker resolves the intake or active campaign mailbox from authoritative controller state; this page cannot choose an issue number, repository, branch, or GitHub URL.</p>
+          <label>Command JSON
+            <textarea id="controller-command-json" rows="18" spellcheck="false" autocomplete="off" placeholder='{"schemaVersion":1,"commandId":"...","type":"...","actor":{"type":"controller","id":"orchestrator"},"payload":{...}}'></textarea>
+          </label>
+          <div class="actions">
+            <button id="queue-controller-command" type="submit">Queue controller request</button>
+            <button id="clear-controller-command" type="button" class="secondary">Clear</button>
+          </div>
+          <div id="controller-command-state" class="status-banner" aria-live="polite">No controller request queued from this page.</div>
+        </form>
       </section>
 
       <section id="execution-workspace" class="workspace-panel hidden" aria-labelledby="execution-workspace-title">
