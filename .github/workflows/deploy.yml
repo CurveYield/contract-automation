@@ -34,6 +34,7 @@ jobs:
       PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY: ${{ secrets.PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY }}
       PREFLIGHTSIM_RUNNER_API_KEY: ${{ secrets.PREFLIGHTSIM_RUNNER_API_KEY }}
       PREFLIGHTSIM_GITHUB_TOKEN: ${{ secrets.PREFLIGHTSIM_GITHUB_TOKEN }}
+      AUDIT_CONTROLLER_GITHUB_TOKEN: ${{ secrets.AUDIT_CONTROLLER_GITHUB_TOKEN }}
       PREFLIGHTSIM_R2_ACCESS_KEY_ID: ${{ secrets.PREFLIGHTSIM_R2_ACCESS_KEY_ID }}
       PREFLIGHTSIM_R2_SECRET_ACCESS_KEY: ${{ secrets.PREFLIGHTSIM_R2_SECRET_ACCESS_KEY }}
       RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
@@ -41,6 +42,8 @@ jobs:
       PREFLIGHTSIM_API_URL: ${{ vars.PREFLIGHTSIM_API_URL }}
       PAGES_PROJECT_NAME: ${{ vars.PAGES_PROJECT_NAME }}
       PREFLIGHTSIM_ALLOWED_GITHUB_USERS: ${{ vars.PREFLIGHTSIM_ALLOWED_GITHUB_USERS }}
+      AUDIT_CONTROLLER_PROTOCOL_SHA: ${{ vars.AUDIT_CONTROLLER_PROTOCOL_SHA }}
+      AUDIT_CONTROLLER_STATE_REF: ${{ vars.AUDIT_CONTROLLER_STATE_REF }}
       PAGES_DOMAIN: preflight.curveyield.online
       R2_BUCKET_NAME: curveyield-preflight
     steps:
@@ -126,13 +129,16 @@ jobs:
             PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY \
             PREFLIGHTSIM_RUNNER_API_KEY \
             PREFLIGHTSIM_GITHUB_TOKEN \
+            AUDIT_CONTROLLER_GITHUB_TOKEN \
             PREFLIGHTSIM_R2_ACCESS_KEY_ID \
             PREFLIGHTSIM_R2_SECRET_ACCESS_KEY \
             RPC_ETHEREUM \
             RPC_BASE \
             PREFLIGHTSIM_API_URL \
             PAGES_PROJECT_NAME \
-            PREFLIGHTSIM_ALLOWED_GITHUB_USERS; do
+            PREFLIGHTSIM_ALLOWED_GITHUB_USERS \
+            AUDIT_CONTROLLER_PROTOCOL_SHA \
+            AUDIT_CONTROLLER_STATE_REF; do
             if [[ -z "${!name:-}" ]]; then
               missing+=("$name")
             fi
@@ -147,6 +153,14 @@ jobs:
           fi
           if [[ "$PAGES_PROJECT_NAME" != "curveyield-preflight" ]]; then
             echo "PAGES_PROJECT_NAME does not match the approved Pages project"
+            exit 1
+          fi
+          if [[ ! "$AUDIT_CONTROLLER_PROTOCOL_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "AUDIT_CONTROLLER_PROTOCOL_SHA must be an exact lowercase 40-character git SHA"
+            exit 1
+          fi
+          if [[ ! "$AUDIT_CONTROLLER_STATE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$ ]] || [[ "$AUDIT_CONTROLLER_STATE_REF" == *".."* ]]; then
+            echo "AUDIT_CONTROLLER_STATE_REF is invalid"
             exit 1
           fi
 
@@ -186,7 +200,11 @@ jobs:
           npx --no-install wrangler r2 bucket lifecycle set "$R2_BUCKET_NAME" --file infra/r2-lifecycle.json --force
 
       - name: Create Worker before adding secrets
-        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+        run: >-
+          npx --no-install wrangler deploy --config apps/api/wrangler.toml
+          --var "AUTOMATION_RELEASE_SHA:$GITHUB_SHA"
+          --var "AUDIT_CONTROLLER_PROTOCOL_SHA:$AUDIT_CONTROLLER_PROTOCOL_SHA"
+          --var "AUDIT_CONTROLLER_STATE_REF:$AUDIT_CONTROLLER_STATE_REF"
 
       - name: Upload Worker secrets without logging values
         shell: bash
@@ -201,16 +219,21 @@ jobs:
             --arg GITHUB_BRIDGE_API_KEY "$PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY" \
             --arg RUNNER_API_KEY "$PREFLIGHTSIM_RUNNER_API_KEY" \
             --arg GITHUB_TOKEN "$PREFLIGHTSIM_GITHUB_TOKEN" \
+            --arg AUDIT_CONTROLLER_GITHUB_TOKEN "$AUDIT_CONTROLLER_GITHUB_TOKEN" \
             --arg R2_ACCOUNT_ID "$CLOUDFLARE_ACCOUNT_ID" \
             --arg R2_ACCESS_KEY_ID "$PREFLIGHTSIM_R2_ACCESS_KEY_ID" \
             --arg R2_SECRET_ACCESS_KEY "$PREFLIGHTSIM_R2_SECRET_ACCESS_KEY" \
             --arg ALLOWED_GITHUB_USERS "$PREFLIGHTSIM_ALLOWED_GITHUB_USERS" \
-            '{CLIENT_API_KEY:$CLIENT_API_KEY,GPT_API_KEY:$GPT_API_KEY,GITHUB_BRIDGE_API_KEY:$GITHUB_BRIDGE_API_KEY,RUNNER_API_KEY:$RUNNER_API_KEY,GITHUB_TOKEN:$GITHUB_TOKEN,R2_ACCOUNT_ID:$R2_ACCOUNT_ID,R2_ACCESS_KEY_ID:$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY:$R2_SECRET_ACCESS_KEY,ALLOWED_GITHUB_USERS:$ALLOWED_GITHUB_USERS}' \
+            '{CLIENT_API_KEY:$CLIENT_API_KEY,GPT_API_KEY:$GPT_API_KEY,GITHUB_BRIDGE_API_KEY:$GITHUB_BRIDGE_API_KEY,RUNNER_API_KEY:$RUNNER_API_KEY,GITHUB_TOKEN:$GITHUB_TOKEN,AUDIT_CONTROLLER_GITHUB_TOKEN:$AUDIT_CONTROLLER_GITHUB_TOKEN,R2_ACCOUNT_ID:$R2_ACCOUNT_ID,R2_ACCESS_KEY_ID:$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY:$R2_SECRET_ACCESS_KEY,ALLOWED_GITHUB_USERS:$ALLOWED_GITHUB_USERS}' \
             > "$secrets_file"
           npx --no-install wrangler secret bulk "$secrets_file" --config apps/api/wrangler.toml
 
       - name: Redeploy Worker with API custom domain
-        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+        run: >-
+          npx --no-install wrangler deploy --config apps/api/wrangler.toml
+          --var "AUTOMATION_RELEASE_SHA:$GITHUB_SHA"
+          --var "AUDIT_CONTROLLER_PROTOCOL_SHA:$AUDIT_CONTROLLER_PROTOCOL_SHA"
+          --var "AUDIT_CONTROLLER_STATE_REF:$AUDIT_CONTROLLER_STATE_REF"
 
       - name: Verify Worker health with bounded retries
         shell: bash
