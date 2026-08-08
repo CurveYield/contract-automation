@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 
 const indexUrl = new URL('../public/index.html', import.meta.url);
 const appUrl = new URL('../public/app.js', import.meta.url);
-const viewUrl = new URL('../src/controller-view-v1.mjs', import.meta.url);
-const stylesUrl = new URL('../public/styles.css', import.meta.url);
+const viewUrl = new URL('../src/controller-view-v2.mjs', import.meta.url);
+const stylesUrl = new URL('../public/controller-detail-v1.css', import.meta.url);
 
 async function source() {
   const [html, app, view, styles] = await Promise.all([
@@ -38,12 +38,13 @@ test('operator UI exposes bounded detail regions for every canonical Tier 3 proj
   }
 });
 
-test('controller view renders detail model with node creation and never raw HTML', async () => {
+test('controller view v2 renders detail model with node creation and never raw HTML', async () => {
   const { app, view } = await source();
   assert.match(view, /controllerDetailModelV1/);
   assert.match(view, /renderControllerDetails/);
   assert.match(view, /document\.createElement\('tr'\)/);
   assert.match(view, /replaceChildren/);
+  assert.match(view, /controller-detail-v1\.css/);
   assert.doesNotMatch(`${app}\n${view}`, /\.innerHTML\s*=/);
   assert.doesNotMatch(`${app}\n${view}`, /insertAdjacentHTML/);
 });
