@@ -1,0 +1,79 @@
+name: Tier 3 Clean v2 No-Install Verification
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-clean-v2-no-install-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Enforce clean-v2 boundary
+        id: boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d node_modules
+          base=2df81aacb6f5747f06b49297e89e02c3f013d4ef
+          git merge-base --is-ancestor "$base" HEAD
+          git diff --exit-code "$base" -- apps/web/public apps/api/src/index.mjs
+          workflow=.github/workflows/tier3-clean-v2-no-install.yml
+          ! grep -Eq '^[[:space:]]*(npm[[:space:]]+(install|ci)|pnpm([[:space:]]|$)|yarn([[:space:]]|$)|npx([[:space:]]|$)|forge([[:space:]]|$)|hardhat([[:space:]]|$)|solc([[:space:]]|$)|wrangler([[:space:]]|$))' "$workflow"
+
+      - name: Controller entry v2
+        id: entry
+        continue-on-error: true
+        run: node --test apps/api/test/controller-entry-v2.test.mjs
+
+      - name: Enforce current verification set
+        id: enforce
+        shell: bash
+        env:
+          ENTRY: ${{ steps.entry.outcome }}
+        run: |
+          set -euo pipefail
+          test "$ENTRY" = success
+
+      - name: Publish sanitized v2 receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          ENTRY: ${{ steps.entry.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+        run: |
+          set -euo pipefail
+          overall=PASS
+          if [[ "$BOUNDARY" != success || "$ENFORCE" != success ]]; then overall=FAIL; fi
+          receipt=$(cat <<EOF
+          ## Tier 3 Clean v2 No-Install Verification
+
+          - result: \`$overall\`
+          - run: \`$GITHUB_RUN_ID\`
+          - source SHA: \`$GITHUB_SHA\`
+          - branch: \`audit-round5/tier3-controller-ui-v2\`
+          - accepted-Lite boundary: \`$BOUNDARY\`
+          - controller entry v2: \`$ENTRY\`
+          - dependency installation/download: \`NO\`
+          - build/deploy/controller mutation: \`NO\`
+          EOF
+          )
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "$receipt"
