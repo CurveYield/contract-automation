@@ -1,5 +1,10 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
+import {
+  controllerSetupReadinessV1,
+  handleControllerRouteV1
+} from './controller-adapter-v1.mjs';
+import { handleControllerCommandRouteV1 } from './controller-command-adapter-v1.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -46,6 +51,8 @@ async function parseJobCandidate(request) {
 }
 
 export function setupReadiness(env) {
+  const controllerReadReady = controllerSetupReadinessV1(env).status === 'ready';
+  const controllerIntakeReady = String(env.AUDIT_CONTROLLER_INTAKE_ISSUE ?? '') === '64';
   const features = {
     storage: Boolean(env.JOBS),
     browserApiAuth: Boolean(env.CLIENT_API_KEY),
@@ -53,7 +60,8 @@ export function setupReadiness(env) {
     githubBridgeAuth: Boolean(env.GITHUB_BRIDGE_API_KEY),
     runnerAuth: Boolean(env.RUNNER_API_KEY),
     githubDispatch: Boolean(env.GITHUB_TOKEN),
-    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY)
+    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY),
+    tier3Controller: controllerReadReady && controllerIntakeReady
   };
   return {
     status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required',
@@ -66,6 +74,13 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/api/v1/setup') {
       return json(setupReadiness(env), env);
+    }
+
+    if (url.pathname.startsWith('/api/v1/controller/')) {
+      const commandResponse = await handleControllerCommandRouteV1(request, env);
+      if (commandResponse) return commandResponse;
+      const controllerResponse = await handleControllerRouteV1(request, env);
+      if (controllerResponse) return controllerResponse;
     }
 
     const activeChains = enabledChainMap(env);
