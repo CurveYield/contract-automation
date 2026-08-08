@@ -100,6 +100,10 @@ test('rejects missing or incompatible controller release identity', () => {
   const wrong = validProjection();
   wrong.controller.instructionReleaseIdentity = 'ai-auditor-deep-assurance-v6@16.12.0';
   assert.throws(() => assertControllerCompatibilityV1(wrong), /16\.13\.0/);
+
+  const wrongCommit = validProjection();
+  wrongCommit.controller.compatibilityCommit = '1111111111111111111111111111111111111111';
+  assert.throws(() => assertControllerCompatibilityV1(wrongCommit), /853b77b/);
 });
 
 test('rejects any network scope other than exactly Ethereum then Base with Base default', () => {
@@ -136,7 +140,7 @@ test('requires COMPLETE campaigns to have PASS or NO_GO and forbids verdicts on 
   assert.throws(() => normalizeControllerProjectionV1(premature), /securityVerdict/);
 
   const missingVerdict = validProjection();
-  missingVerdict.campaign.status = 'COMPLETED';
+  missingVerdict.campaign.status = 'COMPLETE';
   missingVerdict.campaign.completionStatus = 'COMPLETE';
   missingVerdict.campaign.report = {
     status: 'COMPLETE',
@@ -147,7 +151,7 @@ test('requires COMPLETE campaigns to have PASS or NO_GO and forbids verdicts on 
 
   for (const verdict of ['PASS', 'NO_GO']) {
     const complete = validProjection();
-    complete.campaign.status = 'COMPLETED';
+    complete.campaign.status = 'COMPLETE';
     complete.campaign.completionStatus = 'COMPLETE';
     complete.campaign.securityVerdict = verdict;
     complete.campaign.report = {
