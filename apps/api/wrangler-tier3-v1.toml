@@ -1,0 +1,26 @@
+name = "curveyield-preflight-api"
+main = "src/index.mjs"
+compatibility_date = "2026-07-30"
+workers_dev = false
+
+[vars]
+GITHUB_OWNER = "CurveYield"
+GITHUB_REPO = "contract-automation"
+GITHUB_REF = "main"
+GITHUB_WORKFLOW = "simulate.yml"
+R2_BUCKET_NAME = "curveyield-preflight"
+R2_ACCOUNT_ID = ""
+PUBLIC_APP_URL = "https://preflight.curveyield.online"
+CORS_ORIGIN = "https://preflight.curveyield.online"
+ACTIVE_CHAINS = "ethereum,base"
+AUDIT_CONTROLLER_OWNER = "CurveYield"
+AUDIT_CONTROLLER_REPO = "audit-controller"
+AUDIT_CONTROLLER_REF = "main"
+AUDIT_CONTROLLER_COMMIT = "1cdd830d862beb46338f9088115857de9a815d45"
+AUDIT_CONTROLLER_SKILL_RELEASE = "ai-auditor-deep-assurance-v6@16.13.0"
+AUTOMATION_RELEASE = "contract-automation@round5-tier3-v1"
+AUDIT_CONTROLLER_INTAKE_ISSUE = "64"
+
+[[r2_buckets]]
+binding = "JOBS"
+bucket_name = "curveyield-preflight"
