@@ -1,0 +1,96 @@
+name: Tier 3 Authorized Build Verification v4
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-authorized-build-v4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Enforce authorized verification boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=2df81aacb6f5747f06b49297e89e02c3f013d4ef
+          git merge-base --is-ancestor "$base" HEAD
+          git diff --exit-code "$base" -- apps/web/public apps/api/src/index.mjs
+          workflow=.github/workflows/tier3-authorized-build-v4.yml
+          ! grep -Eq '^[[:space:]]+(npm[[:space:]]+test|forge([[:space:]]|$)|hardhat([[:space:]]|$)|solc([[:space:]]|$)|wrangler([[:space:]]|$)|npx[[:space:]]+wrangler)' "$workflow"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install approved pinned dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run exact Tier 3 and accepted browser/API regressions
+        run: |
+          node --test \
+            packages/protocol/test/tier3-controller-v1.test.mjs \
+            apps/api/test/controller-adapter-v1.test.mjs \
+            apps/api/test/controller-command-adapter-v1.test.mjs \
+            apps/api/test/controller-entry-v2.test.mjs \
+            apps/api/test/entry.test.mjs \
+            apps/web/test/tier3-client-v1.test.mjs \
+            apps/web/test/controller-view-v1.test.mjs \
+            apps/web/test/controller-detail-model-v1.test.mjs \
+            apps/web/test/controller-detail-model-diagnostic-v1.test.mjs \
+            apps/web/test/tier3-clean-shell-v2.test.mjs \
+            apps/web/test/client.test.mjs \
+            packages/runner/test/audit-round5-tier3-clean-build-v2.test.mjs \
+            packages/runner/test/audit-round5-tier3-production-deploy-v3.test.mjs
+
+      - name: Syntax lint only
+        run: npm run lint
+
+      - name: Build static browser surfaces
+        run: npm run build
+
+      - name: Re-verify assembled dual surface
+        run: node --test packages/runner/test/audit-round5-tier3-clean-build-v2.test.mjs
+
+      - name: Publish sanitized authorized-build receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          result=FAIL
+          [[ "$JOB_STATUS" == success ]] && result=PASS
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Authorized Build Verification v4
+
+- result: \`$result\`
+- run: \`$GITHUB_RUN_ID\`
+- source SHA: \`$GITHUB_SHA\`
+- branch: \`${{ github.ref_name }}\`
+- dependency installation: \`AUTHORIZED / npm install --ignore-scripts --no-audit --no-fund\`
+- targeted Tier 3 + accepted API/browser regressions: \`$JOB_STATUS\`
+- JavaScript syntax lint: \`$JOB_STATUS\`
+- static build: \`$JOB_STATUS\`
+- production deployment v3 static contract: \`INCLUDED\`
+- explicit Solidity/Foundry/Hardhat compilation command: \`NO\`
+- Cloudflare deployment: \`NO\`
+- controller mailbox mutation: \`NO\`
+- wallet/signing/broadcast: \`NO\`"
