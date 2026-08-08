@@ -1,0 +1,321 @@
+name: Tier 3 Manual Verify and Deploy v1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curveyield-tier3-manual-verify-deploy-v1
+  cancel-in-progress: false
+
+env:
+  RELEASE_BRANCH: orchestrator/round4-ci-base-v1
+  RELEASE_SHA: 146773aedab0a680d8268aaee0308e7c549e24e7
+  ACCEPTED_LITE_SHA: 2df81aacb6f5747f06b49297e89e02c3f013d4ef
+  REQUEST_COMMIT_SHA: 3be690a9a2165472456a8348a8fd5e8da9407a34
+  REQUEST_PATH: .agent-control/v1/orchestrator/TIER3_MANUAL_VERIFY_DEPLOY_REQUEST_v1.json
+  PREFLIGHTSIM_API_URL: https://api.preflight.curveyield.online
+  PAGES_PROJECT_NAME: curveyield-preflight
+  R2_BUCKET_NAME: curveyield-preflight
+
+jobs:
+  verify-and-deploy:
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREFLIGHTSIM_CLIENT_API_KEY: ${{ secrets.PREFLIGHTSIM_CLIENT_API_KEY }}
+      PREFLIGHTSIM_GPT_API_KEY: ${{ secrets.PREFLIGHTSIM_GPT_API_KEY }}
+      PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY: ${{ secrets.PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY }}
+      PREFLIGHTSIM_RUNNER_API_KEY: ${{ secrets.PREFLIGHTSIM_RUNNER_API_KEY }}
+      PREFLIGHTSIM_GITHUB_TOKEN: ${{ secrets.PREFLIGHTSIM_GITHUB_TOKEN }}
+      PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN: ${{ secrets.PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN }}
+      PREFLIGHTSIM_R2_ACCESS_KEY_ID: ${{ secrets.PREFLIGHTSIM_R2_ACCESS_KEY_ID }}
+      PREFLIGHTSIM_R2_SECRET_ACCESS_KEY: ${{ secrets.PREFLIGHTSIM_R2_SECRET_ACCESS_KEY }}
+      RPC_ETHEREUM: ${{ secrets.RPC_ETHEREUM }}
+      RPC_BASE: ${{ secrets.RPC_BASE }}
+      PREFLIGHTSIM_ALLOWED_GITHUB_USERS: ${{ vars.PREFLIGHTSIM_ALLOWED_GITHUB_USERS }}
+    steps:
+      - name: Check out immutable authorization request
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ env.REQUEST_COMMIT_SHA }}
+
+      - name: Validate exact authorization artifact
+        id: authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$REQUEST_COMMIT_SHA"
+          test -f "$REQUEST_PATH"
+          changed=$(git diff --name-only "$RELEASE_SHA" "$REQUEST_COMMIT_SHA")
+          test "$changed" = "$REQUEST_PATH"
+          jq -e \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_sha "$RELEASE_SHA" \
+            '
+              .schemaVersion == "round5-tier3-manual-verify-deploy-request-v1" and
+              .repository == $repository and
+              .releaseBranch == "orchestrator/round4-ci-base-v1" and
+              .releaseSha == $release_sha and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .verificationAuthorized == true and
+              .dependencyInstallationAuthorized == true and
+              .deploymentAuthorized == true and
+              .activeNetworks == ["ethereum", "base"] and
+              .controllerRepository == "CurveYield/audit-controller" and
+              .controllerSecretName == "PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN" and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false and
+              .fixedReleaseOnly == true and
+              .requestBranchMustNotMerge == true
+            ' "$REQUEST_PATH" >/dev/null
+          git checkout --detach "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test "$(git rev-parse "$RELEASE_BRANCH")" = "$RELEASE_SHA"
+
+      - name: Verify required production configuration names
+        id: configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID \
+            PREFLIGHTSIM_CLIENT_API_KEY PREFLIGHTSIM_GPT_API_KEY \
+            PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY PREFLIGHTSIM_RUNNER_API_KEY \
+            PREFLIGHTSIM_GITHUB_TOKEN PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN \
+            PREFLIGHTSIM_R2_ACCESS_KEY_ID PREFLIGHTSIM_R2_SECRET_ACCESS_KEY \
+            RPC_ETHEREUM RPC_BASE PREFLIGHTSIM_ALLOWED_GITHUB_USERS; do
+            [[ -n "${!name:-}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            printf 'Missing required production configuration name: %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Enforce accepted Lite/API-core and production scope
+        id: boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$ACCEPTED_LITE_SHA^{commit}"
+          git diff --exit-code "$ACCEPTED_LITE_SHA" -- apps/web/public apps/api/src/index.mjs
+          grep -F 'ENABLED_CHAINS = "ethereum,base"' apps/api/wrangler.toml >/dev/null
+          grep -F 'AUDIT_CONTROLLER_INTAKE_ISSUE = "64"' apps/api/wrangler.toml >/dev/null
+
+      - name: Run dependency-free Deep Assurance 16.14 verification
+        id: no_install
+        run: |
+          node --test \
+            packages/protocol/test/tier3-controller-v3.test.mjs \
+            apps/api/test/controller-adapter-v3.test.mjs \
+            apps/api/test/controller-command-adapter-v2.test.mjs \
+            apps/api/test/controller-entry-v3.test.mjs \
+            apps/web/test/tier3-client-v1.test.mjs \
+            apps/web/test/controller-view-v3.test.mjs \
+            apps/web/test/controller-detail-model-v2.test.mjs \
+            apps/web/test/tier3-clean-shell-v3.test.mjs \
+            packages/runner/test/audit-round5-tier3-clean-build-v3.test.mjs \
+            packages/runner/test/audit-round5-tier3-production-deploy-v4.test.mjs \
+            packages/runner/test/audit-round5-tier3-release-verification-v1.test.mjs
+          node --check packages/protocol/src/tier3-controller-v3.mjs
+          node --check apps/api/src/controller-adapter-v2.mjs
+          node --check apps/api/src/controller-command-adapter-v2.mjs
+          node --check apps/api/src/entry.mjs
+          node --check apps/web/src/client.mjs
+          node --check apps/web/src/controller-view-v3.mjs
+          node --check apps/web/src/controller-detail-model-v2.mjs
+          node --check apps/web/tier3/app.js
+          node --check scripts/build.mjs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install account-owner-authorized pinned dependencies
+        id: install
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run full repository tests
+        id: tests
+        run: npm test
+
+      - name: Run JavaScript syntax lint
+        id: lint
+        run: npm run lint
+
+      - name: Build static browser surfaces
+        id: build
+        run: npm run build
+
+      - name: Re-verify exact dual-surface build
+        id: build_contract
+        run: node --test packages/runner/test/audit-round5-tier3-clean-build-v3.test.mjs
+
+      - name: Configure existing R2 bucket
+        id: r2
+        run: |
+          npx --no-install wrangler r2 bucket cors set "$R2_BUCKET_NAME" --file infra/r2-cors.json
+          npx --no-install wrangler r2 bucket lifecycle set "$R2_BUCKET_NAME" --file infra/r2-lifecycle.json --force
+
+      - name: Deploy Worker code
+        id: worker_code
+        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+
+      - name: Upload Worker secrets without logging values
+        id: worker_secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          secrets_file=$(mktemp)
+          trap 'rm -f "$secrets_file"' EXIT
+          jq -n \
+            --arg CLIENT_API_KEY "$PREFLIGHTSIM_CLIENT_API_KEY" \
+            --arg GPT_API_KEY "$PREFLIGHTSIM_GPT_API_KEY" \
+            --arg GITHUB_BRIDGE_API_KEY "$PREFLIGHTSIM_GITHUB_BRIDGE_API_KEY" \
+            --arg RUNNER_API_KEY "$PREFLIGHTSIM_RUNNER_API_KEY" \
+            --arg GITHUB_TOKEN "$PREFLIGHTSIM_GITHUB_TOKEN" \
+            --arg AUDIT_CONTROLLER_GITHUB_TOKEN "$PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN" \
+            --arg R2_ACCOUNT_ID "$CLOUDFLARE_ACCOUNT_ID" \
+            --arg R2_ACCESS_KEY_ID "$PREFLIGHTSIM_R2_ACCESS_KEY_ID" \
+            --arg R2_SECRET_ACCESS_KEY "$PREFLIGHTSIM_R2_SECRET_ACCESS_KEY" \
+            --arg ALLOWED_GITHUB_USERS "$PREFLIGHTSIM_ALLOWED_GITHUB_USERS" \
+            '{CLIENT_API_KEY:$CLIENT_API_KEY,GPT_API_KEY:$GPT_API_KEY,GITHUB_BRIDGE_API_KEY:$GITHUB_BRIDGE_API_KEY,RUNNER_API_KEY:$RUNNER_API_KEY,GITHUB_TOKEN:$GITHUB_TOKEN,AUDIT_CONTROLLER_GITHUB_TOKEN:$AUDIT_CONTROLLER_GITHUB_TOKEN,R2_ACCOUNT_ID:$R2_ACCOUNT_ID,R2_ACCESS_KEY_ID:$R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY:$R2_SECRET_ACCESS_KEY,ALLOWED_GITHUB_USERS:$ALLOWED_GITHUB_USERS}' \
+            > "$secrets_file"
+          npx --no-install wrangler secret bulk "$secrets_file" --config apps/api/wrangler.toml
+
+      - name: Redeploy Worker with final secret bindings
+        id: worker_final
+        run: npx --no-install wrangler deploy --config apps/api/wrangler.toml
+
+      - name: Verify Worker health and current Tier 3 controller API
+        id: api_smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 10 "$PREFLIGHTSIM_API_URL/api/v1/health" >/dev/null; then break; fi
+            test "$attempt" -lt 12
+            sleep 5
+          done
+          setup=$(curl --fail --silent --show-error --max-time 10 --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" "$PREFLIGHTSIM_API_URL/api/v1/setup")
+          jq -e '.status == "ready" and .features.tier3Controller == true' <<<"$setup" >/dev/null
+          chains=$(curl --fail --silent --show-error --max-time 10 --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" "$PREFLIGHTSIM_API_URL/api/v1/chains")
+          jq -e '(.chains | keys | sort) == ["base","ethereum"]' <<<"$chains" >/dev/null
+          compatibility=$(curl --fail --silent --show-error --max-time 10 --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" "$PREFLIGHTSIM_API_URL/api/v1/controller/compatibility")
+          jq -e '
+            .adapterVersion == "tier3-controller-adapter-v2" and
+            .controller.repository == "CurveYield/audit-controller" and
+            .controller.compatibilityCommit == "48b031f06c7d7ed3573b42e371e123299722b451" and
+            .controller.instructionReleaseIdentity == "ai-auditor-deep-assurance-v6@16.14.0" and
+            .automation.compatibilityCommit == "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8" and
+            .networkScope.chains == ["ethereum","base"] and
+            .networkScope.defaultChain == "base"
+          ' <<<"$compatibility" >/dev/null
+          project=$(curl --fail --silent --show-error --max-time 10 --header "Authorization: Bearer $PREFLIGHTSIM_CLIENT_API_KEY" "$PREFLIGHTSIM_API_URL/api/v1/controller/projects/vlsdt")
+          jq -e '
+            .project.status == "ACTIVE" and
+            .project.launchAuthorized == false and
+            .project.commandRouting.available == false and
+            .project.commandRouting.reason == "PHASE0_BOOTSTRAP_FENCED" and
+            .campaign.schemaVersion == "controller-operator-state-v2" and
+            .campaign.controlPlane.bootstrapStatus == "BOOTSTRAP_FENCED" and
+            .campaign.controlPlane.substantiveWorkAuthorized == false and
+            .campaign.controlPlane.failoverStatus == "HEALTHY"
+          ' <<<"$project" >/dev/null
+
+      - name: Deploy Pages exact build
+        id: pages
+        run: npx --no-install wrangler pages deploy dist/web --project-name="$PAGES_PROJECT_NAME" --branch="$RELEASE_BRANCH"
+
+      - name: Verify production root, execution subtree, and controller CORS
+        id: public_smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          root_file=$(mktemp)
+          execution_file=$(mktemp)
+          headers_file=$(mktemp)
+          trap 'rm -f "$root_file" "$execution_file" "$headers_file"' EXIT
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 10 "https://preflight.curveyield.online/" >"$root_file" \
+              && grep -F 'Deep Assurance' "$root_file" >/dev/null \
+              && curl --fail --silent --show-error --max-time 10 "https://preflight.curveyield.online/execution/" >"$execution_file" \
+              && grep -F 'PreflightSim Lite' "$execution_file" >/dev/null; then break; fi
+            test "$attempt" -lt 12
+            sleep 5
+          done
+          curl --fail --silent --show-error --max-time 10 -D "$headers_file" -o /dev/null \
+            --request OPTIONS \
+            --header 'Origin: https://preflight.curveyield.online' \
+            --header 'Access-Control-Request-Method: GET' \
+            "$PREFLIGHTSIM_API_URL/api/v1/controller/compatibility"
+          grep -Eqi '^access-control-allow-origin:[[:space:]]*https://preflight\.curveyield\.online' "$headers_file"
+
+      - name: Publish sanitized final receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          AUTHORIZATION: ${{ steps.authorization.outcome }}
+          CONFIGURATION: ${{ steps.configuration.outcome }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          NO_INSTALL: ${{ steps.no_install.outcome }}
+          INSTALL: ${{ steps.install.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          BUILD_CONTRACT: ${{ steps.build_contract.outcome }}
+          R2: ${{ steps.r2.outcome }}
+          WORKER_CODE: ${{ steps.worker_code.outcome }}
+          WORKER_SECRETS: ${{ steps.worker_secrets.outcome }}
+          WORKER_FINAL: ${{ steps.worker_final.outcome }}
+          API_SMOKE: ${{ steps.api_smoke.outcome }}
+          PAGES: ${{ steps.pages.outcome }}
+          PUBLIC_SMOKE: ${{ steps.public_smoke.outcome }}
+        run: |
+          set -euo pipefail
+          result=FAIL
+          [[ "$JOB_STATUS" == success ]] && result=PASS
+          receipt=$(cat <<EOF
+          ## Tier 3 Manual Verify and Deploy v1
+
+          - result: \`$result\`
+          - run: \`$GITHUB_RUN_ID\`
+          - exact release SHA: \`$RELEASE_SHA\`
+          - immutable request commit: \`$REQUEST_COMMIT_SHA\`
+          - authorization: \`$AUTHORIZATION\`
+          - production configuration names: \`$CONFIGURATION\`
+          - accepted-Lite/API-core boundary: \`$BOUNDARY\`
+          - dependency-free v16.14 verification: \`$NO_INSTALL\`
+          - authorized dependency install: \`$INSTALL\`
+          - full repository tests: \`$TESTS\`
+          - JavaScript lint: \`$LINT\`
+          - static build: \`$BUILD\`
+          - dual-surface build contract: \`$BUILD_CONTRACT\`
+          - R2 configuration: \`$R2\`
+          - Worker code deployment: \`$WORKER_CODE\`
+          - Worker controller-secret binding: \`$WORKER_SECRETS\`
+          - final Worker deployment: \`$WORKER_FINAL\`
+          - authenticated Tier 3 API smoke: \`$API_SMOKE\`
+          - Pages deployment: \`$PAGES\`
+          - public root/execution/CORS smoke: \`$PUBLIC_SMOKE\`
+          - active networks: \`[\"ethereum\", \"base\"]\`
+          - explicit Foundry/Hardhat/Forge/solc command: \`NO\`
+          - wallet signing: \`NO\`
+          - public transaction broadcast: \`NO\`
+          EOF
+          )
+          gh issue comment 173 --repo "$GITHUB_REPOSITORY" --body "$receipt"
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "$receipt"
