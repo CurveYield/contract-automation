@@ -37,32 +37,65 @@ Use independent long random values for the four Preflight API keys.
 
 The RPC values are read-only fork sources; never store wallet keys or seed phrases. The active production execution scope is exactly Ethereum and Base. Deferred-network secret names may remain configured but do not activate Katana, Fraxtal, Arbitrum, Polygon, or Optimism.
 
-The Cloudflare token must be scoped to the CurveYield account and zone with permission to manage Workers Scripts, Worker custom domains/routes, Pages, R2 buckets/configuration, and the DNS/custom-domain operations required by the deployment workflow.
+## Tier 3 controller compatibility — current release
 
-## Tier 3 controller compatibility
-
-The hosted controller adapter is fixed to:
+The current hosted controller adapter is `tier3-controller-adapter-v2` and is fixed to the live Deep Assurance 16.14 release tuple:
 
 ```text
 repository=CurveYield/audit-controller
 ref=main
-compatibilityCommit=d4851886ece3e8793dcc2a99f97f6d34da10e1cd
-releaseIdentity=audit-controller@hosted-tier3-v1
+compatibilityCommit=48b031f06c7d7ed3573b42e371e123299722b451
+releaseIdentity=audit-controller@48b031f06c7d7ed3573b42e371e123299722b451
 processId=deep-assurance-v6
-instructionReleaseIdentity=ai-auditor-deep-assurance-v6@16.13.0
+instructionReleaseIdentity=ai-auditor-deep-assurance-v6@16.14.0
 controllerIntakeIssue=64
-automationRelease=contract-automation@round5-tier3-v1
+automationCompatibilityCommit=ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8
+automationReleaseIdentity=contract-automation@ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8
 networkScope=ethereum,base
 defaultChain=base
 ```
 
-The adapter reads `.deep-assurance/active/<projectSlug>.json` from the fixed controller repository/ref. An active pointer must bind the compatible controller release, skill release, exact campaign branch, workspace, mailbox issue, and hosted projection path. A `NO_ACTIVE_CAMPAIGN` pointer may route only `campaign.create` to controller intake issue 64. All other hosted commands require an active pointer and route only to that pointer's campaign mailbox.
+The adapter reads `.deep-assurance/active/<projectSlug>.json` from `audit-controller/main` and supports the current Phase-0 `deep-assurance-active-pointer-v2` shape. For an active campaign it derives the campaign workspace from `controllerCampaignCreateReceipt` and reads only the bounded control-plane records required for operator state:
 
-A queued GitHub comment is only a request. The hosted browser must reload authoritative controller state before showing a transition as accepted.
+```text
+CONTROLLER_CAMPAIGN_CREATE_RECEIPT-v1.json
+CONTROLLER_TOPOLOGY-v1.json
+ASSIGNMENT_PLAN-v1.json
+FAILOVER_STATE-v1.json
+ORCHESTRATOR_LEASE-v1.json
+```
+
+The browser receives a bounded `controller-operator-state-v2` projection. It does not receive raw poll task IDs, controller tokens, raw lease material, raw evidence payloads, or arbitrary controller files.
+
+### Phase-0 fencing semantics
+
+A controller campaign can be `ACTIVE` while launch/substantive work is still fenced. The browser must display these conditions separately.
+
+For the current vlSDT v20 Phase-0 state, the expected authoritative conditions are:
+
+```text
+campaign.status=ACTIVE
+project.launchAuthorized=false
+controlPlane.bootstrapStatus=BOOTSTRAP_FENCED
+controlPlane.claimAuthorized=false
+controlPlane.sourceAccessAuthorized=false
+controlPlane.assignmentClaimsAuthorized=false
+controlPlane.substantiveWorkAuthorized=false
+controlPlane.failoverStatus=HEALTHY
+controlPlane.authorityState=ACTIVE
+project.commandRouting.available=false
+project.commandRouting.reason=PHASE0_BOOTSTRAP_FENCED
+```
+
+While that fence is present, the hosted UI disables substantive controller commands. It does not infer authorization from `campaign.status=ACTIVE`.
+
+If a future active pointer becomes launch-authorized but still does not publish an authoritative hosted campaign mailbox binding, hosted mutation still fails closed with `controller_mailbox_unpublished`. The browser must never guess an issue number or mailbox target.
+
+A legacy `NO_ACTIVE_CAMPAIGN` tombstone may route only a valid controller `campaign.create` request to trusted intake issue 64. A queued GitHub comment is only a request; authoritative controller state must be reloaded before any transition is shown as accepted.
 
 ## Browser topology
 
-Round 5 Tier 3 clean v2 intentionally keeps the accepted Lite source unchanged:
+Round 5 Tier 3 clean v2 keeps the accepted Lite source unchanged:
 
 ```text
 /             Tier 3 Deep Assurance operator shell
@@ -89,17 +122,25 @@ PAGES_PROJECT_NAME=curveyield-preflight
 PREFLIGHTSIM_ALLOWED_GITHUB_USERS=James-Nexus
 ```
 
-## Tier 3 production deployment v3
+## Tier 3 production deployment v4
 
-The current Tier 3 production workflow is `.github/workflows/tier3-production-deploy-v3.yml`. It supersedes the untriggered v2 deployment workflow and fixes the accepted-release verification checkout by using full Git history. It does not support an ordinary manual production deployment. It runs only when the accepted Round 5 release branch receives the one-shot request file:
+The current production workflow is `.github/workflows/tier3-production-deploy-v4.yml`. It is inert during feature development and runs only when the accepted Round 5 release branch receives:
 
 ```text
-.agent-control/v1/orchestrator/TIER3_PRODUCTION_DEPLOY_REQUEST_v3.json
+.agent-control/v1/orchestrator/TIER3_PRODUCTION_DEPLOY_REQUEST_v4.json
 ```
 
-The request schema is `round5-tier3-production-deploy-request-v3`. The request must bind the exact pre-request release SHA and explicitly authorize both deployment and dependency installation while preserving `walletSigningAllowed=false`, `publicTransactionBroadcastAllowed=false`, and `activeNetworks=["ethereum","base"]`.
+The request schema is `round5-tier3-production-deploy-request-v4`. The request binds the exact pre-request release SHA and explicitly authorizes both deployment and dependency installation while preserving:
 
-The account owner explicitly authorized the pinned dependency-install/deployment path for this Tier 3 release. The workflow therefore runs:
+```text
+activeNetworks=["ethereum","base"]
+walletSigningAllowed=false
+publicTransactionBroadcastAllowed=false
+controllerRepository=CurveYield/audit-controller
+controllerSecretName=PREFLIGHTSIM_AUDIT_CONTROLLER_GITHUB_TOKEN
+```
+
+The account owner explicitly authorized the pinned dependency-install/deployment path for this Tier 3 release. The workflow runs:
 
 ```text
 npm install --ignore-scripts --no-audit --no-fund
@@ -108,9 +149,19 @@ npm run lint
 npm run build
 ```
 
-and then uses `npx --no-install wrangler` for R2, Worker, and Pages operations. There is no explicit Foundry, Hardhat, Forge, or `solc` compilation command in the Tier 3 production workflow. The install occurs only inside the trusted GitHub Actions deployment run after exact-source/request validation.
+and then uses `npx --no-install wrangler` for R2, Worker, and Pages operations. There is no explicit Foundry, Hardhat, Forge, or `solc` compilation command in the Tier 3 production workflow.
 
-Before deployment the workflow checks out full history, verifies the accepted Lite source boundary against `2df81aacb6f5747f06b49297e89e02c3f013d4ef`, verifies required production configuration names, intake issue 64, and Ethereum/Base-only scope. After deployment it verifies Worker health, Tier 3 readiness, exact controller compatibility, exact `/api/v1/chains`, the root Deep Assurance marker, the `/execution/` PreflightSim Lite marker, and production controller-route CORS.
+Before deployment, v4 checks out full Git history, verifies the accepted Lite source boundary against `2df81aacb6f5747f06b49297e89e02c3f013d4ef`, verifies required production configuration names, intake issue 64, and Ethereum/Base-only scope. After Worker deployment it verifies:
+
+- `/api/v1/health`;
+- authenticated `/api/v1/setup` with `tier3Controller=true`;
+- authenticated `/api/v1/chains` exactly Base + Ethereum;
+- current v16.14 controller compatibility;
+- authenticated `/api/v1/controller/projects/vlsdt` returns the live Phase-0 fenced state rather than rejecting it;
+- hosted command routing remains unavailable for that fenced live campaign;
+- Pages root contains the Deep Assurance shell;
+- `/execution/` contains accepted PreflightSim Lite;
+- controller CORS allows exactly the production Pages origin.
 
 A sanitized deployment receipt is posted to issue #170. A successful deployment creates the exact candidate for independent Worker 4 Stage 7 acceptance under issue #132; it is not final Round 5 sign-off by itself.
 
