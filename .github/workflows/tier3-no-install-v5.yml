@@ -1,0 +1,142 @@
+name: Tier 3 No-Install Verification v5
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-no-install-v5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Boundary
+        id: boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d node_modules
+          workflow=.github/workflows/tier3-no-install-v5.yml
+          ! grep -Eq '^[[:space:]]*(npm[[:space:]]+(install|ci)|pnpm([[:space:]]|$)|yarn([[:space:]]|$)|npx([[:space:]]|$)|forge([[:space:]]|$)|hardhat([[:space:]]|$)|solc([[:space:]]|$)|wrangler([[:space:]]|$))' "$workflow"
+
+      - name: Protocol compatibility
+        id: protocol
+        continue-on-error: true
+        run: node --test packages/protocol/test/tier3-controller-v1.test.mjs
+
+      - name: Read adapter
+        id: read_adapter
+        continue-on-error: true
+        run: node --test apps/api/test/controller-adapter-v1.test.mjs
+
+      - name: Command adapter
+        id: command_adapter
+        continue-on-error: true
+        run: node --test apps/api/test/controller-command-adapter-v1.test.mjs
+
+      - name: Entry routing
+        id: entry
+        continue-on-error: true
+        run: node --test apps/api/test/controller-entry-v1.test.mjs
+
+      - name: Deployment secret static test
+        id: secret
+        continue-on-error: true
+        run: node --test packages/runner/test/audit-round5-tier3-controller-secret-v1.test.mjs
+
+      - name: Browser client
+        id: client
+        continue-on-error: true
+        run: node --test apps/web/test/tier3-client-v1.test.mjs
+
+      - name: Detail model empty state
+        id: detail_empty
+        continue-on-error: true
+        run: node --test --test-name-pattern="empty bounded detail" apps/web/test/controller-detail-model-v1.test.mjs
+
+      - name: Detail model canonical projection
+        id: detail_projection
+        continue-on-error: true
+        run: node --test --test-name-pattern="sortable operator details" apps/web/test/controller-detail-model-v1.test.mjs
+
+      - name: Detail model text bounds
+        id: detail_bounds
+        continue-on-error: true
+        run: node --test --test-name-pattern="bounds long operator summaries" apps/web/test/controller-detail-model-v1.test.mjs
+
+      - name: Enforce diagnostic result
+        id: enforce
+        shell: bash
+        env:
+          PROTOCOL: ${{ steps.protocol.outcome }}
+          READ_ADAPTER: ${{ steps.read_adapter.outcome }}
+          COMMAND_ADAPTER: ${{ steps.command_adapter.outcome }}
+          ENTRY: ${{ steps.entry.outcome }}
+          SECRET: ${{ steps.secret.outcome }}
+          CLIENT: ${{ steps.client.outcome }}
+          DETAIL_EMPTY: ${{ steps.detail_empty.outcome }}
+          DETAIL_PROJECTION: ${{ steps.detail_projection.outcome }}
+          DETAIL_BOUNDS: ${{ steps.detail_bounds.outcome }}
+        run: |
+          set -euo pipefail
+          for outcome in "$PROTOCOL" "$READ_ADAPTER" "$COMMAND_ADAPTER" "$ENTRY" "$SECRET" "$CLIENT" "$DETAIL_EMPTY" "$DETAIL_PROJECTION" "$DETAIL_BOUNDS"; do
+            test "$outcome" = success
+          done
+
+      - name: Publish sanitized diagnostic receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          PROTOCOL: ${{ steps.protocol.outcome }}
+          READ_ADAPTER: ${{ steps.read_adapter.outcome }}
+          COMMAND_ADAPTER: ${{ steps.command_adapter.outcome }}
+          ENTRY: ${{ steps.entry.outcome }}
+          SECRET: ${{ steps.secret.outcome }}
+          CLIENT: ${{ steps.client.outcome }}
+          DETAIL_EMPTY: ${{ steps.detail_empty.outcome }}
+          DETAIL_PROJECTION: ${{ steps.detail_projection.outcome }}
+          DETAIL_BOUNDS: ${{ steps.detail_bounds.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+        run: |
+          set -euo pipefail
+          overall=PASS
+          if [[ "$BOUNDARY" != success || "$ENFORCE" != success ]]; then overall=FAIL; fi
+          receipt=$(cat <<EOF
+          ## Tier 3 No-Install Verification v5
+
+          - result: \`$overall\`
+          - run: \`$GITHUB_RUN_ID\`
+          - source SHA: \`$GITHUB_SHA\`
+          - boundary: \`$BOUNDARY\`
+          - protocol: \`$PROTOCOL\`
+          - read adapter: \`$READ_ADAPTER\`
+          - command adapter: \`$COMMAND_ADAPTER\`
+          - entry routing: \`$ENTRY\`
+          - deployment-secret static: \`$SECRET\`
+          - browser client: \`$CLIENT\`
+          - detail empty: \`$DETAIL_EMPTY\`
+          - detail canonical projection: \`$DETAIL_PROJECTION\`
+          - detail bounds: \`$DETAIL_BOUNDS\`
+          - dependency installation/download: \`NO\`
+          - repository build: \`NO\`
+          - compiler/deployment/controller mutation: \`NO\`
+          EOF
+          )
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "$receipt"
