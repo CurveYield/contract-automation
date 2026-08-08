@@ -35,7 +35,7 @@
     <section class="panel wide tier3-panel" aria-labelledby="controller-title">
       <div class="section-heading">
         <div><p class="eyebrow">Tier 3 control plane</p><h2 id="controller-title">Audit-controller</h2></div>
-        <span class="badge">GitHub authoritative · read-only adapter v1</span>
+        <span class="badge">GitHub authoritative · read-only adapter v2</span>
       </div>
       <div class="tier3-toolbar">
         <label>Campaign ID
@@ -48,7 +48,9 @@
 
       <dl class="tier3-summary" aria-label="Controller and campaign summary">
         <div class="tier3-card"><dt>Controller release</dt><dd id="controller-release">—</dd></div>
-        <div class="tier3-card"><dt>Controller ref</dt><dd id="controller-ref">—</dd></div>
+        <div class="tier3-card"><dt>Protocol SHA</dt><dd id="controller-protocol-sha">—</dd></div>
+        <div class="tier3-card"><dt>Live state ref</dt><dd id="controller-state-ref">—</dd></div>
+        <div class="tier3-card"><dt>Exact state commit</dt><dd id="controller-state-commit">—</dd></div>
         <div class="tier3-card"><dt>Automation release</dt><dd id="automation-release">—</dd></div>
         <div class="tier3-card"><dt>Authority</dt><dd id="controller-authority">—</dd></div>
         <div class="tier3-card"><dt>Mutation mode</dt><dd id="controller-mutation-mode">—</dd></div>
@@ -67,7 +69,7 @@
         <details><summary>Execution evidence</summary><pre id="controller-evidence" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Final report and exact release</summary><pre id="controller-report" tabindex="0">No campaign loaded.</pre></details>
       </div>
-      <p class="tier3-readonly">This v1 slice cannot mutate controller state. Substantive controller commands remain blocked until the structured command adapter preserves instruction-read proof, lease, replay/idempotency, gate, evidence, remediation and finalization enforcement end to end.</p>
+      <p class="tier3-readonly">The v2 browser resolves every live controller read to an exact Git commit and verifies it against an immutable protocol SHA. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
     </section>
 
     <form id="job-form" class="panel wide">
@@ -185,6 +187,6 @@ contract Counter {
   </footer>
 
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./tier3-operator-v1.js"></script>
+  <script type="module" src="./tier3-operator-v2.js"></script>
 </body>
 </html>
