@@ -50,6 +50,24 @@ test('operator shell exposes bounded controller discovery and Tier 3 summary reg
   assert.match(html, /id="controller-state"[^>]*aria-live="polite"/);
 });
 
+test('operator shell exposes one structured command request surface without mailbox routing controls', async () => {
+  const { html, app } = await source();
+  for (const id of [
+    'controller-command-form',
+    'controller-command-json',
+    'queue-controller-command',
+    'controller-command-state',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`), `missing #${id}`);
+  }
+  assert.match(html, /id="controller-command-state"[^>]*aria-live="polite"/);
+  assert.match(html, /Queued requests are not accepted controller state until the authoritative projection changes\./);
+  assert.match(app, /queueControllerCommand\(/);
+  assert.match(app, /Queued .*Reload controller state to observe authoritative acceptance\./);
+  assert.doesNotMatch(html, /name="issueNumber"|id="issue-number"|mailboxIssueNumber/);
+  assert.doesNotMatch(app, /issues\/\$\{|mailboxIssueNumber|AUDIT_CONTROLLER_INTAKE_ISSUE/);
+});
+
 test('browser keeps the active execution network scope exactly Ethereum then Base with Base default', async () => {
   const { html } = await source();
   const chainSelect = html.match(/<select id="chain">([\s\S]*?)<\/select>/)?.[1] ?? '';
@@ -71,10 +89,12 @@ test('operator JavaScript loads compatibility/project state through the client a
   assert.doesNotMatch(app, /\.innerHTML\s*=/);
 });
 
-test('Tier 3 shell includes responsive workspace and summary-grid styling', async () => {
+test('Tier 3 shell includes responsive workspace, summary-grid, and command styling', async () => {
   const { styles } = await source();
   assert.match(styles, /\.workspace-nav/);
   assert.match(styles, /\.controller-grid/);
   assert.match(styles, /\.summary-card/);
+  assert.match(styles, /\.command-panel/);
+  assert.match(styles, /\.command-warning/);
   assert.match(styles, /@media\(max-width:850px\)/);
 });
