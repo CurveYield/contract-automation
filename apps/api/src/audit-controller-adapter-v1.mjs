@@ -107,10 +107,11 @@ function parseBoundedContent(payload) {
 }
 
 function sanitizeTombstone(pointer, projectSlug) {
-  if (pointer.schemaVersion !== TOMBSTONE_SCHEMA_V1 || pointer.status !== 'NO_ACTIVE_CAMPAIGN') {
-    throw new AuditControllerAdapterError('invalid_controller_pointer', 'Audit controller active pointer is invalid', 409);
-  }
-  if (pointer.projectSlug !== projectSlug || pointer.launchAuthorized !== false) {
+  if (!pointer || typeof pointer !== 'object' || Array.isArray(pointer)
+      || pointer.schemaVersion !== TOMBSTONE_SCHEMA_V1
+      || pointer.status !== 'NO_ACTIVE_CAMPAIGN'
+      || pointer.projectSlug !== projectSlug
+      || pointer.launchAuthorized !== false) {
     throw new AuditControllerAdapterError('invalid_controller_pointer', 'Audit controller tombstone does not match the requested project', 409);
   }
   return {
@@ -125,14 +126,12 @@ function sanitizeTombstone(pointer, projectSlug) {
 }
 
 function validateActivePointer(pointer, projectSlug, expectedControllerCommit, expectedSkillReleaseIdentity) {
-  if (!pointer || typeof pointer !== 'object' || Array.isArray(pointer)) {
+  if (!pointer || typeof pointer !== 'object' || Array.isArray(pointer)
+      || pointer.schemaVersion !== ACTIVE_POINTER_SCHEMA_V2
+      || pointer.status !== 'ACTIVE'
+      || pointer.launchAuthorized !== true
+      || pointer.projectSlug !== projectSlug) {
     throw new AuditControllerAdapterError('invalid_controller_pointer', 'Audit controller active pointer is invalid', 409);
-  }
-  if (pointer.schemaVersion !== ACTIVE_POINTER_SCHEMA_V2 || pointer.status !== 'ACTIVE' || pointer.launchAuthorized !== true) {
-    throw new AuditControllerAdapterError('invalid_controller_pointer', 'Audit controller active pointer is invalid', 409);
-  }
-  if (pointer.projectSlug !== projectSlug) {
-    throw new AuditControllerAdapterError('invalid_controller_pointer', 'Audit controller active pointer project does not match the request', 409);
   }
   for (const field of ['campaignId', 'campaignGenerationId', 'controllerBranch', 'workspacePath', 'projectionPath', 'controllerCommit', 'skillReleaseIdentity']) {
     assertString(pointer[field], `pointer.${field}`);
@@ -260,6 +259,16 @@ function renderEnvelope(command) {
   return envelope;
 }
 
+function validateCampaignCreateCommand(command) {
+  if (!command || command.type !== 'campaign.create') {
+    throw new AuditControllerAdapterError('invalid_campaign_create', 'Hosted campaign intake accepts only campaign.create commands', 400);
+  }
+  if (!command.actor || command.actor.type !== 'controller') {
+    throw new AuditControllerAdapterError('invalid_campaign_create_actor', 'Hosted campaign intake requires a controller actor', 400);
+  }
+  return renderEnvelope(command);
+}
+
 export function createAuditControllerAdapterV1({
   fetcher = fetch,
   token,
@@ -269,12 +278,13 @@ export function createAuditControllerAdapterV1({
   expectedControllerCommit = null,
   expectedSkillReleaseIdentity = null,
   automationRelease = null,
+  intakeIssueNumber = null,
 } = {}) {
   assertString(token, 'GitHub token');
   assertString(owner, 'GitHub owner');
   assertString(repo, 'GitHub repository');
   assertString(mainRef, 'GitHub main ref');
-
+  const configuredIntakeIssue = Number.isSafeInteger(intakeIssueNumber) && intakeIssueNumber > 0 ? intakeIssueNumber : null;
   const root = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
   async function getContent(path, ref) {
@@ -289,13 +299,18 @@ export function createAuditControllerAdapterV1({
     return parseBoundedContent(await responseJson(response));
   }
 
-  async function getProject(projectSlug) {
+  async function getPointer(projectSlug) {
     const slug = safeProjectSlug(projectSlug);
     const rawPointer = await getContent(`.deep-assurance/active/${slug}.json`, mainRef);
-    if (rawPointer?.status === 'NO_ACTIVE_CAMPAIGN') {
-      return { pointer: sanitizeTombstone(rawPointer, slug), projection: null, status: 'NO_ACTIVE_CAMPAIGN' };
+    if (rawPointer?.status === 'NO_ACTIVE_CAMPAIGN') return sanitizeTombstone(rawPointer, slug);
+    return validateActivePointer(rawPointer, slug, expectedControllerCommit, expectedSkillReleaseIdentity);
+  }
+
+  async function getProject(projectSlug) {
+    const pointer = await getPointer(projectSlug);
+    if (pointer.status === 'NO_ACTIVE_CAMPAIGN') {
+      return { pointer, projection: null, status: 'NO_ACTIVE_CAMPAIGN' };
     }
-    const pointer = validateActivePointer(rawPointer, slug, expectedControllerCommit, expectedSkillReleaseIdentity);
     const projection = validateProjection(
       await getContent(pointer.projectionPath, pointer.controllerBranch),
       pointer,
@@ -304,13 +319,8 @@ export function createAuditControllerAdapterV1({
     return { pointer, projection, status: projection.campaign?.status ?? 'UNKNOWN' };
   }
 
-  async function submitCommand({ projectSlug, command }) {
-    const envelope = renderEnvelope(command);
-    const project = await getProject(projectSlug);
-    if (project.pointer.status !== 'ACTIVE' || project.pointer.launchAuthorized !== true) {
-      throw new AuditControllerAdapterError('no_active_campaign', 'Audit project has no active campaign', 409);
-    }
-    const url = `${root}/issues/${project.pointer.mailboxIssueNumber}/comments`;
+  async function postEnvelope(issueNumber, envelope, commandId) {
+    const url = `${root}/issues/${issueNumber}/comments`;
     let response;
     try {
       response = await fetcher(url, {
@@ -326,12 +336,34 @@ export function createAuditControllerAdapterV1({
     if (!Number.isSafeInteger(payload?.id) || payload.id < 1) {
       throw new AuditControllerAdapterError('github_invalid_response', 'Audit controller GitHub response was invalid', 502);
     }
-    return { accepted: true, commentId: payload.id, commandId: command.commandId };
+    return { accepted: true, commentId: payload.id, commandId };
+  }
+
+  async function submitCommand({ projectSlug, command }) {
+    const envelope = renderEnvelope(command);
+    const project = await getProject(projectSlug);
+    if (project.pointer.status !== 'ACTIVE' || project.pointer.launchAuthorized !== true) {
+      throw new AuditControllerAdapterError('no_active_campaign', 'Audit project has no active campaign', 409);
+    }
+    return postEnvelope(project.pointer.mailboxIssueNumber, envelope, command.commandId);
+  }
+
+  async function submitCampaignCreate({ projectSlug, command }) {
+    if (!configuredIntakeIssue) {
+      throw new AuditControllerAdapterError('campaign_intake_unavailable', 'Hosted campaign intake is not configured', 503);
+    }
+    const envelope = validateCampaignCreateCommand(command);
+    const pointer = await getPointer(projectSlug);
+    if (pointer.status === 'ACTIVE') {
+      throw new AuditControllerAdapterError('active_campaign_exists', 'Audit project already has an active campaign', 409);
+    }
+    return postEnvelope(configuredIntakeIssue, envelope, command.commandId);
   }
 
   return Object.freeze({
     getProject,
     submitCommand,
+    submitCampaignCreate,
     getCompatibility() {
       return {
         schemaVersion: 'audit-controller-hosted-compatibility-v1',
@@ -342,6 +374,7 @@ export function createAuditControllerAdapterV1({
         controllerCommit: expectedControllerCommit,
         skillReleaseIdentity: expectedSkillReleaseIdentity,
         automationRelease,
+        campaignCreateAvailable: configuredIntakeIssue !== null,
       };
     },
   });
