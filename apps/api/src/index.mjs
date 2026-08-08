@@ -116,7 +116,7 @@ async function parseBody(request, maxBytes = MAX_JSON_BODY_BYTES) {
     }
     const keys = [...form.keys()];
     if (keys.some((key) => key !== 'request')) {
-      throw new ValidationError('unknown_field', 'Multipart form bodies may contain only the request field', '$');
+      throw new ValidationError('unknown_field', 'Form bodies may contain only the request field', '$');
     }
     const value = form.get('request');
     if (typeof value !== 'string' || new TextEncoder().encode(value).byteLength > maxBytes) {
@@ -136,11 +136,12 @@ function auditControllerAdapter(env) {
     mainRef: env.AUDIT_CONTROLLER_REF || 'main',
     expectedControllerCommit: env.AUDIT_CONTROLLER_COMMIT || null,
     expectedSkillReleaseIdentity: env.AUDIT_CONTROLLER_SKILL_RELEASE || 'ai-auditor-deep-assurance-v6@16.13.0',
-    automationRelease: env.AUTOMATION_RELEASE || 'contract-automation@round5-tier3-v1'
+    automationRelease: env.AUTOMATION_RELEASE || 'contract-automation@round5-tier3-v1',
+    intakeIssueNumber: Number(env.AUDIT_CONTROLLER_INTAKE_ISSUE || 0) || null
   });
 }
 
-async function handleAuditCommand(request, env, projectSlug) {
+async function parseAuditCommandBody(request) {
   const body = await parseBody(request, 512 * 1024);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     throw new ValidationError('invalid_audit_command', 'Audit command body must be an object', '$');
@@ -152,7 +153,17 @@ async function handleAuditCommand(request, env, projectSlug) {
   if (!body.command || typeof body.command !== 'object' || Array.isArray(body.command)) {
     throw new ValidationError('invalid_audit_command', 'body.command must be an object', '$.command');
   }
-  return json(await auditControllerAdapter(env).submitCommand({ projectSlug, command: body.command }), 202);
+  return body.command;
+}
+
+async function handleAuditCommand(request, env, projectSlug) {
+  const command = await parseAuditCommandBody(request);
+  return json(await auditControllerAdapter(env).submitCommand({ projectSlug, command }), 202);
+}
+
+async function handleAuditCampaignCreate(request, env, projectSlug) {
+  const command = await parseAuditCommandBody(request);
+  return json(await auditControllerAdapter(env).submitCampaignCreate({ projectSlug, command }), 202);
 }
 
 function jobKey(jobId, name) {
@@ -537,6 +548,8 @@ async function route(request, env) {
   }
   match = path.match(/^\/api\/v1\/audit\/projects\/([a-z0-9][a-z0-9-]{0,63})\/commands$/);
   if (request.method === 'POST' && match) return handleAuditCommand(request, env, match[1]);
+  match = path.match(/^\/api\/v1\/audit\/projects\/([a-z0-9][a-z0-9-]{0,63})\/campaigns$/);
+  if (request.method === 'POST' && match) return handleAuditCampaignCreate(request, env, match[1]);
 
   match = path.match(/^\/api\/v1\/jobs\/(job_[A-Za-z0-9]+)$/);
   if (request.method === 'GET' && match) return handleGetStatus(env, match[1]);
