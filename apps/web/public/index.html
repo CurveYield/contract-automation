@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Compile Solidity and run structured live-RPC fork simulations without broadcasting transactions.">
-  <title>PreflightSim Lite</title>
+  <meta name="description" content="Operate the CurveYield Deep Assurance controller and run trusted compile or live-RPC fork execution without broadcasting transactions.">
+  <title>CurveYield Deep Assurance Console</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <header class="shell hero">
     <div>
-      <p class="eyebrow">CurveYield developer infrastructure</p>
-      <h1>PreflightSim Lite</h1>
-      <p class="lede">Compile Solidity, fork an allowlisted live chain, deploy contracts, execute structured writes, and inspect results. Nothing is signed or broadcast to a real blockchain.</p>
+      <p class="eyebrow">CurveYield assurance infrastructure</p>
+      <h1>Deep Assurance Console</h1>
+      <p class="lede">Inspect the GitHub-authoritative Deep Assurance controller, verify exact release bindings, and use Preflight execution as a trusted compile/simulation subsystem. Nothing is signed or broadcast to a real blockchain.</p>
     </div>
     <div class="status-pill" id="service-state" aria-live="polite">Not connected</div>
   </header>
@@ -28,115 +28,177 @@
       </label>
       <label class="checkbox"><input id="remember-key" type="checkbox"> Remember key in this browser</label>
       <button id="test-connection" type="button" class="secondary">Test connection</button>
+      <p class="hint">Controller access uses the browser client identity only. The controller GitHub credential remains server-side.</p>
     </section>
 
-    <form id="job-form" class="panel wide">
-      <div class="section-heading">
-        <div><p class="eyebrow">Job request</p><h2>Project and fork</h2></div>
-        <span class="badge">Structured EVM actions only</span>
-      </div>
+    <div class="workspace-stack wide">
+      <nav class="workspace-nav" aria-label="Console workspace">
+        <button id="show-audit-workspace" type="button" aria-pressed="true">Audit Controller</button>
+        <button id="show-execution-workspace" type="button" class="secondary" aria-pressed="false">Preflight Execution</button>
+      </nav>
 
-      <fieldset>
-        <legend>Project source</legend>
-        <div class="segmented" role="radiogroup" aria-label="Project source type">
-          <label><input type="radio" name="projectType" value="github" checked> Public GitHub</label>
-          <label><input type="radio" name="projectType" value="inline"> Inline Solidity</label>
-          <label><input type="radio" name="projectType" value="upload"> ZIP upload</label>
-        </div>
-      </fieldset>
+      <section id="audit-workspace" class="workspace-panel" aria-labelledby="audit-workspace-title">
+        <section class="panel" aria-labelledby="audit-workspace-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Tier 3 controller</p>
+              <h2 id="audit-workspace-title">Audit Controller</h2>
+            </div>
+            <span class="badge">GitHub state is authoritative</span>
+          </div>
+          <p class="hint">This browser is a bounded projection and command surface. It does not maintain a second campaign ledger.</p>
+          <div class="controller-loader">
+            <label>Controller project slug
+              <input id="controller-project-slug" type="text" value="vlsdt" autocomplete="off" spellcheck="false" aria-describedby="controller-project-help">
+            </label>
+            <button id="load-controller-project" type="button">Load controller</button>
+          </div>
+          <p id="controller-project-help" class="hint">Loads only the authoritative <code>.deep-assurance/active/&lt;project&gt;.json</code> pointer through the fixed audit-controller repository.</p>
+          <div id="controller-state" class="status-banner" aria-live="polite">Connect and load a controller project.</div>
+        </section>
 
-      <div id="github-project" class="project-fields">
-        <label>Repository
-          <input id="github-repository" type="text" placeholder="owner/repository" value="CurveYield/contract-automation">
-        </label>
-        <label>Ref
-          <input id="github-ref" type="text" placeholder="branch, tag, or commit" value="main">
-        </label>
-      </div>
+        <section class="controller-grid" aria-label="Controller compatibility and campaign summary">
+          <article class="summary-card">
+            <p class="summary-label">Controller release</p>
+            <p id="controller-release" class="summary-value">Not loaded</p>
+          </article>
+          <article class="summary-card">
+            <p class="summary-label">Instruction release</p>
+            <p id="instruction-release" class="summary-value">Not loaded</p>
+          </article>
+          <article class="summary-card">
+            <p class="summary-label">Active campaign</p>
+            <p id="active-campaign" class="summary-value">Not loaded</p>
+          </article>
+          <article class="summary-card">
+            <p class="summary-label">Exact source</p>
+            <p id="campaign-source" class="summary-value">Not loaded</p>
+          </article>
+        </section>
 
-      <div id="inline-project" class="project-fields hidden">
-        <label>Source path
-          <input id="inline-path" type="text" value="Contract.sol">
-        </label>
-        <label>Solidity source
-          <textarea id="inline-source" rows="14" spellcheck="false">// SPDX-License-Identifier: UNLICENSED
+        <section class="controller-grid controller-details" aria-label="Deep Assurance workflow summaries">
+          <article class="summary-card"><h3>Phases and gates</h3><p id="phase-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Review lanes</h3><p id="lane-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Instruction proofs</h3><p id="instruction-proof-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Assignments</h3><p id="assignment-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Findings</h3><p id="finding-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Remediation</h3><p id="remediation-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Evidence</h3><p id="evidence-summary" class="summary-value">Awaiting controller load.</p></article>
+          <article class="summary-card"><h3>Finalization</h3><p id="finalization-summary" class="summary-value">Awaiting controller load.</p></article>
+        </section>
+      </section>
+
+      <section id="execution-workspace" class="workspace-panel hidden" aria-labelledby="execution-workspace-title">
+        <form id="job-form" class="panel">
+          <div class="section-heading">
+            <div><p class="eyebrow">Trusted execution subsystem</p><h2 id="execution-workspace-title">Preflight Execution</h2></div>
+            <span class="badge">Structured EVM actions only</span>
+          </div>
+          <p class="hint">Compile and simulate evidence only. This subsystem does not own audit-controller campaign state.</p>
+
+          <fieldset>
+            <legend>Project source</legend>
+            <div class="segmented" role="radiogroup" aria-label="Project source type">
+              <label><input type="radio" name="projectType" value="github" checked> Public GitHub</label>
+              <label><input type="radio" name="projectType" value="inline"> Inline Solidity</label>
+              <label><input type="radio" name="projectType" value="upload"> ZIP upload</label>
+            </div>
+          </fieldset>
+
+          <div id="github-project" class="project-fields">
+            <label>Repository
+              <input id="github-repository" type="text" placeholder="owner/repository" value="CurveYield/contract-automation">
+            </label>
+            <label>Ref
+              <input id="github-ref" type="text" placeholder="branch, tag, or commit" value="main">
+            </label>
+          </div>
+
+          <div id="inline-project" class="project-fields hidden">
+            <label>Source path
+              <input id="inline-path" type="text" value="Contract.sol">
+            </label>
+            <label>Solidity source
+              <textarea id="inline-source" rows="14" spellcheck="false">// SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
 contract Counter {
     uint256 public value;
     function set(uint256 value_) external { value = value_; }
 }</textarea>
-        </label>
-      </div>
+            </label>
+          </div>
 
-      <div id="upload-project" class="project-fields hidden">
-        <label>Project ZIP (maximum 250 MB)
-          <input id="project-file" type="file" accept=".zip,application/zip">
-        </label>
-      </div>
+          <div id="upload-project" class="project-fields hidden">
+            <label>Project ZIP (maximum 250 MB)
+              <input id="project-file" type="file" accept=".zip,application/zip">
+            </label>
+          </div>
 
-      <div class="columns">
-        <label>Mode
-          <select id="mode">
-            <option value="simulate" selected>Compile + simulate</option>
-            <option value="compile">Compile only</option>
-          </select>
-        </label>
-        <label>Chain
-          <select id="chain">
-            <option value="ethereum">Ethereum</option>
-            <option value="base" selected>Base</option>
-          </select>
-        </label>
-        <label>Fork block
-          <input id="block" type="text" value="latest" placeholder="latest or block number">
-        </label>
-        <label>Solidity compiler
-          <input id="compiler-version" type="text" value="0.8.30" pattern="\d+\.\d+\.\d+">
-        </label>
-        <label>OpenZeppelin version
-          <input id="openzeppelin-version" type="text" placeholder="optional exact version">
-        </label>
-      </div>
+          <div class="columns">
+            <label>Mode
+              <select id="mode">
+                <option value="simulate" selected>Compile + simulate</option>
+                <option value="compile">Compile only</option>
+              </select>
+            </label>
+            <label>Chain
+              <select id="chain">
+                <option value="ethereum">Ethereum</option>
+                <option value="base" selected>Base</option>
+              </select>
+            </label>
+            <label>Fork block
+              <input id="block" type="text" value="latest" placeholder="latest or block number">
+            </label>
+            <label>Solidity compiler
+              <input id="compiler-version" type="text" value="0.8.30" pattern="\d+\.\d+\.\d+">
+            </label>
+            <label>OpenZeppelin version
+              <input id="openzeppelin-version" type="text" placeholder="optional exact version">
+            </label>
+          </div>
 
-      <details>
-        <summary>Compiler settings</summary>
-        <div class="columns detail-grid">
-          <label class="checkbox"><input id="optimizer-enabled" type="checkbox" checked> Enable optimizer</label>
-          <label>Optimizer runs<input id="optimizer-runs" type="number" min="0" max="1000000" value="200"></label>
-          <label class="checkbox"><input id="via-ir" type="checkbox"> Compile via IR</label>
-          <label>EVM version<input id="evm-version" type="text" placeholder="optional, e.g. cancun"></label>
-        </div>
-      </details>
+          <details>
+            <summary>Compiler settings</summary>
+            <div class="columns detail-grid">
+              <label class="checkbox"><input id="optimizer-enabled" type="checkbox" checked> Enable optimizer</label>
+              <label>Optimizer runs<input id="optimizer-runs" type="number" min="0" max="1000000" value="200"></label>
+              <label class="checkbox"><input id="via-ir" type="checkbox"> Compile via IR</label>
+              <label>EVM version<input id="evm-version" type="text" placeholder="optional, e.g. cancun"></label>
+            </div>
+          </details>
 
-      <label>Structured workflow JSON
-        <textarea id="workflow" rows="22" spellcheck="false">{
+          <label>Structured workflow JSON
+            <textarea id="workflow" rows="22" spellcheck="false">{
   "steps": [
     { "action": "deploy", "alias": "counter", "contract": "Counter", "args": [] },
     { "action": "call", "target": "$counter", "function": "set", "args": ["42"] },
     { "action": "assertCall", "target": "$counter", "function": "value", "args": [], "equals": "42" }
   ]
 }</textarea>
-      </label>
+          </label>
 
-      <div class="actions">
-        <button id="submit-job" type="submit">Compile and simulate</button>
-        <button id="load-vault-example" type="button" class="secondary">Load vault example</button>
-      </div>
-    </form>
+          <div class="actions">
+            <button id="submit-job" type="submit">Compile and simulate</button>
+            <button id="load-vault-example" type="button" class="secondary">Load vault example</button>
+          </div>
+        </form>
 
-    <section class="panel wide" aria-labelledby="result-title">
-      <div class="section-heading">
-        <div><p class="eyebrow">Execution</p><h2 id="result-title">Job status</h2></div>
-        <code id="job-id">No job submitted</code>
-      </div>
-      <div id="progress" class="progress" aria-live="polite">Ready.</div>
-      <pre id="result-json" tabindex="0">Results will appear here.</pre>
-      <div class="actions">
-        <button id="download-json" type="button" class="secondary" disabled>Download JSON</button>
-        <button id="open-report" type="button" class="secondary" disabled>Open HTML report</button>
-      </div>
-    </section>
+        <section class="panel" aria-labelledby="result-title">
+          <div class="section-heading">
+            <div><p class="eyebrow">Execution</p><h2 id="result-title">Job status</h2></div>
+            <code id="job-id">No job submitted</code>
+          </div>
+          <div id="progress" class="progress" aria-live="polite">Ready.</div>
+          <pre id="result-json" tabindex="0">Results will appear here.</pre>
+          <div class="actions">
+            <button id="download-json" type="button" class="secondary" disabled>Download JSON</button>
+            <button id="open-report" type="button" class="secondary" disabled>Open HTML report</button>
+          </div>
+        </section>
+      </section>
+    </div>
   </main>
 
   <footer class="shell footer">
