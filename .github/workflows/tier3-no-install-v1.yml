@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - audit-round5/tier3-controller-ui-v1
+  pull_request:
+    branches:
+      - orchestrator/round4-ci-base-v1
   workflow_dispatch:
 
 permissions:
@@ -42,6 +45,7 @@ jobs:
             apps/api/test/controller-entry-v1.test.mjs \
             packages/runner/test/audit-round5-tier3-controller-secret-v1.test.mjs \
             apps/web/test/tier3-client-v1.test.mjs \
+            apps/web/test/controller-view-v1.test.mjs \
             apps/web/test/tier3-operator-shell-v1.test.mjs
 
       - name: Check changed Tier 3 JavaScript syntax
@@ -52,7 +56,16 @@ jobs:
           node --check apps/api/src/controller-adapter-v1.mjs
           node --check apps/api/src/entry.mjs
           node --check apps/web/src/client.mjs
+          node --check apps/web/src/controller-view-v1.mjs
           node --check apps/web/public/app.js
+          node --check scripts/build.mjs
+
+      - name: Assert Pages build copies Tier 3 browser modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "client.mjs'), path.join(output, 'client.js')" scripts/build.mjs >/dev/null
+          grep -F "controller-view-v1.mjs'), path.join(output, 'controller-view.js')" scripts/build.mjs >/dev/null
 
       - name: Assert forbidden execution steps are absent
         shell: bash
