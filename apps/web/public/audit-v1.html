@@ -58,6 +58,72 @@
       <div id="preflight-state" class="state-stack"><p class="empty-state">No preflight loaded.</p></div>
     </section>
 
+    <section class="panel audit-wide command-panel" aria-labelledby="command-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Validated controller mailbox</p><h2 id="command-title">Controller command</h2></div>
+        <span class="badge">UI availability is advisory</span>
+      </div>
+      <form id="audit-command-form">
+        <div class="columns command-columns">
+          <label>Command ID
+            <input id="command-id" type="text" autocomplete="off" placeholder="cmd_…">
+          </label>
+          <label>Command type
+            <select id="command-type">
+              <option value="campaign.create">campaign.create</option>
+              <option value="instruction_read_proof.record">instruction_read_proof.record</option>
+              <option value="campaign.activate">campaign.activate</option>
+              <option value="gate.define">gate.define</option>
+              <option value="gate.record">gate.record</option>
+              <option value="worker.register">worker.register</option>
+              <option value="assignment.publish">assignment.publish</option>
+              <option value="assignment.claim">assignment.claim</option>
+              <option value="assignment.expire">assignment.expire</option>
+              <option value="assignment.submit">assignment.submit</option>
+              <option value="assignment.controller_submit">assignment.controller_submit</option>
+              <option value="review.accept">review.accept</option>
+              <option value="review.reject">review.reject</option>
+              <option value="review.return_for_rework">review.return_for_rework</option>
+              <option value="assignment.supersede">assignment.supersede</option>
+              <option value="campaign.revise_source">campaign.revise_source</option>
+              <option value="publication.record">publication.record</option>
+              <option value="user_delivery.record">user_delivery.record</option>
+              <option value="campaign.evaluate">campaign.evaluate</option>
+            </select>
+          </label>
+          <label>Actor type
+            <select id="actor-type"><option value="controller">controller</option><option value="worker">worker</option></select>
+          </label>
+          <label>Actor ID
+            <input id="actor-id" type="text" value="orchestrator-1" autocomplete="off">
+          </label>
+        </div>
+
+        <fieldset class="command-scope">
+          <legend>Instruction scope</legend>
+          <p class="hint">Required by the controller for substantive work. `instruction_read_proof.record` and `worker.register` use their controller-defined bootstrap rules.</p>
+          <div class="columns command-columns">
+            <label>Session ID<input id="scope-session-id" type="text" autocomplete="off" placeholder="session-…"></label>
+            <label>Role ID<input id="scope-role-id" type="text" autocomplete="off" placeholder="orchestrator"></label>
+            <label>Phase ID<input id="scope-phase-id" type="text" autocomplete="off" placeholder="phase-0"></label>
+            <label>Lease token — transient
+              <input id="lease-token" type="password" autocomplete="off" placeholder="Only when required by this command">
+            </label>
+          </div>
+        </fieldset>
+
+        <label>Command payload JSON
+          <textarea id="command-payload" rows="12" spellcheck="false">{}</textarea>
+        </label>
+        <div class="actions">
+          <button id="submit-command" type="submit">Submit validated request</button>
+          <button id="new-command-id" type="button" class="secondary">New command ID</button>
+        </div>
+        <p id="command-status" class="command-status" aria-live="polite">Load authoritative state before submitting a command.</p>
+        <p class="hint">A successful mailbox post is not proof that the controller accepted a state transition. Reload authoritative state to observe the result. Campaign creation uses the repository intake mailbox only while the project has no active campaign.</p>
+      </form>
+    </section>
+
     <section class="panel audit-wide" aria-labelledby="gates-title">
       <div class="section-heading"><div><p class="eyebrow">10 mandatory phases</p><h2 id="gates-title">Phase and gate status</h2></div><span class="badge" id="gate-progress">0 / 0</span></div>
       <div id="gate-state" class="card-grid"><p class="empty-state">No gates loaded.</p></div>
