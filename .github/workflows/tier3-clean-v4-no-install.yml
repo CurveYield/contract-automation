@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - audit-round5/tier3-controller-ui-v2
+  pull_request:
+    branches:
+      - orchestrator/round4-ci-base-v1
   workflow_dispatch:
 
 permissions:
@@ -23,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Enforce clean candidate boundary
         id: boundary
@@ -130,12 +133,13 @@ jobs:
           set -euo pipefail
           result=PASS
           [[ "$BOUNDARY" == success && "$ENFORCE" == success ]] || result=FAIL
+          verified_sha=$(git rev-parse HEAD)
           gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Clean v4 No-Install Verification
 
 - result: \`$result\`
 - run: \`$GITHUB_RUN_ID\`
-- source SHA: \`$GITHUB_SHA\`
-- branch: \`${{ github.ref_name }}\`
+- source SHA: \`$verified_sha\`
+- event: \`${{ github.event_name }}\`
 - accepted-Lite boundary: \`$BOUNDARY\`
 - current 16.14 protocol: \`$PROTOCOL\`
 - current read adapter: \`$READ_ADAPTER\`
