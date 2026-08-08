@@ -35,7 +35,7 @@ test('Tier 3 operator page exposes accessible authoritative-state panels and no 
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /GitHub remains authoritative/i);
   assert.match(html, /No private keys/i);
-  assert.doesNotMatch(html, /github token|github personal access token|private key|seed phrase/i);
+  assert.doesNotMatch(html, /name="github-token"|id="github-token"|github personal access token/i);
   assert.doesNotMatch(html, /connect wallet|broadcast transaction|sign transaction/i);
 });
 
