@@ -1,9 +1,10 @@
+// Contract Automation API Entry v5
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
 import {
-  controllerCompatibilityResponseV4,
-  controllerProjectionResponseV4
-} from './tier3-controller-adapter-v4.mjs';
+  controllerCompatibilityResponseV5,
+  controllerProjectionResponseV5
+} from './tier3-controller-adapter-v5.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -77,7 +78,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/api/v1/controller/compatibility') {
       const rejected = await requireClientAuthorization(request, env, context);
       if (rejected) return rejected;
-      return withCors(await controllerCompatibilityResponseV4(env), env);
+      return withCors(await controllerCompatibilityResponseV5(env), env);
     }
     const controllerCampaignMatch = url.pathname.match(/^\/api\/v1\/controller\/campaigns\/([^/]+)$/);
     if (request.method === 'GET' && controllerCampaignMatch) {
@@ -86,7 +87,7 @@ export default {
       let campaignId;
       try { campaignId = decodeURIComponent(controllerCampaignMatch[1]); }
       catch { return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400); }
-      return withCors(await controllerProjectionResponseV4(campaignId, env), env);
+      return withCors(await controllerProjectionResponseV5(campaignId, env), env);
     }
     const activeChains = enabledChainMap(env);
     if (request.method === 'GET' && url.pathname === '/api/v1/chains') {
