@@ -46,9 +46,10 @@ test('buildAuditCommandV1 constructs the exact command envelope payload without 
   });
 });
 
-test('buildAuditCommandV1 rejects incomplete scope and non-object payloads', () => {
+test('buildAuditCommandV1 rejects incomplete scope, non-object payloads, and lease tokens embedded in JSON payload', () => {
   assert.throws(() => buildAuditCommandV1({ commandId: 'x', type: 'gate.record', actorType: 'controller', actorId: 'c', payload: [] }), /payload/i);
   assert.throws(() => buildAuditCommandV1({ commandId: 'x', type: 'gate.record', actorType: 'controller', actorId: 'c', payload: {}, instructionScope: { sessionId: 's', roleId: 'orchestrator' } }), /instruction scope/i);
+  assert.throws(() => buildAuditCommandV1({ commandId: 'x', type: 'assignment.claim', actorType: 'worker', actorId: 'w', payload: { leaseToken: 'must-not-live-in-textarea' } }), /transient lease token/i);
 });
 
 test('proof bootstrap commands are advisory-allowed without a previously accepted proof but ordinary work is not', () => {
