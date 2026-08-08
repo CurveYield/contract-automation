@@ -9,6 +9,7 @@ const ISSUE_STATUSES = new Set([
   'HIGH_ISSUE_FOUND',
   'CRITICAL_ISSUE_FOUND',
 ]);
+const PROOF_BOOTSTRAP_COMMANDS = new Set(['instruction_read_proof.record', 'worker.register']);
 
 function assertObject(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${name} must be an object`);
@@ -158,12 +159,15 @@ function deriveLeaseState(assignment, scope) {
 export function deriveOperatorActionsV1(state, scope) {
   assertObject(state, 'state');
   assertObject(scope, 'scope');
-  const authorization = deriveInstructionAuthorizationV1(state, scope);
+  const bootstrapExempt = PROOF_BOOTSTRAP_COMMANDS.has(scope.commandType);
+  const authorization = bootstrapExempt
+    ? Object.freeze({ required: false, status: 'BOOTSTRAP_EXEMPT', proofKey: null })
+    : deriveInstructionAuthorizationV1(state, scope);
   const assignment = scope.assignmentId
     ? (Array.isArray(state.assignments) ? state.assignments.find((entry) => entry?.assignmentId === scope.assignmentId) : null)
     : null;
   const leaseState = scope.assignmentId && !assignment ? 'NOT_FOUND' : deriveLeaseState(assignment, scope);
-  const authorizationAllows = authorization.status === 'ACCEPTED' || authorization.status === 'NOT_REQUIRED';
+  const authorizationAllows = ['ACCEPTED', 'NOT_REQUIRED', 'BOOTSTRAP_EXEMPT'].includes(authorization.status);
   const leaseAllows = !scope.assignmentId || leaseState === 'CURRENT' || leaseState === 'NOT_APPLICABLE';
   const campaignMutable = state.campaign?.status !== 'COMPLETE';
 
@@ -173,4 +177,43 @@ export function deriveOperatorActionsV1(state, scope) {
     substantiveActionAdvisoryAllowed: authorizationAllows && leaseAllows && campaignMutable,
     controllerStillAuthoritative: true,
   });
+}
+
+function validateInstructionScopeForCommand(scope) {
+  if (scope === null || scope === undefined) return null;
+  assertObject(scope, 'instruction scope');
+  for (const field of ['sessionId', 'roleId', 'phaseId']) assertString(scope[field], `instruction scope ${field}`);
+  return {
+    sessionId: scope.sessionId,
+    roleId: scope.roleId,
+    phaseId: scope.phaseId,
+  };
+}
+
+export function buildAuditCommandV1({
+  commandId,
+  type,
+  actorType,
+  actorId,
+  payload,
+  instructionScope = null,
+  leaseToken = '',
+}) {
+  assertString(commandId, 'commandId');
+  assertString(type, 'type');
+  assertString(actorType, 'actorType');
+  assertString(actorId, 'actorId');
+  assertObject(payload, 'payload');
+  const normalizedPayload = structuredClone(payload);
+  const normalizedScope = validateInstructionScopeForCommand(instructionScope);
+  if (normalizedScope) normalizedPayload.instructionScope = normalizedScope;
+  if (typeof leaseToken !== 'string') throw new TypeError('leaseToken must be a string');
+  if (leaseToken.length > 0) normalizedPayload.leaseToken = leaseToken;
+  return {
+    schemaVersion: 1,
+    commandId,
+    type,
+    actor: { type: actorType, id: actorId },
+    payload: normalizedPayload,
+  };
 }
