@@ -5,6 +5,10 @@ import {
   validateCreateJobRequest,
   validateJobResult
 } from '../../../packages/protocol/src/index.mjs';
+import {
+  AuditControllerAdapterError,
+  createAuditControllerAdapterV1
+} from './audit-controller-adapter-v1.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const MAX_JSON_BODY_BYTES = 3 * 1024 * 1024;
@@ -112,7 +116,7 @@ async function parseBody(request, maxBytes = MAX_JSON_BODY_BYTES) {
     }
     const keys = [...form.keys()];
     if (keys.some((key) => key !== 'request')) {
-      throw new ValidationError('unknown_field', 'Form bodies may contain only the request field', '$');
+      throw new ValidationError('unknown_field', 'Multipart form bodies may contain only the request field', '$');
     }
     const value = form.get('request');
     if (typeof value !== 'string' || new TextEncoder().encode(value).byteLength > maxBytes) {
@@ -121,6 +125,34 @@ async function parseBody(request, maxBytes = MAX_JSON_BODY_BYTES) {
     return parseJsonText(value);
   }
   throw new ValidationError('unsupported_content_type', 'Use application/json, application/x-www-form-urlencoded, or multipart/form-data');
+}
+
+function auditControllerAdapter(env) {
+  return createAuditControllerAdapterV1({
+    fetcher: env.FETCH ?? fetch,
+    token: env.GITHUB_TOKEN,
+    owner: env.AUDIT_CONTROLLER_OWNER || 'CurveYield',
+    repo: env.AUDIT_CONTROLLER_REPO || 'audit-controller',
+    mainRef: env.AUDIT_CONTROLLER_REF || 'main',
+    expectedControllerCommit: env.AUDIT_CONTROLLER_COMMIT || null,
+    expectedSkillReleaseIdentity: env.AUDIT_CONTROLLER_SKILL_RELEASE || 'ai-auditor-deep-assurance-v6@16.13.0',
+    automationRelease: env.AUTOMATION_RELEASE || 'contract-automation@round5-tier3-v1'
+  });
+}
+
+async function handleAuditCommand(request, env, projectSlug) {
+  const body = await parseBody(request, 512 * 1024);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new ValidationError('invalid_audit_command', 'Audit command body must be an object', '$');
+  }
+  const keys = Object.keys(body);
+  if (keys.length !== 1 || keys[0] !== 'command') {
+    throw new ValidationError('unknown_field', 'Audit command body may contain only the command field', '$');
+  }
+  if (!body.command || typeof body.command !== 'object' || Array.isArray(body.command)) {
+    throw new ValidationError('invalid_audit_command', 'body.command must be an object', '$.command');
+  }
+  return json(await auditControllerAdapter(env).submitCommand({ projectSlug, command: body.command }), 202);
 }
 
 function jobKey(jobId, name) {
@@ -339,7 +371,6 @@ async function handleGetStatus(env, jobId) {
   return status ? json(status) : error('not_found', 'Job not found', 404);
 }
 
-
 function summarizeJob(status, result = null) {
   if (!result) {
     return {
@@ -494,10 +525,20 @@ async function route(request, env) {
   }
 
   if (request.method === 'GET' && path === '/api/v1/chains') return json({ chains: CHAINS });
+  if (request.method === 'GET' && path === '/api/v1/audit/compatibility') {
+    return json(auditControllerAdapter(env).getCompatibility());
+  }
   if (request.method === 'POST' && path === '/api/v1/uploads') return handleUpload(request, env);
   if (request.method === 'POST' && path === '/api/v1/jobs') return handleCreateJob(request, env);
 
-  let match = path.match(/^\/api\/v1\/jobs\/(job_[A-Za-z0-9]+)$/);
+  let match = path.match(/^\/api\/v1\/audit\/projects\/([a-z0-9][a-z0-9-]{0,63})$/);
+  if (request.method === 'GET' && match) {
+    return json(await auditControllerAdapter(env).getProject(match[1]));
+  }
+  match = path.match(/^\/api\/v1\/audit\/projects\/([a-z0-9][a-z0-9-]{0,63})\/commands$/);
+  if (request.method === 'POST' && match) return handleAuditCommand(request, env, match[1]);
+
+  match = path.match(/^\/api\/v1\/jobs\/(job_[A-Za-z0-9]+)$/);
   if (request.method === 'GET' && match) return handleGetStatus(env, match[1]);
   match = path.match(/^\/api\/v1\/jobs\/(job_[A-Za-z0-9]+)\/summary$/);
   if (request.method === 'GET' && match) return handleGetSummary(env, match[1]);
@@ -523,6 +564,9 @@ export default {
     try {
       return withCors(await route(request, env), env);
     } catch (cause) {
+      if (cause instanceof AuditControllerAdapterError) {
+        return withCors(error(cause.code, cause.message, cause.status), env);
+      }
       if (cause instanceof ValidationError) {
         return withCors(error(cause.code, cause.message, 400, { path: cause.path }), env);
       }
