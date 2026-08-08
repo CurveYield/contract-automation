@@ -89,15 +89,15 @@ PAGES_PROJECT_NAME=curveyield-preflight
 PREFLIGHTSIM_ALLOWED_GITHUB_USERS=James-Nexus
 ```
 
-## Tier 3 production deployment v2
+## Tier 3 production deployment v3
 
-The Tier 3 production workflow is `.github/workflows/tier3-production-deploy-v2.yml`. It does not support an ordinary manual deployment. It runs only when the accepted Round 5 release branch receives the one-shot request file:
+The current Tier 3 production workflow is `.github/workflows/tier3-production-deploy-v3.yml`. It supersedes the untriggered v2 deployment workflow and fixes the accepted-release verification checkout by using full Git history. It does not support an ordinary manual production deployment. It runs only when the accepted Round 5 release branch receives the one-shot request file:
 
 ```text
-.agent-control/v1/orchestrator/TIER3_PRODUCTION_DEPLOY_REQUEST_v2.json
+.agent-control/v1/orchestrator/TIER3_PRODUCTION_DEPLOY_REQUEST_v3.json
 ```
 
-The request must bind the exact pre-request release SHA and explicitly authorize both deployment and dependency installation while preserving `walletSigningAllowed=false`, `publicTransactionBroadcastAllowed=false`, and `activeNetworks=["ethereum","base"]`.
+The request schema is `round5-tier3-production-deploy-request-v3`. The request must bind the exact pre-request release SHA and explicitly authorize both deployment and dependency installation while preserving `walletSigningAllowed=false`, `publicTransactionBroadcastAllowed=false`, and `activeNetworks=["ethereum","base"]`.
 
 The account owner explicitly authorized the pinned dependency-install/deployment path for this Tier 3 release. The workflow therefore runs:
 
@@ -108,9 +108,9 @@ npm run lint
 npm run build
 ```
 
-and then uses `npx --no-install wrangler` for R2, Worker, and Pages operations. The install occurs only inside the trusted GitHub Actions deployment run after exact-source/request validation.
+and then uses `npx --no-install wrangler` for R2, Worker, and Pages operations. There is no explicit Foundry, Hardhat, Forge, or `solc` compilation command in the Tier 3 production workflow. The install occurs only inside the trusted GitHub Actions deployment run after exact-source/request validation.
 
-Before deployment the workflow verifies the accepted Lite source boundary, required production configuration names, intake issue 64, and Ethereum/Base-only scope. After deployment it verifies Worker health, Tier 3 readiness, exact controller compatibility, exact `/api/v1/chains`, the root Deep Assurance marker, the `/execution/` PreflightSim Lite marker, and production controller-route CORS.
+Before deployment the workflow checks out full history, verifies the accepted Lite source boundary against `2df81aacb6f5747f06b49297e89e02c3f013d4ef`, verifies required production configuration names, intake issue 64, and Ethereum/Base-only scope. After deployment it verifies Worker health, Tier 3 readiness, exact controller compatibility, exact `/api/v1/chains`, the root Deep Assurance marker, the `/execution/` PreflightSim Lite marker, and production controller-route CORS.
 
 A sanitized deployment receipt is posted to issue #170. A successful deployment creates the exact candidate for independent Worker 4 Stage 7 acceptance under issue #132; it is not final Round 5 sign-off by itself.
 
