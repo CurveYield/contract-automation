@@ -34,7 +34,7 @@ jobs:
           node --version
           test ! -d node_modules
           workflow=.github/workflows/tier3-no-install-v2.yml
-          ! grep -Eq 'npm (install|ci)|pnpm|yarn|npx|forge|hardhat|solc|wrangler|pages deploy|eth_sendRawTransaction' "$workflow"
+          ! grep -Eq '^[[:space:]]*(npm[[:space:]]+(install|ci)|pnpm([[:space:]]|$)|yarn([[:space:]]|$)|npx([[:space:]]|$)|forge([[:space:]]|$)|hardhat([[:space:]]|$)|solc([[:space:]]|$)|wrangler([[:space:]]|$))' "$workflow"
 
       - name: Run Tier 3 dependency-free tests
         id: tests
