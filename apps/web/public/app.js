@@ -1,4 +1,5 @@
 import { createApiClient } from './client.js';
+import { assertTier3BrowserCompatibilityV1, controllerViewModelV1 } from './controller-view.js';
 
 const elements = Object.fromEntries([...document.querySelectorAll('[id]')].map((element) => [element.id, element]));
 let latestResult = null;
@@ -84,27 +85,8 @@ function shortSha(value) {
   return typeof value === 'string' && value.length >= 12 ? value.slice(0, 12) : value;
 }
 
-function verifyControllerCompatibility(compatibility) {
-  if (compatibility?.adapterVersion !== 'tier3-controller-adapter-v1') {
-    throw new Error('This browser release is incompatible with the controller adapter.');
-  }
-  const chains = compatibility?.networkScope?.chains;
-  if (!Array.isArray(chains)
-      || chains.length !== 2
-      || chains[0] !== 'ethereum'
-      || chains[1] !== 'base'
-      || compatibility?.networkScope?.defaultChain !== 'base') {
-    throw new Error('Controller network scope does not match the accepted Ethereum/Base release.');
-  }
-  if (compatibility?.controller?.processId !== 'deep-assurance-v6') {
-    throw new Error('Controller process identity does not match Deep Assurance v6.');
-  }
-  if (compatibility?.controller?.instructionReleaseIdentity !== 'ai-auditor-deep-assurance-v6@16.13.0') {
-    throw new Error('Controller instruction release is incompatible with this browser release.');
-  }
-}
-
 function renderCompatibility(compatibility) {
+  assertTier3BrowserCompatibilityV1(compatibility);
   setText(
     'controller-release',
     `${compatibility.controller.repository} @ ${shortSha(compatibility.controller.compatibilityCommit)}`
@@ -112,20 +94,20 @@ function renderCompatibility(compatibility) {
   setText('instruction-release', compatibility.controller.instructionReleaseIdentity);
 }
 
-function renderNoActiveCampaign(project) {
-  setText('active-campaign', 'No active campaign');
-  setText('campaign-source', '—');
-  resetControllerSummaries('Not applicable — no active campaign is authorized.');
-  setControllerState(`No active campaign for ${project.projectSlug}: ${project.reason}.`);
-}
-
-function renderActivePointer(project) {
-  setText('active-campaign', project.activeCampaignId);
-  setText('campaign-source', `${project.source.repository} @ ${shortSha(project.source.commit)}`);
-  resetControllerSummaries('Awaiting authoritative campaign projection from the pinned controller release.');
-  setControllerState(
-    `Active controller pointer verified on ${project.authoritativeControllerBranch} @ ${shortSha(project.authoritativeControllerCommit)}. Full campaign state is not inferred from branch activity.`
-  );
+function renderControllerView(view) {
+  setControllerState(view.stateMessage);
+  setText('controller-release', view.controllerRelease);
+  setText('instruction-release', view.instructionRelease);
+  setText('active-campaign', view.activeCampaign);
+  setText('campaign-source', view.campaignSource);
+  setText('phase-summary', view.phaseSummary);
+  setText('lane-summary', view.laneSummary);
+  setText('instruction-proof-summary', view.instructionProofSummary);
+  setText('assignment-summary', view.assignmentSummary);
+  setText('finding-summary', view.findingSummary);
+  setText('remediation-summary', view.remediationSummary);
+  setText('evidence-summary', view.evidenceSummary);
+  setText('finalization-summary', view.finalizationSummary);
 }
 
 async function loadController() {
@@ -142,20 +124,17 @@ async function loadController() {
   try {
     const api = client();
     const compatibility = await api.getControllerCompatibility();
-    verifyControllerCompatibility(compatibility);
     renderCompatibility(compatibility);
     setControllerState('Compatibility accepted. Loading authoritative project pointer…');
     const result = await api.getControllerProject(projectSlug);
-    verifyControllerCompatibility(result);
-    renderCompatibility(result);
-    if (result.project?.status === 'NO_ACTIVE_CAMPAIGN') {
-      renderNoActiveCampaign(result.project);
-    } else if (result.project?.status === 'ACTIVE') {
-      renderActivePointer(result.project);
-    } else {
+    assertTier3BrowserCompatibilityV1(result);
+    if (result.project?.status !== 'NO_ACTIVE_CAMPAIGN' && result.project?.status !== 'ACTIVE') {
       throw new Error('Controller returned an unsupported project state.');
     }
-    elements['service-state'].textContent = 'Controller connected';
+    renderControllerView(controllerViewModelV1(result));
+    elements['service-state'].textContent = result.project.status === 'ACTIVE'
+      ? 'Tier 3 campaign connected'
+      : 'Controller connected';
   } catch (error) {
     setText('active-campaign', 'Unavailable');
     setText('campaign-source', 'Unavailable');
@@ -239,12 +218,11 @@ elements['test-connection'].addEventListener('click', async () => {
       api.getChains(),
       api.getControllerCompatibility()
     ]);
-    verifyControllerCompatibility(compatibility);
     renderCompatibility(compatibility);
     syncChainOptions(chainsResponse.chains);
     elements['service-state'].textContent = 'API + controller ready';
     setProgress('API connection succeeded.');
-    setControllerState('Controller compatibility accepted. Load a project to inspect the authoritative pointer.');
+    setControllerState('Controller compatibility accepted. Load a project to inspect authoritative Tier 3 state.');
   } catch (error) {
     elements['service-state'].textContent = 'Connection failed';
     setProgress(error.message, true);
