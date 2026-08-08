@@ -29,9 +29,31 @@ export function createApiClient({ apiUrl, apiKey, fetcher = fetch, sleep = (ms) 
     return response;
   }
 
+  function auditProjectPath(projectSlug) {
+    if (typeof projectSlug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(projectSlug)) {
+      throw new ApiError('invalid_project_slug', 'Audit project slug is invalid', 400);
+    }
+    return `/api/v1/audit/projects/${encodeURIComponent(projectSlug)}`;
+  }
+
   return {
     async getChains() {
       return (await request('/api/v1/chains')).json();
+    },
+
+    async getAuditCompatibility() {
+      return (await request('/api/v1/audit/compatibility')).json();
+    },
+
+    async getAuditProject(projectSlug) {
+      return (await request(auditProjectPath(projectSlug))).json();
+    },
+
+    async submitAuditCommand(projectSlug, command) {
+      return (await request(`${auditProjectPath(projectSlug)}/commands`, {
+        method: 'POST',
+        body: JSON.stringify({ command })
+      })).json();
     },
 
     async uploadProject(file) {
