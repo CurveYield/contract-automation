@@ -13,7 +13,7 @@
     <div>
       <p class="eyebrow">CurveYield security infrastructure</p>
       <h1>Deep Assurance Operator Console</h1>
-      <p class="lede">Inspect authoritative Deep Assurance campaign state, instruction-read authorization, review lanes, findings, remediation, evidence and finalization. Trusted compilation and live-fork simulation remain available below as an execution subsystem.</p>
+      <p class="lede">Inspect authoritative Deep Assurance campaign state, instruction-read authorization, review lanes, workers, assignments, findings, remediation, evidence, event provenance and finalization. Trusted compilation and live-fork simulation remain available below as an execution subsystem.</p>
     </div>
     <div class="status-pill" id="service-state" aria-live="polite">Not connected</div>
   </header>
@@ -35,7 +35,7 @@
     <section class="panel wide tier3-panel" aria-labelledby="controller-title">
       <div class="section-heading">
         <div><p class="eyebrow">Tier 3 control plane</p><h2 id="controller-title">Audit-controller</h2></div>
-        <span class="badge">GitHub authoritative · read-only adapter v2</span>
+        <span class="badge">GitHub authoritative · read-only adapter v3</span>
       </div>
       <div class="tier3-toolbar">
         <label>Campaign ID
@@ -63,13 +63,16 @@
       <div class="tier3-details">
         <details open><summary>Phases and gates</summary><pre id="controller-phases" tabindex="0">No campaign loaded.</pre></details>
         <details open><summary>Review lanes</summary><pre id="controller-lanes" tabindex="0">No campaign loaded.</pre></details>
+        <details open><summary>Workers and sessions</summary><pre id="controller-workers" tabindex="0">No campaign loaded.</pre></details>
+        <details open><summary>Assignments, leases, submissions and reviews</summary><pre id="controller-assignments" tabindex="0">No campaign loaded.</pre></details>
         <details open><summary>Instruction proofs</summary><pre id="controller-proofs" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Findings and severity</summary><pre id="controller-findings" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Remediation review</summary><pre id="controller-remediation" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Execution evidence</summary><pre id="controller-evidence" tabindex="0">No campaign loaded.</pre></details>
+        <details><summary>Event-chain provenance</summary><pre id="controller-provenance" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Final report and exact release</summary><pre id="controller-report" tabindex="0">No campaign loaded.</pre></details>
       </div>
-      <p class="tier3-readonly">The v2 browser resolves every live controller read to an exact Git commit and verifies it against an immutable protocol SHA. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
+      <p class="tier3-readonly">The v3 browser resolves every live controller read to an exact Git commit and verifies it against an immutable protocol SHA. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
     </section>
 
     <form id="job-form" class="panel wide">
@@ -187,6 +190,6 @@ contract Counter {
   </footer>
 
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./tier3-operator-v2.js"></script>
+  <script type="module" src="./tier3-operator-v3.js"></script>
 </body>
 </html>
