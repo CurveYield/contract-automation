@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Deep Assurance Operator Console v4 -->
+<!-- Deep Assurance Operator Console v5 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -30,13 +30,13 @@
       </label>
       <label class="checkbox"><input id="remember-key" type="checkbox"> Remember key in this browser</label>
       <button id="test-connection" type="button" class="secondary">Test execution API</button>
-      <p class="tier3-readonly">Controller access uses a separate server-side least-privilege GitHub credential. Browser API keys never expose the controller credential.</p>
+      <p class="tier3-readonly">Controller access uses separate server-side GitHub credentials. Browser API keys never expose controller repository credentials.</p>
     </section>
 
     <section class="panel wide tier3-panel" aria-labelledby="controller-title">
       <div class="section-heading">
         <div><p class="eyebrow">Tier 3 control plane</p><h2 id="controller-title">Audit-controller</h2></div>
-        <span class="badge">GitHub authoritative · freshness-enforced read adapter v5</span>
+        <span class="badge">GitHub authoritative · adapter v6</span>
       </div>
       <div class="tier3-toolbar">
         <label>Campaign ID
@@ -62,6 +62,44 @@
         <div class="tier3-card"><dt>Security verdict</dt><dd id="security-verdict">—</dd></div>
       </dl>
 
+      <section class="tier3-command-console" aria-labelledby="controller-command-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Validated mailbox action</p><h3 id="controller-command-title">Controller command</h3></div>
+          <span class="badge">Session capability required</span>
+        </div>
+        <p class="tier3-readonly">A command is submitted as the controller's exact structured GitHub envelope to the mailbox issue bound by a controller-issued session authorization. Submission does not mean the controller accepted or applied the command; reload authoritative campaign state after reconciliation.</p>
+        <div class="columns">
+          <label>Authorization ID
+            <input id="controller-authorization-id" type="text" autocomplete="off" placeholder="controller-issued authorization ID">
+          </label>
+          <label>Capability token
+            <input id="controller-capability-token" type="password" autocomplete="off" placeholder="one session capability token">
+          </label>
+        </div>
+        <label>Controller command JSON
+          <textarea id="controller-command-json" rows="14" spellcheck="false">{
+  "schemaVersion": 1,
+  "commandId": "replace-with-unique-command-id",
+  "type": "assignment.claim",
+  "actor": { "type": "worker", "id": "replace-worker-id" },
+  "payload": {
+    "assignmentId": "replace-assignment-id",
+    "workerId": "replace-worker-id",
+    "leaseToken": "replace-lease-token",
+    "instructionScope": {
+      "sessionId": "replace-session-id",
+      "roleId": "replace-role-id",
+      "phaseId": "replace-phase-id"
+    }
+  }
+}</textarea>
+        </label>
+        <div class="actions">
+          <button id="controller-submit-command" type="button" disabled aria-disabled="true">Submit controller command</button>
+        </div>
+        <div id="controller-command-status" class="tier3-status" role="status" aria-live="polite">Controller command publication is disabled until compatibility is checked.</div>
+      </section>
+
       <div class="tier3-details">
         <details open><summary>Phases and gates</summary><pre id="controller-phases" tabindex="0">No campaign loaded.</pre></details>
         <details open><summary>Review lanes</summary><pre id="controller-lanes" tabindex="0">No campaign loaded.</pre></details>
@@ -74,7 +112,7 @@
         <details><summary>Event-chain provenance</summary><pre id="controller-provenance" tabindex="0">No campaign loaded.</pre></details>
         <details><summary>Final report and exact release</summary><pre id="controller-report" tabindex="0">No campaign loaded.</pre></details>
       </div>
-      <p class="tier3-readonly">The v4 browser verifies each projection against the exact latest Git commit that touched its bound campaign directory. State-changing controls remain disabled until actor/session authentication can be bound to the controller's instruction-proof and lease rules without impersonation.</p>
+      <p class="tier3-readonly">The v5 browser verifies each projection against the exact latest Git commit that touched its bound campaign directory. State-changing commands can only be published when the server explicitly enables <code>session-capability-mailbox-v1</code>; the audit-controller still validates instruction proofs, leases, gates, evidence, replay/idempotency and finalization before state changes.</p>
     </section>
 
     <form id="job-form" class="panel wide">
@@ -192,6 +230,6 @@ contract Counter {
   </footer>
 
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./tier3-operator-v4.js"></script>
+  <script type="module" src="./tier3-operator-v5.js"></script>
 </body>
 </html>
