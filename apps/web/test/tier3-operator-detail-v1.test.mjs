@@ -4,19 +4,22 @@ import { readFile } from 'node:fs/promises';
 
 const indexUrl = new URL('../public/index.html', import.meta.url);
 const appUrl = new URL('../public/app.js', import.meta.url);
+const viewUrl = new URL('../src/controller-view-v1.mjs', import.meta.url);
 const stylesUrl = new URL('../public/styles.css', import.meta.url);
 
 async function source() {
-  const [html, app, styles] = await Promise.all([
+  const [html, app, view, styles] = await Promise.all([
     readFile(indexUrl, 'utf8'),
     readFile(appUrl, 'utf8'),
+    readFile(viewUrl, 'utf8'),
     readFile(stylesUrl, 'utf8'),
   ]);
-  return { html, app, styles };
+  return { html, app, view, styles };
 }
 
-test('operator page exposes bounded detail regions for every canonical Tier 3 projection class', async () => {
-  const { html } = await source();
+test('operator UI exposes bounded detail regions for every canonical Tier 3 projection class', async () => {
+  const { html, view } = await source();
+  const surface = `${html}\n${view}`;
   for (const id of [
     'capability-detail',
     'gate-detail-body',
@@ -28,24 +31,21 @@ test('operator page exposes bounded detail regions for every canonical Tier 3 pr
     'report-detail',
     'event-detail-body',
   ]) {
-    assert.match(html, new RegExp(`id="${id}"`), `missing #${id}`);
+    assert.match(surface, new RegExp(id), `missing ${id}`);
   }
-  assert.match(html, /<th scope="col">Gate<\/th>/);
-  assert.match(html, /<th scope="col">Worker<\/th>/);
-  assert.match(html, /<th scope="col">Assignment<\/th>/);
-  assert.match(html, /<th scope="col">Proof actor<\/th>/);
-  assert.match(html, /<th scope="col">Finding<\/th>/);
-  assert.match(html, /<th scope="col">Sequence<\/th>/);
+  for (const heading of ['Gate', 'Worker', 'Assignment', 'Proof actor', 'Finding', 'Sequence']) {
+    assert.match(view, new RegExp(`['\"]${heading}['\"]`), `missing detail heading ${heading}`);
+  }
 });
 
-test('operator JavaScript renders detail model with node creation and never raw HTML', async () => {
-  const { app } = await source();
-  assert.match(app, /controllerDetailModelV1/);
-  assert.match(app, /renderControllerDetails/);
-  assert.match(app, /document\.createElement\('tr'\)/);
-  assert.match(app, /replaceChildren/);
-  assert.doesNotMatch(app, /\.innerHTML\s*=/);
-  assert.doesNotMatch(app, /insertAdjacentHTML/);
+test('controller view renders detail model with node creation and never raw HTML', async () => {
+  const { app, view } = await source();
+  assert.match(view, /controllerDetailModelV1/);
+  assert.match(view, /renderControllerDetails/);
+  assert.match(view, /document\.createElement\('tr'\)/);
+  assert.match(view, /replaceChildren/);
+  assert.doesNotMatch(`${app}\n${view}`, /\.innerHTML\s*=/);
+  assert.doesNotMatch(`${app}\n${view}`, /insertAdjacentHTML/);
 });
 
 test('detail table styling remains scrollable and responsive', async () => {
