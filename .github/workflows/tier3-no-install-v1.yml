@@ -42,6 +42,7 @@ jobs:
           node --test \
             packages/protocol/test/tier3-controller-v1.test.mjs \
             apps/api/test/controller-adapter-v1.test.mjs \
+            apps/api/test/controller-command-adapter-v1.test.mjs \
             apps/api/test/controller-entry-v1.test.mjs \
             packages/runner/test/audit-round5-tier3-controller-secret-v1.test.mjs \
             apps/web/test/tier3-client-v1.test.mjs \
@@ -54,6 +55,7 @@ jobs:
           set -euo pipefail
           node --check packages/protocol/src/tier3-controller-v1.mjs
           node --check apps/api/src/controller-adapter-v1.mjs
+          node --check apps/api/src/controller-command-adapter-v1.mjs
           node --check apps/api/src/entry.mjs
           node --check apps/web/src/client.mjs
           node --check apps/web/src/controller-view-v1.mjs
