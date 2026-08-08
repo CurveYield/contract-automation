@@ -16,6 +16,30 @@ function setProgress(message, isError = false) {
   elements.progress.style.borderColor = isError ? 'var(--danger)' : 'var(--accent)';
 }
 
+function setControllerState(message, isError = false) {
+  elements['controller-state'].textContent = message;
+  elements['controller-state'].dataset.state = isError ? 'error' : 'ok';
+}
+
+function setText(id, value) {
+  elements[id].textContent = value;
+}
+
+function resetControllerSummaries(message) {
+  for (const id of [
+    'phase-summary',
+    'lane-summary',
+    'instruction-proof-summary',
+    'assignment-summary',
+    'finding-summary',
+    'remediation-summary',
+    'evidence-summary',
+    'finalization-summary'
+  ]) {
+    setText(id, message);
+  }
+}
+
 function credentials() {
   const apiUrl = elements['api-url'].value.trim().replace(/\/$/, '');
   const apiKey = elements['api-key'].value.trim();
@@ -46,6 +70,103 @@ function updateProjectFields() {
   elements['upload-project'].classList.toggle('hidden', type !== 'upload');
 }
 
+function showWorkspace(name) {
+  const showAudit = name === 'audit';
+  elements['audit-workspace'].classList.toggle('hidden', !showAudit);
+  elements['execution-workspace'].classList.toggle('hidden', showAudit);
+  elements['show-audit-workspace'].classList.toggle('secondary', !showAudit);
+  elements['show-execution-workspace'].classList.toggle('secondary', showAudit);
+  elements['show-audit-workspace'].setAttribute('aria-pressed', String(showAudit));
+  elements['show-execution-workspace'].setAttribute('aria-pressed', String(!showAudit));
+}
+
+function shortSha(value) {
+  return typeof value === 'string' && value.length >= 12 ? value.slice(0, 12) : value;
+}
+
+function verifyControllerCompatibility(compatibility) {
+  if (compatibility?.adapterVersion !== 'tier3-controller-adapter-v1') {
+    throw new Error('This browser release is incompatible with the controller adapter.');
+  }
+  const chains = compatibility?.networkScope?.chains;
+  if (!Array.isArray(chains)
+      || chains.length !== 2
+      || chains[0] !== 'ethereum'
+      || chains[1] !== 'base'
+      || compatibility?.networkScope?.defaultChain !== 'base') {
+    throw new Error('Controller network scope does not match the accepted Ethereum/Base release.');
+  }
+  if (compatibility?.controller?.processId !== 'deep-assurance-v6') {
+    throw new Error('Controller process identity does not match Deep Assurance v6.');
+  }
+  if (compatibility?.controller?.instructionReleaseIdentity !== 'ai-auditor-deep-assurance-v6@16.13.0') {
+    throw new Error('Controller instruction release is incompatible with this browser release.');
+  }
+}
+
+function renderCompatibility(compatibility) {
+  setText(
+    'controller-release',
+    `${compatibility.controller.repository} @ ${shortSha(compatibility.controller.compatibilityCommit)}`
+  );
+  setText('instruction-release', compatibility.controller.instructionReleaseIdentity);
+}
+
+function renderNoActiveCampaign(project) {
+  setText('active-campaign', 'No active campaign');
+  setText('campaign-source', '—');
+  resetControllerSummaries('Not applicable — no active campaign is authorized.');
+  setControllerState(`No active campaign for ${project.projectSlug}: ${project.reason}.`);
+}
+
+function renderActivePointer(project) {
+  setText('active-campaign', project.activeCampaignId);
+  setText('campaign-source', `${project.source.repository} @ ${shortSha(project.source.commit)}`);
+  resetControllerSummaries('Awaiting authoritative campaign projection from the pinned controller release.');
+  setControllerState(
+    `Active controller pointer verified on ${project.authoritativeControllerBranch} @ ${shortSha(project.authoritativeControllerCommit)}. Full campaign state is not inferred from branch activity.`
+  );
+}
+
+async function loadController() {
+  const projectSlug = elements['controller-project-slug'].value.trim();
+  if (!projectSlug) {
+    setControllerState('Controller project slug is required.', true);
+    return;
+  }
+  elements['load-controller-project'].disabled = true;
+  setControllerState('Loading exact controller compatibility…');
+  setText('active-campaign', 'Loading…');
+  setText('campaign-source', 'Loading…');
+  resetControllerSummaries('Loading…');
+  try {
+    const api = client();
+    const compatibility = await api.getControllerCompatibility();
+    verifyControllerCompatibility(compatibility);
+    renderCompatibility(compatibility);
+    setControllerState('Compatibility accepted. Loading authoritative project pointer…');
+    const result = await api.getControllerProject(projectSlug);
+    verifyControllerCompatibility(result);
+    renderCompatibility(result);
+    if (result.project?.status === 'NO_ACTIVE_CAMPAIGN') {
+      renderNoActiveCampaign(result.project);
+    } else if (result.project?.status === 'ACTIVE') {
+      renderActivePointer(result.project);
+    } else {
+      throw new Error('Controller returned an unsupported project state.');
+    }
+    elements['service-state'].textContent = 'Controller connected';
+  } catch (error) {
+    setText('active-campaign', 'Unavailable');
+    setText('campaign-source', 'Unavailable');
+    resetControllerSummaries('Unavailable until the controller state is loaded safely.');
+    setControllerState(error.message, true);
+    elements['service-state'].textContent = 'Controller unavailable';
+  } finally {
+    elements['load-controller-project'].disabled = false;
+  }
+}
+
 function syncChainOptions(chains) {
   const entries = Object.entries(chains).filter(([name]) => name === 'ethereum' || name === 'base');
   const current = elements.chain.value;
@@ -62,6 +183,15 @@ function syncChainOptions(chains) {
 }
 
 document.querySelectorAll('input[name="projectType"]').forEach((radio) => radio.addEventListener('change', updateProjectFields));
+elements['show-audit-workspace'].addEventListener('click', () => showWorkspace('audit'));
+elements['show-execution-workspace'].addEventListener('click', () => showWorkspace('execution'));
+elements['load-controller-project'].addEventListener('click', loadController);
+elements['controller-project-slug'].addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    loadController();
+  }
+});
 
 async function projectPayload(api) {
   const type = selectedProjectType();
@@ -104,13 +234,21 @@ function download(name, content, type) {
 elements['test-connection'].addEventListener('click', async () => {
   try {
     elements['service-state'].textContent = 'Testing…';
-    const response = await client().getChains();
-    syncChainOptions(response.chains);
-    elements['service-state'].textContent = `${Object.keys(response.chains).length} chains available`;
+    const api = client();
+    const [chainsResponse, compatibility] = await Promise.all([
+      api.getChains(),
+      api.getControllerCompatibility()
+    ]);
+    verifyControllerCompatibility(compatibility);
+    renderCompatibility(compatibility);
+    syncChainOptions(chainsResponse.chains);
+    elements['service-state'].textContent = 'API + controller ready';
     setProgress('API connection succeeded.');
+    setControllerState('Controller compatibility accepted. Load a project to inspect the authoritative pointer.');
   } catch (error) {
     elements['service-state'].textContent = 'Connection failed';
     setProgress(error.message, true);
+    setControllerState(error.message, true);
   }
 });
 
@@ -156,7 +294,7 @@ elements['job-form'].addEventListener('submit', async (event) => {
     elements['result-json'].textContent = JSON.stringify(latestResult, null, 2);
     elements['download-json'].disabled = false;
     elements['open-report'].disabled = false;
-    setProgress(`Job ${terminal.status}.` , terminal.status === 'failed');
+    setProgress(`Job ${terminal.status}.`, terminal.status === 'failed');
   } catch (error) {
     setProgress(error.message, true);
     elements['result-json'].textContent = JSON.stringify({ error: error.message, code: error.code }, null, 2);
@@ -202,5 +340,8 @@ elements['load-vault-example'].addEventListener('click', async () => {
       { action: 'call', target: '$vault', function: 'withdraw', args: ['50000000000000000000'] }
     ]
   }, null, 2);
+  showWorkspace('execution');
   setProgress('Vault example loaded. Deploy the repository first or replace it with your own project.');
 });
+
+showWorkspace('audit');
