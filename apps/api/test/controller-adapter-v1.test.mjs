@@ -59,7 +59,7 @@ test('readiness requires browser API auth and a dedicated audit-controller GitHu
 });
 
 test('controller routes accept only the browser client identity', async () => {
-  for (const token of [undefined, 'gpt-secret', 'bridge-secret', 'runner-secret', 'wrong']) {
+  for (const token of [null, 'gpt-secret', 'bridge-secret', 'runner-secret', 'wrong']) {
     const response = await handleControllerRouteV1(request('/api/v1/controller/compatibility', token), env());
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), {
