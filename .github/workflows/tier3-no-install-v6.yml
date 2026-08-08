@@ -1,0 +1,139 @@
+name: Tier 3 No-Install Verification v6
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-no-install-v6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Boundary
+        id: boundary
+        run: test ! -d node_modules
+
+      - name: Protocol identities
+        id: protocol_identities
+        continue-on-error: true
+        run: node --test --test-name-pattern="exact hosted Tier 3 v1 compatibility identities" packages/protocol/test/tier3-controller-v1.test.mjs
+      - name: Protocol strict compatibility
+        id: protocol_strict
+        continue-on-error: true
+        run: node --test --test-name-pattern="accepts only the exact canonical hosted controller release" packages/protocol/test/tier3-controller-v1.test.mjs
+      - name: Protocol frozen constants
+        id: protocol_frozen
+        continue-on-error: true
+        run: node --test --test-name-pattern="compatibility constants are frozen" packages/protocol/test/tier3-controller-v1.test.mjs
+
+      - name: Command envelope
+        id: command_envelope
+        continue-on-error: true
+        run: node --test --test-name-pattern="renders exactly one canonical" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command create intake
+        id: command_create
+        continue-on-error: true
+        run: node --test --test-name-pattern="campaign.create can queue" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command active-create reject
+        id: command_create_reject
+        continue-on-error: true
+        run: node --test --test-name-pattern="campaign.create is rejected" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command tombstone active reject
+        id: command_no_active
+        continue-on-error: true
+        run: node --test --test-name-pattern="active commands are rejected" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command active mailbox
+        id: command_active
+        continue-on-error: true
+        run: node --test --test-name-pattern="active command queues only" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command request rejection
+        id: command_reject
+        continue-on-error: true
+        run: node --test --test-name-pattern="mailbox route rejects" apps/api/test/controller-command-adapter-v1.test.mjs
+      - name: Command upstream failure
+        id: command_upstream
+        continue-on-error: true
+        run: node --test --test-name-pattern="GitHub write failures" apps/api/test/controller-command-adapter-v1.test.mjs
+
+      - name: Detail capabilities and gates
+        id: detail_gates
+        continue-on-error: true
+        run: node --test --test-name-pattern="detail capabilities and gates" apps/web/test/controller-detail-model-diagnostic-v1.test.mjs
+      - name: Detail workers assignments proofs
+        id: detail_assignments
+        continue-on-error: true
+        run: node --test --test-name-pattern="detail workers assignments" apps/web/test/controller-detail-model-diagnostic-v1.test.mjs
+      - name: Detail findings terminal events
+        id: detail_terminal
+        continue-on-error: true
+        run: node --test --test-name-pattern="detail findings remediation" apps/web/test/controller-detail-model-diagnostic-v1.test.mjs
+
+      - name: Enforce
+        id: enforce
+        shell: bash
+        env:
+          P1: ${{ steps.protocol_identities.outcome }}
+          P2: ${{ steps.protocol_strict.outcome }}
+          P3: ${{ steps.protocol_frozen.outcome }}
+          C1: ${{ steps.command_envelope.outcome }}
+          C2: ${{ steps.command_create.outcome }}
+          C3: ${{ steps.command_create_reject.outcome }}
+          C4: ${{ steps.command_no_active.outcome }}
+          C5: ${{ steps.command_active.outcome }}
+          C6: ${{ steps.command_reject.outcome }}
+          C7: ${{ steps.command_upstream.outcome }}
+          D1: ${{ steps.detail_gates.outcome }}
+          D2: ${{ steps.detail_assignments.outcome }}
+          D3: ${{ steps.detail_terminal.outcome }}
+        run: |
+          set -euo pipefail
+          for value in "$P1" "$P2" "$P3" "$C1" "$C2" "$C3" "$C4" "$C5" "$C6" "$C7" "$D1" "$D2" "$D3"; do test "$value" = success; done
+
+      - name: Publish sanitized diagnostic receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          P1: ${{ steps.protocol_identities.outcome }}
+          P2: ${{ steps.protocol_strict.outcome }}
+          P3: ${{ steps.protocol_frozen.outcome }}
+          C1: ${{ steps.command_envelope.outcome }}
+          C2: ${{ steps.command_create.outcome }}
+          C3: ${{ steps.command_create_reject.outcome }}
+          C4: ${{ steps.command_no_active.outcome }}
+          C5: ${{ steps.command_active.outcome }}
+          C6: ${{ steps.command_reject.outcome }}
+          C7: ${{ steps.command_upstream.outcome }}
+          D1: ${{ steps.detail_gates.outcome }}
+          D2: ${{ steps.detail_assignments.outcome }}
+          D3: ${{ steps.detail_terminal.outcome }}
+          ENFORCE: ${{ steps.enforce.outcome }}
+        run: |
+          set -euo pipefail
+          result=PASS; [[ "$BOUNDARY" == success && "$ENFORCE" == success ]] || result=FAIL
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 No-Install Verification v6
+
+- result: \`$result\`
+- run: \`$GITHUB_RUN_ID\`
+- source SHA: \`$GITHUB_SHA\`
+- protocol identities / strict / frozen: \`$P1\` / \`$P2\` / \`$P3\`
+- command envelope / create / active-create reject / no-active reject / active mailbox / request reject / upstream: \`$C1\` / \`$C2\` / \`$C3\` / \`$C4\` / \`$C5\` / \`$C6\` / \`$C7\`
+- detail gates / assignments / terminal: \`$D1\` / \`$D2\` / \`$D3\`
+- dependency installation/download: \`NO\`
+- build/compiler/deploy/controller mutation: \`NO\`"
