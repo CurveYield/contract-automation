@@ -1,0 +1,119 @@
+name: Tier 3 Frozen Candidate No-Install Verification v13
+
+on:
+  push:
+    branches:
+      - audit-round5/tier3-controller-ui-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-no-install-v13-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact frozen-candidate source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Enforce no-install development boundary
+        id: boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          test ! -d node_modules
+          workflow=.github/workflows/tier3-no-install-v13.yml
+          ! grep -Eq '^[[:space:]]*(npm[[:space:]]+(install|ci)|pnpm([[:space:]]|$)|yarn([[:space:]]|$)|npx([[:space:]]|$)|forge([[:space:]]|$)|hardhat([[:space:]]|$)|solc([[:space:]]|$)|wrangler([[:space:]]|$))' "$workflow"
+
+      - name: Verify frozen Tier 3 candidate
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test \
+            packages/protocol/test/tier3-controller-v2.test.mjs \
+            apps/tier3-api/test/controller-adapter-v2.test.mjs \
+            apps/tier3-api/test/entry-v2.test.mjs \
+            apps/tier3-web/test/client-v2.test.mjs \
+            apps/tier3-web/test/view-v2.test.mjs \
+            apps/tier3-web/test/view-v3.test.mjs \
+            apps/tier3-web/test/shell-v2.test.mjs \
+            apps/tier3-web/test/shell-v3.test.mjs \
+            packages/runner/test/tier3-requirements-v2.test.mjs \
+            packages/runner/test/tier3-deploy-v5.test.mjs \
+            packages/runner/test/tier3-promote-v1.test.mjs
+
+      - name: Verify accepted-release dependency-free regressions
+        id: legacy
+        shell: bash
+        run: node --test apps/api/test/entry.test.mjs apps/web/test/client.test.mjs
+
+      - name: Verify JavaScript syntax
+        id: syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check packages/protocol/src/tier3-controller-v2.mjs
+          node --check apps/tier3-api/src/controller-adapter-v2.mjs
+          node --check apps/tier3-api/src/entry-v2.mjs
+          node --check apps/tier3-web/src/client-v2.mjs
+          node --check apps/tier3-web/src/view-v2.mjs
+          node --check apps/tier3-web/src/view-v3.mjs
+          node --check apps/tier3-web/public/app-v4.js
+          node --check scripts/build-tier3-v3.mjs
+
+      - name: Verify frozen authority/privacy/release invariants
+        id: invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'AUDIT_CONTROLLER_INTAKE_ISSUE = "64"' apps/tier3-api/wrangler-v2.toml >/dev/null
+          grep -F 'ENABLED_CHAINS = "ethereum,base"' apps/tier3-api/wrangler-v2.toml >/dev/null
+          grep -F 'CURVEYIELD_TIER3_FINAL_RECEIPT' .github/workflows/deploy-tier3-v5.yml >/dev/null
+          grep -F 'CURVEYIELD_TIER3_FINAL_RECEIPT' .github/workflows/promote-tier3-v1.yml >/dev/null
+          grep -F 'node scripts/build-tier3-v3.mjs' .github/workflows/deploy-tier3-v5.yml >/dev/null
+          ! grep -Eq 'innerHTML\s*=|insertAdjacentHTML' apps/tier3-web/public/app-v4.js
+          ! grep -Eq 'issueNumber|mailboxIssueNumber|AUDIT_CONTROLLER_INTAKE_ISSUE' apps/tier3-web/public/index.html apps/tier3-web/public/app-v4.js
+          ! grep -Eq 'evidenceRefs|leaseToken|signedUrl|rawRpc' apps/tier3-web/public/app-v4.js apps/tier3-web/src/view-v3.mjs
+          ! grep -Eq 'eth_sendRawTransaction|personal_sign|eth_signTransaction|wallet_addEthereumChain' apps/tier3-web apps/tier3-api
+
+      - name: Publish stable exact final receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOUNDARY: ${{ steps.boundary.outcome }}
+          CANDIDATE: ${{ steps.candidate.outcome }}
+          LEGACY: ${{ steps.legacy.outcome }}
+          SYNTAX: ${{ steps.syntax.outcome }}
+          INVARIANTS: ${{ steps.invariants.outcome }}
+        run: |
+          set -euo pipefail
+          result=PASS
+          for outcome in "$BOUNDARY" "$CANDIDATE" "$LEGACY" "$SYNTAX" "$INVARIANTS"; do [[ "$outcome" == success ]] || result=FAIL; done
+          gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "<!-- CURVEYIELD_TIER3_FINAL_RECEIPT -->
+## Tier 3 Frozen Candidate No-Install Verification v13
+
+- result: \`$result\`
+- source SHA: \`$GITHUB_SHA\`
+- run: \`$GITHUB_RUN_ID\`
+- branch: \`${{ github.ref_name }}\`
+- boundary: \`$BOUNDARY\`
+- frozen candidate tests: \`$CANDIDATE\`
+- accepted-release regressions: \`$LEGACY\`
+- JavaScript syntax: \`$SYNTAX\`
+- authority/privacy/release invariants: \`$INVARIANTS\`
+- dependency installation/download: \`NO\`
+- repository build: \`NO\`
+- compiler/deploy/controller mutation: \`NO\`"
