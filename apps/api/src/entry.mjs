@@ -1,9 +1,9 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
 import {
-  controllerCompatibilityResponseV1,
-  controllerProjectionResponseV1
-} from './tier3-controller-adapter-v1.mjs';
+  controllerCompatibilityResponseV2,
+  controllerProjectionResponseV2
+} from './tier3-controller-adapter-v2.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -78,7 +78,9 @@ export function setupReadiness(env) {
     largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY),
     tier3ControllerRead: Boolean(
       env.AUDIT_CONTROLLER_GITHUB_TOKEN &&
-      /^[0-9a-f]{40}$/.test(String(env.AUDIT_CONTROLLER_REF ?? '')) &&
+      /^[0-9a-f]{40}$/.test(String(env.AUDIT_CONTROLLER_PROTOCOL_SHA ?? '')) &&
+      /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main')) &&
+      !String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main').includes('..') &&
       /^[0-9a-f]{40}$/.test(String(env.AUTOMATION_RELEASE_SHA ?? ''))
     )
   };
@@ -98,7 +100,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/api/v1/controller/compatibility') {
       const rejected = await requireClientAuthorization(request, env, context);
       if (rejected) return rejected;
-      return withCors(await controllerCompatibilityResponseV1(env), env);
+      return withCors(await controllerCompatibilityResponseV2(env), env);
     }
 
     const controllerCampaignMatch = url.pathname.match(/^\/api\/v1\/controller\/campaigns\/([^/]+)$/);
@@ -111,7 +113,7 @@ export default {
       } catch {
         return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400);
       }
-      return withCors(await controllerProjectionResponseV1(campaignId, env), env);
+      return withCors(await controllerProjectionResponseV2(campaignId, env), env);
     }
 
     const activeChains = enabledChainMap(env);
