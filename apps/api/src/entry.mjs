@@ -1,5 +1,9 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
+import {
+  controllerSetupReadinessV1,
+  handleControllerRouteV1
+} from './controller-adapter-v1.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -53,7 +57,8 @@ export function setupReadiness(env) {
     githubBridgeAuth: Boolean(env.GITHUB_BRIDGE_API_KEY),
     runnerAuth: Boolean(env.RUNNER_API_KEY),
     githubDispatch: Boolean(env.GITHUB_TOKEN),
-    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY)
+    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY),
+    tier3Controller: controllerSetupReadinessV1(env).status === 'ready'
   };
   return {
     status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required',
@@ -66,6 +71,11 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/api/v1/setup') {
       return json(setupReadiness(env), env);
+    }
+
+    if (url.pathname.startsWith('/api/v1/controller/')) {
+      const controllerResponse = await handleControllerRouteV1(request, env);
+      if (controllerResponse) return controllerResponse;
     }
 
     const activeChains = enabledChainMap(env);
