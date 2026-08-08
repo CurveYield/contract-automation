@@ -1,5 +1,10 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
+import {
+  controllerSetupReadinessV2,
+  handleControllerRouteV2
+} from './controller-adapter-v2.mjs';
+import { handleControllerCommandRouteV2 } from './controller-command-adapter-v2.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -28,10 +33,7 @@ async function clientAuthorizationProbe(request, env, context) {
   const url = new URL(request.url);
   url.pathname = '/api/v1/chains';
   url.search = '';
-  return apiWorker.fetch(new Request(url, {
-    method: 'GET',
-    headers: request.headers
-  }), env, context);
+  return apiWorker.fetch(new Request(url, { method: 'GET', headers: request.headers }), env, context);
 }
 
 async function parseJobCandidate(request) {
@@ -46,6 +48,8 @@ async function parseJobCandidate(request) {
 }
 
 export function setupReadiness(env) {
+  const controllerReadReady = controllerSetupReadinessV2(env).status === 'ready';
+  const controllerIntakeReady = String(env.AUDIT_CONTROLLER_INTAKE_ISSUE ?? '') === '64';
   const features = {
     storage: Boolean(env.JOBS),
     browserApiAuth: Boolean(env.CLIENT_API_KEY),
@@ -53,12 +57,10 @@ export function setupReadiness(env) {
     githubBridgeAuth: Boolean(env.GITHUB_BRIDGE_API_KEY),
     runnerAuth: Boolean(env.RUNNER_API_KEY),
     githubDispatch: Boolean(env.GITHUB_TOKEN),
-    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY)
+    largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY),
+    tier3Controller: controllerReadReady && controllerIntakeReady
   };
-  return {
-    status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required',
-    features
-  };
+  return { status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required', features };
 }
 
 export default {
@@ -68,40 +70,33 @@ export default {
       return json(setupReadiness(env), env);
     }
 
+    if (url.pathname.startsWith('/api/v1/controller/')) {
+      const commandResponse = await handleControllerCommandRouteV2(request, env);
+      if (commandResponse) return commandResponse;
+      const controllerResponse = await handleControllerRouteV2(request, env);
+      if (controllerResponse) return controllerResponse;
+    }
+
     const activeChains = enabledChainMap(env);
     if (request.method === 'GET' && url.pathname === '/api/v1/chains') {
       const response = await apiWorker.fetch(request, env, context);
       if (response.status !== 200 || !env.ENABLED_CHAINS) return response;
       if (!activeChains) {
-        return json({ error: {
-          code: 'invalid_enabled_chains',
-          message: 'The production chain allowlist is invalid'
-        } }, env, 503);
+        return json({ error: { code: 'invalid_enabled_chains', message: 'The production chain allowlist is invalid' } }, env, 503);
       }
-      return new Response(JSON.stringify({ chains: activeChains }), {
-        status: response.status,
-        headers: response.headers
-      });
+      return new Response(JSON.stringify({ chains: activeChains }), { status: response.status, headers: response.headers });
     }
 
     if (request.method === 'POST' && url.pathname === '/api/v1/jobs' && env.ENABLED_CHAINS) {
       const candidate = await parseJobCandidate(request);
-      const requestedChain = typeof candidate?.chain === 'string'
-        ? candidate.chain.trim().toLowerCase()
-        : null;
+      const requestedChain = typeof candidate?.chain === 'string' ? candidate.chain.trim().toLowerCase() : null;
       if (!activeChains || (requestedChain && !Object.hasOwn(activeChains, requestedChain))) {
         const authorization = await clientAuthorizationProbe(request, env, context);
         if (authorization.status !== 200) return authorization;
         if (!activeChains) {
-          return json({ error: {
-            code: 'invalid_enabled_chains',
-            message: 'The production chain allowlist is invalid'
-          } }, env, 503);
+          return json({ error: { code: 'invalid_enabled_chains', message: 'The production chain allowlist is invalid' } }, env, 503);
         }
-        return json({ error: {
-          code: 'chain_not_enabled',
-          message: 'The requested chain is not enabled for production testing'
-        } }, env, 400);
+        return json({ error: { code: 'chain_not_enabled', message: 'The requested chain is not enabled for production testing' } }, env, 400);
       }
     }
 

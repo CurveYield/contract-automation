@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Operate the GitHub-authoritative CurveYield Deep Assurance controller from a bounded hosted browser surface.">
+  <title>CurveYield Deep Assurance</title>
+  <link rel="stylesheet" href="./execution/styles.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="shell hero tier3-hero">
+    <div>
+      <p class="eyebrow">CurveYield assurance infrastructure</p>
+      <h1>Deep Assurance</h1>
+      <p class="lede">Operate the Tier 3 audit-controller workflow while GitHub state remains authoritative. The hosted browser is a bounded projection and validated command surface, not a second campaign ledger.</p>
+      <a class="primary-link" href="./execution/">Open Preflight Execution</a>
+    </div>
+    <div class="status-pill" id="service-state" aria-live="polite">Not connected</div>
+  </header>
+
+  <main class="shell controller-layout">
+    <section class="panel" aria-labelledby="connection-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Authenticated browser client</p><h2 id="connection-title">Connection</h2></div>
+        <span class="badge">No direct GitHub credential</span>
+      </div>
+      <label>API URL
+        <input id="api-url" type="url" value="https://api.preflight.curveyield.online" autocomplete="url">
+      </label>
+      <label>API key
+        <input id="api-key" type="password" autocomplete="off" placeholder="Bearer API key">
+      </label>
+      <div class="actions">
+        <button id="test-connection" type="button" class="secondary">Test controller connection</button>
+      </div>
+      <p class="hint">The controller GitHub token remains server-side. This page cannot select a repository, branch, issue number, or mailbox URL.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="project-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Authoritative controller state</p><h2 id="project-title">Audit Controller</h2></div>
+        <span class="badge">GitHub state is authoritative</span>
+      </div>
+      <label>Controller project slug
+        <input id="controller-project-slug" type="text" value="vlsdt" autocomplete="off" spellcheck="false">
+      </label>
+      <button id="load-controller-project" type="button">Load controller</button>
+      <div id="controller-state" class="status-banner" aria-live="polite">Connect and load a controller project.</div>
+    </section>
+
+    <section class="controller-grid wide" aria-label="Controller compatibility and campaign summary">
+      <article class="summary-card"><p class="summary-label">Controller release</p><p id="controller-release" class="summary-value">Not loaded</p></article>
+      <article class="summary-card"><p class="summary-label">Instruction release</p><p id="instruction-release" class="summary-value">Not loaded</p></article>
+      <article class="summary-card"><p class="summary-label">Active campaign</p><p id="active-campaign" class="summary-value">Not loaded</p></article>
+      <article class="summary-card"><p class="summary-label">Exact source</p><p id="campaign-source" class="summary-value">Not loaded</p></article>
+    </section>
+
+    <section class="controller-grid controller-details wide" aria-label="Deep Assurance workflow summaries">
+      <article class="summary-card"><h3>Phases and gates</h3><p id="phase-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Review lanes</h3><p id="lane-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Instruction proofs</h3><p id="instruction-proof-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Assignments and leases</h3><p id="assignment-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Findings</h3><p id="finding-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Remediation</h3><p id="remediation-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Evidence and provenance</h3><p id="evidence-summary" class="summary-value">Awaiting controller load.</p></article>
+      <article class="summary-card"><h3>Completion / security verdict</h3><p id="finalization-summary" class="summary-value">Awaiting controller load.</p></article>
+    </section>
+
+    <form id="controller-command-form" class="panel command-panel wide" aria-labelledby="controller-command-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Validated mailbox request</p><h2 id="controller-command-title">Structured Controller Command</h2></div>
+        <span class="badge">UI cannot choose mailbox target</span>
+      </div>
+      <p class="command-warning">A queued request is not accepted controller state. Reload the authoritative projection before treating any transition as complete.</p>
+      <label>Command JSON
+        <textarea id="controller-command-json" rows="18" spellcheck="false" autocomplete="off" placeholder='{"schemaVersion":1,"commandId":"...","type":"...","actor":{"type":"controller","id":"orchestrator"},"payload":{...}}'></textarea>
+      </label>
+      <div class="actions">
+        <button id="queue-controller-command" type="submit">Queue controller request</button>
+        <button id="clear-controller-command" type="button" class="secondary">Clear</button>
+      </div>
+      <div id="controller-command-state" class="status-banner" aria-live="polite">No controller request queued from this page.</div>
+    </form>
+  </main>
+
+  <footer class="shell footer">
+    <p>No private keys. No wallet connection. No real transaction broadcasting.</p>
+    <nav><a href="./execution/">Preflight Execution</a> · <a href="./execution/agent/">Agent interface</a> · <a href="./execution/privacy.html">Privacy</a></nav>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
