@@ -204,6 +204,12 @@ export function buildAuditCommandV1({
   assertString(actorType, 'actorType');
   assertString(actorId, 'actorId');
   assertObject(payload, 'payload');
+  if (Object.prototype.hasOwnProperty.call(payload, 'leaseToken')) {
+    throw new TypeError('payload leaseToken is forbidden; use the transient lease token input');
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'instructionScope')) {
+    throw new TypeError('payload instructionScope is forbidden; use the dedicated instruction scope inputs');
+  }
   const normalizedPayload = structuredClone(payload);
   const normalizedScope = validateInstructionScopeForCommand(instructionScope);
   if (normalizedScope) normalizedPayload.instructionScope = normalizedScope;
