@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Operate and inspect CurveYield Deep Assurance audit-controller campaigns through the authenticated Preflight API.">
+  <title>CurveYield Deep Assurance Operator</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./audit-v1.css">
+</head>
+<body>
+  <header class="shell hero compact-hero audit-hero">
+    <div>
+      <p class="eyebrow">CurveYield Deep Assurance</p>
+      <h1>Audit operator</h1>
+      <p class="lede">Inspect the Tier 3 campaign, workers, instruction proofs, findings, remediation, evidence state, and finalization gates. GitHub remains authoritative; this browser is a bounded projection and command surface.</p>
+      <nav class="audit-nav" aria-label="Operator navigation">
+        <a href="./index.html">Compile / simulate</a>
+        <a href="./agent/index.html">Agent interface</a>
+      </nav>
+    </div>
+    <div class="status-pill" id="audit-live-region" aria-live="polite">Not connected</div>
+  </header>
+
+  <main class="shell audit-layout">
+    <section class="panel audit-control" id="audit-connection" aria-labelledby="audit-connection-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Authenticated API</p><h2 id="audit-connection-title">Connection</h2></div>
+        <span class="badge">No direct GitHub credential</span>
+      </div>
+      <label>API URL
+        <input id="audit-api-url" type="url" value="https://api.preflight.curveyield.online" autocomplete="url">
+      </label>
+      <label>Client API key
+        <input id="audit-api-key" type="password" autocomplete="off" placeholder="Bearer API key">
+      </label>
+      <label>Project slug
+        <input id="audit-project" type="text" value="vlsdt" pattern="[a-z0-9][a-z0-9-]{0,63}" autocomplete="off">
+      </label>
+      <button id="load-audit" type="button">Load authoritative state</button>
+      <p class="hint">The API key stays in this page session unless your browser or password manager separately persists it. Controller state is never stored here as authority.</p>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="compatibility-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Exact releases</p><h2 id="compatibility-title">Compatibility</h2></div>
+      </div>
+      <div id="compatibility-state" class="state-stack" aria-live="polite"><p class="empty-state">Load a project to verify exact controller, skill, and automation releases.</p></div>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="campaign-title">
+      <div class="section-heading"><div><p class="eyebrow">Controller state</p><h2 id="campaign-title">Campaign</h2></div></div>
+      <div id="campaign-state" class="state-stack"><p class="empty-state">No campaign loaded.</p></div>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="preflight-title">
+      <div class="section-heading"><div><p class="eyebrow">Admission</p><h2 id="preflight-title">Capability preflight</h2></div></div>
+      <div id="preflight-state" class="state-stack"><p class="empty-state">No preflight loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="gates-title">
+      <div class="section-heading"><div><p class="eyebrow">10 mandatory phases</p><h2 id="gates-title">Phase and gate status</h2></div><span class="badge" id="gate-progress">0 / 0</span></div>
+      <div id="gate-state" class="card-grid"><p class="empty-state">No gates loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="assignments-title">
+      <div class="section-heading"><div><p class="eyebrow">7 review lanes</p><h2 id="assignments-title">Assignments and leases</h2></div><span class="badge" id="assignment-progress">0 accepted</span></div>
+      <div id="assignment-state" class="card-grid"><p class="empty-state">No assignments loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="workers-title">
+      <div class="section-heading"><div><p class="eyebrow">Actors</p><h2 id="workers-title">Workers and sessions</h2></div></div>
+      <div id="worker-state" class="card-grid"><p class="empty-state">No workers loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="proofs-title">
+      <div class="section-heading"><div><p class="eyebrow">v16.13 authorization</p><h2 id="proofs-title">Instruction-read proofs</h2></div><span class="badge">Exact release / session / role / phase</span></div>
+      <div id="proof-state" class="card-grid"><p class="empty-state">No proofs loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="findings-title">
+      <div class="section-heading"><div><p class="eyebrow">Security results</p><h2 id="findings-title">Findings</h2></div></div>
+      <div id="finding-state" class="card-grid"><p class="empty-state">No finding summaries loaded.</p></div>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="remediation-title">
+      <div class="section-heading"><div><p class="eyebrow">Regression review</p><h2 id="remediation-title">Remediation</h2></div></div>
+      <div id="remediation-state" class="state-stack"><p class="empty-state">No remediation summary loaded.</p></div>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="report-title">
+      <div class="section-heading"><div><p class="eyebrow">Completion ≠ verdict</p><h2 id="report-title">Final report</h2></div></div>
+      <div id="report-state" class="state-stack"><p class="empty-state">No report summary loaded.</p></div>
+    </section>
+
+    <section class="panel audit-summary" aria-labelledby="publication-title">
+      <div class="section-heading"><div><p class="eyebrow">Release lifecycle</p><h2 id="publication-title">Publication and delivery</h2></div></div>
+      <div id="publication-state" class="state-stack"><p class="empty-state">No publication state loaded.</p></div>
+    </section>
+
+    <section class="panel audit-wide" aria-labelledby="events-title">
+      <div class="section-heading"><div><p class="eyebrow">Bounded provenance</p><h2 id="events-title">Controller event timeline</h2></div><span class="badge">Metadata only</span></div>
+      <div id="event-state" class="timeline"><p class="empty-state">No event metadata loaded.</p></div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <p>No private keys. No wallet connection. No real transaction broadcasting. GitHub remains the controller ledger.</p>
+    <nav><a href="./index.html">Compile / simulate</a> · <a href="./privacy.html">Privacy</a></nav>
+  </footer>
+
+  <script type="module" src="./audit-v1.js"></script>
+</body>
+</html>
