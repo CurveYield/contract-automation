@@ -1,9 +1,9 @@
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
 import {
-  controllerCompatibilityResponseV2,
-  controllerProjectionResponseV2
-} from './tier3-controller-adapter-v2.mjs';
+  controllerCompatibilityResponseV3,
+  controllerProjectionResponseV3
+} from './tier3-controller-adapter-v3.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -33,10 +33,7 @@ function withCors(response, env) {
 function enabledChainMap(env) {
   const configured = String(env.ENABLED_CHAINS ?? '').trim();
   if (!configured) return CHAINS;
-  const names = [...new Set(configured
-    .split(',')
-    .map((name) => name.trim().toLowerCase())
-    .filter(Boolean))];
+  const names = [...new Set(configured.split(',').map((name) => name.trim().toLowerCase()).filter(Boolean))];
   if (names.length === 0 || names.some((name) => !Object.hasOwn(CHAINS, name))) return null;
   return Object.freeze(Object.fromEntries(names.sort().map((name) => [name, CHAINS[name]])));
 }
@@ -45,10 +42,7 @@ async function clientAuthorizationProbe(request, env, context) {
   const url = new URL(request.url);
   url.pathname = '/api/v1/chains';
   url.search = '';
-  return apiWorker.fetch(new Request(url, {
-    method: 'GET',
-    headers: request.headers
-  }), env, context);
+  return apiWorker.fetch(new Request(url, { method: 'GET', headers: request.headers }), env, context);
 }
 
 async function requireClientAuthorization(request, env, context) {
@@ -84,23 +78,18 @@ export function setupReadiness(env) {
       /^[0-9a-f]{40}$/.test(String(env.AUTOMATION_RELEASE_SHA ?? ''))
     )
   };
-  return {
-    status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required',
-    features
-  };
+  return { status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required', features };
 }
 
 export default {
   async fetch(request, env, context) {
     const url = new URL(request.url);
-    if (request.method === 'GET' && url.pathname === '/api/v1/setup') {
-      return json(setupReadiness(env), env);
-    }
+    if (request.method === 'GET' && url.pathname === '/api/v1/setup') return json(setupReadiness(env), env);
 
     if (request.method === 'GET' && url.pathname === '/api/v1/controller/compatibility') {
       const rejected = await requireClientAuthorization(request, env, context);
       if (rejected) return rejected;
-      return withCors(await controllerCompatibilityResponseV2(env), env);
+      return withCors(await controllerCompatibilityResponseV3(env), env);
     }
 
     const controllerCampaignMatch = url.pathname.match(/^\/api\/v1\/controller\/campaigns\/([^/]+)$/);
@@ -108,48 +97,27 @@ export default {
       const rejected = await requireClientAuthorization(request, env, context);
       if (rejected) return rejected;
       let campaignId;
-      try {
-        campaignId = decodeURIComponent(controllerCampaignMatch[1]);
-      } catch {
-        return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400);
-      }
-      return withCors(await controllerProjectionResponseV2(campaignId, env), env);
+      try { campaignId = decodeURIComponent(controllerCampaignMatch[1]); }
+      catch { return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400); }
+      return withCors(await controllerProjectionResponseV3(campaignId, env), env);
     }
 
     const activeChains = enabledChainMap(env);
     if (request.method === 'GET' && url.pathname === '/api/v1/chains') {
       const response = await apiWorker.fetch(request, env, context);
       if (response.status !== 200 || !env.ENABLED_CHAINS) return response;
-      if (!activeChains) {
-        return json({ error: {
-          code: 'invalid_enabled_chains',
-          message: 'The production chain allowlist is invalid'
-        } }, env, 503);
-      }
-      return new Response(JSON.stringify({ chains: activeChains }), {
-        status: response.status,
-        headers: response.headers
-      });
+      if (!activeChains) return json({ error: { code: 'invalid_enabled_chains', message: 'The production chain allowlist is invalid' } }, env, 503);
+      return new Response(JSON.stringify({ chains: activeChains }), { status: response.status, headers: response.headers });
     }
 
     if (request.method === 'POST' && url.pathname === '/api/v1/jobs' && env.ENABLED_CHAINS) {
       const candidate = await parseJobCandidate(request);
-      const requestedChain = typeof candidate?.chain === 'string'
-        ? candidate.chain.trim().toLowerCase()
-        : null;
+      const requestedChain = typeof candidate?.chain === 'string' ? candidate.chain.trim().toLowerCase() : null;
       if (!activeChains || (requestedChain && !Object.hasOwn(activeChains, requestedChain))) {
         const authorization = await clientAuthorizationProbe(request, env, context);
         if (authorization.status !== 200) return authorization;
-        if (!activeChains) {
-          return json({ error: {
-            code: 'invalid_enabled_chains',
-            message: 'The production chain allowlist is invalid'
-          } }, env, 503);
-        }
-        return json({ error: {
-          code: 'chain_not_enabled',
-          message: 'The requested chain is not enabled for production testing'
-        } }, env, 400);
+        if (!activeChains) return json({ error: { code: 'invalid_enabled_chains', message: 'The production chain allowlist is invalid' } }, env, 503);
+        return json({ error: { code: 'chain_not_enabled', message: 'The requested chain is not enabled for production testing' } }, env, 400);
       }
     }
 
