@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - audit-round5/tier3-controller-ui-v2
+  pull_request:
+    branches:
+      - orchestrator/round4-ci-base-v1
   workflow_dispatch:
 
 permissions:
@@ -23,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Enforce authorized verification boundary
         shell: bash
@@ -78,12 +81,13 @@ jobs:
           set -euo pipefail
           result=FAIL
           [[ "$JOB_STATUS" == success ]] && result=PASS
+          verified_sha=$(git rev-parse HEAD)
           gh issue comment 170 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Authorized Build Verification v5
 
 - result: \`$result\`
 - run: \`$GITHUB_RUN_ID\`
-- source SHA: \`$GITHUB_SHA\`
-- branch: \`${{ github.ref_name }}\`
+- source SHA: \`$verified_sha\`
+- event: \`${{ github.event_name }}\`
 - dependency installation: \`AUTHORIZED / npm install --ignore-scripts --no-audit --no-fund\`
 - current 16.14 Tier 3 + accepted API/browser regressions: \`$JOB_STATUS\`
 - JavaScript syntax lint: \`$JOB_STATUS\`
