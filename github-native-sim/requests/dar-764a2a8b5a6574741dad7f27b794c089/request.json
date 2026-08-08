@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "deep-assurance-github-request-v1",
+  "processId": "deep-assurance-v6",
+  "contractAutomationRelease": {
+    "repository": "CurveYield/contract-automation",
+    "branch": "orchestrator/round4-ci-base-v1",
+    "commit": "ad11d7d5a623c1411cbabb4bb0cd9acf7975bce8",
+    "contractVersion": "contract-automation-finalized-v1"
+  },
+  "runnerRelease": {
+    "version": "deep-assurance-github-bridge-v1",
+    "manifestSha256": "51fc7ef486a75a0593aaf9f8b54965424785e34198479f4ee74dd88168f53292"
+  },
+  "campaignId": "deep-assurance-erc20-rehearsal-v1",
+  "assignmentId": "lane-build-simulation-evidence-auditor-v1",
+  "phaseId": "build-and-test",
+  "gateId": "exact-build-and-tests-complete",
+  "profileId": "github-native-compile-v1",
+  "source": {
+    "repository": "CurveYield/Contracts",
+    "commit": "9ee7ee1e69ac84ae12ec9679741f8fa9ca949dc3",
+    "projectPath": "audit-fixtures/deep-assurance-erc20-rehearsal-v1"
+  },
+  "configuration": {
+    "compilerVersion": "0.8.30",
+    "openZeppelinVersion": "5.4.0",
+    "optimizer": {"enabled": true, "runs": 200},
+    "evmVersion": "cancun",
+    "viaIR": false,
+    "timeoutMinutes": 20
+  },
+  "requestId": "dar-764a2a8b5a6574741dad7f27b794c089",
+  "requestDigest": "764a2a8b5a6574741dad7f27b794c0893444808a8551b85dbbce1f8aca142d18"
+}
