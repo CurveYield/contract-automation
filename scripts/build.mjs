@@ -8,4 +8,5 @@ await fs.rm(path.join(root, 'dist'), { recursive: true, force: true });
 await fs.mkdir(output, { recursive: true });
 await fs.cp(path.join(root, 'apps', 'web', 'public'), output, { recursive: true });
 await fs.copyFile(path.join(root, 'apps', 'web', 'src', 'client.mjs'), path.join(output, 'client.js'));
+await fs.copyFile(path.join(root, 'apps', 'web', 'src', 'controller-view-v1.mjs'), path.join(output, 'controller-view.js'));
 console.log(`Built static Pages site at ${output}`);
