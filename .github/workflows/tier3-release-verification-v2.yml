@@ -1,0 +1,197 @@
+name: Tier 3 Release Verification v2
+
+on:
+  pull_request:
+    branches:
+      - orchestrator/round4-ci-base-v1
+    paths:
+      - .agent-control/v1/orchestrator/TIER3_RELEASE_VERIFY_REQUEST_v2.json
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tier3-release-verification-v2-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  VERIFY_REQUEST_PATH: .agent-control/v1/orchestrator/TIER3_RELEASE_VERIFY_REQUEST_v2.json
+  ACCEPTED_LITE_SHA: 2df81aacb6f5747f06b49297e89e02c3f013d4ef
+
+jobs:
+  no-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out verification head with full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate marker-only verification request
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test -f "$VERIFY_REQUEST_PATH"
+          changed=$(git diff --name-only "$RELEASE_SHA" HEAD)
+          test "$changed" = "$VERIFY_REQUEST_PATH"
+          jq -e \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg release_sha "$RELEASE_SHA" \
+            '
+              .schemaVersion == "round5-tier3-release-verify-request-v2" and
+              .repository == $repository and
+              .releaseBranch == "orchestrator/round4-ci-base-v1" and
+              .releaseSha == $release_sha and
+              .requestedBy == "account-owner-through-orchestrator" and
+              .verificationAuthorized == true and
+              .dependencyInstallationAuthorized == true and
+              .deploymentAuthorized == false and
+              .walletSigningAllowed == false and
+              .publicTransactionBroadcastAllowed == false
+            ' "$VERIFY_REQUEST_PATH" >/dev/null
+          git checkout --detach "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - name: Enforce accepted Lite and API-core boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$ACCEPTED_LITE_SHA^{commit}"
+          git diff --exit-code "$ACCEPTED_LITE_SHA" -- apps/web/public apps/api/src/index.mjs
+          grep -F 'ENABLED_CHAINS = "ethereum,base"' apps/api/wrangler.toml >/dev/null
+          grep -F 'AUDIT_CONTROLLER_INTAKE_ISSUE = "64"' apps/api/wrangler.toml >/dev/null
+
+      - name: Run current Deep Assurance 16.14 dependency-free verification
+        run: |
+          node --test \
+            packages/protocol/test/tier3-controller-v3.test.mjs \
+            apps/api/test/controller-adapter-v3.test.mjs \
+            apps/api/test/controller-command-adapter-v2.test.mjs \
+            apps/api/test/controller-entry-v3.test.mjs \
+            apps/web/test/tier3-client-v1.test.mjs \
+            apps/web/test/controller-view-v3.test.mjs \
+            apps/web/test/controller-detail-model-v2.test.mjs \
+            apps/web/test/tier3-clean-shell-v3.test.mjs \
+            packages/runner/test/audit-round5-tier3-clean-build-v3.test.mjs \
+            packages/runner/test/audit-round5-tier3-production-deploy-v4.test.mjs \
+            packages/runner/test/audit-round5-tier3-release-verification-v1.test.mjs
+
+      - name: Check current Tier 3 JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check packages/protocol/src/tier3-controller-v3.mjs
+          node --check apps/api/src/controller-adapter-v2.mjs
+          node --check apps/api/src/controller-command-adapter-v2.mjs
+          node --check apps/api/src/entry.mjs
+          node --check apps/web/src/client.mjs
+          node --check apps/web/src/controller-view-v3.mjs
+          node --check apps/web/src/controller-detail-model-v2.mjs
+          node --check apps/web/tier3/app.js
+          node --check scripts/build.mjs
+
+      - name: Publish dependency-free release receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RELEASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          result=FAIL
+          [[ "$JOB_STATUS" == success ]] && result=PASS
+          gh issue comment 173 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Release Verification v2 — no-install
+
+- result: \`$result\`
+- run: \`$GITHUB_RUN_ID\`
+- exact release SHA: \`$RELEASE_SHA\`
+- verification PR: \`#${{ github.event.pull_request.number }}\`
+- accepted-Lite/API-core boundary: \`$JOB_STATUS\`
+- Deep Assurance release: \`16.14.0\`
+- controller adapter: \`tier3-controller-adapter-v2\`
+- dependency installation/download: \`NO\`
+- Cloudflare deployment: \`NO\`
+- controller mailbox mutation: \`NO\`
+- wallet signing/public broadcast: \`NO\`"
+
+  authorized-build:
+    needs: no-install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out verification head with full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate marker-only request and select exact release
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test -f "$VERIFY_REQUEST_PATH"
+          changed=$(git diff --name-only "$RELEASE_SHA" HEAD)
+          test "$changed" = "$VERIFY_REQUEST_PATH"
+          jq -e \
+            --arg release_sha "$RELEASE_SHA" \
+            '.releaseSha == $release_sha and .dependencyInstallationAuthorized == true and .deploymentAuthorized == false' \
+            "$VERIFY_REQUEST_PATH" >/dev/null
+          git checkout --detach "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          git diff --exit-code "$ACCEPTED_LITE_SHA" -- apps/web/public apps/api/src/index.mjs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install account-owner-authorized pinned dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run full repository tests
+        run: npm test
+
+      - name: Run JavaScript syntax lint
+        run: npm run lint
+
+      - name: Build static browser surfaces
+        run: npm run build
+
+      - name: Re-verify exact current dual-surface build
+        run: node --test packages/runner/test/audit-round5-tier3-clean-build-v3.test.mjs
+
+      - name: Publish authorized build receipt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RELEASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          result=FAIL
+          [[ "$JOB_STATUS" == success ]] && result=PASS
+          gh issue comment 173 --repo "$GITHUB_REPOSITORY" --body "## Tier 3 Release Verification v2 — authorized build
+
+- result: \`$result\`
+- run: \`$GITHUB_RUN_ID\`
+- exact release SHA: \`$RELEASE_SHA\`
+- verification PR: \`#${{ github.event.pull_request.number }}\`
+- dependency installation: \`AUTHORIZED / npm install --ignore-scripts --no-audit --no-fund\`
+- full repository tests: \`$JOB_STATUS\`
+- JavaScript syntax lint: \`$JOB_STATUS\`
+- static dual-surface build: \`$JOB_STATUS\`
+- explicit Foundry/Hardhat/Forge/solc command: \`NO\`
+- Cloudflare deployment: \`NO\`
+- controller mailbox mutation: \`NO\`
+- wallet signing/public broadcast: \`NO\`"
