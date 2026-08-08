@@ -1,10 +1,11 @@
-// Contract Automation API Entry v5
+// Contract Automation API Entry v6
 import { CHAINS } from '../../../packages/protocol/src/index.mjs';
 import apiWorker from './index.mjs';
 import {
-  controllerCompatibilityResponseV5,
-  controllerProjectionResponseV5
-} from './tier3-controller-adapter-v5.mjs';
+  controllerCompatibilityResponseV6,
+  controllerProjectionResponseV6,
+  controllerCommandResponseV6
+} from './tier3-controller-adapter-v6.mjs';
 
 function json(value, env, status = 200, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -42,7 +43,7 @@ async function requireClientAuthorization(request, env, context) {
   const authorization = await clientAuthorizationProbe(request, env, context);
   return authorization.status === 200 ? null : authorization;
 }
-async function parseJobCandidate(request) {
+async function parseJsonObject(request) {
   try {
     const contentType = (request.headers.get('content-type') ?? '').toLowerCase();
     if (!contentType.startsWith('application/json')) return null;
@@ -50,8 +51,18 @@ async function parseJobCandidate(request) {
     return body && typeof body === 'object' && !Array.isArray(body) ? body : null;
   } catch { return null; }
 }
+async function parseJobCandidate(request) {
+  return parseJsonObject(request);
+}
 
 export function setupReadiness(env) {
+  const tier3ControllerRead = Boolean(
+    env.AUDIT_CONTROLLER_GITHUB_TOKEN &&
+    /^[0-9a-f]{40}$/.test(String(env.AUDIT_CONTROLLER_PROTOCOL_SHA ?? '')) &&
+    /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main')) &&
+    !String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main').includes('..') &&
+    /^[0-9a-f]{40}$/.test(String(env.AUTOMATION_RELEASE_SHA ?? ''))
+  );
   const features = {
     storage: Boolean(env.JOBS),
     browserApiAuth: Boolean(env.CLIENT_API_KEY),
@@ -60,13 +71,8 @@ export function setupReadiness(env) {
     runnerAuth: Boolean(env.RUNNER_API_KEY),
     githubDispatch: Boolean(env.GITHUB_TOKEN),
     largeUploads: Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY),
-    tier3ControllerRead: Boolean(
-      env.AUDIT_CONTROLLER_GITHUB_TOKEN &&
-      /^[0-9a-f]{40}$/.test(String(env.AUDIT_CONTROLLER_PROTOCOL_SHA ?? '')) &&
-      /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main')) &&
-      !String(env.AUDIT_CONTROLLER_STATE_REF ?? 'main').includes('..') &&
-      /^[0-9a-f]{40}$/.test(String(env.AUTOMATION_RELEASE_SHA ?? ''))
-    )
+    tier3ControllerRead,
+    tier3ControllerWrite: Boolean(tier3ControllerRead && env.AUDIT_CONTROLLER_GITHUB_COMMAND_TOKEN)
   };
   return { status: Object.values(features).every(Boolean) ? 'ready' : 'configuration_required', features };
 }
@@ -78,7 +84,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/api/v1/controller/compatibility') {
       const rejected = await requireClientAuthorization(request, env, context);
       if (rejected) return rejected;
-      return withCors(await controllerCompatibilityResponseV5(env), env);
+      return withCors(await controllerCompatibilityResponseV6(env), env);
     }
     const controllerCampaignMatch = url.pathname.match(/^\/api\/v1\/controller\/campaigns\/([^/]+)$/);
     if (request.method === 'GET' && controllerCampaignMatch) {
@@ -87,7 +93,18 @@ export default {
       let campaignId;
       try { campaignId = decodeURIComponent(controllerCampaignMatch[1]); }
       catch { return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400); }
-      return withCors(await controllerProjectionResponseV5(campaignId, env), env);
+      return withCors(await controllerProjectionResponseV6(campaignId, env), env);
+    }
+    const controllerCommandMatch = url.pathname.match(/^\/api\/v1\/controller\/campaigns\/([^/]+)\/commands$/);
+    if (request.method === 'POST' && controllerCommandMatch) {
+      const rejected = await requireClientAuthorization(request, env, context);
+      if (rejected) return rejected;
+      let campaignId;
+      try { campaignId = decodeURIComponent(controllerCommandMatch[1]); }
+      catch { return json({ error: { code: 'invalid_campaign_id', message: 'Campaign ID is invalid' } }, env, 400); }
+      const body = await parseJsonObject(request);
+      if (!body) return json({ error: { code: 'invalid_controller_command_request', message: 'Controller command request is invalid' } }, env, 400);
+      return withCors(await controllerCommandResponseV6(campaignId, body, env), env);
     }
     const activeChains = enabledChainMap(env);
     if (request.method === 'GET' && url.pathname === '/api/v1/chains') {
